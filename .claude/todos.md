@@ -12,10 +12,12 @@
 
 ## 진행 중 / 다음 작업 후보
 
-1. **`treeset.luau` 버그 수정** — `set.has`/`set.add`가 `self` 대신 모듈
-   테이블을 읽고 씁니다(`.claude/project-context.md`의 "모듈 현황" 표 참고).
-   지금은 그냥 구 `set.luau`를 옮겨놓기만 한 상태. **이번 세션에서 다음으로
-   착수할 항목으로 선택됨(2026-08-22 사용자 결정)**.
+1. ~~**`treeset.luau` 버그 수정**~~ **[2026-08-22 완료]** `has`/`add`의
+   `self` vs 모듈 테이블 버그를 고치고 타입을 `TreeSet<T>`로 정리했습니다.
+   **남은 일**: 생성자/메타테이블 배선이 없어 아직 실제로 인스턴스를 만들
+   수 없고, `intersect`/`union`/`subtract`/`exclusive`/`is_subset_of`/`size`는
+   여전히 빈 함수 — 이건 `.claude/question.md` #2(hash/tree 컨테이너 표현)
+   결정 이후에 이어서 할 것.
 2. **`arr` 미구현 함수 채우기** — `shuffle`/`reverse(_inplace)`/`rotate(_inplace)`/
    `sorted`/`replace(_inplace)`/`erase`가 빈 본문입니다
    (`.claude/project-context.md` 모듈 현황 표).

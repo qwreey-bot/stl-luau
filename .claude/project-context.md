@@ -63,7 +63,7 @@ notes, todo             (루트) 예전 스크래치 노트 — Luau 메타메�
 | `common` | 완성(작음) |
 | `bsearch`, `heap` | 미착수 (빈 파일) |
 | `hashmap`, `hashset`, `treemap` | 미착수 (빈 파일) |
-| `treeset` | 구 `set` 스텁 그대로 — **버그 있음**: `set.has`/`set.add`가 `self`가 아니라 모듈 테이블 `set`을 읽고 씀(`src/treeset.luau:14-19`), `export type set<T>`도 이름이 `treeset`이 아니라 `set`으로 남아있음. 실사용 전 재작성 필요 |
+| `treeset` | **[2026-08-22 수정]** `has`/`add`의 `self` vs 모듈 테이블 버그 고침, 타입도 `TreeSet<T>`로 리네임 + `{ [T]: boolean }` 형태로 정정. `intersect`/`union`/`subtract`/`exclusive`/`is_subset_of`/`size`/`from_function`은 여전히 빈 함수. **생성자/메타테이블 배선이 없어 아직 인스턴스를 만들 수 없음** — `arr` 패턴(`.claude/base/architecture.md`의 "모듈 팩토리 패턴")을 따를지는 hash/tree 컨테이너 표현 결정(`.claude/question.md` #2)에 달림 |
 | `tuple`, `typeutil` | 실험 중, 미export |
 | `fut` | 뼈대만 |
 | `record` | 타입 별칭 하나, 모듈 아님 |
