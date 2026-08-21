@@ -1,4 +1,4 @@
-local test = require("../libs/test-luau")
+local test = require("../libs/test-luau/lib")
 local arr = require("../src/arr")
 
 -- stylua: ignore start
