@@ -1,8 +1,6 @@
 local arr = require("./src/arr")
-local set = require("./src/set")
 
 export type arr<T> = arr.Arr<T>
-export type set<T> = set.set<T>
 
 -- stylua: ignore start
 local function run_test()
@@ -15,6 +13,5 @@ end
 
 return {
 	arr = arr,
-	set = set,
 	run_test = run_test,
 }
