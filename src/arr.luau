@@ -1,34 +1,85 @@
 local common = require("./common")
 local compareTo = common.compareTo
 
-local arr = {}
-function arr.__call<T>(_, ...: T): arr<T>
+local arr_ifce = {}
+local arr_constructor = {}
+arr_ifce.__index = arr_ifce
+
+--#region ----------- 생성자 -----------
+-- ... 을 받아 해당 내용을 가지는 배열을 생성합니다
+function arr_constructor.__call<T>(_, ...: T): Arr<T>
 	local result = table.pack(...)
 	result.__arr__ = true
-	setmetatable(result, arr)
-	return result :: arr<T>
+	setmetatable(result, arr_ifce)
+	return result :: Arr<T>
 end
-arr.__index = arr
-setmetatable(arr, arr)
-function arr.sized<T>(length: number, fill: T): arr<T>
+setmetatable(arr_ifce, arr_constructor)
+-- length 크기의 배열을 생성합니다
+function arr_ifce.sized<T>(length: number, fill: T): Arr<T>
 	local result = table.create(length)
 	result.n = length
-	arr.__arr__ = true
+	result.__arr__ = true
 	if fill ~= nil then
 		for idx = 1, length do
-			arr[idx] = fill
+			arr_ifce[idx] = fill
 		end
 	end
-	setmetatable(result, arr)
+	setmetatable(result, arr_ifce)
 	return result
 end
-local arr_sized = arr.sized
-
-function arr.unpack<T>(self: arr<T>): ...T
-	return table.unpack(self, 1, self.n)
+local arr_sized = arr_ifce.sized
+-- number index 를 사용하는 테이블을 배열로 변환합니다
+function arr_ifce.from_table<T>(tbl: { [number]: T }): Arr<T>
+	(tbl :: Arr<T>).n = table.maxn(tbl);
+	(tbl :: any).__arr__ = true
+	setmetatable(tbl, arr_ifce)
+	return tbl :: any
 end
+-- 테이블의 내용을 복사한 배열을 생성합니다
+function arr_ifce.clone_from_table<T>(tbl: { [number]: T }): Arr<T>
+	local length = table.maxn(tbl)
+	local result = table.create(length)
+	result.n = length
+	result.__arr__ = true
+	for idx = 1, length do
+		result[idx] = tbl[idx]
+	end 
+	setmetatable(tbl, arr_ifce)
+end
+-- 이터레이터로부터 배열을 생성합니다
+function arr_ifce.from_iter<T>(iter: any, ...): Arr<T>
+	local last_exprs: Arr<any>
+	local result = arr_sized(0)
+	while true do
+		if last_exprs then
+			last_exprs = arr_ifce(iter(last_exprs:unpack()))
+		else
+			last_exprs = arr_ifce(iter(...))
+		end
+		if last_exprs[1] == nil then
+			break
+		end
+		arr_ifce.push(result, last_exprs)
+	end
+	return result :: Arr<T>
+end
+-- length 만큼 함수의 실행 결과로 채워진 배열을 생성합니다. 함수에는 인자로 index 가 주어집니다
+function arr_ifce.from_func<T>(length: number, func: (index: number)->T): Arr<T>
+	local result = table.create(length)
+	result.n = length
+	result.__arr__ = true
+	for idx = 1, length do
+		result[idx] = func(idx)
+	end
+	setmetatable(result, arr_ifce)
+	return result
+end
+-- function arr.map_from_iter<T>(iter: any, ...): arr<T> end
+-- function arr.flatmap_from_iter<T>(iter: any, ...): arr<T> end
+--#endregion ----------- 생성자 -----------
 
-function arr.push<T>(self: arr<T>, ...: T): arr<T>
+--#region ----------- 요소 추가 -----------
+function arr_ifce.push_many<T>(self: Arr<T>, ...: T): Arr<T>
 	local src = table.pack(...)
 	local src_len = src.n
 	if src_len == 0 then
@@ -44,56 +95,160 @@ function arr.push<T>(self: arr<T>, ...: T): arr<T>
 	table.move(src, 1, src_len, arr_len + 1, self)
 	return self
 end
-local arr_push = arr.push
-
-function arr.range(arr_len: number, start: number?, last: number?): (number, number)
-	return if start == nil then 1 elseif start < 0 then (arr_len + start + 1) else start,
-		if last == nil then arr.n elseif last < 0 then (arr_len + last + 1) else last
+local arr_push_many = arr_ifce.push_many
+function arr_ifce.push_array<T>(self: Arr<T>, source: Arr<T>): Arr<T>
+	local src_len = source.n
+	local arr_len = self.n
+	table.move(source, 1, src_len, arr_len + 1, self)
+	self.n = arr_len + src_len
+	return self
 end
-local arr_range = arr.range
+function arr_ifce.push<T>(self: Arr<T>, item: T): Arr<T>
+	local arr_len = self.n + 1
+	self[arr_len] = item
+	self.n = arr_len
+	return self
+end
 
-function arr.insert<T>(self: arr<T>, at: number, ...: T): arr<T>
-	local src = table.pack(...)
-	local src_len = src.n
+function arr_ifce.insert_many<T>(self: Arr<T>, at: number, ...: T): Arr<T>
+	arr_ifce.insert_array(self, at, table.pack(...) :: any)
+	return self
+end
+function arr_ifce.insert_array<T>(self: Arr<T>, at: number, source: Arr<T>): Arr<T>
+	local src_len = source.n
 	if src_len == 0 then
 		return self
 	end
 	local arr_len = self.n
 	table.move(self, at, arr_len, at + src_len)
-	table.move(src, 1, src_len, at, self)
+	table.move(source, 1, src_len, at, self)
 	self.n = arr_len + src_len
 	return self
 end
+function arr_ifce.insert<T>(self: Arr<T>, at: number, item: T): Arr<T>
+	local arr_len = self.n
+	table.move(self, at, arr_len, at + 1)
+	self[at] = item
+	self.n = arr_len + 1
+	return self
+end
 
-function arr.consume<T>(self: arr<T>, fn: CallBack<T, any>): arr<T>
-	for idx = 1, self.n do
-		fn(self[idx], idx, self)
+function arr_ifce.unshift_many<T>(self: Arr<T>, ...: T): Arr<T>
+	arr_ifce.unshift_array(self, table.pack(...) :: any)
+	return self
+end
+function arr_ifce.unshift_array<T>(self: Arr<T>, source: Arr<T>): Arr<T>
+	local src_len = source.n
+	local arr_len = self.n
+	table.move(self, 1, arr_len, src_len + 1)
+	table.move(source, 1, src_len, 1, self)
+	self.n = arr_len + src_len
+	return self
+end
+function arr_ifce.unshift<T>(self: Arr<T>, item: T): Arr<T>
+	local arr_len = self.n
+	table.move(self, 1, arr_len, 2)
+	self[1] = item
+	self.n = arr_len + 1
+	return self
+end
+--#endregion ----------- 요소 추가 -----------
+
+function arr_ifce.range(arr_len: number, start: number?, last: number?): (number, number)
+	return if start == nil then 1 elseif start < 0 then (arr_len + start + 1) else start,
+		if last == nil then arr_len elseif last < 0 then (arr_len + last + 1) else last
+end
+local arr_range = arr_ifce.range
+
+function arr_ifce.is_arr(value: any): boolean
+	return type(value) == "table" and rawget(value, "__arr__")
+end
+local arr_is_arr = arr_ifce.is_arr
+
+function arr_ifce.clear<T>(self: Arr<T>): Arr<T>
+	table.clear(self)
+	self.n = 0
+	return self
+end
+
+function arr_ifce.clone<T>(self: Arr<T>): Arr<T>
+	return setmetatable(table.clone(self), arr_ifce) :: any
+end
+
+function arr_ifce.unpack<T>(self: Arr<T>): ...T
+	return table.unpack(self, 1, self.n) :: T
+end
+function arr_ifce.pack<T>(...: T): Arr<T>
+	return arr_ifce(...)
+end
+
+-- need entropy
+function arr_ifce.shuffle<T>() end
+
+function arr_ifce.reverse(arr, start, last, to, to_start) end
+function arr_ifce.reverse_inplace(arr, start, last) end
+
+function arr_ifce.rotate(arr, shift, start, last, to) end
+function arr_ifce.rotate_inplace(arr, shift, start, last) end
+
+function arr_ifce.sorted(arr, comp) end
+
+function arr_ifce.replace<T>(self: Arr<T>, start: number, last: number, with: Arr<T>): Arr<T>
+	return self
+end
+function arr_ifce.replace_inplace<T>(self: Arr<T>, start: number, last: number, with: Arr<T>): Arr<T>
+	return self
+end
+
+function arr_ifce.erase<T>() end
+function arr_ifce.erase_inplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+	local len = self.n
+	start, last = arr_range(len, start, last)
+
+	if start == 1 and last == len then
+		arr_ifce.clear(self)
+		return self
 	end
-	table.clear(self)
-	self.n = 0
+
+	local removed = (last :: number) - (start :: number) + 1
+	local after_len = len - removed
+
+	table.move(self, (last :: number) + 1, len, (start :: number))
+	for idx = after_len + 1, len do
+		self[idx] = nil :: any
+	end
+	self.n = after_len
+
 	return self
 end
 
-function arr.clear<T>(self: arr<T>): arr<T>
-	table.clear(self)
-	self.n = 0
-	return self
-end
+--#region stream api implement
+type ReduceCallBack<T, U> = 
+	((accumulator: U, currentValue: T) -> U)
+	& ((accumulator: U, currentValue: T, currentIndex: number) -> U)
+	& ((accumulator: U, currentValue: T, currentIndex: number, arr: Arr<T>) -> U)
+type CallBack<T, Ret> =
+	((element: T, index: number, arr: Arr<T>) -> Ret)
+	& ((element: T, index: number) -> Ret)
+	& ((element: T) -> Ret)
+	& (() -> Ret)
+type CallBackVar<T, Ret> =
+	((element: T, index: number, arr: Arr<T>) -> ...Ret)
+	& ((element: T, index: number) -> ...Ret)
+	& ((element: T) -> ...Ret)
+	& (() -> ...Ret)
+type CallBackWithUserdata<T, Ret, Userdata> =
+	((element: T, index: number, arr: Arr<T>, userdata: Userdata) -> Ret)
+	& ((element: T, index: number, arr: Arr<T>) -> Ret)
+	& ((element: T, index: number) -> Ret)
+	& ((element: T) -> Ret)
+	& (() -> Ret)
 
-function arr.offer() end
-
-function arr.reverse(arr, start, last, to, to_start) end
-function arr.reverse_inplace(arr, start, last) end
-
-function arr.rotate(arr, shift, start, last, to) end
-function arr.rotate_inplace(arr, shift, start, last) end
-
-function arr.sorted(arr, comp) end
-
-function arr.merge<T>(...: arr<T>): arr<T>
+-- 각 배열을 합친 새로운 배열을 만듭니다
+function arr_ifce.merge<T>(...: Arr<T>): Arr<T>
 	local len = select("#", ...)
 	local total = 0
-	local result = {}
+	local result = arr_sized(0)
 	for idx = 1, len do
 		local item = select(idx, ...)
 		local item_len = item.n
@@ -109,7 +264,8 @@ function arr.merge<T>(...: arr<T>): arr<T>
 	result.n = total
 	return result
 end
-function arr.merge_inplace<T>(self: arr<T>, ...: arr<T>): arr<T>
+-- 각 배열을 자신 배열 뒤에 차례대로 붙입니다
+function arr_ifce.merge_inplace<T>(self: Arr<T>, ...: Arr<T>): Arr<T>
 	local len = select("#", ...)
 	local total = self.n
 	for idx = 1, len do
@@ -128,14 +284,18 @@ function arr.merge_inplace<T>(self: arr<T>, ...: arr<T>): arr<T>
 	return self
 end
 
-function arr.flatmap<T, G>(self: arr<T>, fn: CallBackVar<T, G>, to: arr<G>?): arr<G>
+-- 각 요소 T를 callback 으로 ...U로 변환한 새로운 배열을 생성합니다, 혹은 to 를 제공하는 경우
+-- to 의 가장 뒤에 붙여넣습니다
+function arr_ifce.flatmap<T, G>(self: Arr<T>, fn: CallBackVar<T, G>, to: Arr<G>?): Arr<G>
 	to = to or arr_sized(0)
 	for i = 1, self.n do
-		arr_push(to, fn(self[i], i, self))
+		arr_push_many(to, fn(self[i], i, self))
 	end
-	return to :: arr<G>
+	return to :: Arr<G>
 end
-function arr.flatmap_inplace<T, G>(self: arr<T>, fn: CallBackVar<T, G>)
+-- 현 배열 self의 요소 T를 callback 으로 ...U로 변환하여 설정합니다
+-- 새로운 배열이 생성되지 않으며, 현 배열이 arr<G> 로 변환됩니다
+function arr_ifce.flatmap_inplace<T, G>(self: Arr<T>, callback: CallBackVar<T, G>): Arr<G>
 	local idx = 1
 	local old_len = self.n
 	local len = old_len
@@ -143,7 +303,7 @@ function arr.flatmap_inplace<T, G>(self: arr<T>, fn: CallBackVar<T, G>)
 	local last_len
 	local offset = 0 -- should be uninited
 	while idx <= len do
-		last = table.pack(fn(self[idx], idx, self))
+		last = table.pack(callback(self[idx], idx, self))
 		last_len = last.n
 		if last_len == 0 then
 			offset += 1
@@ -162,92 +322,89 @@ function arr.flatmap_inplace<T, G>(self: arr<T>, fn: CallBackVar<T, G>)
 	end
 	self.n = len
 	for i = len + 1, old_len do
-		self[i] = nil
+		self[i] = nil :: any
 	end
-	return self
+	return (self :: any) :: Arr<G>
 end
 
-function arr.map<T, G>(self: arr<T>, fn: CallBack<T, G>, to: arr<G>?): arr<G>
+-- 각 요소 T를 callback 으로 U로 변환한 새로운 배열을 생성합니다, 혹은 to 를 제공하는 경우
+-- to 의 가장 뒤에 붙여넣습니다
+function arr_ifce.map<T, G>(self: Arr<T>, callback: CallBack<T, G>, to: Arr<G>?): Arr<G>
 	local offset = if to then to.n else 0
 	local arr_len = self.n
 	to = to or arr_sized(arr_len)
 	for idx = 1, arr_len do
-		(to :: arr<G>)[offset + idx] = fn(self[idx], idx, self)
+		(to :: Arr<G>)[offset + idx] = callback(self[idx], idx, self)
 	end
-	return to :: arr<G>
+	return to :: Arr<G>
 end
-function arr.map_inplace<T, G>(self: arr<T>, fn: CallBack<T, G>): arr<G>
-	local idx = 1
-	local old_len = self.n
-	local len = old_len
-	local last
-	local last_len
-	local offset = 0 -- should be uninited
-	while idx <= len do
-		last = table.pack(fn(self[idx], idx, self))
-		last_len = last.n
-		if last_len == 0 then
-			offset += 1
-			idx += 1
-			continue
-		elseif last_len == 1 then
-			self[idx - offset] = last[1]
-			idx += 1
-			continue
-		end
-		table.move(self, idx + 1, len, idx + last_len - offset)
-		table.move(last, 1, last_len, idx - offset, self)
-		len += last_len - 1 - offset
-		idx += last_len - offset
-		offset = 0
+-- 현 배열 self의 요소 T를 callback 으로 U로 변환하여 설정합니다
+-- 새로운 배열이 생성되지 않으며, 현 배열이 arr<G> 로 변환됩니다
+function arr_ifce.map_inplace<T, G>(self: Arr<T>, callback: CallBack<T, G>): Arr<G>
+	local arr_len = self.n
+	for idx = 1, arr_len do
+		((self :: unknown) :: Arr<G>)[idx] = callback(self[idx], idx, self)
 	end
-	self.n = len
-	for i = len + 1, old_len do
-		self[i] = nil
-	end
-	return (self :: unknown) :: arr<G>
+	return (self :: unknown) :: Arr<G>
 end
 
-type CallBack<T, Ret> = (element: T, index: number, arr: arr<T>) -> Ret
-type CallBackVar<T, Ret> = (element: T, index: number, arr: arr<T>) -> ...Ret
-type CallBackWithUserdata<T, Ret, Userdata> = (element: T, index: number, arr: arr<T>, userdata: Userdata) -> Ret
+--FIXME: ranged 로 변경
+-- 내부 요소를 callback 으로 소모하여 지웁니다
+function arr_ifce.consume<T>(self: Arr<T>, callback: CallBack<T, any>): Arr<T>
+	for idx = 1, self.n do
+		callback(self[idx], idx, self)
+	end
+	table.clear(self)
+	self.n = 0
+	return self
+end
+--FIXME: ranged 로 변경
+-- 내부 요소를 callback 을 통해 accumulator 로 변환합니다
+function arr_ifce.reduce<T, U>(self: Arr<T>, callback: ReduceCallBack<T, U>, initialValue: U): U
+	for idx = 1, self.n do
+		initialValue = callback(initialValue, self[idx], idx, self)
+	end
+	return initialValue
+end
 
---[=[
-    Filter and save elements to another arr with function
-]=]
-function arr.filter<T>(self: arr<T>, fn: CallBack<T, boolean>, to: arr<T>?, to_start: number?): arr<T>
+--FIXME: ranged 로 변경
+-- callback 이 참이 되는 요소만 포함하는 새로운 배열을 생성합니다, 혹은 to 를 제공하는 경우
+-- to 의 가장 뒤에 붙여넣습니다
+function arr_ifce.filter<T>(self: Arr<T>, callback: CallBack<T, boolean>, to: Arr<T>?): Arr<T>
 	to = to or arr_sized(0)
-	local to_len = (to :: arr<T>).n
-	to_start = to_start or (to_len + 1)
+	local to_len = (to :: Arr<T>).n
 	local idx = 1
 	local len = self.n
-	local item
 	local defer = 0
 	local in_range
-	while idx <= len do
+	while true do
 		in_range = idx <= len
-		item = if in_range then self[idx] else nil
-		if in_range and fn(item, idx, self) then
+		if in_range and callback(self[idx], idx, self) then
 			defer += 1
 		elseif defer ~= 0 then
 			table.move(self, idx - defer, idx - 1, to_len + 1, to)
 			to_len += defer
 			defer = 0
 		end
+		if not in_range then
+			break
+		end
 		idx += 1
 	end
-	return to :: arr<T>
+	(to :: Arr<T>).n = to_len
+	return to :: Arr<T>
 end
-function arr.filter_inplace<T>(self: arr<T>, fn: CallBack<T, boolean>, start: number?, last: number?): arr<T>
+--FIXME: ranged 로 변경
+-- 현 배열 self의 요소중 callback이 참이 되지 않는 요소를 삭제합니다
+-- 자기 자신 배열을 반환합니다
+function arr_ifce.filter_inplace<T>(self: Arr<T>, callback: CallBack<T, boolean>, start: number?, last: number?): Arr<T>
 	local idx = 1
 	local len = self.n
-	local item
 	local filtered = 0
 	local should_move = 0
 	local back
 	while idx <= len do
-		item = self[idx]
-		if not fn(item, idx, self) then
+		if not callback(self[idx], idx, self) then
 			if should_move == 0 then
 			elseif should_move == 1 then
 				back = idx - 1
@@ -265,54 +422,61 @@ function arr.filter_inplace<T>(self: arr<T>, fn: CallBack<T, boolean>, start: nu
 	end
 	self.n -= filtered
 	for i = len - filtered - 1, len do
-		self[i] = nil
+		self[i] = nil :: any
 	end
-	return self, len - filtered
+	return self
 end
 
-function arr.some<T, G>(self: arr<T>, fn: CallBack<T, G>, start: number?, last: number?): G?
-	local arr_len = self.n
-	start, last = arr_range(arr_len, start, last)
+-- callback 의 결과가 참으로 간주되는 요소가 나오면 결과를 반환합니다
+-- 만약 하나도 없다면 nil 을 반환합니다
+-- start 와 last 를 지정하지 않으면 배열 전체에서 작동합니다
+function arr_ifce.some<T, G>(self: Arr<T>, fn: CallBack<T, G>, start: number?, last: number?): G?
+	start, last = arr_range(self.n, start, last)
 	local result
-	for i = start :: number, last :: number do
-		result = fn(self[i], i, self)
+	for idx = start :: number, last :: number do
+		result = fn(self[idx], idx, self)
 		if result then
 			return result
 		end
 	end
 	return result
 end
-function arr.all<T>(self: arr<T>, fn: CallBack<T, boolean>, start: number?, last: number?): boolean
-	for i = 1, self.n do
-		if not fn(self[i], i, self) then
+-- self의 요소에 대해 callback 의 결과가 참인지 테스트합니다
+-- start 와 last 를 지정하지 않으면 배열 전체에서 작동합니다
+function arr_ifce.every<T>(self: Arr<T>, fn: CallBack<T, boolean>, start: number?, last: number?): boolean
+	start, last = arr_range(self.n, start, last)
+	for idx = start :: number, last :: number do
+		if not fn(self[idx], idx, self) then
 			return false
 		end
 	end
 	return true
 end
 
-function arr.flat<T>(self: arr<T>, start: number?, last: number?, to: arr<T>?): arr<T>
+-- 부분적으로 flat을 적용한 새로운 배열을 생성합니다, 혹은 to 를 제공하는 경우
+-- to 의 가장 뒤에 붙여넣습니다. range 에 해당하지 않는 요소는 복사되지 않습니다
+function arr_ifce.rangeflat<T>(self: Arr<T | Arr<T>>, start: number?, last: number?, to: Arr<T>?): Arr<T | Arr<T>>
 	local arr_len = self.n
 	start, last = arr_range(arr_len, start, last)
 	to = to or arr_sized(0)
-	local to_len = (to :: arr<T>).n
+	local to_len = (to :: Arr<T>).n
 	local inner
 	local inner_len
 	local defer = 0
 	local inner_isarr
 	for idx = start :: number, last :: number do
 		inner = self[idx]
-		inner_isarr = type(inner) == "table" and rawget(inner, "__arr__")
+		inner_isarr = arr_is_arr(inner)
 		if inner_isarr or idx == last then
 			if not inner_isarr then
 				defer += 1
 			end
 			if defer == 0 then
 			elseif defer == 1 then
-				(to :: arr<T>)[to_len + 1] = self[idx - 1]
+				(to :: Arr<T>)[to_len + 1] = self[idx - 1]
 				to_len += 1
 			else
-				table.move(self, idx - defer, idx - 1, to_len + 1, to :: arr<T>)
+				table.move(self, idx - defer, idx - 1, to_len + 1, to :: Arr<T>)
 				to_len += defer
 				defer = 0
 			end
@@ -320,9 +484,9 @@ function arr.flat<T>(self: arr<T>, start: number?, last: number?, to: arr<T>?): 
 				inner_len = inner.n
 				if inner_len == 0 then
 				elseif inner_len == 1 then
-					(to :: arr<T>)[to_len + 1] = inner[1]
+					(to :: Arr<T>)[to_len + 1] = inner[1]
 				else
-					table.move(inner, 1, inner_len, to_len + 1, to :: arr<T>)
+					table.move(inner, 1, inner_len, to_len + 1, to :: Arr<T>)
 				end
 				to_len += inner_len
 			end
@@ -330,16 +494,17 @@ function arr.flat<T>(self: arr<T>, start: number?, last: number?, to: arr<T>?): 
 			defer += 1
 		end
 	end
-	(to :: arr<T>).n = to_len
-	return to :: arr<T>
+	(to :: Arr<T>).n = to_len
+	return to :: Arr<T>
 end
-function arr.flat_inplace<T>(self: arr<T>, start: number?, last: number?): arr<T>
+--FIXME: ranged 로 다시 작성, 밀린 정도를 리턴에 포함
+function arr_ifce.rangeflat_inplace<T>(self: Arr<T | Arr< T >>, start: number?, last: number?): Arr<T | Arr<T>>
 	local idx = 1
 	local len = self.n
 	local inner, inner_len
 	while idx <= len do
 		inner = self[idx]
-		if type(inner) ~= "table" or not rawget(inner, "__arr__") then
+		if not arr_is_arr(inner) then
 			idx += 1
 			continue
 		end
@@ -360,14 +525,61 @@ function arr.flat_inplace<T>(self: arr<T>, start: number?, last: number?): arr<T
 
 		len += inner_len - 1
 		for inner_idx = 1, inner_len do
-			table.insert(self, idx + inner_idx - 1, inner[inner_idx])
+			self[idx + inner_idx - 1] = inner[inner_idx]
 		end
 		idx += inner_len
 	end
-	return self
+	self.n = len
+	return self :: Arr<T>
 end
 
-function arr.fill<T>(self: arr<T>, item: T, start: number?, last: number?): arr<T>
+function arr_ifce.flat<T>(self: Arr<T | Arr<T>>, to: Arr<T>?): Arr<T>
+	return arr_ifce.rangeflat(self, nil, nil, to) :: Arr<T>
+end
+function arr_ifce.flat_inplace<T>(self: Arr<T | Arr<T>>): Arr<T>
+	return arr_ifce.rangeflat_inplace(self) :: Arr<T>
+end
+
+--FIXME: comp 를 사용하도록 재작성
+function arr_ifce.max<T>(self: Arr<T>, base: T?, comp: common.Comparator<T>): T?
+	local item
+	for i = 1, self.n do
+		item = self[i]
+		if base == nil or compareTo(item, base) < 0 then
+			base = item
+		end
+	end
+	return base
+end
+--FIXME: comp 를 사용하도록 재작성
+function arr_ifce.min<T>(self: Arr<T>, base: T?, comp: common.Comparator<T>): T?
+	local item
+	for i = 1, self.n do
+		item = self[i]
+		if base == nil or compareTo(item, base) > 0 then
+			base = item
+		end
+	end
+	return base
+end
+
+function arr_ifce.sum<T>(self: Arr<T>, base: T?): T
+	base = base or 0 :: any
+	for i = 1, self.n do
+		base += self[i] :: any
+	end
+	return base :: T
+end
+function arr_ifce.prod<T>(self: Arr<T>, base: T?): T
+	base = base or 1 :: any
+	for i = 1, self.n do
+		base *= self[i] :: any
+	end
+	return base :: T
+end
+--#endregion stream api implement
+
+function arr_ifce.fill<T>(self: Arr<T>, item: T, start: number?, last: number?): Arr<T>
 	if item == nil then
 		return self
 	end
@@ -382,26 +594,27 @@ function arr.fill<T>(self: arr<T>, item: T, start: number?, last: number?): arr<
 	end
 	return self
 end
+-- fill_by_func
 
-local function arr_iter<T>(self: arr<T>, idx: number): (number?, T?)
+local function arr_iter<T>(self: Arr<T>, idx: number): (number?, T?)
 	idx += 1
 	if self.n :: number >= idx then
 		return idx, self[idx]
 	end
 	return nil, nil
 end
-function arr.iter<T>(self: arr<T>): ((self: arr<T>, idx: number) -> (number?, T?), arr<T>, number)
+function arr_ifce.iter<T>(self: Arr<T>): ((self: Arr<T>, idx: number) -> (number?, T?), Arr<T>, number)
 	return arr_iter, self, 0
 end
+arr_ifce.__iter = arr_ifce.iter
 
-function arr.len(self: arr<any>): number
+function arr_ifce.len(self: Arr<any>): number
 	return self.n
 end
-function arr.empty(self: arr<any>): boolean
+function arr_ifce.empty(self: Arr<any>): boolean
 	return self.n == 0
 end
-function arr.each<T, Userdata>(self: arr<T>, fn: CallBackWithUserdata<T, Userdata?, Userdata?>, base: Userdata?): Userdata?
-	base = nil
+function arr_ifce.each<T, Userdata>(self: Arr<T>, fn: CallBackWithUserdata<T, Userdata?, Userdata?>, base: Userdata?): Userdata?
 	local done
 	for i = 1, self.n do
 		base, done = fn(self[i], i, self, base)
@@ -411,10 +624,10 @@ function arr.each<T, Userdata>(self: arr<T>, fn: CallBackWithUserdata<T, Userdat
 	end
 	return base
 end
-function arr.join<T>(self: arr<T>, delimiter: string?): string
+function arr_ifce.join<T>(self: Arr<T>, delimiter: string?): string
 	return table.concat(self, delimiter, 1, self.n)
 end
-function arr.count<T>(self: arr<T>, fn: CallBack<T, any>): number
+function arr_ifce.count<T>(self: Arr<T>, fn: CallBack<T, any>): number
 	local count = 0
 	for i = 1, self.n do
 		if fn(self[i], i, self) then
@@ -423,7 +636,7 @@ function arr.count<T>(self: arr<T>, fn: CallBack<T, any>): number
 	end
 	return count
 end
-function arr.find<T>(self: arr<T>, fn: CallBack<T, any>): (T?, number?)
+function arr_ifce.find<T>(self: Arr<T>, fn: CallBack<T, any>): (T?, number?)
 	local item
 	for i = 1, self.n do
 		item = self[i]
@@ -433,42 +646,8 @@ function arr.find<T>(self: arr<T>, fn: CallBack<T, any>): (T?, number?)
 	end
 	return nil, nil
 end
-function arr.sum<T>(self: arr<T>, base: T?): T
-	base = base or 0 :: any
-	for i = 1, self.n do
-		base += self[i] :: any
-	end
-	return base :: T
-end
-function arr.prod<T>(self: arr<T>, base: T?): T
-	base = base or 1 :: any
-	for i = 1, self.n do
-		base *= self[i] :: any
-	end
-	return base :: T
-end
-function arr.max<T>(self: arr<T>, base: T?, comp: common.Comparator<T>): T?
-	local item
-	for i = 1, self.n do
-		item = self[i]
-		if base == nil or compareTo(item, base) < 0 then
-			base = item
-		end
-	end
-	return base
-end
-function arr.min<T>(self: arr<T>, base: T?, comp: common.Comparator<T>): T?
-	local item
-	for i = 1, self.n do
-		item = self[i]
-		if base == nil or compareTo(item, base) > 0 then
-			base = item
-		end
-	end
-	return base
-end
 
-function arr.slice<T>(self: arr<T>, start: number?, last: number?, to: arr<T>?, to_start: number?): arr<T>
+function arr_ifce.slice<T>(self: Arr<T>, start: number?, last: number?, to: Arr<T>?, to_start: number?): Arr<T>
 	start, last = arr_range(self.n, start, last)
 	local move_len = last :: number - start :: number + 1
 	if to then
@@ -481,17 +660,20 @@ function arr.slice<T>(self: arr<T>, start: number?, last: number?, to: arr<T>?, 
 			table.move(to, to_len - to_start + 1, to_len, to_start + move_len)
 		end
 	else
-		to = { n = move_len }
+		if to_start == nil then
+			to_start = 1
+		end
+		to = arr_sized(move_len)
 	end
 	if move_len == 0 then
 	elseif move_len == 1 then
-		(to :: arr<T>)[to_start :: number] = self[start :: any]
+		(to :: Arr<T>)[to_start :: number] = self[start :: any]
 	else
-		table.move(self, start :: number, last :: number, to_start :: number, to :: arr<T>)
+		table.move(self, start :: number, last :: number, to_start :: number, to :: Arr<T>)
 	end
-	return to :: arr<T>
+	return to :: Arr<T>
 end
-function arr.slice_inplace<T>(self: arr<T>, start: number?, last: number?): arr<T>
+function arr_ifce.slice_inplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
 	-- Empty: arr length is 0
 	local arr_len = self.n
 	if arr_len == 0 then
@@ -518,7 +700,7 @@ function arr.slice_inplace<T>(self: arr<T>, start: number?, last: number?): arr<
 
 	-- Remove tailing
 	for idx = last :: number - start :: number + 2, arr_len do
-		self[idx] = nil
+		self[idx] = nil :: any
 	end
 
 	-- Update length
@@ -526,7 +708,7 @@ function arr.slice_inplace<T>(self: arr<T>, start: number?, last: number?): arr<
 	return self
 end
 
-function arr.equal<T>(self: arr<T>, to: arr<T>): boolean
+function arr_ifce.equal<T>(self: Arr<T>, to: Arr<T>): boolean
 	local arr_len = self.n
 	if arr_len ~= to.n then
 		return false
@@ -538,11 +720,17 @@ function arr.equal<T>(self: arr<T>, to: arr<T>): boolean
 	end
 	return true
 end
-arr.__eq = arr.equal
+arr_ifce.__eq = arr_ifce.equal
 
-export type arr<T> = {
+-- stylua: ignore start
+export type ArrInterface = typeof(arr_ifce)
+export type Arr<T> = {
 	n: number,
 	[number]: T,
-} & typeof(arr)
+} & ArrInterface
+local Arr = (arr_ifce :: unknown) :: (<T>(...T|any) -> (Arr<T>)) & Arr<any>
 
-return (arr :: unknown) :: <T>(...T) -> arr<T> & arr<T>
+local a = Arr(1,2,3)
+
+return Arr
+-- stylua: ignore end
