@@ -1,0 +1,5 @@
+# pesde install output (reproducible via pesde.lock)
+roblox_packages/
+luau_packages/
+lune_packages/
+.pesde/

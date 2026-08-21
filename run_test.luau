@@ -1,1 +1,1 @@
-require("lib").run_test():solve()
+require("./src").run_test():solve()

@@ -1,0 +1,12 @@
+{
+  "name": "stl-luau",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "StlLuau": {
+        "$path": "src"
+      }
+    }
+  }
+}
