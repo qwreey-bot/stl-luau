@@ -1,5 +1,7 @@
 local module = {}
 
+-- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
+-- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 type function MergeInner(ty: type)
     local funcParameters = ty:parameters()
     local tb = types.newtable()
@@ -17,11 +19,15 @@ type function MergeInner(ty: type)
 end
 export type Merge<T...> = MergeInner<(T...)->()>
 
+-- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
+-- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 export type function SetMetaTable(base: type, metatable: type)
     base:setmetatable(metatable)
     return base
 end
 
+-- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
+-- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 export type function SetMetaProp(base: type, key: type, value: type)
     local mt = base:metatable()
     if not mt then
@@ -33,6 +39,8 @@ export type function SetMetaProp(base: type, key: type, value: type)
     return base
 end
 
+-- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
+-- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 export type function ExtractTagged(base: type, tag: type)
     local tagStr = tag:value()
     local components: {type} = (

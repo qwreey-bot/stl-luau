@@ -1,0 +1,6 @@
+{
+	// luau-lsp 는 기본값이 구 solver 라, CLI(`luau-lsp analyze`)와 편집기가
+	// 서로 다른 진단을 냅니다. 이 저장소는 new solver 기준입니다 — 끄지 마세요.
+	// (근거: qwreey/quad 의 .claude/base/typing-limits.md)
+	"luau-lsp.fflags.enableNewSolver": true
+}

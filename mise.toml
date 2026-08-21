@@ -1,0 +1,10 @@
+# 프로젝트 툴체인. quad(`qwreey/quad`)의 mise.toml 구성을 따릅니다.
+# `luau` 실행기 자체는 이 환경에서 샌드박스 레벨(~/.local/bin)에 이미 설치돼 있어
+# 여기 고정하지 않습니다 — 타입 체크(`luau-lsp analyze`)와 린트(selene)만 고정합니다.
+#
+# lune 은 의도적으로 없습니다. 이 저장소는 순수 luau 로만 실행/검증합니다
+# (`.claude/base/architecture.md` 의 "런타임: 순수 luau" 절 참고).
+
+[tools]
+"github:JohnnyMorganz/luau-lsp" = "1.69.0"
+"aqua:Kampfkarren/selene" = "0.31.0"

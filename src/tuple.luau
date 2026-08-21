@@ -5,6 +5,8 @@ local tuple_meta = { __index = tuple_ifce }
 local tuple_constructor = {}
 
 --#region tuple type builder
+-- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
+-- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 type function TupleBuilderInner(ty: type)
     local tb = types.newtable()
     local funcParams = ty:parameters()
@@ -52,6 +54,8 @@ type TupleBuilder<T> = typeutil.Tagged<TupleBuilderInner<T>, "tuple-data">
 
 
 
+-- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
+-- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 type function TuplePush(ty: type, item: type)
     local func
     for i, tyv in ty:components() do
