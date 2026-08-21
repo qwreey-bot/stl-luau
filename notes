@@ -1,0 +1,19 @@
+
+-- __concat(table, value)	Fires when the .. concatenation operator is used on the table.
+-- __unm(table)	Fires when the unary – operator is used on the table.
+-- __add(table, value)
+-- __sub(table, value)
+-- __mul(table, value)
+-- __div(table, value)
+-- __idiv(table, value)	The // floor division operator.
+-- __mod(table, value)	The % modulus operator.
+-- __pow(table, value)	The ^ exponentiation operator.
+-- __tostring(table)	Fired when tostring is called on the table.
+-- __metatable	If present, locks the metatable so getmetatable will return this instead of the metatable and setmetatable will error. Non-function value.
+-- __eq(table, value)	The == equal to operator¹
+-- __lt(table, value)	The < less than operator¹
+-- __le(table, value)	The <= operator¹
+-- __mode	Used in weak tables, declaring whether the keys and/or values of a table are weak. Note: References to Roblox instances are never weak. Tables that hold such references will never be garbage collected.
+-- __gc(table)	Fired when the table is garbage-collected. Note: On Roblox, this metamethod is disabled.
+-- __len(table)	Fired when the # length operator is used on the Object.
+-- __iter(table)
