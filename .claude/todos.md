@@ -5,16 +5,17 @@
 
 ## 막힌 것 (사용자 결정 필요)
 
-`.claude/question.md`의 질문들이 아래 여러 항목을 막고 있습니다 — 특히
-패키지 매니저 도입 여부와 저장소 구조는 이후 모든 스캐폴딩 작업의 전제라
-먼저 답이 필요합니다.
+패키지 매니저/엔트리포인트/저장소 구조는 2026-08-22에 결정되어 해소됨
+(`.claude/question.md` 참고). 남은 질문(type function 실험 방향, hash/tree
+컨테이너 표현, tbox 코드 스타일 이식 여부)은 각 항목에서 개별적으로 막힘 —
+전체를 막고 있진 않음.
 
-## 다음 작업 후보
+## 진행 중 / 다음 작업 후보
 
 1. **`treeset.luau` 버그 수정** — `set.has`/`set.add`가 `self` 대신 모듈
-   테이블을 읽고 씁니다(`.claude/base/architecture.md`가 아니라
-   `.claude/project-context.md`의 "모듈 현황" 표 참고). 지금은 그냥
-   구 `set.luau`를 옮겨놓기만 한 상태.
+   테이블을 읽고 씁니다(`.claude/project-context.md`의 "모듈 현황" 표 참고).
+   지금은 그냥 구 `set.luau`를 옮겨놓기만 한 상태. **이번 세션에서 다음으로
+   착수할 항목으로 선택됨(2026-08-22 사용자 결정)**.
 2. **`arr` 미구현 함수 채우기** — `shuffle`/`reverse(_inplace)`/`rotate(_inplace)`/
    `sorted`/`replace(_inplace)`/`erase`가 빈 본문입니다
    (`.claude/project-context.md` 모듈 현황 표).

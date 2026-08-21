@@ -3,31 +3,19 @@
 사용자가 답해야 하는 것만. 답이 나오면 `.claude/base/`에 확정 사실로
 반영하고 이 파일에서 지우세요.
 
-## 1. 패키지 매니저를 도입할지 — pesde? 아니면 계속 미도입?
+## [해소됨, 2026-08-22] 패키지 매니저 / 엔트리포인트 / 저장소 구조
 
-`qwreey/tbox`, `qwreey/quad` 둘 다 pesde(`scope = "qwreey"`)를 씁니다.
-stl-luau는 아직 `pesde.toml`/`wally.toml`이 전혀 없어서, 다른 프로젝트가
-이 라이브러리를 의존성으로 못 가져갑니다(수동 서브모듈/파일 복사만 가능).
+**사용자 결정(2026-08-22)**: pesde 도입, 엔트리포인트는 `src/init.luau`로
+이동(tbox/quad 관례), 저장소는 단일 패키지 유지(모노레포 아님). 확정된
+내용과 실제 동작 확인 결과는 `.claude/base/architecture.md`의
+"패키지 매니저와 엔트리포인트" 절 참고 — **tbox `CLAUDE.md`가 서술하는
+`init.luau`의 require 경로 규칙은 이 저장소의 lune 0.8.9에서 그대로
+재현되지 않았습니다** (실측: `./x`는 `src/`에 대한 평범한 상대 경로였고,
+`@self`는 `.luaurc` alias 선언 없이는 동작하지 않았음). 그 차이를
+`base/architecture.md`에 실측 그대로 남겨뒀으니, 다른 Luau/Lune 버전으로
+옮길 때 이 가정이 유효한지 다시 확인하세요.
 
-- 도입한다면 `[target] lib = "?"` 경로를 뭘로 할지도 같이 정해야 합니다 —
-  tbox/quad 둘 다 `src/init.luau`를 엔트리포인트로 삼는데, stl-luau는
-  이번 세션에 루트 `lib.luau`로 리네임했습니다(구 `init.luau`). pesde
-  관례를 따라 `src/init.luau`로 다시 옮길지, `lib = "lib.luau"`로
-  현재 구조를 유지할지 결정 필요.
-- `qwreey` scope로 publish할지, private 워크스페이스로만 쓸지도 확인 필요.
-
-## 2. 저장소 구조 — 단일 패키지 유지 vs pesde 워크스페이스(모노레포)?
-
-`tbox`는 `packages/tbox`, `packages/tbox_squish` 등 여러 작은 패키지로
-쪼갠 모노레포입니다(패키지 간 런타임 의존성이 분리되기 때문). stl-luau의
-현재 모듈(`arr`/`hashmap`/`treeset`/`tuple`/...)은 전부 순수 컨테이너로
-서로 강하게 얽혀 있고 외부 의존성 차이도 없어 보여서, 지금 판단으로는
-**단일 패키지가 더 맞아 보입니다** — 하지만 이건 제 추정이라 확인이
-필요합니다. 이후 예를 들어 "mlua 바인딩"(`todo` 파일의 "rust mlua gate"
-항목)처럼 런타임 요구사항이 다른 하위 기능이 생기면 그때 tbox처럼
-쪼개는 게 나을 수도 있습니다.
-
-## 3. `tuple.luau`/`typeutil.luau`의 type function 실험을 계속 밀 것인가?
+## 1. `tuple.luau`/`typeutil.luau`의 type function 실험을 계속 밀 것인가?
 
 Luau의 `type function`은 upstream에서도 실험적 기능입니다. 지금 두 파일은
 `return {}` placeholder이고 타입 레벨 튜플 확장(`TuplePush` 등)은 주석
@@ -37,7 +25,7 @@ Luau의 `type function`은 upstream에서도 실험적 기능입니다. 지금 �
 갖고 있으니 거기서 재사용/참고할 부분이 있는지 먼저 살펴볼지 판단이
 필요합니다.
 
-## 4. 컨테이너 표현 규약을 hash/tree 구조에도 그대로 적용할까?
+## 2. 컨테이너 표현 규약을 hash/tree 구조에도 그대로 적용할까?
 
 `.claude/base/architecture.md`의 "컨테이너 표현" 절 참고 — `arr`의
 길이 필드(`n`) + 태그 필드(`__arr__`) 규약이 정수 인덱스가 없는
@@ -46,7 +34,7 @@ Luau의 `type function`은 upstream에서도 실험적 기능입니다. 지금 �
 설계가 필요합니다. `hashmap`/`hashset`/`treemap`이 전부 빈 파일이라
 지금이 이 결정을 내리기 좋은 시점입니다.
 
-## 5. `../tbox/`(`/code/Projects/tbox`)의 코드 스타일(`const` 지역 선언,
+## 3. `../tbox/`(`/code/Projects/tbox`)의 코드 스타일(`const` 지역 선언,
 `f<<T>>` 명시적 타입 인자)을 stl-luau에도 들여올 것인가?
 
 tbox의 `.claude/conventions.md`는 이 스타일을 표준으로 못 박아뒀지만

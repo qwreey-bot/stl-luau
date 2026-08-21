@@ -17,9 +17,10 @@
 
 - 런타임: **Lune** (`lune run run_test.luau`). `luau` CLI로 개별 파일 문법
   체크도 가능(`luau src/foo.luau`).
-- 패키지 매니저: **아직 없음** — `pesde.toml`도 `wally.toml`도 없습니다.
-  `qwreey/tbox`, `qwreey/quad`는 둘 다 pesde를 씁니다. 도입 여부는
-  `.claude/question.md` 참고.
+- 패키지 매니저: **pesde 도입됨**(2026-08-22). `pesde.toml`의 `name`은
+  `qwreey/stl_luau`, `[target] lib = "src/init.luau"`. `pesde run test`로
+  테스트 실행 가능(`[scripts] test = "run_test.luau"`). 상세는
+  `.claude/base/architecture.md`의 "패키지 매니저와 엔트리포인트" 절.
 - 포매터: 로컬에 `stylua` 바이너리는 있지만 이 저장소엔 `stylua.toml`이
   없습니다. 현재 파일들 인덴트가 탭(`src/arr.luau`)/스페이스(`src/tuple.luau`)로
   혼재돼 있습니다.
@@ -27,9 +28,12 @@
 ## 모듈 구조
 
 ```
-lib.luau            엔트리포인트 (구 init.luau). arr만 export, run_test() 포함
-run_test.luau        lune 실행 스크립트: require("lib").run_test():solve()
+pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
+default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
+run_test.luau        lune 실행 스크립트: require("./src").run_test():solve()
 src/
+  .luaurc             @self alias 선언 (init.luau가 형제 모듈을 require("@self/x")로 접근)
+  init.luau           엔트리포인트 (구 루트 lib.luau, 그 전엔 init.luau). arr만 export, run_test() 포함
   arr.luau            배열 컨테이너 — 가장 성숙한 모듈, 스트림형 API 다수 구현
   common.luau         Comparator<T> 타입 + compareTo 어댑터. 20줄, arr가 씀
   bsearch.luau        완전히 빈 파일 (0바이트)
@@ -75,11 +79,11 @@ notes, todo             (루트) 예전 스크래치 노트 — Luau 메타메�
   도달하기 전까진 들이지 않습니다.
 - **`qwreey/tbox`** (`/code/Projects/tbox`): Luau용 스키마 라이브러리.
   pesde **워크스페이스(모노레포)** 구조(`packages/tbox`, `packages/tbox_squish`
-  등 여러 작은 패키지)를 씁니다. stl-luau가 pesde를 도입한다면, 이 저장소가
-  현재는 **단일 패키지**(여러 패키지로 쪼갤 이유가 아직 없음 — 서로 다른
-  런타임 의존성이 없는 순수 컨테이너 모음)이므로 tbox의 모노레포보다는
-  `packages/tbox` 안 단일 패키지 구조(하나의 `pesde.toml` + `src/`)가 더
-  가까운 참고 대상입니다.
+  등 여러 작은 패키지)를 씁니다. stl-luau는 **단일 패키지로 유지하기로
+  결정**(2026-08-22, `.claude/question.md`의 옛 "저장소 구조" 질문 참고 —
+  지금은 지워졌고 이 결정만 남음)했으므로, tbox의 모노레포보다는
+  `packages/tbox` 안 단일 패키지 구조(하나의 `pesde.toml` + `src/`)가
+  더 가까운 참고 대상입니다.
 - **`../tbox/`** (사용자가 언급): 위와 동일 저장소, Luau 타입 시스템을
   깊이 쓰는 부분(특히 `packages/tbox/src/types.luau`의 type function
   유틸)이 `src/tuple.luau`/`src/typeutil.luau`와 접근이 비슷합니다 —
