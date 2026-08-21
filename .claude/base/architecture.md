@@ -12,28 +12,104 @@
 하이픈을 허용하지 않아(소문자/숫자/`_`만) 저장소 디렉터리명(`stl-luau`)과
 다릅니다.
 
-**`init.luau`의 require 경로 규칙은 tbox `CLAUDE.md`가 서술한 것과 이
-저장소의 `lune 0.8.9`에서 다르게 동작함을 실측으로 확인했습니다**:
+## 런타임: 순수 luau (lune 아님)
 
-- tbox 문서 주장: `init.luau` 안에서 `./x`는 **자기가 든 폴더(`src/`)의
-  형제**를 가리키고, 같은 폴더 안 형제 파일(`src/` 안 다른 모듈)은
-  `@self/x`로만 접근 가능(별도 설정 없이 동작하는 내장 alias인 것처럼 서술).
-- 이 저장소에서 실제로 확인된 동작: `@self`는 **`.luaurc`에 alias로
-  선언하지 않으면 `failed to find alias 'self' (no .luaurc)` 에러**로
-  실패합니다. 그래서 `src/.luaurc`에 `{"aliases": {"self": "./"}}`를 직접
-  선언해뒀습니다(`src/init.luau`가 `@self/arr`로 형제 모듈에 접근). 그리고
-  `./x`는 **평범한 파일과 똑같이 `src/`에 대한 상대 경로**로 동작했습니다
-  (`./libs/...`를 시도하면 `src/libs/...`를 찾으려 함) — tbox가 말하는
-  "형제 폴더로 튀는" 동작이 재현되지 않았습니다. 그래서 `src/init.luau`가
-  저장소 루트의 `libs/`, `tests/`를 가리킬 땐 `../libs/...`, `../tests/...`처럼
-  **일반 파일과 동일한 상대 경로**를 씁니다.
-- 이 차이의 원인은 확인하지 않았습니다(lune/luau 버전 차이일 가능성이
-  높음). **tbox 저장소로 작업을 옮기거나 lune 버전을 올릴 땐 이 가정을
-  다시 실측하세요** — `luau`/`lune` 버전에 따라 `init.luau`의 require
-  해석이 달라질 수 있습니다.
-- `run_test.luau`(저장소 루트)에서 `require("./src")`로 폴더를 요구하면
-  자동으로 `src/init.luau`가 로드됩니다(표준 Luau require-by-string
-  동작, 특이사항 없음).
+**사용자 결정(2026-08-22)**: 이 저장소는 **`luau` CLI 로만** 실행/검증합니다.
+lune 은 쓰지 않습니다. 근거(사용자 발언): *"lune 없이 순수 luau 로
+테스트해야할것 같아. luau 로 안 하면 타입이 못 따라가서 문제들이 생김.
+lune 자체가 반쯤 abandoned 프로젝트라는것도 생각해봐야함. quad 가 그래서
+luau 만 사용하거든. 혹은 나중에 lute 로 갈아타는게 답이야."* — 즉
+**나중에 갈아탈 대상은 lune 이 아니라 lute** 입니다.
+
+이 결정에서 따라오는 실무 제약(전부 실측):
+
+- **`luau` CLI 에는 `io` 도 `fs` 도 `warn` 도 없습니다.** 있는 것은
+  `print`/`os`/`string`/`table`/`math`/`buffer`/`vector`/`utf8`/`bit32`/
+  `coroutine`/`debug`/`require` 정도입니다. 파일을 읽어야 하는 기능은
+  이 환경에서 원천적으로 불가능합니다.
+- **`pesde run` 은 스크립트를 항상 lune 으로 실행**하므로 쓸 수 없습니다.
+  `pesde.toml` 의 `[scripts]` 를 비워둔 이유입니다. pesde 는 의존성/배포
+  메타데이터 용도로만 남습니다.
+- `luau` 는 실패 시 exit 1, 성공 시 exit 0 을 반환하므로 CI 연동에 별도
+  래퍼가 필요 없습니다.
+- **`const` 지역 선언 문법을 쓰지 마세요.** `luau` CLI 는 파싱하지만
+  lune 0.8.9 는 못 읽고, 무엇보다 **quad 가 툴링 문제로 이미 버린
+  문법입니다**(사용자 확인, 2026-08-22 — "그거 quad 에서는 툴링때문에
+  버린 문법이야 local 씀"). `local` 을 씁니다.
+
+## require 경로 규칙 (luau CLI 기준, 실측)
+
+`init.luau` 는 **자기가 들어있는 디렉터리 그 자체**로 취급됩니다. 그래서
+`src/init.luau` 안의 상대 경로는 다른 파일과 기준이 다릅니다:
+
+| 표기 (`src/init.luau` 안에서) | 실제로 가리키는 곳 |
+| --- | --- |
+| `@self/arr` | `src/arr.luau` — 자기 폴더 **안** |
+| `./libs/x` | `<repo>/libs/x.luau` — `src/` 의 **형제** |
+| `../libs/x` | `<repo-parent>/libs/x.luau` — 저장소 **바깥**, 거의 항상 버그 |
+
+- **`@self` 는 luau CLI 의 예약 alias 라 `.luaurc` 선언 없이 동작합니다**
+  (실측). 반면 `.luaurc` 의 **일반 alias 는 편집기 전용이고 런타임
+  require 에서는 동작하지 않습니다** — quad 가 같은 걸 실측해서
+  `base/project-setup-plan.md` 에 남겨뒀습니다. 그래서 alias 를 새로
+  만들어 require 를 짧게 줄이려 하지 마세요.
+- `init.luau` **가 아닌** 파일(`src/arr.luau`, `tests/*.luau` 등)은 평범한
+  "파일이 있는 디렉터리 기준" 상대 경로입니다. `tests/arr.luau` 의
+  `require("../src/arr")` 는 맞는 코드입니다.
+- 저장소 루트에서 `require("./src")` 처럼 폴더를 요구하면 `src/init.luau`
+  가 로드됩니다.
+- **⚠️ lune 은 이 규칙이 정반대였습니다.** lune 0.8.9 에서는 `@self` 가
+  `.luaurc` 없이는 실패했고 `./x` 가 `src/` 기준 평범한 상대 경로로
+  동작했습니다. 이 저장소는 2026-08-22 에 lune 을 걷어내면서 luau 기준으로
+  통일했으니, **옛 커밋에서 `../libs/...` 같은 경로를 보고 따라 하지
+  마세요.** 나중에 lute 로 옮길 때 이 표를 다시 실측해야 합니다.
+
+## 테스트: assert + print (프레임워크 없음)
+
+**사용자 결정(2026-08-22)**: quad 방식을 따릅니다 — 테스트 프레임워크를
+두지 않고 `assert(cond, "메시지")` + `print("PASS")` 로 씁니다.
+
+- 실행: `luau tests/run.luau` (전체) 또는 `luau tests/arr.luau` (개별).
+- 실패는 `assert` 가 그 자리에서 traceback 과 함께 터지는 것으로 표현됩니다.
+  별도 리포터나 집계 로직이 없습니다.
+- 파일 구조: 머리말 `--[[ ]]` 주석 → `=== N. 설명 ===` 로 번호 붙인 절 →
+  각 절을 `do ... end` 로 감싸 지역 변수 격리 → 절 끝에 `print("PASS")` →
+  파일 끝에 `print("=== ALL PASS (모듈명) ===")`.
+- **`assert` 에는 반드시 메시지를 붙이세요.** 기대값과 실제값을 함께 담으면
+  실패했을 때 바로 원인을 알 수 있습니다(`tests/arr.luau` 의 `assert_arr`
+  헬퍼가 그 예시 — 배열 내용을 `[1,2,3] (n=3)` 형태로 찍습니다).
+- **새 테스트 파일은 반드시 값을 하나 `return` 해야 합니다.** `tests/run.luau`
+  가 `require` 로 끌어오는데, luau 의 require 는 모듈이 정확히 하나의 값을
+  반환할 것을 요구합니다(`module must return a single value`). 그리고
+  `tests/run.luau` 의 require 목록에도 추가하세요.
+- 테스트 엔트리를 `init.luau` 로 이름 짓지 마세요 — luau 가 `init.luau` 를
+  디렉터리 인덱스 모듈로 특별 취급해 require 가 모호해집니다.
+- **⭐ 음성 대조군을 쓰세요.** quad 의 실측 교훈: *"진단 0건이 곧 타입이
+  풀렸다는 뜻이 아니다."* 테스트가 실제로 실패를 잡는지 일부러 틀린
+  기대값을 넣어 확인한 뒤에 지우세요. 2026-08-22 에 이 방식으로
+  `arr` 의 버그 5건을 찾았습니다.
+
+## 타입 체크
+
+`luau` CLI 는 **실행만 하고 타입 검사를 하지 않습니다.** 타입 검사는 별도로
+돌려야 합니다:
+
+```bash
+luau-lsp analyze --platform=standard --flag:LuauSolverV2=true src/*.luau
+selene src tests
+```
+
+- **진단은 stdout 이 아니라 stderr 로 나옵니다** — `2>/dev/null` 로 버리면
+  "에러 0건" 으로 착각합니다(2026-08-22 에 실제로 이 착시를 겪었습니다).
+- `--flag:LuauSolverV2=true` 로 **new solver** 를 명시하세요. 편집기
+  (luau-lsp)는 기본이 구 solver 라 `.vscode/settings.json` 에
+  `enableNewSolver` 를 켜뒀습니다.
+- selene 은 설정 파일을 **CWD 기준 `./selene.toml`** 로만 찾습니다(상위
+  디렉터리를 거슬러 올라가지 않음). 항상 저장소 루트에서 실행하세요.
+- `type function` 블록 앞에는 `-- selene: allow(undefined_variable)` 를
+  붙입니다(`types` 는 그 안에서만 주입되는 특수 전역이라 오탐).
+  **파일 최상단에 한 번 붙이는 방식은 안 먹습니다 — 각 선언 바로 앞에
+  붙여야 합니다**(실측).
 
 ## 컨테이너 표현: length-tagged table
 
@@ -85,19 +161,6 @@ setmetatable(X_ifce, X_constructor)
 `some`, `every`, `rangeflat` 등이 이걸 공유합니다. 새 range 기반 함수는
 직접 정규화 로직을 짜지 말고 이 헬퍼를 재사용하세요.
 
-## 테스트 프레임워크 계약
-
-`libs/test-luau`가 제공하는 `test` 함수는 다음과 같이 체이닝됩니다:
-
-```lua
-test("suite-name")(
-    test("nested-name")
-        "case description":assume_equal(actual, expected)
-        "case description 2":assume(boolean_expr)
-)
-```
-
-`test(...)`는 이름을 받으면 새 테스트 그룹을, 여러 `test` 결과를 받으면
-병합을 수행합니다(`test.__call`, `libs/test-luau/lib.luau:63-71`). 최종
-결과에 `:solve()`를 호출해야 실제로 출력됩니다(`run_test.luau` 참고) —
-`solve()`를 빼먹으면 아무 것도 출력되지 않고 조용히 끝납니다.
+[테스트 방식은 위 "테스트: assert + print" 절이 소스입니다. 예전에 여기
+있던 `libs/test-luau` 프레임워크 계약 서술은 2026-08-22 lune 제거와 함께
+폐기됐습니다 — 그 프레임워크는 더 이상 쓰지 않습니다.]

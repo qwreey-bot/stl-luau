@@ -24,6 +24,11 @@ agent-memory 같은 무거운 장치는 아직 없습니다 — 필요해지면 
 
 | 무엇이 궁금할 때 | 어디를 볼 것 |
 |---|---|
-| 확정된 설계/현재 아키텍처 | `.claude/base/architecture.md` |
+| 확정된 설계/현재 아키텍처 (런타임, require 규칙, 테스트 방식) | `.claude/base/architecture.md` |
+| **타입이 안 잡힐 때 / `Arr<T>` 가 왜 47건씩 에러를 내는지** | `.claude/base/typing-limits.md` |
 | 사용자가 답해야 할 열린 질문 | `.claude/question.md` |
 | 예전 방식 스크래치 노트(Luau 메타메소드 참고, 초기 API 아이디어) | 루트 `notes`, `todo` |
+
+**참고 저장소**: quad 는 `/code/Projects/stl-luau-refs/quad` 에 클론돼
+있습니다(Luau 타입 한계 연구가 방대함 — `typing-limits.md` 와 `.claude/audit/`).
+tbox 는 `/code/Projects/tbox`.

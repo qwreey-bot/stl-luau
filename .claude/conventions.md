@@ -46,36 +46,39 @@
 ## 실험적 Luau 기능 사용 시 주의
 
 `src/tuple.luau`, `src/typeutil.luau`는 Luau의 **실험적** `type function`
-기능(타입 수준 메타프로그래밍)을 씁니다. 로컬 `luau`/`lune` 바이너리에서
-문법 자체는 파싱/실행되는 것을 확인했지만, 이 기능은 upstream에서도 아직
+기능(타입 수준 메타프로그래밍)을 씁니다. 로컬 `luau` 바이너리에서 문법
+자체는 파싱/실행되는 것을 확인했지만, 이 기능은 upstream에서도 아직
 실험 단계입니다 — Luau 버전을 올릴 때 깨질 수 있음을 감안하세요. 이 두
-파일은 `lib.luau`에서 아직 export되지 않은 순수 탐색 코드입니다(`return {}`
-placeholder). 정식 API로 승격하기 전엔 다른 모듈이 이 둘에 의존하지 않게
-하세요.
+파일은 `src/init.luau`에서 아직 export되지 않은 순수 탐색 코드입니다
+(`return {}` placeholder). 정식 API로 승격하기 전엔 다른 모듈이 이 둘에
+의존하지 않게 하세요.
+
+`type function` 을 다룰 땐 **quad 의 `.claude/base/typing-limits.md` 를 먼저
+읽으세요** (`/code/Projects/stl-luau-refs/quad`). 이미 실측된 함정이 많습니다 —
+`type function` 안에서 같은 파일의 바깥 로컬을 참조하면 컴파일이 실패하고,
+`error()` 대신 `print()` + `types.never` 를 써야 진단이 노출되며, 어떤 타입이
+`type function` 을 한 번 통과하면(그냥 `return t` 라도) 그 뒤 제네릭 `self`
+메소드 체이닝이 조용히 깨집니다.
 
 ## 테스트
 
-- 테스트 프레임워크는 `libs/test-luau` 서브모듈(자체 저장소,
-  `github.com/qwreey/test-luau`)입니다. `test("name")(...)` 형태로 케이스를
-  쌓고 `:solve()`로 출력합니다. 이 프레임워크 자체도 초기 단계입니다
-  (`lib.luau` 안 "TODO: syntax highlighting" 주석 참고) — stl-luau 세션에서
-  이 프레임워크의 버그를 고치게 되면 `libs/test-luau` 안에서 커밋하고,
-  부모 저장소에서 서브모듈 포인터를 별도 커밋으로 올리세요(같은 커밋에
-  섞지 말 것 — 서로 다른 두 저장소의 히스토리입니다).
+전체 규칙과 파일 구조는 `.claude/base/architecture.md`의 "테스트: assert +
+print" 절이 소스입니다 — 여기서 반복하지 않습니다. 요점만:
+
+- **프레임워크 없음.** `assert(cond, "메시지")` + `print("PASS")`.
+  실행은 `luau tests/run.luau`.
+- **lune 을 쓰지 마세요.** 이 저장소는 순수 `luau` 로만 돕니다
+  (`architecture.md`의 "런타임: 순수 luau" 절에 근거와 제약).
 - 새 모듈/함수를 구현하면 `tests/<module>.luau`에 대응 테스트를 추가하고
-  `lib.luau`의 `run_test()`가 모으는 목록에도 반영하세요. 지금은
-  `tests/arr.luau` 하나뿐이고 그마저 `slice_inplace`만 덮습니다 —
-  `src/arr.luau`의 나머지 30여 개 함수는 테스트가 없습니다
-  (`.claude/todos.md` 참고).
-- 실행: `lune run run_test.luau` (저장소 루트에서).
+  `tests/run.luau`의 require 목록에도 반영하세요.
+- **커버리지 현황(2026-08-22)**: `tests/arr.luau`가 `arr`의 주요 함수 대부분을
+  덮습니다. 나머지 모듈은 전부 스텁이라 테스트가 없습니다.
 
 ## 커밋
 
 - 서로 다른 관심사(리네임, 기능 추가, 삭제, 실험적 스캐폴딩, 스크래치
   노트)는 별도 커밋으로 나누세요 — 2026-08-22 세션이 그동안 쌓인 미커밋
   변경을 정리할 때 이 기준으로 7개 커밋으로 쪼갰습니다(`git log` 참고).
-- 서브모듈(`libs/test-luau`) 안에서 변경했다면 서브모듈 커밋을 먼저 만들고,
-  그다음 부모 저장소에서 서브모듈 포인터 bump를 포함한 커밋을 만드세요.
 - 원격에 `git push`하지 마세요 — 사용자가 명시적으로 요청하기 전까지는
   로컬 커밋까지만 합니다(`origin`이 `github.com/qwreey/stl-luau`로 이미
   설정돼 있어 실수로 push하면 바로 공개 레포에 반영됩니다).

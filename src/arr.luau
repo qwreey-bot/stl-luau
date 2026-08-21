@@ -15,7 +15,7 @@ function arr_constructor.__call<T>(_, ...: T): Arr<T>
 end
 setmetatable(arr_ifce, arr_constructor)
 -- length 크기의 배열을 생성합니다
-function arr_ifce.sized<T>(length: number, fill: T): Arr<T>
+function arr_ifce.sized<T>(length: number, fill: T?): Arr<T>
 	local result = table.create(length)
 	result.n = length
 	result.__arr__ = true

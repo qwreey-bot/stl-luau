@@ -3,17 +3,18 @@
 사용자가 답해야 하는 것만. 답이 나오면 `.claude/base/`에 확정 사실로
 반영하고 이 파일에서 지우세요.
 
-## [해소됨, 2026-08-22] 패키지 매니저 / 엔트리포인트 / 저장소 구조
+## [해소됨, 2026-08-22] 패키지 매니저 / 엔트리포인트 / 저장소 구조 / 런타임 / 테스트 방식
 
-**사용자 결정(2026-08-22)**: pesde 도입, 엔트리포인트는 `src/init.luau`로
-이동(tbox/quad 관례), 저장소는 단일 패키지 유지(모노레포 아님). 확정된
-내용과 실제 동작 확인 결과는 `.claude/base/architecture.md`의
-"패키지 매니저와 엔트리포인트" 절 참고 — **tbox `CLAUDE.md`가 서술하는
-`init.luau`의 require 경로 규칙은 이 저장소의 lune 0.8.9에서 그대로
-재현되지 않았습니다** (실측: `./x`는 `src/`에 대한 평범한 상대 경로였고,
-`@self`는 `.luaurc` alias 선언 없이는 동작하지 않았음). 그 차이를
-`base/architecture.md`에 실측 그대로 남겨뒀으니, 다른 Luau/Lune 버전으로
-옮길 때 이 가정이 유효한지 다시 확인하세요.
+**사용자 결정(2026-08-22)**, 전부 `.claude/base/architecture.md` 에 반영됨:
+
+- pesde 도입, 엔트리포인트 `src/init.luau`, 단일 패키지 유지.
+- **런타임은 순수 luau — lune 제거.** 나중에 갈아탈 대상은 lute.
+- **테스트는 quad 식 `assert` + `print`, 프레임워크 없음.**
+- 타입 체크/린트 툴체인(luau-lsp + selene)을 `mise.toml` 로 도입.
+- `const` 문법은 쓰지 않음(quad 가 툴링 문제로 이미 버린 문법).
+
+require 경로 규칙은 lune 시절과 **정반대**로 바뀌었으니
+`base/architecture.md` 의 "require 경로 규칙" 절 표를 보세요.
 
 ## 1. `tuple.luau`/`typeutil.luau`의 type function 실험을 계속 밀 것인가?
 
@@ -25,21 +26,22 @@ Luau의 `type function`은 upstream에서도 실험적 기능입니다. 지금 �
 갖고 있으니 거기서 재사용/참고할 부분이 있는지 먼저 살펴볼지 판단이
 필요합니다.
 
-## 2. 컨테이너 표현 규약을 hash/tree 구조에도 그대로 적용할까?
+## [해소됨, 2026-08-22] hash/tree 컨테이너 표현
 
-`.claude/base/architecture.md`의 "컨테이너 표현" 절 참고 — `arr`의
-길이 필드(`n`) + 태그 필드(`__arr__`) 규약이 정수 인덱스가 없는
-`hashmap`/`hashset`/`treemap`/`treeset`에도 그대로 적용 가능한 개념인지,
-아니면 컨테이너별로 다른 표현(예: 크기 캐시 필드만 공유)이 필요한지
-설계가 필요합니다. `hashmap`/`hashset`/`treemap`이 전부 빈 파일이라
-지금이 이 결정을 내리기 좋은 시점입니다.
+**사용자 결정**: 크기는 **래퍼 구조로 분리**(`{ data = {...}, size = n }`).
+인스턴스에 `n` 을 직접 두면 `hashset<string>` 에서 `add(s, "n")` 이 길이
+필드를 덮어쓰기 때문. 그리고 지금 `treeset.luau` 내용은 사실 해시셋이므로
+`hashset.luau` 로 옮기고, `treeset` 은 정렬 구조로 새로 작성합니다.
+실제 작업은 `.claude/todos.md` 2번 항목.
 
-## 3. `../tbox/`(`/code/Projects/tbox`)의 코드 스타일(`const` 지역 선언,
-`f<<T>>` 명시적 타입 인자)을 stl-luau에도 들여올 것인가?
+## [해소됨, 2026-08-22] tbox 코드 스타일(`const`) 이식 여부
 
-tbox의 `.claude/conventions.md`는 이 스타일을 표준으로 못 박아뒀지만
-(재할당 없으면 `const`, 명시적 타입 인자 호출), stl-luau 기존 코드는
-전부 `local`만 쓰고 명시적 타입 인자 호출도 없습니다. 스타일을 맞출지
-독자적으로 갈지 결정 필요 — 맞춘다면 tbox의 "stylua가 `f<<T>>`를 시프트
-연산자로 오인식해 조용히 코드를 깨뜨리는" 알려진 위험(tbox `CLAUDE.md`
-참고)도 같이 감안해야 합니다.
+**이식하지 않습니다.** `local` 을 씁니다. 사용자 확인: *"그거 quad 에서는
+툴링때문에 버린 문법이야 local 씀"* — quad 가 이미 툴링 문제로 폐기한
+문법이고, 실측으로도 lune 0.8.9 가 파싱하지 못했습니다.
+
+## 2. 라이선스와 README 를 어떻게 할까?
+
+`tbox`/`quad` 둘 다 MIT + README 를 갖췄지만 stl-luau 엔 둘 다 없습니다.
+공개 배포(pesde publish)를 염두에 둔다면 필요합니다 — 라이선스를 MIT 로
+할지, 저작자 표기를 어떻게 할지 확인이 필요합니다.

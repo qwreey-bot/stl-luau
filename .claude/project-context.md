@@ -15,12 +15,16 @@
 
 ## 실행 환경
 
-- 런타임: **Lune** (`lune run run_test.luau`). `luau` CLI로 개별 파일 문법
-  체크도 가능(`luau src/foo.luau`).
-- 패키지 매니저: **pesde 도입됨**(2026-08-22). `pesde.toml`의 `name`은
-  `qwreey/stl_luau`, `[target] lib = "src/init.luau"`. `pesde run test`로
-  테스트 실행 가능(`[scripts] test = "run_test.luau"`). 상세는
-  `.claude/base/architecture.md`의 "패키지 매니저와 엔트리포인트" 절.
+- 런타임: **순수 `luau` CLI** (`luau tests/run.luau`). **lune 은 쓰지
+  않습니다** — 근거와 그로부터 오는 제약(`io`/`fs` 없음, `pesde run` 불가,
+  `const` 금지)은 `.claude/base/architecture.md`의 "런타임: 순수 luau" 절.
+- 타입 체크: `luau-lsp analyze --platform=standard --flag:LuauSolverV2=true`.
+  린트: `selene src tests`. 둘 다 `mise.toml`로 버전 고정
+  (`mise install`). **`luau` 자체는 타입 검사를 하지 않습니다.**
+- 패키지 매니저: **pesde**(2026-08-22 도입). `pesde.toml`의 `name`은
+  `qwreey/stl_luau`, `[target] lib = "src/init.luau"`. **`[scripts]`는
+  비어 있습니다** — `pesde run`이 항상 lune으로 실행하기 때문. pesde는
+  의존성/배포 메타데이터 용도로만 씁니다.
 - 포매터: 로컬에 `stylua` 바이너리는 있지만 이 저장소엔 `stylua.toml`이
   없습니다. 현재 파일들 인덴트가 탭(`src/arr.luau`)/스페이스(`src/tuple.luau`)로
   혼재돼 있습니다.
@@ -29,11 +33,13 @@
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
+mise.toml               툴체인 고정 (luau-lsp, selene)
+.luaurc                 languageMode strict + 전체 lint on
+selene.toml             린트 규칙 (quad 것과 동일)
+.vscode/settings.json   luau-lsp new solver 강제
 default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
-run_test.luau        lune 실행 스크립트: require("./src").run_test():solve()
 src/
-  .luaurc             @self alias 선언 (init.luau가 형제 모듈을 require("@self/x")로 접근)
-  init.luau           엔트리포인트 (구 루트 lib.luau, 그 전엔 init.luau). arr만 export, run_test() 포함
+  init.luau           엔트리포인트 (구 루트 lib.luau, 그 전엔 init.luau). arr만 export
   arr.luau            배열 컨테이너 — 가장 성숙한 모듈, 스트림형 API 다수 구현
   common.luau         Comparator<T> 타입 + compareTo 어댑터. 20줄, arr가 씀
   bsearch.luau        완전히 빈 파일 (0바이트)
@@ -50,16 +56,25 @@ src/
   fut.luau            2줄, 네임스페이스+메타테이블만 있고 메소드 없음
   record.luau         1줄, 타입 별칭만 있고 모듈 패턴을 안 따름
 tests/
-  arr.luau            arr.slice_inplace만 테스트 (6케이스)
-libs/test-luau/        서브모듈, 자체 테스트 프레임워크 (github.com/qwreey/test-luau)
+  run.luau            전체 테스트 엔트리 (luau tests/run.luau)
+  arr.luau            arr 스모크 테스트 10개 절 (assert + print, 프레임워크 없음)
+libs/test-luau/        ⚠️ 더 이상 쓰지 않는 서브모듈 — 아래 참고
 notes, todo             (루트) 예전 스크래치 노트 — Luau 메타메소드 참고표, API 아이디어
 ```
+
+**`libs/test-luau` 는 2026-08-22부터 쓰지 않습니다.** 그 프레임워크가
+`@lune/fs`·`@lune/stdio`에 의존하는데 이 저장소가 lune을 걷어냈기 때문입니다
+(순수 luau엔 `fs`가 없어 소스 라인 뷰 기능이 원천적으로 불가능). 서브모듈
+자체는 아직 제거하지 않았습니다 — **그 안에 아직 push되지 않은 로컬 커밋
+(`init.luau` → `lib.luau` 리네임)이 있어서**, 지우면 그 작업이 사라집니다.
+정리하려면 먼저 `git -C libs/test-luau push` 로 올린 뒤 서브모듈을
+제거하세요.
 
 ## 모듈 현황 (구현 정도)
 
 | 모듈 | 상태 |
 |---|---|
-| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. `shuffle`/`reverse`/`reverse_inplace`/`rotate`/`rotate_inplace`/`sorted`/`replace`/`replace_inplace`/`erase`는 **시그니처만 있고 본문이 빈 함수**(`function arr_ifce.reverse(...) end` 등, `src/arr.luau:186-201`) |
+| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **다만 strict 타입 체크에서는 여전히 47건의 TypeError** — `.claude/base/typing-limits.md` 참고. `shuffle`/`reverse`/`reverse_inplace`/`rotate`/`rotate_inplace`/`sorted`/`replace`/`replace_inplace`/`erase`는 **시그니처만 있고 본문이 빈 함수** |
 | `common` | 완성(작음) |
 | `bsearch`, `heap` | 미착수 (빈 파일) |
 | `hashmap`, `hashset`, `treemap` | 미착수 (빈 파일) |
