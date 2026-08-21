@@ -8,5 +8,6 @@ environment = "roblox"
 lib = "src/init.luau"
 build_files = ["src"]
 
-[scripts]
-test = "run_test.luau"
+# [scripts] 는 의도적으로 비워둡니다 — pesde run 은 스크립트를 항상 Lune 으로
+# 실행하는데, 이 저장소는 Lune 을 쓰지 않습니다. 테스트는 `luau tests/run.luau`
+# 로 직접 실행하세요 (.claude/base/architecture.md 의 "런타임: 순수 luau" 절).

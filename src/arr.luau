@@ -21,7 +21,7 @@ function arr_ifce.sized<T>(length: number, fill: T): Arr<T>
 	result.__arr__ = true
 	if fill ~= nil then
 		for idx = 1, length do
-			arr_ifce[idx] = fill
+			result[idx] = fill
 		end
 	end
 	setmetatable(result, arr_ifce)
@@ -43,8 +43,9 @@ function arr_ifce.clone_from_table<T>(tbl: { [number]: T }): Arr<T>
 	result.__arr__ = true
 	for idx = 1, length do
 		result[idx] = tbl[idx]
-	end 
-	setmetatable(tbl, arr_ifce)
+	end
+	setmetatable(result, arr_ifce)
+	return result
 end
 -- 이터레이터로부터 배열을 생성합니다
 function arr_ifce.from_iter<T>(iter: any, ...): Arr<T>
@@ -394,36 +395,27 @@ function arr_ifce.filter<T>(self: Arr<T>, callback: CallBack<T, boolean>, to: Ar
 	(to :: Arr<T>).n = to_len
 	return to :: Arr<T>
 end
---FIXME: ranged 로 변경
+--FIXME: ranged 로 변경 (start/last 인자는 아직 없음)
 -- 현 배열 self의 요소중 callback이 참이 되지 않는 요소를 삭제합니다
 -- 자기 자신 배열을 반환합니다
-function arr_ifce.filter_inplace<T>(self: Arr<T>, callback: CallBack<T, boolean>, start: number?, last: number?): Arr<T>
-	local idx = 1
+function arr_ifce.filter_inplace<T>(self: Arr<T>, callback: CallBack<T, boolean>): Arr<T>
 	local len = self.n
-	local filtered = 0
-	local should_move = 0
-	local back
-	while idx <= len do
-		if not callback(self[idx], idx, self) then
-			if should_move == 0 then
-			elseif should_move == 1 then
-				back = idx - 1
-				self[back - filtered] = self[back]
-			else
-				local move = idx - should_move
-				table.move(self, move, idx - 1, move - filtered)
-				should_move = 0
+	local kept = 0
+	local item
+	for idx = 1, len do
+		item = self[idx]
+		if callback(item, idx, self) then
+			kept += 1
+			-- 앞쪽으로 밀린 게 없으면 자기 자리 그대로라 쓸 필요가 없음
+			if kept ~= idx then
+				self[kept] = item
 			end
-			filtered += 1
-		elseif filtered ~= 0 then
-			should_move += 1
 		end
-		idx += 1
 	end
-	self.n -= filtered
-	for i = len - filtered - 1, len do
-		self[i] = nil :: any
+	for idx = kept + 1, len do
+		self[idx] = nil :: any
 	end
+	self.n = kept
 	return self
 end
 
@@ -462,37 +454,41 @@ function arr_ifce.rangeflat<T>(self: Arr<T | Arr<T>>, start: number?, last: numb
 	local to_len = (to :: Arr<T>).n
 	local inner
 	local inner_len
-	local defer = 0
-	local inner_isarr
+	-- 연속된 비배열 요소 구간 [run_start, idx-1] 을 모아 한 번에 옮기기 위한 커서
+	local run_start = start :: number
+	local run_len
 	for idx = start :: number, last :: number do
 		inner = self[idx]
-		inner_isarr = arr_is_arr(inner)
-		if inner_isarr or idx == last then
-			if not inner_isarr then
-				defer += 1
-			end
-			if defer == 0 then
-			elseif defer == 1 then
-				(to :: Arr<T>)[to_len + 1] = self[idx - 1]
-				to_len += 1
-			else
-				table.move(self, idx - defer, idx - 1, to_len + 1, to :: Arr<T>)
-				to_len += defer
-				defer = 0
-			end
-			if inner_isarr then
-				inner_len = inner.n
-				if inner_len == 0 then
-				elseif inner_len == 1 then
-					(to :: Arr<T>)[to_len + 1] = inner[1]
-				else
-					table.move(inner, 1, inner_len, to_len + 1, to :: Arr<T>)
-				end
-				to_len += inner_len
-			end
-		else
-			defer += 1
+		if not arr_is_arr(inner) then
+			continue
 		end
+		-- 앞서 밀어둔 비배열 구간을 먼저 flush
+		run_len = idx - run_start
+		if run_len == 1 then
+			(to :: Arr<T>)[to_len + 1] = self[run_start] :: any
+			to_len += 1
+		elseif run_len > 1 then
+			table.move(self, run_start, idx - 1, to_len + 1, to :: Arr<T>)
+			to_len += run_len
+		end
+		-- 중첩 배열을 펼쳐 이어붙임
+		inner_len = inner.n
+		if inner_len == 1 then
+			(to :: Arr<T>)[to_len + 1] = inner[1]
+		elseif inner_len > 1 then
+			table.move(inner, 1, inner_len, to_len + 1, to :: Arr<T>)
+		end
+		to_len += inner_len
+		run_start = idx + 1
+	end
+	-- 마지막 비배열 구간 flush
+	run_len = last :: number - run_start + 1
+	if run_len == 1 then
+		(to :: Arr<T>)[to_len + 1] = self[run_start] :: any
+		to_len += 1
+	elseif run_len > 1 then
+		table.move(self, run_start, last :: number, to_len + 1, to :: Arr<T>)
+		to_len += run_len
 	end
 	(to :: Arr<T>).n = to_len
 	return to :: Arr<T>
@@ -511,7 +507,7 @@ function arr_ifce.rangeflat_inplace<T>(self: Arr<T | Arr< T >>, start: number?, 
 
 		inner_len = inner.n
 		if inner_len == 1 then
-			self[idx] = inner_len[1]
+			self[idx] = inner[1]
 			idx += 1
 			continue
 		elseif inner_len == 0 then
@@ -524,9 +520,6 @@ function arr_ifce.rangeflat_inplace<T>(self: Arr<T | Arr< T >>, start: number?, 
 		table.move(inner, 1, inner_len, idx, self)
 
 		len += inner_len - 1
-		for inner_idx = 1, inner_len do
-			self[idx + inner_idx - 1] = inner[inner_idx]
-		end
 		idx += inner_len
 	end
 	self.n = len
@@ -540,23 +533,21 @@ function arr_ifce.flat_inplace<T>(self: Arr<T | Arr<T>>): Arr<T>
 	return arr_ifce.rangeflat_inplace(self) :: Arr<T>
 end
 
---FIXME: comp 를 사용하도록 재작성
-function arr_ifce.max<T>(self: Arr<T>, base: T?, comp: common.Comparator<T>): T?
+function arr_ifce.max<T>(self: Arr<T>, base: T?, comp: common.Comparator<T>?): T?
 	local item
 	for i = 1, self.n do
 		item = self[i]
-		if base == nil or compareTo(item, base) < 0 then
+		if base == nil or compareTo(item, base, comp) > 0 then
 			base = item
 		end
 	end
 	return base
 end
---FIXME: comp 를 사용하도록 재작성
-function arr_ifce.min<T>(self: Arr<T>, base: T?, comp: common.Comparator<T>): T?
+function arr_ifce.min<T>(self: Arr<T>, base: T?, comp: common.Comparator<T>?): T?
 	local item
 	for i = 1, self.n do
 		item = self[i]
-		if base == nil or compareTo(item, base) > 0 then
+		if base == nil or compareTo(item, base, comp) < 0 then
 			base = item
 		end
 	end
@@ -729,8 +720,6 @@ export type Arr<T> = {
 	[number]: T,
 } & ArrInterface
 local Arr = (arr_ifce :: unknown) :: (<T>(...T|any) -> (Arr<T>)) & Arr<any>
-
-local a = Arr(1,2,3)
 
 return Arr
 -- stylua: ignore end
