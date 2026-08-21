@@ -58,17 +58,16 @@ src/
 tests/
   run.luau            전체 테스트 엔트리 (luau tests/run.luau)
   arr.luau            arr 스모크 테스트 10개 절 (assert + print, 프레임워크 없음)
-libs/test-luau/        ⚠️ 더 이상 쓰지 않는 서브모듈 — 아래 참고
 notes, todo             (루트) 예전 스크래치 노트 — Luau 메타메소드 참고표, API 아이디어
 ```
 
-**`libs/test-luau` 는 2026-08-22부터 쓰지 않습니다.** 그 프레임워크가
-`@lune/fs`·`@lune/stdio`에 의존하는데 이 저장소가 lune을 걷어냈기 때문입니다
-(순수 luau엔 `fs`가 없어 소스 라인 뷰 기능이 원천적으로 불가능). 서브모듈
-자체는 아직 제거하지 않았습니다 — **그 안에 아직 push되지 않은 로컬 커밋
-(`init.luau` → `lib.luau` 리네임)이 있어서**, 지우면 그 작업이 사라집니다.
-정리하려면 먼저 `git -C libs/test-luau push` 로 올린 뒤 서브모듈을
-제거하세요.
+**서브모듈은 없습니다.** 예전에 `libs/test-luau` 서브모듈
+(`github.com/qwreey/test-luau`)이 있었지만 **2026-08-22 에 제거했습니다** —
+그 테스트 프레임워크가 `@lune/fs`·`@lune/stdio` 에 의존하는데 이 저장소가
+lune 을 걷어냈기 때문입니다(순수 luau 엔 `fs` 가 없어 소스 라인 뷰 기능이
+원천적으로 불가능). **test-luau 저장소 자체는 그대로 살아 있고** 제거 전에
+로컬 커밋도 전부 push 해뒀으니, 나중에 lute 로 옮겨서 다시 쓰고 싶어지면
+그 저장소에서 이어가면 됩니다.
 
 ## 모듈 현황 (구현 정도)
 

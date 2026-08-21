@@ -34,15 +34,13 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
    결정을 따라갑니다.
 5. **`tuple`/`typeutil` 방향 결정** (`.claude/question.md` #1).
 6. **`record.luau` 재설계** — 모듈 패턴을 안 따르는 타입 별칭 한 줄.
-7. **`libs/test-luau` 서브모듈 정리** — 더 이상 쓰지 않습니다. 다만 그 안에
-   **push 안 된 로컬 커밋**이 있으니 먼저 push 한 뒤 제거하세요
-   (`.claude/project-context.md` 참고).
-8. **README/LICENSE 추가** — 둘 다 없음. `tbox`/`quad` 는 MIT.
-9. **stylua 도입 여부** — 인덴트가 탭/스페이스로 혼재
+7. **README/LICENSE 추가** — 둘 다 없음. `tbox`/`quad` 는 MIT
+   (`.claude/question.md` #2).
+8. **stylua 도입 여부** — 인덴트가 탭/스페이스로 혼재
    (`src/arr.luau` 는 탭, `src/tuple.luau`/`typeutil.luau` 는 스페이스 4칸).
-10. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
-    fast-path 관용구), warning 46건(대부분 스텁 함수의 미사용 파라미터).
-    스텁을 실제로 구현하면 대부분 자연히 사라집니다.
+9. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
+   fast-path 관용구), warning 46건(대부분 스텁 함수의 미사용 파라미터).
+   스텁을 실제로 구현하면 대부분 자연히 사라집니다.
 
 ## 완료된 작업 (2026-08-22 세션)
 
@@ -58,3 +56,5 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
   `max`/`min` 반전, `clone_from_table` 무반환. 그리고 `sized` 시그니처
   수정으로 TypeError 7건 해소.
 - `treeset` 의 `self` vs 모듈 테이블 버그 수정.
+- `libs/test-luau` 서브모듈 제거(로컬 커밋 push 후). 이 저장소와
+  test-luau 저장소 둘 다 GitHub 에 push 완료.

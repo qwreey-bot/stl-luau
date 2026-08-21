@@ -45,8 +45,8 @@ luau 만 사용하거든. 혹은 나중에 lute 로 갈아타는게 답이야."*
 | 표기 (`src/init.luau` 안에서) | 실제로 가리키는 곳 |
 | --- | --- |
 | `@self/arr` | `src/arr.luau` — 자기 폴더 **안** |
-| `./libs/x` | `<repo>/libs/x.luau` — `src/` 의 **형제** |
-| `../libs/x` | `<repo-parent>/libs/x.luau` — 저장소 **바깥**, 거의 항상 버그 |
+| `./tests/x` | `<repo>/tests/x.luau` — `src/` 의 **형제** |
+| `../tests/x` | `<repo-parent>/tests/x.luau` — 저장소 **바깥**, 거의 항상 버그 |
 
 - **`@self` 는 luau CLI 의 예약 alias 라 `.luaurc` 선언 없이 동작합니다**
   (실측). 반면 `.luaurc` 의 **일반 alias 는 편집기 전용이고 런타임
@@ -61,7 +61,7 @@ luau 만 사용하거든. 혹은 나중에 lute 로 갈아타는게 답이야."*
 - **⚠️ lune 은 이 규칙이 정반대였습니다.** lune 0.8.9 에서는 `@self` 가
   `.luaurc` 없이는 실패했고 `./x` 가 `src/` 기준 평범한 상대 경로로
   동작했습니다. 이 저장소는 2026-08-22 에 lune 을 걷어내면서 luau 기준으로
-  통일했으니, **옛 커밋에서 `../libs/...` 같은 경로를 보고 따라 하지
+  통일했으니, **옛 커밋에 남아 있는 `../libs/...` 류 경로를 보고 따라 하지
   마세요.** 나중에 lute 로 옮길 때 이 표를 다시 실측해야 합니다.
 
 ## 테스트: assert + print (프레임워크 없음)
@@ -163,4 +163,4 @@ setmetatable(X_ifce, X_constructor)
 
 [테스트 방식은 위 "테스트: assert + print" 절이 소스입니다. 예전에 여기
 있던 `libs/test-luau` 프레임워크 계약 서술은 2026-08-22 lune 제거와 함께
-폐기됐습니다 — 그 프레임워크는 더 이상 쓰지 않습니다.]
+폐기됐고, 서브모듈도 같은 날 제거했습니다.]
