@@ -6,13 +6,14 @@
 ## 막힌 것 (사용자 결정 필요)
 
 `.claude/question.md` 참고. 남은 질문은 3개(type function 실험 방향,
-hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업을 막고
-있진 않습니다.
+**`arr(1, 2, 3)` 호출 형태 vs `arr.오타` 검출**, 라이선스/README)이며,
+아래 작업들을 막고 있진 않습니다.
 
 ## 다음 작업 후보
 
 1. ~~**⭐ `Arr<T>` 타입 재설계**~~ — **2026-08-31 완료.**
-   음성 대조군 0/6 → 6/6, TypeError 301 → 41. 전문은
+   음성 대조군 0/6 → 6/6. TypeError 는 재설계 몫이 301 → 126, 테스트 헬퍼에
+   타입을 달아 → 41. 전문은
    `.claude/audit/arr-type-redesign/REPORT.md`, 결론은
    `.claude/base/typing-limits.md` 의 "재설계" 절.
    **후속으로 남은 것**은 아래 10번(`src` 20건)과 11번(`tests` 21건).
@@ -70,7 +71,9 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
 ## 완료된 작업 (2026-08-31 세션)
 
 - **⭐ `Arr<T>` 재설계 — 타입 검사가 죽어 있던 걸 살렸습니다.**
-  음성 대조군 6/6 검출, TypeError 301 → 41, 런타임 무변경.
+  음성 대조군 6/6 검출, TypeError 301 → 126(재설계) → 41(테스트 헬퍼 주석),
+  런타임 무변경. **`arr.오타` 를 못 잡는 구멍이 하나 남았습니다** — 없애려면
+  `arr(1, 2, 3)` 을 포기해야 해서 `question.md` 2번으로 올렸습니다.
   `.claude/audit/arr-type-redesign/`(REPORT + 스파이크).
 - **타입 체크 방식을 quad 식으로 전환**: 체커 `luau-analyze`,
   전 모듈 `--!strict`, `scripts/check.sh`, `mise.toml` 에 luau 고정.

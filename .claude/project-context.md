@@ -75,7 +75,7 @@ lune 을 걷어냈기 때문입니다(순수 luau 엔 `fs` 가 없어 소스 라
 
 | 모듈 | 상태 |
 |---|---|
-| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **[2026-08-31]** 비어 있던 함수 10개를 구현했습니다(`shuffle(_inplace)`, `reverse(_inplace)`, `rotate(_inplace)`, `sorted`/`sort_inplace`, `replace(_inplace)`, `erase`) — **이제 `arr` 에 빈 본문은 없습니다**. 같이 버그 2건(`clear` 가 `__arr__` 태그 삭제, `erase_inplace` 가 뒤집힌 구간에서 배열을 늘림)도 고쳤습니다. **[2026-08-31] `Arr<T>` 타입 재설계** — 음성 대조군이 0/6 이던(= 타입 검사가 죽어 있던) 상태를 6/6 으로 되살렸습니다. TypeError 301 → 41(`src` 20 / `tests` 21), 런타임 무변경. `.claude/audit/arr-type-redesign/REPORT.md` |
+| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **[2026-08-31]** 비어 있던 함수 10개를 구현했습니다(`shuffle(_inplace)`, `reverse(_inplace)`, `rotate(_inplace)`, `sorted`/`sort_inplace`, `replace(_inplace)`, `erase`) — **이제 `arr` 에 빈 본문은 없습니다**. 같이 버그 2건(`clear` 가 `__arr__` 태그 삭제, `erase_inplace` 가 뒤집힌 구간에서 배열을 늘림)도 고쳤습니다. **[2026-08-31] `Arr<T>` 타입 재설계** — 음성 대조군이 0/6 이던(= 타입 검사가 죽어 있던) 상태를 6/6 으로 되살렸습니다. TypeError 301 → 126(재설계) → 41(테스트 헬퍼 주석). 런타임 무변경. `arr.오타` 를 못 잡는 구멍이 하나 남음(`question.md` 2번). `.claude/audit/arr-type-redesign/REPORT.md` |
 | `common` | 완성(작음) |
 | `bsearch`, `heap` | 미착수 (빈 파일) |
 | `hashmap`, `hashset`, `treemap` | 미착수 (빈 파일) |
