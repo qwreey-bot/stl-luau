@@ -54,7 +54,7 @@
 의존하지 않게 하세요.
 
 `type function` 을 다룰 땐 **quad 의 `.claude/base/typing-limits.md` 를 먼저
-읽으세요** (`/code/Projects/stl-luau-refs/quad`). 이미 실측된 함정이 많습니다 —
+읽으세요** (`/code/Projects/quad`). 이미 실측된 함정이 많습니다 —
 `type function` 안에서 같은 파일의 바깥 로컬을 참조하면 컴파일이 실패하고,
 `error()` 대신 `print()` + `types.never` 를 써야 진단이 노출되며, 어떤 타입이
 `type function` 을 한 번 통과하면(그냥 `return t` 라도) 그 뒤 제네릭 `self`

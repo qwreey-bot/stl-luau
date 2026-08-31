@@ -11,7 +11,12 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
 
 ## 다음 작업 후보
 
-1. **⭐ `Arr<T>` 타입 재설계 — strict TypeError 68건(`src/arr.luau` 기준).**
+1. **⭐ `Arr<T>` 타입 재설계 — TypeError 301건**(`./scripts/check.sh` 기준,
+   `src/arr.luau` 72 + `tests/arr.luau` 229).
+   **테스트 쪽 229건 중 205건이 `arr(1, 2, 3)` 호출 하나의 문제**입니다 —
+   `Arr` 가 "호출 가능한 함수" 와 "인스턴스" 를 한 intersection 으로
+   합쳐놔서 생성자 호출이 전부 ambiguous 합니다. 이 둘을 분리하는 게
+   첫 번째 후보이고, 사용자가 겪는 문제라 우선순위도 가장 높습니다.
    런타임은 정상이지만 타입이 new solver 를 못 따라갑니다. 이게 이 저장소의
    가장 큰 미해결 문제이고, "luau 로 가는 이유" 그 자체이기도 합니다.
    착수 전에 **반드시** `.claude/base/typing-limits.md` 와 그 문서가 가리키는
@@ -75,8 +80,13 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
   `__arr__` 태그까지 지워 비운 배열이 `is_arr` 를 통과하지 못했음
   (`slice_inplace` 의 빈 구간 경로도 같은 문제), `erase_inplace` 가 뒤집힌
   구간(`start > last`)에서 배열을 오히려 늘렸음.
-- 이 작업으로 `src/arr.luau` 의 TypeError 는 47 → 68 로 늘었습니다. 전부
-  기존과 같은 원인이며 1번 재설계 대상입니다(`.claude/base/typing-limits.md`).
+- 이 작업으로 `src/arr.luau` 의 TypeError 가 늘었습니다. 전부 기존과 같은
+  원인이며 1번 재설계 대상입니다(`.claude/base/typing-limits.md`).
+- **타입 체크 방식을 quad 식으로 전환**: 체커를 `luau-lsp analyze` →
+  **`luau-analyze`** 로(luau-lsp 가 진단을 빠뜨리는 걸 실측), 모든 모듈에
+  `--!strict`(실험 파일 2개는 `--!nocheck`), `scripts/check.sh` 추가,
+  `mise.toml` 에 `luau = "0.734"` 고정. 근거와 수치는 전부
+  `.claude/base/typing-limits.md` 의 새 두 절.
 
 ## 완료된 작업 (2026-08-22 세션)
 

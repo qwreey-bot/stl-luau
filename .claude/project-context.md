@@ -18,9 +18,11 @@
 - 런타임: **순수 `luau` CLI** (`luau tests/run.luau`). **lune 은 쓰지
   않습니다** — 근거와 그로부터 오는 제약(`io`/`fs` 없음, `pesde run` 불가,
   `const` 금지)은 `.claude/base/architecture.md`의 "런타임: 순수 luau" 절.
-- 타입 체크: `luau-lsp analyze --platform=standard --flag:LuauSolverV2=true`.
-  린트: `selene src tests`. 둘 다 `mise.toml`로 버전 고정
-  (`mise install`). **`luau` 자체는 타입 검사를 하지 않습니다.**
+- 타입 체크: **`luau-analyze`**(2026-08-31 전환, quad 방식). 린트:
+  `selene src tests`. 둘 다 `./scripts/check.sh` 나 `mise.toml` 로 고정된
+  버전으로 돕니다(`mise install`). **`luau` 실행기 자체는 타입 검사를 하지
+  않습니다.** 모든 모듈 상단에 `--!strict` 를 답니다 — `.luaurc` 하나에만
+  의존하면 한 단어로 검사가 통째로 꺼집니다(실측).
 - 패키지 매니저: **pesde**(2026-08-22 도입). `pesde.toml`의 `name`은
   `qwreey/stl_luau`, `[target] lib = "src/init.luau"`. **`[scripts]`는
   비어 있습니다** — `pesde run`이 항상 lune으로 실행하기 때문. pesde는
@@ -73,7 +75,7 @@ lune 을 걷어냈기 때문입니다(순수 luau 엔 `fs` 가 없어 소스 라
 
 | 모듈 | 상태 |
 |---|---|
-| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **[2026-08-31]** 비어 있던 함수 10개를 구현했습니다(`shuffle(_inplace)`, `reverse(_inplace)`, `rotate(_inplace)`, `sorted`/`sort_inplace`, `replace(_inplace)`, `erase`) — **이제 `arr` 에 빈 본문은 없습니다**. 같이 버그 2건(`clear` 가 `__arr__` 태그 삭제, `erase_inplace` 가 뒤집힌 구간에서 배열을 늘림)도 고쳤습니다. **다만 strict 타입 체크에서는 여전히 TypeError 68건**(구현이 늘며 47 → 68) — `.claude/base/typing-limits.md` 참고 |
+| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **[2026-08-31]** 비어 있던 함수 10개를 구현했습니다(`shuffle(_inplace)`, `reverse(_inplace)`, `rotate(_inplace)`, `sorted`/`sort_inplace`, `replace(_inplace)`, `erase`) — **이제 `arr` 에 빈 본문은 없습니다**. 같이 버그 2건(`clear` 가 `__arr__` 태그 삭제, `erase_inplace` 가 뒤집힌 구간에서 배열을 늘림)도 고쳤습니다. **다만 타입 체크에서는 여전히 TypeError 72건**(`luau-analyze` 기준. `tests/arr.luau` 의 229건까지 합쳐 총 301건) — `.claude/base/typing-limits.md` 참고 |
 | `common` | 완성(작음) |
 | `bsearch`, `heap` | 미착수 (빈 파일) |
 | `hashmap`, `hashset`, `treemap` | 미착수 (빈 파일) |
@@ -84,14 +86,16 @@ lune 을 걷어냈기 때문입니다(순수 luau 엔 `fs` 가 없어 소스 라
 
 ## 다른 저장소와의 관계
 
-- **`qwreey/quad`** (`/code/Projects/stl-luau-refs/quad`에 클론됨): Roblox용
+- **`qwreey/quad`** (`/code/Projects/quad`에 클론됨): Roblox용
   DOMless UI 렌더러 재작성 프로젝트. 규모가 훨씬 크고 `.claude/` 문서
   체계가 매우 정교합니다(`doc-check.py`, session 아카이브, agent-memory,
   `quad-doc-auditor` 서브에이전트 등). stl-luau는 이 저장소의 **문서
   구조 패턴**(짧은 `CLAUDE.md` + `@import` + `base/`는 확정 결정만 +
   `question.md`)만 참고하고, 무거운 도구는 프로젝트가 그 정도 복잡도에
   도달하기 전까진 들이지 않습니다.
-- **`qwreey/tbox`** (`/code/Projects/tbox`): Luau용 스키마 라이브러리.
+- **`qwreey/tbox`** (예전엔 `/code/Projects/tbox`, **지금은 이 환경에
+  클론돼 있지 않습니다** — 아래 내용은 과거 세션의 기록입니다):
+  Luau용 스키마 라이브러리.
   pesde **워크스페이스(모노레포)** 구조(`packages/tbox`, `packages/tbox_squish`
   등 여러 작은 패키지)를 씁니다. stl-luau는 **단일 패키지로 유지하기로
   결정**(2026-08-22, `.claude/question.md`의 옛 "저장소 구조" 질문 참고 —

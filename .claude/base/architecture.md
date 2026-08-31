@@ -95,15 +95,32 @@ luau 만 사용하거든. 혹은 나중에 lute 로 갈아타는게 답이야."*
 돌려야 합니다:
 
 ```bash
-luau-lsp analyze --platform=standard --flag:LuauSolverV2=true src/*.luau
-selene src tests
+./scripts/check.sh          # 타입 검사 + 테스트 (권장)
+luau-analyze src tests      # 타입 검사만
+selene src tests            # 린트
 ```
 
+- **타입 검사기는 `luau-analyze` 입니다**(2026-08-31 전환, quad 방식).
+  luau 배포판에 같이 오는 바이너리이고 플래그가 필요 없습니다 — new solver
+  가 기본이고, strict 여부는 `.luaurc` 와 각 파일 상단의 `--!strict` 가
+  정합니다. 예전에 쓰던
+  `luau-lsp analyze --platform=standard --flag:LuauSolverV2=true` 는
+  **진단을 일부 빠뜨립니다** — 근거와 실측은 `typing-limits.md` 의
+  "체커: luau-analyze" 절.
 - **진단은 stdout 이 아니라 stderr 로 나옵니다** — `2>/dev/null` 로 버리면
   "에러 0건" 으로 착각합니다(2026-08-22 에 실제로 이 착시를 겪었습니다).
-- `--flag:LuauSolverV2=true` 로 **new solver** 를 명시하세요. 편집기
-  (luau-lsp)는 기본이 구 solver 라 `.vscode/settings.json` 에
-  `enableNewSolver` 를 켜뒀습니다.
+- **모든 모듈 최상단에 `--!strict` 를 답니다.** `.luaurc` 의 `languageMode`
+  하나에만 의존하면 그 한 단어가 바뀌는 순간 타입 검사가 통째로 조용히
+  꺼집니다(실측: `nonstrict` 로 바꾸니 301건 → **0건**). 실험용
+  `src/tuple.luau`/`src/typeutil.luau` 만 `--!nocheck` 입니다. 0바이트인
+  미착수 파일에는 붙이지 않습니다.
+- `luau-analyze` 에 `src` 와 `tests` 를 같이 주면 `tests` 가 `require` 로
+  `src` 를 끌어와 **같은 파일이 두 경로로 중복 보고됩니다**
+  (`src/arr.luau` 와 `./src/arr.luau`). `scripts/check.sh` 가 경로를
+  정규화하고 중복을 지웁니다 — 직접 셀 때도 그렇게 하세요.
+- 편집기(luau-lsp)는 기본이 구 solver 라 `.vscode/settings.json` 에
+  `enableNewSolver` 를 켜뒀습니다. **편집기와 CLI 는 이제 다른 엔진입니다**
+  — 숫자가 어긋나면 CLI(`luau-analyze`) 가 기준입니다.
 - selene 은 설정 파일을 **CWD 기준 `./selene.toml`** 로만 찾습니다(상위
   디렉터리를 거슬러 올라가지 않음). 항상 저장소 루트에서 실행하세요.
 - `type function` 블록 앞에는 `-- selene: allow(undefined_variable)` 를
