@@ -167,7 +167,10 @@ end
 local arr_is_arr = arr_ifce.is_arr
 
 function arr_ifce.clear<T>(self: Arr<T>): Arr<T>
-	table.clear(self)
+	table.clear(self);
+	-- table.clear 는 __arr__ 태그까지 지웁니다. 다시 심지 않으면 비운 배열이
+	-- is_arr 판별을 통과하지 못합니다
+	(self :: any).__arr__ = true
 	self.n = 0
 	return self
 end
@@ -336,6 +339,12 @@ end
 function arr_ifce.erase_inplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
 	local len = self.n
 	start, last = arr_range(len, start, last)
+
+	-- 뒤집힌(빈) 구간은 아무것도 지우지 않습니다. 가드가 없으면 removed 가
+	-- 음수가 되어 배열이 오히려 늘어납니다
+	if start > last then
+		return self
+	end
 
 	if start == 1 and last == len then
 		arr_ifce.clear(self)
@@ -805,9 +814,7 @@ function arr_ifce.slice_inplace<T>(self: Arr<T>, start: number?, last: number?):
 	-- Empty: start and last across
 	start, last = arr_range(arr_len, start, last)
 	if start > last then
-		table.clear(self)
-		self.n = 0
-		return self
+		return arr_ifce.clear(self)
 	end
 
 	-- No action required

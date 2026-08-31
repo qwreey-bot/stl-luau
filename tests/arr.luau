@@ -288,6 +288,8 @@ do
 	origin:erase(1, 1)
 	assert_arr(origin, arr(1, 2, 3), "erase 는 self 를 바꾸지 않음")
 
+	-- 회귀: 뒤집힌(빈) 구간에서 removed 가 음수가 되어 배열이 늘어났음
+	assert_arr(arr(1, 2, 3, 4, 5):erase_inplace(3, 1), arr(1, 2, 3, 4, 5), "erase_inplace (빈 구간은 no-op)")
 	assert_arr(arr(1, 2, 3, 4, 5):erase_inplace(2, 4), arr(1, 5), "erase_inplace")
 	print("PASS")
 end
@@ -313,6 +315,16 @@ do
 	print("PASS")
 end
 
+print()
+print("=== 17. clear 가 __arr__ 태그를 유지하는지 ===")
+-- 회귀: table.clear 가 태그까지 지워서 비운 배열이 is_arr 를 통과하지 못했음
+do
+	local a = arr(1, 2, 3):clear()
+	assert(arr.is_arr(a), "clear 후에도 is_arr 여야 함")
+	assert(a.n == 0, "clear 후 n 은 0")
+	assert(arr.is_arr(arr(1, 2, 3):slice_inplace(-2, -3)), "빈 구간 slice_inplace 후에도 is_arr 여야 함")
+	print("PASS")
+end
 print()
 print("=== ALL PASS (arr) ===")
 
