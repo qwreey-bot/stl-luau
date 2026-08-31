@@ -11,7 +11,7 @@
 local arr = require("../src/arr")
 
 -- 배열 내용을 "[1,2,3]" 형태로 — assert 실패 메시지에 실제 값을 싣기 위함
-local function fmt(a): string
+local function fmt(a: arr.Arr<any>): string
 	local parts = table.create(a.n)
 	for idx = 1, a.n do
 		parts[idx] = tostring(a[idx])
@@ -19,7 +19,7 @@ local function fmt(a): string
 	return `[{table.concat(parts, ",")}] (n={a.n})`
 end
 
-local function assert_arr(actual, expected, label: string)
+local function assert_arr(actual: arr.Arr<any>, expected: arr.Arr<any>, label: string)
 	assert(actual:equal(expected), `{label}: expected {fmt(expected)}, got {fmt(actual)}`)
 end
 

@@ -378,26 +378,15 @@ function arr_ifce.erase_inplace<T>(self: Arr<T>, start: number?, last: number?):
 end
 
 --#region stream api implement
-type ReduceCallBack<T, U> = 
-	((accumulator: U, currentValue: T) -> U)
-	& ((accumulator: U, currentValue: T, currentIndex: number) -> U)
-	& ((accumulator: U, currentValue: T, currentIndex: number, arr: Arr<T>) -> U)
-type CallBack<T, Ret> =
-	((element: T, index: number, arr: Arr<T>) -> Ret)
-	& ((element: T, index: number) -> Ret)
-	& ((element: T) -> Ret)
-	& (() -> Ret)
-type CallBackVar<T, Ret> =
-	((element: T, index: number, arr: Arr<T>) -> ...Ret)
-	& ((element: T, index: number) -> ...Ret)
-	& ((element: T) -> ...Ret)
-	& (() -> ...Ret)
-type CallBackWithUserdata<T, Ret, Userdata> =
-	((element: T, index: number, arr: Arr<T>, userdata: Userdata) -> Ret)
-	& ((element: T, index: number, arr: Arr<T>) -> Ret)
-	& ((element: T, index: number) -> Ret)
-	& ((element: T) -> Ret)
-	& (() -> Ret)
+-- 콜백 타입은 **가장 넓은 시그니처 하나**로 씁니다. Luau 는 인자를 덜 받는
+-- 함수를 이미 서브타입으로 받아주므로 arity 별 오버로드가 필요 없습니다.
+-- 예전처럼 교집합(`&`)으로 늘어놓으면 "모든 arity 를 동시에 만족" 을 요구해서
+-- `function(x: number) return tostring(x) end` 같은 **정상 콜백이 거부됩니다**
+-- (실측: .claude/audit/arr-type-redesign/).
+type ReduceCallBack<T, U> = (accumulator: U, currentValue: T, currentIndex: number, arr: Arr<T>) -> U
+type CallBack<T, Ret> = (element: T, index: number, arr: Arr<T>) -> Ret
+type CallBackVar<T, Ret> = (element: T, index: number, arr: Arr<T>) -> ...Ret
+type CallBackWithUserdata<T, Ret, Userdata> = (element: T, index: number, arr: Arr<T>, userdata: Userdata) -> Ret
 
 -- 각 배열을 합친 새로운 배열을 만듭니다
 function arr_ifce.merge<T>(...: Arr<T>): Arr<T>
@@ -867,11 +856,35 @@ arr_ifce.__eq = arr_ifce.equal
 
 -- stylua: ignore start
 export type ArrInterface = typeof(arr_ifce)
-export type Arr<T> = {
-	n: number,
-	[number]: T,
-} & ArrInterface
-local Arr = (arr_ifce :: unknown) :: (<T>(...T|any) -> (Arr<T>)) & Arr<any>
+
+-- 인스턴스의 **데이터부**. 메소드는 여기 없습니다.
+export type ArrData<T> = { n: number, [number]: T }
+
+-- 인스턴스 타입. 데이터부와 인터페이스를 `&` 로 합치지 않고 **메타테이블
+-- 관계로** 선언합니다. 교집합으로 두면 구현부의 `self[idx] = ...` 쓰기가
+-- `ArrInterface`(= typeof(arr_ifce)) 쪽으로 새어 들어가 모듈 테이블에
+-- `[number]: T & nil` 인덱서가 붙고, 그 자유 `T` 때문에 `a:push(4)` 같은
+-- **정상 호출까지 "No valid instantiation" 으로 거부**됩니다
+-- (실측: .claude/audit/arr-type-redesign/).
+export type Arr<T> = setmetatable<ArrData<T>, { __index: ArrInterface }>
+
+-- 모듈이 밖으로 내보내는 **스태틱 표면**. 예전에는 `Arr<any>`(= 인스턴스
+-- 타입)를 그대로 교집합했는데, 그러면 모듈 테이블이 `n`/`[number]` 를 가진
+-- 것처럼 되고 생성자 호출이 전부 ambiguous 해집니다. 인스턴스 메소드는 여기
+-- 넣지 않습니다 — 그건 `Arr<T>` 로만 닿습니다.
+export type ArrStatic = {
+	sized: typeof(arr_ifce.sized),
+	from_table: typeof(arr_ifce.from_table),
+	clone_from_table: typeof(arr_ifce.clone_from_table),
+	from_iter: typeof(arr_ifce.from_iter),
+	from_func: typeof(arr_ifce.from_func),
+	pack: typeof(arr_ifce.pack),
+	merge: typeof(arr_ifce.merge),
+	range: typeof(arr_ifce.range),
+	is_arr: typeof(arr_ifce.is_arr),
+}
+
+local Arr = (arr_ifce :: unknown) :: (<T>(...T) -> Arr<T>) & ArrStatic
 
 return Arr
 -- stylua: ignore end
