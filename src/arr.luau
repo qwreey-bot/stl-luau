@@ -272,13 +272,24 @@ function arr_ifce.rotate<T>(self: Arr<T>, shift: number, start: number?, last: n
 	return arr_rotate_inplace(result, shift, at, result.n)
 end
 
--- 정렬된 새 배열을 돌려줍니다 (self 는 그대로).
--- table.sort 는 # 연산자로 범위를 잡기 때문에 trailing nil 이 있는 배열에서
--- 잘못된 구간을 정렬합니다. 1..n 을 조밀한 일반 테이블로 옮겨 정렬합니다.
-function arr_ifce.sorted<T>(self: Arr<T>, comp: common.Comparator<T>?): Arr<T>
-	local arr_len = self.n
-	local buffer = table.create(arr_len)
-	table.move(self, 1, arr_len, 1, buffer)
+-- self 의 1..n 중 nil 이 아닌 것만 buffer 에 조밀하게 모아 정렬하고, 모은
+-- 개수를 돌려줍니다.
+--
+-- 조밀하게 모으는 이유가 둘입니다:
+--   1. table.sort 는 # 연산자로 범위를 잡는데 이 저장소는 self.n 을 신뢰하는
+--      규약이라 trailing nil 이 있으면 엉뚱한 구간을 정렬하게 됩니다.
+--   2. 1..n 사이에 구멍이 있으면 비교 자체가 터집니다
+--      ("attempt to compare nil with number"). 사용자 비교자에도 nil 이
+--      넘어가지 않아야 합니다.
+local function sort_into<T>(self: Arr<T>, buffer: { T }, comp: common.Comparator<T>?): number
+	local count = 0
+	for idx = 1, self.n do
+		local item = self[idx]
+		if item ~= nil then
+			count += 1
+			buffer[count] = item
+		end
+	end
 	if comp then
 		-- table.sort 는 "a 가 b 보다 앞이냐" 를 묻습니다. compareTo 는 반대로
 		-- "a 가 b 보다 크냐(> 0)" 를 돌려주므로 인자를 뒤집어 씁니다. boolean
@@ -291,28 +302,30 @@ function arr_ifce.sorted<T>(self: Arr<T>, comp: common.Comparator<T>?): Arr<T>
 	else
 		table.sort(buffer)
 	end
+	return count
+end
+
+-- 정렬된 새 배열을 돌려줍니다 (self 는 그대로).
+-- 1..n 사이의 nil 구멍은 정렬 대상에서 빠지고 결과의 뒤쪽으로 몰립니다
+-- (JS Array.prototype.sort 와 같은 동작). n 은 그대로 보존됩니다.
+function arr_ifce.sorted<T>(self: Arr<T>, comp: common.Comparator<T>?): Arr<T>
+	local arr_len = self.n
+	local buffer = table.create(arr_len)
+	local count = sort_into(self, buffer, comp)
 	local result = arr_sized(arr_len)
-	table.move(buffer, 1, arr_len, 1, result)
+	table.move(buffer, 1, count, 1, result)
 	return result
 end
 -- sorted 의 제자리 버전
 function arr_ifce.sort_inplace<T>(self: Arr<T>, comp: common.Comparator<T>?): Arr<T>
 	local arr_len = self.n
 	local buffer = table.create(arr_len)
-	table.move(self, 1, arr_len, 1, buffer)
-	if comp then
-		-- table.sort 는 "a 가 b 보다 앞이냐" 를 묻습니다. compareTo 는 반대로
-		-- "a 가 b 보다 크냐(> 0)" 를 돌려주므로 인자를 뒤집어 씁니다. boolean
-		-- 비교자는 같음을 표현하지 못해서(compareTo 가 false 를 -1 로 접음)
-		-- compareTo(a, b) < 0 을 그대로 쓰면 동치인 원소끼리 양방향으로 참이
-		-- 되어 정렬이 깨집니다
-		table.sort(buffer, function(a, b)
-			return compareTo(b, a, comp) > 0
-		end)
-	else
-		table.sort(buffer)
+	local count = sort_into(self, buffer, comp)
+	table.move(buffer, 1, count, 1, self)
+	-- 걸러낸 nil 만큼 꼬리를 비웁니다 (n 은 유지)
+	for idx = count + 1, arr_len do
+		self[idx] = nil :: any
 	end
-	table.move(buffer, 1, arr_len, 1, self)
 	return self
 end
 --#endregion ----------- 순서 변경 -----------

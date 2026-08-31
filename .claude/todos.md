@@ -36,7 +36,13 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
    (`.claude/question.md` #2).
 8. **stylua 도입 여부** — 인덴트가 탭/스페이스로 혼재
    (`src/arr.luau` 는 탭, `src/tuple.luau`/`typeutil.luau` 는 스페이스 4칸).
-9. **`slice` 의 `to_start` 삽입 경로가 틀렸습니다.** `arr_ifce.slice` 에서
+9. **`max`/`min` 은 아직 `nil` 구멍에 안전하지 않습니다.** `1..n` 사이에
+   구멍이 있으면 `compareTo(nil, base)` 가 `nil - base` 로 터집니다.
+   `sorted` 는 2026-08-31 에 구멍을 걸러내도록 고쳤지만(정렬 대상에서 빼고
+   뒤로 몰기 — JS `Array.prototype.sort` 와 같은 동작) `max`/`min`/`sum`/`prod`
+   는 그대로입니다. 컨테이너 전반에서 구멍을 어떻게 다룰지 한 번에 정하는 게
+   나아 보입니다.
+10. **`slice` 의 `to_start` 삽입 경로가 틀렸습니다.** `arr_ifce.slice` 에서
    `to` 와 `to_start` 를 둘 다 주면 기존 원소를 밀어내려고
    `table.move(to, to_len - to_start + 1, to_len, to_start + move_len)` 을
    부르는데, 소스 구간이 잘못됐습니다. `to_len = 3, to_start = 2` 처럼
@@ -47,7 +53,7 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
    정해야 합니다** — 2026-08-31 에 추가한 `reverse` 는 같은 시그니처지만
    **덮어쓰기**로 구현돼 있어(테스트로 고정됨) 지금 둘이 어긋나 있습니다.
    `rotate` 는 `to_start` 를 생략해 이어붙이기 경로만 타므로 영향 없습니다.
-10. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
+11. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
    fast-path 관용구), warning 21건(2026-08-31 기준. `arr` 스텁을 구현하며
    46건에서 줄었고, 남은 건 대부분 다른 모듈 스텁의 미사용 파라미터입니다).
 
@@ -59,8 +65,12 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
   결정된 규약: **rotate 의 shift 는 양수 = 왼쪽 회전**(STL `std::rotate` 방향),
   **shuffle 은 rng 주입 가능**(`(min, max) -> number`, 기본 `math.random`),
   **정렬 비교자 방향은 `max`/`min` 과 동일**(`compareTo(a, b) > 0` 이면 a 가 큼).
-  `sorted` 는 `table.sort` 가 `#` 를 쓰기 때문에 `1..n` 을 조밀한 테이블로
-  옮겨 정렬합니다. `tests/arr.luau` 11~16절 추가.
+  `sorted`/`sort_inplace` 는 `1..n` 중 **`nil` 이 아닌 것만** 조밀하게 모아
+  정렬합니다 — `table.sort` 가 `#` 를 쓰는 문제와, 구멍이 있으면 비교가
+  터지는 문제(`attempt to compare nil`) 둘 다를 피하기 위함입니다. 구멍은
+  결과 뒤쪽으로 몰리고 `n` 은 보존됩니다(JS `Array.prototype.sort` 와 같은
+  동작). 사용자 비교자에도 `nil` 이 넘어가지 않습니다. `tests/arr.luau`
+  11~17절 추가.
 - **`arr` 버그 2건 수정 + 회귀 테스트(17절)**: `clear` 가 `table.clear` 로
   `__arr__` 태그까지 지워 비운 배열이 `is_arr` 를 통과하지 못했음
   (`slice_inplace` 의 빈 구간 경로도 같은 문제), `erase_inplace` 가 뒤집힌

@@ -266,6 +266,38 @@ do
 	local in_place = arr(3, 1, 4, 1, 5):sort_inplace()
 	assert_arr(in_place, arr(1, 1, 3, 4, 5), "sort_inplace")
 	assert(arr.is_arr(in_place), "sort_inplace 후에도 is_arr 여야 함")
+
+	-- 회귀: 1..n 사이에 nil 구멍이 있으면 "attempt to compare nil" 로 터졌음.
+	-- 구멍은 정렬 대상에서 빠지고 뒤로 몰리며 n 은 보존됩니다
+	local holed = arr.sized(5)
+	holed[1], holed[3], holed[5] = 3, 1, 2
+	local sorted_holed = holed:sorted()
+	assert(sorted_holed.n == 5, "sorted 가 n 을 보존해야 함")
+	assert(
+		sorted_holed[1] == 1 and sorted_holed[2] == 2 and sorted_holed[3] == 3,
+		"sorted 가 구멍을 건너뛰고 정렬해야 함"
+	)
+	assert(sorted_holed[4] == nil and sorted_holed[5] == nil, "sorted 가 구멍을 뒤로 몰아야 함")
+	assert(holed[1] == 3 and holed[2] == nil, "sorted 는 self 를 바꾸지 않음 (구멍 포함)")
+
+	-- 사용자 비교자에는 nil 이 넘어가지 않아야 합니다
+	local saw_nil = false
+	holed:sorted(function(a, b)
+		if a == nil or b == nil then
+			saw_nil = true
+		end
+		return (a :: any) > (b :: any)
+	end)
+	assert(not saw_nil, "비교자가 nil 을 받으면 안 됨")
+
+	local holed_inplace = arr.sized(4)
+	holed_inplace[2], holed_inplace[4] = 5, 1
+	holed_inplace:sort_inplace()
+	assert(holed_inplace.n == 4, "sort_inplace 가 n 을 보존해야 함")
+	assert(
+		holed_inplace[1] == 1 and holed_inplace[2] == 5 and holed_inplace[3] == nil and holed_inplace[4] == nil,
+		"sort_inplace 가 구멍을 뒤로 몰아야 함"
+	)
 	print("PASS")
 end
 

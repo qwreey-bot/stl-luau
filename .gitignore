@@ -3,3 +3,6 @@ roblox_packages/
 luau_packages/
 lune_packages/
 .pesde/
+
+# luau-lsp/rojo 가 생성하는 소스맵 (rojo sourcemap 으로 재생성 가능)
+sourcemap.json
