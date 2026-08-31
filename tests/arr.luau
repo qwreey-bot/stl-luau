@@ -188,6 +188,132 @@ do
 end
 
 print()
+print("=== 11. reverse / reverse_inplace ===")
+do
+	assert_arr(arr(1, 2, 3, 4, 5):reverse(), arr(5, 4, 3, 2, 1), "reverse (전체)")
+	assert_arr(arr(1, 2, 3, 4, 5):reverse(2, 4), arr(4, 3, 2), "reverse (부분 범위만 새 배열로)")
+	assert_arr(arr(1, 2, 3, 4, 5):reverse(-2, -1), arr(5, 4), "reverse (음수 인덱스)")
+	assert_arr(arr(1):reverse(), arr(1), "reverse (길이 1)")
+	assert_arr(arr():reverse(), arr(), "reverse (빈 배열)")
+
+	-- to 를 주면 기본적으로 뒤에 이어붙습니다
+	assert_arr(arr(1, 2, 3):reverse(nil, nil, arr(9)), arr(9, 3, 2, 1), "reverse (to 에 이어붙이기)")
+
+	-- self 는 건드리지 않아야 합니다
+	local origin = arr(1, 2, 3)
+	origin:reverse()
+	assert_arr(origin, arr(1, 2, 3), "reverse 는 self 를 바꾸지 않음")
+
+	assert_arr(arr(1, 2, 3, 4, 5):reverse_inplace(), arr(5, 4, 3, 2, 1), "reverse_inplace (전체)")
+	assert_arr(arr(1, 2, 3, 4, 5):reverse_inplace(2, 4), arr(1, 4, 3, 2, 5), "reverse_inplace (부분)")
+	assert_arr(arr(1, 2, 3, 4, 5):reverse_inplace(-3, -1), arr(1, 2, 5, 4, 3), "reverse_inplace (음수 인덱스)")
+	print("PASS")
+end
+
+print()
+print("=== 12. rotate / rotate_inplace ===")
+-- 규약: shift 가 양수면 왼쪽으로 회전합니다
+do
+	assert_arr(arr(1, 2, 3, 4, 5):rotate_inplace(1), arr(2, 3, 4, 5, 1), "rotate_inplace(+1) = 왼쪽")
+	assert_arr(arr(1, 2, 3, 4, 5):rotate_inplace(-1), arr(5, 1, 2, 3, 4), "rotate_inplace(-1) = 오른쪽")
+	assert_arr(arr(1, 2, 3, 4, 5):rotate_inplace(5), arr(1, 2, 3, 4, 5), "rotate_inplace (길이만큼 = 제자리)")
+	assert_arr(arr(1, 2, 3, 4, 5):rotate_inplace(7), arr(3, 4, 5, 1, 2), "rotate_inplace (길이 초과는 모듈러)")
+	assert_arr(arr(1, 2, 3, 4, 5):rotate_inplace(1, 2, 4), arr(1, 3, 4, 2, 5), "rotate_inplace (부분 범위)")
+	assert_arr(arr(1):rotate_inplace(1), arr(1), "rotate_inplace (길이 1)")
+	assert_arr(arr():rotate_inplace(1), arr(), "rotate_inplace (빈 배열)")
+
+	assert_arr(arr(1, 2, 3, 4, 5):rotate(2), arr(3, 4, 5, 1, 2), "rotate (전체)")
+	assert_arr(arr(1, 2, 3, 4, 5):rotate(2, 2, 5), arr(4, 5, 2, 3), "rotate (부분 범위만 새 배열로)")
+
+	local origin = arr(1, 2, 3)
+	origin:rotate(1)
+	assert_arr(origin, arr(1, 2, 3), "rotate 는 self 를 바꾸지 않음")
+	print("PASS")
+end
+
+print()
+print("=== 13. sorted / sort_inplace ===")
+do
+	assert_arr(arr(3, 1, 4, 1, 5):sorted(), arr(1, 1, 3, 4, 5), "sorted (기본 오름차순)")
+	assert_arr(arr():sorted(), arr(), "sorted (빈 배열)")
+
+	-- Comparator<T> 는 boolean 과 number 를 모두 받습니다 (common.compareTo)
+	assert_arr(arr(3, 1, 4, 1, 5):sorted(function(a, b)
+		return b - a
+	end), arr(5, 4, 3, 1, 1), "sorted (number 비교자, 내림차순)")
+	-- boolean 비교자는 "a 가 b 보다 크냐" 입니다 (common.compareTo 가 true 를
+	-- 1 로 접음) — max/min 과 같은 규약이라 내림차순은 a < b 로 씁니다
+	assert_arr(arr(3, 1, 4, 1, 5):sorted(function(a, b)
+		return a > b
+	end), arr(1, 1, 3, 4, 5), "sorted (boolean 비교자, 오름차순)")
+	assert_arr(arr(3, 1, 4, 1, 5):sorted(function(a, b)
+		return a < b
+	end), arr(5, 4, 3, 1, 1), "sorted (boolean 비교자, 내림차순)")
+
+	local origin = arr(3, 1, 2)
+	origin:sorted()
+	assert_arr(origin, arr(3, 1, 2), "sorted 는 self 를 바꾸지 않음")
+
+	assert_arr(arr(3, 1, 4, 1, 5):sort_inplace(), arr(1, 1, 3, 4, 5), "sort_inplace")
+	print("PASS")
+end
+
+print()
+print("=== 14. replace / replace_inplace ===")
+do
+	assert_arr(arr(1, 2, 3, 4, 5):replace(2, 3, arr(9, 9, 9)), arr(1, 9, 9, 9, 4, 5), "replace (더 긴 것으로)")
+	assert_arr(arr(1, 2, 3, 4, 5):replace(2, 4, arr(9)), arr(1, 9, 5), "replace (더 짧은 것으로)")
+	assert_arr(arr(1, 2, 3, 4, 5):replace(1, 5, arr(9)), arr(9), "replace (전체)")
+	assert_arr(arr(1, 2, 3, 4, 5):replace(2, 3, arr()), arr(1, 4, 5), "replace (빈 배열로 = 삭제)")
+	assert_arr(arr(1, 2, 3):replace(-1, -1, arr(9)), arr(1, 2, 9), "replace (음수 인덱스)")
+	-- start > last 는 빈 구간이므로 그 자리에 삽입만 합니다
+	assert_arr(arr(1, 2, 3):replace(2, 1, arr(9)), arr(1, 9, 2, 3), "replace (빈 구간 = 삽입)")
+
+	local origin = arr(1, 2, 3)
+	origin:replace(1, 1, arr(9))
+	assert_arr(origin, arr(1, 2, 3), "replace 는 self 를 바꾸지 않음")
+
+	assert_arr(arr(1, 2, 3, 4, 5):replace_inplace(2, 3, arr(9, 9, 9)), arr(1, 9, 9, 9, 4, 5), "replace_inplace")
+	print("PASS")
+end
+
+print()
+print("=== 15. erase / erase_inplace ===")
+do
+	assert_arr(arr(1, 2, 3, 4, 5):erase(2, 3), arr(1, 4, 5), "erase (가운데)")
+	assert_arr(arr(1, 2, 3, 4, 5):erase(), arr(), "erase (인자 없음 = 전체)")
+	assert_arr(arr(1, 2, 3, 4, 5):erase(-2, -1), arr(1, 2, 3), "erase (음수 인덱스)")
+
+	local origin = arr(1, 2, 3)
+	origin:erase(1, 1)
+	assert_arr(origin, arr(1, 2, 3), "erase 는 self 를 바꾸지 않음")
+
+	assert_arr(arr(1, 2, 3, 4, 5):erase_inplace(2, 4), arr(1, 5), "erase_inplace")
+	print("PASS")
+end
+
+print()
+print("=== 16. shuffle / shuffle_inplace ===")
+do
+	-- rng 를 주입해 결정적으로 검사합니다 (항상 하한을 고르는 rng)
+	local function lowest(lo: number, _hi: number): number
+		return lo
+	end
+	assert_arr(arr(1, 2, 3, 4, 5):shuffle_inplace(nil, nil, lowest), arr(2, 3, 4, 5, 1), "shuffle_inplace (결정적 rng)")
+	assert_arr(arr(1, 2, 3, 4, 5):shuffle_inplace(2, 4, lowest), arr(1, 3, 4, 2, 5), "shuffle_inplace (부분 범위)")
+
+	local origin = arr(1, 2, 3)
+	origin:shuffle(nil, nil, lowest)
+	assert_arr(origin, arr(1, 2, 3), "shuffle 은 self 를 바꾸지 않음")
+
+	-- 실제 난수로도 원소 구성(다중집합)과 길이는 보존돼야 합니다
+	local shuffled = arr(1, 2, 3, 4, 5):shuffle()
+	assert(shuffled.n == 5, "shuffle 이 길이를 보존해야 함")
+	assert_arr(shuffled:sorted(), arr(1, 2, 3, 4, 5), "shuffle 이 원소 구성을 보존해야 함")
+	print("PASS")
+end
+
+print()
 print("=== ALL PASS (arr) ===")
 
 -- tests/run.luau 가 require 로 이 파일을 끌어오므로 반드시 값을 하나 반환해야

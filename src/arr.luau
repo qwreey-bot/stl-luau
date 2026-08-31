@@ -183,25 +183,156 @@ function arr_ifce.pack<T>(...: T): Arr<T>
 	return arr_ifce(...)
 end
 
--- need entropy
-function arr_ifce.shuffle<T>() end
+--#region ----------- 순서 변경 -----------
+-- 무작위 셔플. rng 는 math.random 과 같은 (min, max) -> number 시그니처를
+-- 받습니다 — 테스트에서 결정적인 rng 를 주입할 수 있게 하기 위함입니다.
+function arr_ifce.shuffle_inplace<T>(self: Arr<T>, start: number?, last: number?, rng: ((min: number, max: number) -> number)?): Arr<T>
+	start, last = arr_range(self.n, start, last)
+	local random = rng or math.random
+	for idx = last :: number, start :: number + 1, -1 do
+		local jdx = random(start :: number, idx)
+		self[idx], self[jdx] = self[jdx], self[idx]
+	end
+	return self
+end
+local arr_shuffle_inplace = arr_ifce.shuffle_inplace
+-- 셔플한 새 배열을 만듭니다 (self 는 그대로)
+function arr_ifce.shuffle<T>(self: Arr<T>, start: number?, last: number?, rng: ((min: number, max: number) -> number)?): Arr<T>
+	return arr_shuffle_inplace(arr_ifce.clone(self), start, last, rng)
+end
 
-function arr_ifce.reverse(arr, start, last, to, to_start) end
-function arr_ifce.reverse_inplace(arr, start, last) end
+-- start~last 범위를 뒤집은 결과를 to (없으면 새 배열) 에 씁니다.
+-- to 를 줬을 때 to_start 는 "덮어쓸 시작 위치"이며 기본값은 to 의 끝(이어붙이기)입니다.
+function arr_ifce.reverse<T>(self: Arr<T>, start: number?, last: number?, to: Arr<T>?, to_start: number?): Arr<T>
+	start, last = arr_range(self.n, start, last)
+	local move_len = (last :: number) - (start :: number) + 1
+	if move_len < 0 then
+		move_len = 0
+	end
+	local result: Arr<T>
+	if to then
+		if to_start == nil then
+			to_start = to.n + 1
+		end
+		local write_last = (to_start :: number) + move_len - 1
+		if write_last > to.n then
+			to.n = write_last
+		end
+		result = to
+	else
+		if to_start == nil then
+			to_start = 1
+		end
+		result = arr_sized(move_len)
+	end
+	for offset = 0, move_len - 1 do
+		result[(to_start :: number) + offset] = self[(last :: number) - offset]
+	end
+	return result
+end
+-- 자기 자신의 start~last 범위를 뒤집습니다
+function arr_ifce.reverse_inplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+	start, last = arr_range(self.n, start, last)
+	local left, right = start :: number, last :: number
+	while left < right do
+		self[left], self[right] = self[right], self[left]
+		left += 1
+		right -= 1
+	end
+	return self
+end
+local arr_reverse_inplace = arr_ifce.reverse_inplace
 
-function arr_ifce.rotate(arr, shift, start, last, to) end
-function arr_ifce.rotate_inplace(arr, shift, start, last) end
+-- start~last 범위를 shift 만큼 회전합니다. **shift 가 양수면 왼쪽으로** 돌립니다
+-- (shift = 1 이면 [1,2,3] -> [2,3,1]). 음수는 오른쪽 회전이고, 범위 길이보다
+-- 큰 값은 모듈러로 접힙니다. 세 번 뒤집기(reverse) 로 구현합니다.
+function arr_ifce.rotate_inplace<T>(self: Arr<T>, shift: number, start: number?, last: number?): Arr<T>
+	start, last = arr_range(self.n, start, last)
+	local range_len = (last :: number) - (start :: number) + 1
+	if range_len <= 1 then
+		return self
+	end
+	local mid = shift % range_len
+	if mid == 0 then
+		return self
+	end
+	arr_reverse_inplace(self, start, start :: number + mid - 1)
+	arr_reverse_inplace(self, start :: number + mid, last)
+	arr_reverse_inplace(self, start, last)
+	return self
+end
+local arr_rotate_inplace = arr_ifce.rotate_inplace
+-- 회전한 범위를 to (없으면 새 배열) 에 이어붙입니다
+function arr_ifce.rotate<T>(self: Arr<T>, shift: number, start: number?, last: number?, to: Arr<T>?): Arr<T>
+	local at = if to then to.n + 1 else 1
+	local result = arr_ifce.slice(self, start, last, to)
+	return arr_rotate_inplace(result, shift, at, result.n)
+end
 
-function arr_ifce.sorted(arr, comp) end
+-- 정렬된 새 배열을 돌려줍니다 (self 는 그대로).
+-- table.sort 는 # 연산자로 범위를 잡기 때문에 trailing nil 이 있는 배열에서
+-- 잘못된 구간을 정렬합니다. 1..n 을 조밀한 일반 테이블로 옮겨 정렬합니다.
+function arr_ifce.sorted<T>(self: Arr<T>, comp: common.Comparator<T>?): Arr<T>
+	local arr_len = self.n
+	local buffer = table.create(arr_len)
+	table.move(self, 1, arr_len, 1, buffer)
+	if comp then
+		-- table.sort 는 "a 가 b 보다 앞이냐" 를 묻습니다. compareTo 는 반대로
+		-- "a 가 b 보다 크냐(> 0)" 를 돌려주므로 인자를 뒤집어 씁니다. boolean
+		-- 비교자는 같음을 표현하지 못해서(compareTo 가 false 를 -1 로 접음)
+		-- compareTo(a, b) < 0 을 그대로 쓰면 동치인 원소끼리 양방향으로 참이
+		-- 되어 정렬이 깨집니다
+		table.sort(buffer, function(a, b)
+			return compareTo(b, a, comp) > 0
+		end)
+	else
+		table.sort(buffer)
+	end
+	local result = arr_sized(arr_len)
+	table.move(buffer, 1, arr_len, 1, result)
+	return result
+end
+-- sorted 의 제자리 버전
+function arr_ifce.sort_inplace<T>(self: Arr<T>, comp: common.Comparator<T>?): Arr<T>
+	local arr_len = self.n
+	local buffer = table.create(arr_len)
+	table.move(self, 1, arr_len, 1, buffer)
+	if comp then
+		-- table.sort 는 "a 가 b 보다 앞이냐" 를 묻습니다. compareTo 는 반대로
+		-- "a 가 b 보다 크냐(> 0)" 를 돌려주므로 인자를 뒤집어 씁니다. boolean
+		-- 비교자는 같음을 표현하지 못해서(compareTo 가 false 를 -1 로 접음)
+		-- compareTo(a, b) < 0 을 그대로 쓰면 동치인 원소끼리 양방향으로 참이
+		-- 되어 정렬이 깨집니다
+		table.sort(buffer, function(a, b)
+			return compareTo(b, a, comp) > 0
+		end)
+	else
+		table.sort(buffer)
+	end
+	table.move(buffer, 1, arr_len, 1, self)
+	return self
+end
+--#endregion ----------- 순서 변경 -----------
 
+--#region ----------- 구간 치환/삭제 -----------
+-- start~last 구간을 with 의 내용으로 바꾼 새 배열을 만듭니다 (self 는 그대로)
 function arr_ifce.replace<T>(self: Arr<T>, start: number, last: number, with: Arr<T>): Arr<T>
-	return self
+	return arr_ifce.replace_inplace(arr_ifce.clone(self), start, last, with)
 end
+-- start~last 구간을 with 의 내용으로 바꿉니다. 구간이 비어 있으면(start > last)
+-- 그 자리에 삽입만 합니다
 function arr_ifce.replace_inplace<T>(self: Arr<T>, start: number, last: number, with: Arr<T>): Arr<T>
-	return self
+	local from, until_ = arr_range(self.n, start, last)
+	if from <= until_ then
+		arr_ifce.erase_inplace(self, from, until_)
+	end
+	return arr_ifce.insert_array(self, from, with)
 end
 
-function arr_ifce.erase<T>() end
+-- start~last 구간을 제거한 새 배열을 만듭니다 (self 는 그대로)
+function arr_ifce.erase<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+	return arr_ifce.erase_inplace(arr_ifce.clone(self), start, last)
+end
 function arr_ifce.erase_inplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
 	local len = self.n
 	start, last = arr_range(len, start, last)
