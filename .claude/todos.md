@@ -11,12 +11,11 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
 
 ## 다음 작업 후보
 
-1. **⭐ `Arr<T>` 타입 재설계 — TypeError 301건**(`./scripts/check.sh` 기준,
-   `src/arr.luau` 72 + `tests/arr.luau` 229).
-   **테스트 쪽 229건 중 205건이 `arr(1, 2, 3)` 호출 하나의 문제**입니다 —
-   `Arr` 가 "호출 가능한 함수" 와 "인스턴스" 를 한 intersection 으로
-   합쳐놔서 생성자 호출이 전부 ambiguous 합니다. 이 둘을 분리하는 게
-   첫 번째 후보이고, 사용자가 겪는 문제라 우선순위도 가장 높습니다.
+1. ~~**⭐ `Arr<T>` 타입 재설계**~~ — **2026-08-31 완료.**
+   음성 대조군 0/6 → 6/6, TypeError 301 → 41. 전문은
+   `.claude/audit/arr-type-redesign/REPORT.md`, 결론은
+   `.claude/base/typing-limits.md` 의 "재설계" 절.
+   **후속으로 남은 것**은 아래 10번(`src` 20건)과 11번(`tests` 21건).
    런타임은 정상이지만 타입이 new solver 를 못 따라갑니다. 이게 이 저장소의
    가장 큰 미해결 문제이고, "luau 로 가는 이유" 그 자체이기도 합니다.
    착수 전에 **반드시** `.claude/base/typing-limits.md` 와 그 문서가 가리키는
@@ -41,13 +40,19 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
    (`.claude/question.md` #2).
 8. **stylua 도입 여부** — 인덴트가 탭/스페이스로 혼재
    (`src/arr.luau` 는 탭, `src/tuple.luau`/`typeutil.luau` 는 스페이스 4칸).
-9. **`max`/`min` 은 아직 `nil` 구멍에 안전하지 않습니다.** `1..n` 사이에
+9. **재설계 이후 남은 타입 진단 정리** — `src/arr.luau` 20건은 생성자
+   본문(`table.create(n)` 결과에 `n`/`__arr__` 를 덧붙이는 패턴) 6건,
+   `slice` 의 `to_start`(아래 12번과 같은 자리) 3건, 파일 끝 `Arr` 캐스트
+   등입니다. `tests/arr.luau` 21건은 이종 중첩 배열(`arr(1, arr(2), 3):flat()`)
+   에서 `T` 가 안 풀리는 것과 무주석 콜백 파라미터입니다. **이제는 하나씩
+   볼 만한 진단이니** 숫자를 줄이려 하지 말고 원인별로 보세요.
+10. **`max`/`min` 은 아직 `nil` 구멍에 안전하지 않습니다.** `1..n` 사이에
    구멍이 있으면 `compareTo(nil, base)` 가 `nil - base` 로 터집니다.
    `sorted` 는 2026-08-31 에 구멍을 걸러내도록 고쳤지만(정렬 대상에서 빼고
    뒤로 몰기 — JS `Array.prototype.sort` 와 같은 동작) `max`/`min`/`sum`/`prod`
    는 그대로입니다. 컨테이너 전반에서 구멍을 어떻게 다룰지 한 번에 정하는 게
    나아 보입니다.
-10. **`slice` 의 `to_start` 삽입 경로가 틀렸습니다.** `arr_ifce.slice` 에서
+11. **`slice` 의 `to_start` 삽입 경로가 틀렸습니다.** `arr_ifce.slice` 에서
    `to` 와 `to_start` 를 둘 다 주면 기존 원소를 밀어내려고
    `table.move(to, to_len - to_start + 1, to_len, to_start + move_len)` 을
    부르는데, 소스 구간이 잘못됐습니다. `to_len = 3, to_start = 2` 처럼
@@ -58,11 +63,17 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
    정해야 합니다** — 2026-08-31 에 추가한 `reverse` 는 같은 시그니처지만
    **덮어쓰기**로 구현돼 있어(테스트로 고정됨) 지금 둘이 어긋나 있습니다.
    `rotate` 는 `to_start` 를 생략해 이어붙이기 경로만 타므로 영향 없습니다.
-11. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
+12. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
    fast-path 관용구), warning 21건(2026-08-31 기준. `arr` 스텁을 구현하며
    46건에서 줄었고, 남은 건 대부분 다른 모듈 스텁의 미사용 파라미터입니다).
 
 ## 완료된 작업 (2026-08-31 세션)
+
+- **⭐ `Arr<T>` 재설계 — 타입 검사가 죽어 있던 걸 살렸습니다.**
+  음성 대조군 6/6 검출, TypeError 301 → 41, 런타임 무변경.
+  `.claude/audit/arr-type-redesign/`(REPORT + 스파이크).
+- **타입 체크 방식을 quad 식으로 전환**: 체커 `luau-analyze`,
+  전 모듈 `--!strict`, `scripts/check.sh`, `mise.toml` 에 luau 고정.
 
 - **`arr` 의 빈 함수 10개 구현**: `shuffle`/`shuffle_inplace`,
   `reverse`/`reverse_inplace`, `rotate`/`rotate_inplace`,

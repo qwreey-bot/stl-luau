@@ -25,7 +25,8 @@ agent-memory 같은 무거운 장치는 아직 없습니다 — 필요해지면 
 | 무엇이 궁금할 때 | 어디를 볼 것 |
 |---|---|
 | 확정된 설계/현재 아키텍처 (런타임, require 규칙, 테스트 방식) | `.claude/base/architecture.md` |
-| **타입이 안 잡힐 때 / `Arr<T>` 가 왜 301건씩 에러를 내는지 / 왜 체커가 `luau-analyze` 인지** | `.claude/base/typing-limits.md` |
+| **타입이 안 잡힐 때 / 새 컨테이너 타입을 어떻게 선언할지 / 왜 체커가 `luau-analyze` 인지** | `.claude/base/typing-limits.md` |
+| `Arr<T>` 재설계 실측 전량(음성 대조군, 변형별 비교) | `.claude/audit/arr-type-redesign/REPORT.md` |
 | 사용자가 답해야 할 열린 질문 | `.claude/question.md` |
 | 예전 방식 스크래치 노트(Luau 메타메소드 참고, 초기 API 아이디어) | 루트 `notes`, `todo` |
 
