@@ -1,3 +1,4 @@
+--!strict
 --[[
 	src/arr.luau 스모크 테스트.
 

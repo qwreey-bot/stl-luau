@@ -1,3 +1,4 @@
+--!strict
 local exports = {}
 
 export type falsely = false?

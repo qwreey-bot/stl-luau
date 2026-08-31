@@ -1,3 +1,4 @@
+--!strict
 local common = require("./common")
 local compareTo = common.compareTo
 

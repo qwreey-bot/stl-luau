@@ -1,3 +1,4 @@
+--!nocheck
 local module = {}
 
 -- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만

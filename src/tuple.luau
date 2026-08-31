@@ -1,3 +1,4 @@
+--!nocheck
 local typeutil = require "./typeutil"
 
 local tuple_ifce = {}

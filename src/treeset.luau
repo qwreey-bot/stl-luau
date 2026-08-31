@@ -1,3 +1,4 @@
+--!strict
 local treeset = {}
 
 function treeset.from_function() end
