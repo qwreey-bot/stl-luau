@@ -198,6 +198,13 @@ do
 
 	-- to 를 주면 기본적으로 뒤에 이어붙습니다
 	assert_arr(arr(1, 2, 3):reverse(nil, nil, arr(9)), arr(9, 3, 2, 1), "reverse (to 에 이어붙이기)")
+	-- to_start 를 명시하면 그 자리부터 **덮어씁니다**(밀어내지 않습니다).
+	-- slice 의 to_start 와 다른 의미이니 주의 — .claude/todos.md 참고
+	assert_arr(
+		arr(1, 2, 3):reverse(nil, nil, arr(9, 9, 9, 9, 9), 2),
+		arr(9, 3, 2, 1, 9),
+		"reverse (to_start 지정 = 덮어쓰기)"
+	)
 
 	-- self 는 건드리지 않아야 합니다
 	local origin = arr(1, 2, 3)
@@ -224,6 +231,8 @@ do
 
 	assert_arr(arr(1, 2, 3, 4, 5):rotate(2), arr(3, 4, 5, 1, 2), "rotate (전체)")
 	assert_arr(arr(1, 2, 3, 4, 5):rotate(2, 2, 5), arr(4, 5, 2, 3), "rotate (부분 범위만 새 배열로)")
+	-- to 를 주면 이어붙인 구간만 회전해야 합니다 (앞의 원소는 그대로)
+	assert_arr(arr(1, 2, 3, 4, 5):rotate(2, nil, nil, arr(0)), arr(0, 3, 4, 5, 1, 2), "rotate (to 에 이어붙이기)")
 
 	local origin = arr(1, 2, 3)
 	origin:rotate(1)
@@ -254,7 +263,9 @@ do
 	origin:sorted()
 	assert_arr(origin, arr(3, 1, 2), "sorted 는 self 를 바꾸지 않음")
 
-	assert_arr(arr(3, 1, 4, 1, 5):sort_inplace(), arr(1, 1, 3, 4, 5), "sort_inplace")
+	local in_place = arr(3, 1, 4, 1, 5):sort_inplace()
+	assert_arr(in_place, arr(1, 1, 3, 4, 5), "sort_inplace")
+	assert(arr.is_arr(in_place), "sort_inplace 후에도 is_arr 여야 함")
 	print("PASS")
 end
 

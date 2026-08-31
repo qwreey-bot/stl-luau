@@ -36,7 +36,18 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
    (`.claude/question.md` #2).
 8. **stylua 도입 여부** — 인덴트가 탭/스페이스로 혼재
    (`src/arr.luau` 는 탭, `src/tuple.luau`/`typeutil.luau` 는 스페이스 4칸).
-9. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
+9. **`slice` 의 `to_start` 삽입 경로가 틀렸습니다.** `arr_ifce.slice` 에서
+   `to` 와 `to_start` 를 둘 다 주면 기존 원소를 밀어내려고
+   `table.move(to, to_len - to_start + 1, to_len, to_start + move_len)` 을
+   부르는데, 소스 구간이 잘못됐습니다. `to_len = 3, to_start = 2` 처럼
+   `to_len - to_start + 1 == to_start` 인 경우에만 우연히 맞고,
+   **`to_len = 5, to_start = 2, move_len = 2` 면 2..5 를 4..7 로 옮겨야 하는데
+   4..5 만 옮깁니다**. `to.n = to_len + move_len` 도 중간 삽입을 고려하지
+   않습니다. 고치려면 먼저 **`to_start` 가 "밀어내고 삽입"인지 "덮어쓰기"인지
+   정해야 합니다** — 2026-08-31 에 추가한 `reverse` 는 같은 시그니처지만
+   **덮어쓰기**로 구현돼 있어(테스트로 고정됨) 지금 둘이 어긋나 있습니다.
+   `rotate` 는 `to_start` 를 생략해 이어붙이기 경로만 타므로 영향 없습니다.
+10. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
    fast-path 관용구), warning 21건(2026-08-31 기준. `arr` 스텁을 구현하며
    46건에서 줄었고, 남은 건 대부분 다른 모듈 스텁의 미사용 파라미터입니다).
 
