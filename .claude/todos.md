@@ -11,7 +11,7 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
 
 ## 다음 작업 후보
 
-1. **⭐ `Arr<T>` 타입 재설계 — strict TypeError 47건.**
+1. **⭐ `Arr<T>` 타입 재설계 — strict TypeError 68건(`src/arr.luau` 기준).**
    런타임은 정상이지만 타입이 new solver 를 못 따라갑니다. 이게 이 저장소의
    가장 큰 미해결 문제이고, "luau 로 가는 이유" 그 자체이기도 합니다.
    착수 전에 **반드시** `.claude/base/typing-limits.md` 와 그 문서가 가리키는
@@ -27,9 +27,7 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
    - **크기(size)는 래퍼 구조로 분리**할 것 — `{ data = {...}, size = n }`.
      인스턴스에 `n` 을 직접 두면 `hashset<string>` 에서 `add(s, "n")` 이
      길이 필드를 덮어씁니다.
-3. **`arr` 미구현 함수 채우기** — `shuffle`/`reverse(_inplace)`/`rotate(_inplace)`/
-   `sorted`/`replace(_inplace)`/`erase` 가 빈 본문. 1번 재설계 이후가 나을 수
-   있습니다(시그니처가 바뀔 수 있으므로).
+3. ~~**`arr` 미구현 함수 채우기**~~ — 2026-08-31 완료. 아래 "완료된 작업" 참고.
 4. **`hashmap`/`treemap`/`heap` 착수** — 전부 빈 파일. 2번의 컨테이너 표현
    결정을 따라갑니다.
 5. **`tuple`/`typeutil` 방향 결정** (`.claude/question.md` #1).
@@ -39,8 +37,25 @@ hash/tree 컨테이너 표현, 라이선스/README)이며, 아래 1~2번 작업�
 8. **stylua 도입 여부** — 인덴트가 탭/스페이스로 혼재
    (`src/arr.luau` 는 탭, `src/tuple.luau`/`typeutil.luau` 는 스페이스 4칸).
 9. **selene 잔여 경고 정리** — 현재 error 2건(`empty_if` — `arr` 의
-   fast-path 관용구), warning 46건(대부분 스텁 함수의 미사용 파라미터).
-   스텁을 실제로 구현하면 대부분 자연히 사라집니다.
+   fast-path 관용구), warning 21건(2026-08-31 기준. `arr` 스텁을 구현하며
+   46건에서 줄었고, 남은 건 대부분 다른 모듈 스텁의 미사용 파라미터입니다).
+
+## 완료된 작업 (2026-08-31 세션)
+
+- **`arr` 의 빈 함수 10개 구현**: `shuffle`/`shuffle_inplace`,
+  `reverse`/`reverse_inplace`, `rotate`/`rotate_inplace`,
+  `sorted`/`sort_inplace`, `replace`/`replace_inplace`, `erase`.
+  결정된 규약: **rotate 의 shift 는 양수 = 왼쪽 회전**(STL `std::rotate` 방향),
+  **shuffle 은 rng 주입 가능**(`(min, max) -> number`, 기본 `math.random`),
+  **정렬 비교자 방향은 `max`/`min` 과 동일**(`compareTo(a, b) > 0` 이면 a 가 큼).
+  `sorted` 는 `table.sort` 가 `#` 를 쓰기 때문에 `1..n` 을 조밀한 테이블로
+  옮겨 정렬합니다. `tests/arr.luau` 11~16절 추가.
+- **`arr` 버그 2건 수정 + 회귀 테스트(17절)**: `clear` 가 `table.clear` 로
+  `__arr__` 태그까지 지워 비운 배열이 `is_arr` 를 통과하지 못했음
+  (`slice_inplace` 의 빈 구간 경로도 같은 문제), `erase_inplace` 가 뒤집힌
+  구간(`start > last`)에서 배열을 오히려 늘렸음.
+- 이 작업으로 `src/arr.luau` 의 TypeError 는 47 → 68 로 늘었습니다. 전부
+  기존과 같은 원인이며 1번 재설계 대상입니다(`.claude/base/typing-limits.md`).
 
 ## 완료된 작업 (2026-08-22 세션)
 

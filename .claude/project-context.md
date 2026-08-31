@@ -73,7 +73,7 @@ lune 을 걷어냈기 때문입니다(순수 luau 엔 `fs` 가 없어 소스 라
 
 | 모듈 | 상태 |
 |---|---|
-| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **다만 strict 타입 체크에서는 여전히 47건의 TypeError** — `.claude/base/typing-limits.md` 참고. `shuffle`/`reverse`/`reverse_inplace`/`rotate`/`rotate_inplace`/`sorted`/`replace`/`replace_inplace`/`erase`는 **시그니처만 있고 본문이 빈 함수** |
+| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **[2026-08-31]** 비어 있던 함수 10개를 구현했습니다(`shuffle(_inplace)`, `reverse(_inplace)`, `rotate(_inplace)`, `sorted`/`sort_inplace`, `replace(_inplace)`, `erase`) — **이제 `arr` 에 빈 본문은 없습니다**. 같이 버그 2건(`clear` 가 `__arr__` 태그 삭제, `erase_inplace` 가 뒤집힌 구간에서 배열을 늘림)도 고쳤습니다. **다만 strict 타입 체크에서는 여전히 TypeError 68건**(구현이 늘며 47 → 68) — `.claude/base/typing-limits.md` 참고 |
 | `common` | 완성(작음) |
 | `bsearch`, `heap` | 미착수 (빈 파일) |
 | `hashmap`, `hashset`, `treemap` | 미착수 (빈 파일) |

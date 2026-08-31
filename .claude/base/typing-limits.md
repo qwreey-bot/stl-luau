@@ -20,16 +20,23 @@ quad 의 같은 이름 문서(`/code/Projects/stl-luau-refs/quad/.claude/base/ty
 ## [2026-08-22 실측] `Arr<T>` 는 new solver 에서 통과하지 못합니다
 
 `luau-lsp analyze --platform=standard --flag:LuauSolverV2=true src/arr.luau`
-기준 **TypeError 47건**(2026-08-22 측정). 런타임 동작은 정상입니다
+기준 **TypeError 68건**(2026-08-31 측정, 이전 47건). 런타임 동작은 정상입니다
 (`tests/arr.luau` 전부 통과) — 즉 이건 "코드가 틀렸다" 가 아니라 **타입 표현이
 solver 를 못 따라간다** 는 문제입니다. 유형별로:
 
 | 건수 | 내용 |
 |---|---|
-| 29 | `No valid instantiation could be inferred for generic type parameter` — `table.move` 계열 호출에서 제네릭이 안 풀림 |
-| 6 | `Cannot add property 'n' / '__arr__' to table '{unknown}'` — `table.pack(...)`/`table.create(n)` 의 결과에 필드를 덧붙이는 패턴 |
-| 4 | `Expected this to be 'ArrInterface & {...}' but got '{ @metatable ArrInterface, {unknown} }'` — 메타테이블 + intersection 조합 |
-| 나머지 | 위 세 원인에서 파생된 `Expected type table, got ...` 류 |
+| 46 | `No valid instantiation could be inferred for generic type parameter` — `table.move` 계열 호출에서 제네릭이 안 풀림 |
+| 7 | `Cannot add property 'n' / '__arr__' to table '{unknown}'` — `table.pack(...)`/`table.create(n)` 의 결과에 필드를 덧붙이는 패턴 |
+| 5 | `Expected this to be 'ArrInterface & {...}' but got '{ @metatable ArrInterface, {unknown} }'` — 메타테이블 + intersection 조합 |
+| 2 | `Code is too complex to typecheck!` — `replace_inplace` 부근. intersection 이 `T & T & T & ...` 로 부풀어 solver 가 포기합니다 |
+| 나머지 | 위 원인에서 파생된 `Expected type table, got ...` 류 |
+
+**47 → 68 (2026-08-31)**: 빈 함수 10개를 구현하면서 늘었습니다. 새로 생긴
+21건은 전부 위 표의 기존 유형과 같은 원인(대부분 `table.move` 제네릭)이고,
+새로운 종류의 실패는 `Code is too complex to typecheck!` 2건뿐입니다.
+**구현을 더할수록 이 숫자는 계속 늘어납니다** — 재설계 전까지는 개별 함수에
+`:: any` 를 덧발라 숫자를 낮추지 마세요(원인을 가릴 뿐입니다).
 
 **[2026-08-22 해소] `Argument count mismatch` 7건**은 `sized(length, fill)` 의
 `fill: T` 를 `fill: T?` 로 고쳐 없앴습니다(`arr_sized(0)` 처럼 `fill` 을
