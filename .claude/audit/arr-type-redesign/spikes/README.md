@@ -3,6 +3,17 @@
 각 파일은 **기대 진단 건수**가 정해져 있습니다. 숫자가 달라지면 무언가 바뀐 것이니
 어느 NEG 가 사라졌는지 확인하세요. 전부 `luau-analyze <파일>` 로 돌립니다.
 
+**이 표는 설명용이고, 게이트가 실제로 읽는 것은
+`scripts/spike-expectations.tsv` 입니다**(`./scripts/check.sh` 가 매번 검사).
+표를 고쳤으면 거기도 같이 고치세요.
+
+**세는 규칙**(안 맞으면 대개 이걸 틀린 것):
+
+- **그 스파이크 파일 자신에서 난 것만.** `00-baseline` 은 `src` 를 `require`
+  하므로 그쪽 진단 21건이 같이 나오는데, 그건 세지 않습니다.
+- **`TypeError` 만.** `LocalUnused` 같은 린트 경고는 세지 않습니다
+  (스파이크는 변수를 선언만 하고 안 쓰는 게 정상이라 경고가 많이 납니다).
+
 | 파일 | 무엇을 재는가 | 기대 |
 |---|---|---|
 | `00-baseline-negative-control.luau` | 인스턴스 타입 안전성 (NEG 6 + CANARY) | 7건 |
@@ -15,7 +26,7 @@
 | `26-setmetatable-selfhandle-boundary.luau` | setmetatable + self 핸들 콜백 경계 | 5건 |
 | `27-constructor-organization.luau` | 생성자 조직 3안 (평평/콜러블/네임스페이스) | 9건 |
 | `29-intersection-at-scale.luau` | 63개 규모에서 교집합이 버티는가 | 4건 |
-| `30-final-design-at-scale.luau` | **확정 설계 전체** (63 메소드 + 네임스페이스) | 13건 |
+| `30-final-design-at-scale.luau` | **확정 설계 전체** (63 메소드 + 네임스페이스) | 12건 |
 | `31-callback-view-type.luau` | **콜백 뷰 타입** — 체이닝과 메소드 호출을 둘 다 얻는 경계 | 5건 |
 | `32-iter-and-fold.luau` | `__iter` 타이핑 + `Fold` 인자 순서 | 5건 |
 | `33-iter-typing-variants.luau` | `__iter` 선언 방식 3종 비교 | 3건 |

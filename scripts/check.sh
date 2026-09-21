@@ -18,9 +18,43 @@ echo
 echo "=== 타입 진단 요약 (파일별 TypeError)"
 printf '%s\n' "$out" | grep '): TypeError:' | grep -oE '^[^(]+' | sort | uniq -c
 echo "총 $(printf '%s\n' "$out" | grep -c '): TypeError:')건"
-# 타입 에러로 실패시키지 않습니다. Arr<T> 재설계(.claude/todos.md 1번) 전까지는
-# 300건대가 정상이고, 여기서 게이트를 걸면 스크립트가 늘 빨간불이라 쓸모가
-# 없어집니다. 이 스크립트는 그 숫자를 **재는** 도구이고, 게이트는 테스트입니다.
+# 총 건수로는 실패시키지 않습니다. 재작성이 끝날 때까지 src-old 가 남아 있어
+# 숫자가 계속 움직이고, 여기서 게이트를 걸면 스크립트가 늘 빨간불이라 쓸모가
+# 없어집니다. 이 스크립트는 그 숫자를 **재는** 도구이고, 게이트는 아래
+# 음성 대조군 배터리와 require 게이트와 테스트입니다.
+
+# ⭐ 음성 대조군 배터리 — 이 저장소에서 가장 중요한 게이트다.
+# 진단 건수가 0 이 되는 것은 "타입이 완벽해졌다" 가 아니라 보통 "타입 검사가
+# 죽었다" 는 뜻이다(2026-08-31 에 실제로 0/6 이었다). 스파이크마다 나와야 할
+# 에러 개수를 고정해두고, 줄면 NEG 가 조용히 안 잡히기 시작한 것으로 본다.
+echo
+echo "=== 음성 대조군 배터리 (스파이크별 기대 진단 건수)"
+spike_fail=0
+spike_n=0
+while IFS=$'\t' read -r want path; do
+	case "$want" in ''|\#*) continue ;; esac
+	if [ ! -f "$path" ]; then
+		echo "  MISSING  $path"
+		spike_fail=1
+		continue
+	fi
+	base=$(basename "$path")
+	got=$(luau-analyze "$path" 2>&1 |
+		grep -cE "(^|/)${base//./\\.}\([0-9]+,[0-9]+\): TypeError: ")
+	spike_n=$((spike_n + 1))
+	if [ "$got" != "$want" ]; then
+		echo "  FAIL  $path"
+		echo "        기대 $want 건, 실측 $got 건"
+		spike_fail=1
+	fi
+done < scripts/spike-expectations.tsv
+if [ "$spike_fail" = "0" ]; then
+	echo "  스파이크 $spike_n 개 전부 기대치와 일치"
+else
+	echo "  → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면"
+	echo "     scripts/spike-expectations.tsv 도 같이 고칠 것."
+	fail=1
+fi
 
 # ⭐ require 경로는 정적 검사가 못 잡는다 — @self 대신 ./ 를 쓰면 luau-analyze 는
 # 진단 0건으로 통과하고 런타임에서만 크래시한다(quad qa-round5 PS-9, 자체 실측).

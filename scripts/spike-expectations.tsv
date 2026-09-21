@@ -1,0 +1,38 @@
+# 음성 대조군 배터리 — 기대 진단 건수 (게이트의 단일 진실)
+#
+# 각 스파이크는 "이만큼의 TypeError 가 나야 정상" 입니다. 숫자가 줄면 음성
+# 대조군(NEG)이 조용히 안 잡히기 시작한 것이고, 늘면 의도치 않은 새 에러가
+# 생긴 것입니다. 둘 다 실패시킵니다.
+#
+# 세는 규칙: **그 스파이크 파일 자신에서 난 TypeError 만** 셉니다.
+#   - require 로 끌려온 다른 파일의 진단은 빼고,
+#   - 린트 경고(LocalUnused 등)도 빼고, TypeError 만.
+#
+# 형식: <기대건수><탭><파일경로>
+# 스파이크를 고쳤으면 이 숫자도 같이 고치세요. 각 audit 의 README 표는
+# 설명용이고, 게이트가 읽는 것은 이 파일입니다.
+
+7	.claude/audit/arr-type-redesign/spikes/00-baseline-negative-control.luau
+1	.claude/audit/arr-type-redesign/spikes/10-static-surface.luau
+2	.claude/audit/arr-type-redesign/spikes/11-intersection-prop-hole.luau
+5	.claude/audit/arr-type-redesign/spikes/22-export-shape-comparison.luau
+3	.claude/audit/arr-type-redesign/spikes/23-chain-type-preservation.luau
+5	.claude/audit/arr-type-redesign/spikes/24-typeof-named-fn-fix.luau
+6	.claude/audit/arr-type-redesign/spikes/25-quad-style-namespace.luau
+5	.claude/audit/arr-type-redesign/spikes/26-setmetatable-selfhandle-boundary.luau
+9	.claude/audit/arr-type-redesign/spikes/27-constructor-organization.luau
+4	.claude/audit/arr-type-redesign/spikes/29-intersection-at-scale.luau
+12	.claude/audit/arr-type-redesign/spikes/30-final-design-at-scale.luau
+5	.claude/audit/arr-type-redesign/spikes/31-callback-view-type.luau
+5	.claude/audit/arr-type-redesign/spikes/32-iter-and-fold.luau
+3	.claude/audit/arr-type-redesign/spikes/33-iter-typing-variants.luau
+5	.claude/audit/arr-type-redesign/spikes/34-iter-boundary.luau
+6	.claude/audit/arr-type-redesign/spikes/35-intersection-breaks-forin.luau
+6	.claude/audit/arr-type-redesign/spikes/36-fold-family.luau
+6	.claude/audit/container-contracts/spikes/00-contracts.luau
+1	.claude/audit/container-contracts/spikes/01-contract-vs-intersection.luau
+1	.claude/audit/container-contracts/spikes/02-mutating-method-variance.luau
+2	.claude/audit/container-contracts/spikes/03-declaration-order.luau
+1	.claude/audit/container-contracts/spikes/04-declaration-order-fixed.luau
+7	.claude/audit/list-index-abstraction/spikes/00-index-abstraction.luau
+6	.claude/audit/list-index-abstraction/spikes/01-combined-with-arr-scale.luau
