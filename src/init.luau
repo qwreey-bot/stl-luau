@@ -21,6 +21,7 @@
 local Types = require("@self/Types")
 local Common = require("@self/Common")
 local Algorithm = require("@self/Algorithm")
+local Arr = require("@self/Arr")
 
 -- 계약 타입은 최상위에서도 보이게 재수출합니다.
 export type Comparator<T> = Types.Comparator<T>
@@ -31,7 +32,19 @@ export type ListCore<E, I> = Types.ListCore<E, I>
 export type MapCore<K, V> = Types.MapCore<K, V>
 export type SetCore<T> = Types.SetCore<T>
 
+-- 컨테이너 타입
+export type Arr<T> = Arr.Arr<T>
+export type ArrData<T> = Arr.ArrData<T>
+export type ArrView<T> = Arr.ArrView<T>
+
 return {
 	Common = Common,
 	Algorithm = Algorithm,
+
+	-- 컨테이너 네임스페이스. **순수 테이블입니다** — 콜러블로 만들면 제네릭
+	-- 생성자가 타입 인자를 잃고 모듈 오타도 못 잡습니다(실측).
+	Arr = Arr,
+
+	-- 술어는 camelCase 로 최상위에 둡니다.
+	isArr = Arr.isArr,
 }

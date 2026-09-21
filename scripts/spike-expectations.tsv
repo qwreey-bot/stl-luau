@@ -37,3 +37,4 @@
 1	.claude/audit/container-contracts/spikes/04-declaration-order-fixed.luau
 7	.claude/audit/list-index-abstraction/spikes/00-index-abstraction.luau
 6	.claude/audit/list-index-abstraction/spikes/01-combined-with-arr-scale.luau
+13	.claude/audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau
