@@ -11,36 +11,34 @@ Index 저장 규약, `Record` 흡수, `Fut`/`Optional`).
 
 ## 📍 지금 여기 (2026-09-22 밤 작업 중)
 
-재작성 3단계까지 끝났습니다. **`check.sh` 가 exit 0** 이고 `src` 와
-`tests/spec.arr.luau` 는 **TypeError 0건**입니다.
+**컨테이너가 전부 섰습니다.** `check.sh` exit 0, 스파이크 30개 전부 기대치
+일치, `src` 는 TypeError 0건(남은 41건은 전부 `src-old` 와 `spec.arr-old` 몫).
 
-| 단계 | 상태 |
-|---|---|
-| 1단계 검증 장치 | ✅ 음성 대조군 배터리 게이트(스파이크 26개) |
-| 2단계 `Types`/`Common`/`Algorithm`/`init` | ✅ |
-| 3단계 `Arr.luau` + `spec.arr.luau` | ✅ 메소드 54 + 생성자 8 |
-| 4단계 `HashMap` / `HashSet` / `BSearch` | ✅ |
-| 4단계 `TreeMap` → `TreeSet` → `Heap` | ⬜ 다음 |
+| 모듈 | 메소드 | 테스트 | 음성 대조군 |
+|---|---|---|---|
+| `Types` / `Common` / `Algorithm` / `init` | — | — | — |
+| `Arr` | 54 + 생성자 8 | `spec.arr` | `spikes/40` |
+| `HashMap` / `HashSet` | 13 / 16 | `spec.hashmap` / `spec.hashset` | `spikes/41` |
+| `BSearch` | 5 | `spec.bsearch` | `spikes/42` |
+| `TreeMap` / `TreeSet` | 18 / 21 | `spec.treemap` / `spec.treeset` | `spikes/43` |
+| `Heap` | 11 | `spec.heap` | `spikes/44` |
 
-0건이 나왔다고 안심하면 안 되므로 **실제 `src/Arr` 를 쓰는 음성 대조군**을
-따로 뒀습니다 — `audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau`
-(NEG 10 + CANARY, 기대 13건). 이게 줄어들면 타입 검사가 죽은 것입니다.
+`audit/known-bugs/repro.luau` 도 새 API 로 옮겨 **0 실패**이고, 파일 끝에
+`assert(fails == 0)` 을 걸어 다시 깨지면 터집니다.
 
-밤 작업에서 자유롭게 정한 것들은 **`question.md` 의 "🌙 제가 정한 것들"** 에
-모았습니다(I~N). 전부 되돌리기 쉬운 것들입니다.
+밤 작업에서 자유롭게 정한 것들은 **`question.md` 의 "🌙 제가 정한 것들"**
+(I~N)에, 실측은 **`base/perf-measurements.md`** 에 전량 있습니다.
 
-실측한 것은 `base/perf-measurements.md` 에 전량 있습니다 — 메타테이블 세금
-1.59배, `table.move` 가 손 루프 대비 14.3배, `Iter()` 가 교집합에서도 타입이
-사는 것(`__iter` 불필요), 비교자 1.82배, 구멍 검사 13%.
+### 다음 할 일 — 마무리
 
-### 다음 할 일
-
-1. **`TreeMap`**(정렬 유지, `BSearch` 백엔드) → **`TreeSet`**(맵 위에
-   단방향) → **`Heap`**.
-2. 각 컨테이너마다 **음성 대조군 스파이크를 같이** 만들고
-   `scripts/spike-expectations.tsv` 에 등록할 것(지금 28개).
-3. 전부 서면 `src-old/` 와 `tests/spec.arr-old.luau` 를 지운다.
-4. 루트 정리(README/LICENSE 없음), `stylua.toml` 도입 여부.
+1. **`src-old/` 와 `tests/spec.arr-old.luau` 삭제.** 새 `Arr` 가 옛 기능을
+   덮는지 한 번 대조하고 지웁니다. 지우면 TypeError 총계가 0 이 됩니다 —
+   그때부터는 **총계에도 게이트를 걸 수 있습니다.**
+2. **`project-context.md` 의 모듈 표가 통째로 낡았습니다.** 새 구조로 갱신.
+3. **README / LICENSE** — 둘 다 없습니다(`question.md` 참고).
+4. **stylua 도입 여부** — 새 `src` 는 전부 탭으로 통일돼 있습니다.
+5. `Fut` / `Optional` / `Record` / `Tuple` / `TypeUtil` 방향
+   (`question.md` E, F). `src-old` 에만 있고 새 `src` 엔 없습니다.
 
 ## ⭐ 전면 재작성
 
