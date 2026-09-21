@@ -51,13 +51,22 @@ do
 	end
 	assert(#joined == 3, "Items 가 전부 나와야 합니다")
 
-	local iterCount = 0
-	for _item in s:Iter() do
+	-- ⭐ 두 형태가 다 되어야 합니다 — TreeSet 과 바꿔 끼울 수 있어야 하므로
+	-- `for _, item in` 이 되고, 셋다운 `for item in` 도 됩니다.
+	local iterCount, iterJoined = 0, ""
+	for _, item in s:Iter() do
 		iterCount += 1
+		iterJoined ..= item
 	end
-	assert(iterCount == 3, "Iter")
+	assert(iterCount == 3 and #iterJoined == 3, "Iter (두 변수)")
+	local shortCount, shortJoined = 0, ""
+	for item in s:Iter() do
+		shortCount += 1
+		shortJoined ..= item
+	end
+	assert(shortCount == 3 and #shortJoined == 3, "Iter (한 변수)")
 	local emptyCount = 0
-	for _item in (HashSet.New() :: HashSet<string>):Iter() do
+	for _, _item in (HashSet.New() :: HashSet<string>):Iter() do
 		emptyCount += 1
 	end
 	assert(emptyCount == 0, "빈 셋의 Iter 는 한 번도 안 돌아야 합니다")

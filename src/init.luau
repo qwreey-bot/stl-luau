@@ -25,6 +25,8 @@ local BSearch = require("@self/BSearch")
 local Arr = require("@self/Arr")
 local HashMap = require("@self/HashMap")
 local HashSet = require("@self/HashSet")
+local TreeMap = require("@self/TreeMap")
+local TreeSet = require("@self/TreeSet")
 
 -- 계약 타입은 최상위에서도 보이게 재수출합니다.
 export type Comparator<T> = Types.Comparator<T>
@@ -41,6 +43,8 @@ export type ArrData<T> = Arr.ArrData<T>
 export type ArrView<T> = Arr.ArrView<T>
 export type HashMap<K, V> = HashMap.HashMap<K, V>
 export type HashSet<T> = HashSet.HashSet<T>
+export type TreeMap<K, V> = TreeMap.TreeMap<K, V>
+export type TreeSet<T> = TreeSet.TreeSet<T>
 
 return {
 	Common = Common,
@@ -52,9 +56,13 @@ return {
 	Arr = Arr,
 	HashMap = HashMap,
 	HashSet = HashSet,
+	TreeMap = TreeMap,
+	TreeSet = TreeSet,
 
 	-- 술어는 camelCase 로 최상위에 둡니다.
 	isArr = Arr.isArr,
 	isHashMap = HashMap.isHashMap,
 	isHashSet = HashSet.isHashSet,
+	isTreeMap = TreeMap.isTreeMap,
+	isTreeSet = TreeSet.isTreeSet,
 }

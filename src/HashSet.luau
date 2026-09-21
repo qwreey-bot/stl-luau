@@ -87,10 +87,15 @@ const function Empty<T>(self: HashSetData<T>): boolean
 	return self.map.size == 0
 end
 
--- `for item in set:Iter() do … end`
--- 루프 변수가 하나입니다 — 값 자리엔 더미 `true` 가 올 뿐이라 뜻이 없습니다.
-const function iterStep<T>(data: { [T]: true }, item: T?): (T, true)
-	return (next :: any)(data, item)
+-- `for _, item in set:Iter() do … end`  (또는 `for item in …`)
+--
+-- ⭐ **원소를 두 자리 모두에 돌려줍니다.** 안쪽이 `{ [T]: true }` 라 `next` 가
+-- 키를 제어 변수로 써야 해서 첫 자리를 비울 수 없는데, 둘째에 더미 `true` 를
+-- 두면 `TreeSet`(인덱스로 도는 구조라 `for _, item in` 인 것)과 형태가 갈려
+-- 바꿔 끼울 수 없게 됩니다. 같은 값을 두 번 돌려주면 **양쪽 형태가 다 됩니다.**
+const function iterStep<T>(data: { [T]: true }, item: T?): (T, T)
+	const nextItem = (next :: any)(data, item)
+	return nextItem, nextItem
 end
 
 const function Iter<T>(self: HashSetData<T>): (typeof(iterStep), { [T]: true }, T?)
