@@ -75,6 +75,8 @@ export type Mapper<T, G> = (element: T, index: number, arr: ArrView<T>) -> G
 export type Predicate<T> = (element: T, index: number, arr: ArrView<T>) -> boolean
 export type Folder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<T>) -> U
 export type UntilFolder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<T>) -> (U, boolean?)
+-- 값을 여러 개 돌려줄 수 있는 변환 콜백. `Flatmap` 계열이 씁니다.
+export type Spreader<T, G> = (element: T, index: number, arr: ArrView<T>) -> ...G
 export type Rng = (min: number, max: number) -> number
 
 -- 런타임 메소드 테이블. 아래에서 채웁니다.
@@ -840,7 +842,7 @@ end
 
 -- 각 원소를 여러 값으로 펼쳐 이어붙인 **새 배열**. 콜백은 값 여러 개를
 -- 돌려줄 수 있습니다.
-const function Flatmap<T, G>(self: Arr<T>, fn: (element: T, index: number, arr: ArrView<T>) -> ...G, to: Arr<G>?): Arr<G>
+const function Flatmap<T, G>(self: Arr<T>, fn: Spreader<T, G>, to: Arr<G>?): Arr<G>
 	const out: Arr<G> = to or newSized(0)
 	local outLen = out.n
 	for idx = 1, self.n do
@@ -862,7 +864,7 @@ end
 
 -- `Flatmap` 의 제자리 판. 버퍼에 모은 뒤 한 번에 되돌려 씁니다 — 원소마다
 -- 밀면 O(n^2) 가 됩니다.
-const function FlatmapInplace<T, G>(self: Arr<T>, fn: (element: T, index: number, arr: ArrView<T>) -> ...G): Arr<G>
+const function FlatmapInplace<T, G>(self: Arr<T>, fn: Spreader<T, G>): Arr<G>
 	const len = self.n
 	const buffer = table.create(len)
 	local outLen = 0

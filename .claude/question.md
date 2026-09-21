@@ -62,13 +62,27 @@
 (C++ 의 반복자 무효화와 같은 이야기). **Luau 에선 타입으로 못 막습니다.**
 문서 규약으로 둘지, 세대 카운터로 런타임 검출할지.
 
-### E. `Record.luau` 를 없애도 되는가
+### E. `Record.luau` — **[2026-09-22 해소] `Types.Record` 로 흡수했습니다**
 
-지금 타입 별칭 한 줄뿐입니다. `Types.Record` 로 흡수하면 파일이 사라집니다.
+타입 별칭 한 줄뿐이었고 모듈 패턴도 안 따랐습니다. 지금은
+`Types.Record<K, V> = { key: K, value: V }` 이고 `HashMap`/`TreeMap` 의
+`Records()` 가 그걸 씁니다 — **실제 소비자가 생겼습니다.**
+다르게 생각하시면 말씀해 주세요.
 
-### F. `Fut` / `Optional`
+### F. `Fut` / `Optional` — **아직 열려 있습니다**
 
-`src/fut.luau` 가 뼈대만 있습니다. `Optional` 은 Luau 의 `T?` 로 충분한지.
+옛 `src/fut.luau` 는 네임스페이스와 메타테이블만 있는 **2줄짜리 뼈대**였고,
+재작성하면서 지웠습니다(git 히스토리에 있습니다). 새 `src` 에는 없습니다.
+
+물어볼 것 둘:
+
+1. **`Fut` 이 정말 필요한가.** 이 저장소는 순수 `luau` 로 돌고 스케줄러가
+   없습니다. 비동기 프리미티브를 여기서 만들면 실행기를 가정하게 됩니다 —
+   Roblox 의 task 스케줄러인지, lute 인지, mlua 호스트인지.
+2. **`Optional` 은 `T?` 로 충분해 보입니다.** Luau 에 이미 옵셔널 타입이
+   있고, `Get`/`Find`/`Max` 같은 것들이 전부 `T?` 를 돌려주도록 짜여 있어
+   일관됩니다. 감싸는 타입을 하나 더 두면 `if x then` 이 `if x:IsSome() then`
+   이 되는데, 그만한 값이 있는지 모르겠습니다.
 
 ---
 
@@ -161,15 +175,20 @@ for i, v in arr:Iter() do … end   -- i: number, v: T — 교집합인데도 �
 require 경로 규칙은 lune 시절과 **정반대**로 바뀌었으니
 `base/architecture.md` 의 "require 경로 규칙" 절 표를 보세요.
 
-## 1. `tuple.luau`/`typeutil.luau`의 type function 실험을 계속 밀 것인가?
+## 1. `Tuple`/`TypeUtil` 의 type function 실험을 계속 밀 것인가?
 
-Luau의 `type function`은 upstream에서도 실험적 기능입니다. 지금 두 파일은
-`return {}` placeholder이고 타입 레벨 튜플 확장(`TuplePush` 등)은 주석
-처리된 채로 막혀 있습니다(`src/tuple.luau:55-90`). 이 방향을 계속
-탐색할지, 아니면 (a) 런타임 전용으로 단순화하거나 (b) `tbox`의
-`packages/tbox/src/types.luau`가 이미 비슷한 type function 유틸을
-갖고 있으니 거기서 재사용/참고할 부분이 있는지 먼저 살펴볼지 판단이
-필요합니다.
+**재작성 후에도 그대로 살아 있습니다**(`src/Tuple.luau`, `src/TypeUtil.luau`).
+승인된 스캐폴딩 제안서가 "현행 유지(`--!nocheck`)" 라고 해서 파일명만
+PascalCase 로 바꾸고 머리말을 달았습니다. `init.luau` 에서 **export 하지
+않고** 다른 모듈이 의존하지 않습니다.
+
+⚠️ **이 둘만 `--!nocheck` 입니다.** 나머지는 전부 `--!strict` 이고
+TypeError 0건이 게이트인데, 이 둘은 검사에서 빠져 있습니다. 정식 API 로
+올리려면 먼저 `--!strict` 를 통과해야 합니다.
+
+계속 밀지, 아니면 (a) 런타임 전용으로 단순화할지, (b) `tbox` 의
+`packages/tbox/src/types.luau` 에 비슷한 유틸이 있으니 거기서 가져올지
+판단이 필요합니다.
 
 ## [해소됨, 2026-08-22] hash/tree 컨테이너 표현
 
@@ -179,7 +198,7 @@ Luau의 `type function`은 upstream에서도 실험적 기능입니다. 지금 �
 `hashset.luau` 로 옮기고, `treeset` 은 정렬 구조로 새로 작성합니다.
 실제 작업은 `.claude/todos.md` 2번 항목.
 
-## [해소됨, 2026-08-22] tbox 코드 스타일(`const`) 이식 여부
+## [낡음 — 아래 2026-09-21 결정이 뒤집었습니다] tbox 코드 스타일(`const`)
 
 **이식하지 않습니다.** `local` 을 씁니다. 사용자 확인: *"그거 quad 에서는
 툴링때문에 버린 문법이야 local 씀"* — quad 가 이미 툴링 문제로 폐기한
@@ -201,5 +220,38 @@ List.of() 형태로 이미 외부에 선례 사례가 존재함"*. 이걸로 모
 ## 3. 라이선스와 README 를 어떻게 할까?
 
 `tbox`/`quad` 둘 다 MIT + README 를 갖췄지만 stl-luau 엔 둘 다 없습니다.
-공개 배포(pesde publish)를 염두에 둔다면 필요합니다 — 라이선스를 MIT 로
-할지, 저작자 표기를 어떻게 할지 확인이 필요합니다.
+
+**제가 정하지 않았습니다.** 라이선스는 소유권에 관한 결정이고, README 는
+"이걸 공개 배포할 것인가" 라는 의도가 먼저입니다. `origin` 이 이미
+`github.com/qwreey/stl-luau` 로 잡혀 있으니 공개 의도는 있어 보이지만,
+확인 없이 쓰지 않았습니다.
+
+물어볼 것: **(a) MIT 로 할지, (b) 저작자 표기를 어떻게 할지,
+(c) README 를 지금 쓸지 API 가 더 굳은 뒤에 쓸지.**
+
+말씀해 주시면 README 초안은 바로 씁니다 — 컨테이너 일곱 개의 공개 표면과
+구간 규약, 순회 안내표, 타입 함정 셋은 이미 전부 문서화돼 있어 옮기면 됩니다.
+
+## 4. stylua 를 도입할까? — **[2026-09-22] 지금은 안 합니다**
+
+**바이너리가 이 환경에 없습니다.** 예전 문서가 "로컬에 stylua 가 있다" 고
+적고 있었는데 낡았습니다(`mise.toml` 에도 없습니다). 그래서 **도입했을 때
+코드가 얼마나 바뀌는지를 잴 수 없어** 넣지 않았습니다 — 재보지 않고 포매터를
+들이면 다음 diff 가 통째로 포맷 변경이 됩니다.
+
+지금 상태는 이미 사실상 규격에 맞습니다:
+
+- `src`/`tests` 전부 **탭 들여쓰기로 통일**(재작성으로 혼재가 사라졌습니다)
+- **120자 초과 줄 0개**
+
+도입한다면 `tbox`/`quad` 와 같은 설정이 맞습니다:
+
+```toml
+syntax = "Luau"
+column_width = 120
+indent_type = "Tabs"
+indent_width = 4
+```
+
+**먼저 `mise.toml` 에 stylua 를 고정**하고 `stylua --check` 로 영향을 재본
+다음에 넣으세요.
