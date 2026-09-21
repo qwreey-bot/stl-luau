@@ -9,6 +9,20 @@
 **`arr(1, 2, 3)` 호출 형태 vs `arr.오타` 검출**, 라이선스/README)이며,
 아래 작업들을 막고 있진 않습니다.
 
+## ⭐ 지금 하는 것 — 전면 재작성
+
+**계획서: `.claude/base/rewrite-plan.md`** (2026-09-21 확정). 공개 API 를 전부
+바꿉니다 — stl-luau 는 한 번도 반출된 적이 없어 breaking change 가 아닙니다.
+
+1. **1단계 검증 장치** — `check.sh` 에 음성 대조군 배터리 게이트, selene 제거,
+   pesde 0.7.4.
+2. **2단계 `src/Types.luau`** — 타입 단일 파일(quad-types 방식).
+3. **3단계 `src/Arr.luau` 재작성** — 메소드 54 + 생성자 9, 테스트 동시 재작성.
+4. **4단계 나머지 컨테이너** — HashSet → TreeSet(+BSearch) → HashMap →
+   TreeMap → Heap.
+
+아래 "다음 작업 후보" 의 항목 중 재작성에 흡수되는 것은 그때 정리합니다.
+
 ## 다음 작업 후보
 
 1. ~~**⭐ `Arr<T>` 타입 재설계**~~ — **2026-08-31 완료.**
