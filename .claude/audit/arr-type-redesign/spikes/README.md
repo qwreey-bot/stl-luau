@@ -17,6 +17,10 @@
 | `29-intersection-at-scale.luau` | 63개 규모에서 교집합이 버티는가 | 4건 |
 | `30-final-design-at-scale.luau` | **확정 설계 전체** (63 메소드 + 네임스페이스) | 13건 |
 | `31-callback-view-type.luau` | **콜백 뷰 타입** — 체이닝과 메소드 호출을 둘 다 얻는 경계 | 5건 |
+| `32-iter-and-fold.luau` | `__iter` 타이핑 + `Fold` 인자 순서 | 5건 |
+| `33-iter-typing-variants.luau` | `__iter` 선언 방식 3종 비교 | 3건 |
+| `34-iter-boundary.luau` | for-in 타이핑이 죽는 경계 찾기 | 5건 |
+| `35-intersection-breaks-forin.luau` | **교집합이 for-in 을 깬다는 최소 재현** | 6건 |
 
 ## 규모 실측 (2026-09-21, luau 0.734)
 
@@ -67,3 +71,37 @@
 `31-callback-view-type.luau` 에서 콜백 안의 `arr.n` / `arr:Len()` / `arr:Join(",")`
 / `arr:Slice(1, idx):Len()` 이 전부 동작하면서 바깥 3단 타입 변환 체이닝이
 `ArrData<number> & ArrIfce` 로 정확히 유지되는 것을 확인했습니다. 규모 증상 0건.
+
+## ⭐ 교집합 타입은 `for-in` 루프 변수의 타입을 잃는다
+
+`35-intersection-breaks-forin.luau` (최소 재현, 30줄):
+
+| 타입 | `x[1]` 직접 인덱싱 | `for _, v in x` |
+|---|---|---|
+| `{ n: number, [number]: number }` (평범) | ✅ | ✅ `v: number` |
+| **`{…} & { Len: … }` (교집합)** | ✅ | ❌ **`v: Unifiable<Error>`** |
+| `setmetatable<{…}, {__index: …}>` | ✅ | ✅ `v: number` |
+
+**`__iter` 와 무관합니다** — `__iter` 를 아예 안 달아도 교집합이면 죽습니다.
+Luau 의 for-in 은 테이블의 **인덱서**를 보고 루프 변수를 타이핑하는데,
+교집합의 인덱서를 못 봅니다. 진단은 0건이라 **조용히 죽습니다.**
+
+### 이게 만드는 딜레마
+
+| | 메소드 63개 규모 | `for-in` 타이핑 |
+|---|---|---|
+| 교집합 `&` | ✅ 클린 | ❌ 죽음 |
+| `setmetatable<>` | ❌ 30개에서 붕괴 | ✅ 산다 |
+
+둘 다 가질 수 없습니다. **교집합을 택했으므로 `for-in` 은 타입을 잃습니다.**
+
+### 그래서 순회는 이렇게 안내한다
+
+| 방법 | 속도 | 타입 |
+|---|---|---|
+| **`for i = 1, arr.n do … arr[i] …`** | **1.00x (가장 빠름)** | ✅ 살아있음 |
+| `arr:Fold(init, fn)` 콜백 | 2.54x | ✅ 콜백 파라미터가 타이핑됨 |
+| `for _, v in arr` (`__iter`) | 2.80x | ❌ 죽음 |
+
+**세 축 모두에서 `for i = 1, arr.n` 이 이기거나 비깁니다.** 직접 인덱싱은
+교집합에서도 타입이 살아있습니다(위 표 첫 열).
