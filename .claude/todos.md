@@ -9,7 +9,24 @@
 **`arr(1, 2, 3)` 호출 형태 vs `arr.오타` 검출**, 라이선스/README)이며,
 아래 작업들을 막고 있진 않습니다.
 
-## ⭐ 지금 하는 것 — 전면 재작성
+## 📍 지금 여기 (2026-09-21)
+
+**스캐폴딩 제안서를 썼고 사용자 검토를 기다립니다** —
+`.claude/base/scaffolding-proposal.md`. 질문은 `.claude/question.md` 의
+"지금 답을 기다리는 것" 절에 모았습니다(A 만 다음 작업을 막습니다).
+
+조사·검증은 사용자 대응 없이 할 수 있는 데까지 했습니다:
+
+- `.claude/audit/container-contracts/` — 계약 3종이 Luau 에서 서는 것 확인,
+  **실제로 도는 4파일 골격**, 모듈 분할 가능 여부, 선언 순서 누수 발견
+- `.claude/audit/list-index-abstraction/` — 위치 타입 제네릭이 54개 메소드와
+  합쳐도 버팀
+- `.claude/arr-worklist.md` — 메소드 54개 작업 체크리스트
+- `.claude/audit/known-bugs/` — 버그 재현(지금 5건 실패가 정상)
+- `.claude/base/container-design-notes.md` — Java/Rust/C++ 와 예전 과제에서
+  얻은 설계 교훈
+
+## ⭐ 전면 재작성
 
 **계획서: `.claude/base/rewrite-plan.md`** (2026-09-21 확정). 공개 API 를 전부
 바꿉니다 — stl-luau 는 한 번도 반출된 적이 없어 breaking change 가 아닙니다.
