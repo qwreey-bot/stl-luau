@@ -1,8 +1,28 @@
 # `src/` 스캐폴딩 제안서
 
-**상태: 2026-09-22 사용자 승인 — 이대로 갑니다.** 아직 `rewrite-plan.md` 로
-흡수하지 않았습니다(구현이 끝나면 이 파일을 지우고 계획서에 합칩니다).
+**상태: ✅ 실현 완료 (2026-09-22).** 사용자 승인 후 그대로 구현했습니다.
 `Set` 을 `Map` 위에 얹는 건에 대한 사용자 답: *"그래도 돼."*
+
+**이 파일은 이제 결정 기록입니다.** 지금 상태를 알고 싶으면 여기가 아니라
+아래를 보세요:
+
+| 무엇 | 어디 |
+|---|---|
+| 현재 모듈 구조와 각 파일이 뭘 하는지 | `.claude/project-context.md` |
+| 모듈 패턴·컨테이너 표현·비교·구간 정규화 | `.claude/base/architecture.md` |
+| 파일이 커지면 쪼개는 법 | `.claude/base/architecture.md` (옮겨왔습니다) |
+| 실측 수치 | `.claude/base/perf-measurements.md` |
+
+제안 당시 열어뒀던 것들의 결말:
+
+- **`Set` 을 `Map` 위에 얹는 대가** — 실측했습니다. 셋이 자기 맵의 안쪽을
+  직접 읽으면 1.17배, 맵의 공개 API 를 거치면 1.85배. 우려는 피할 수
+  있었고 남는 비용은 셋 하나당 고정 192바이트입니다.
+- **전략 주입** — 비교자(`Comparator`)만 주입합니다. **해시 함수는 주입하지
+  않습니다** — Luau 테이블 자체가 해시맵이라 소비자가 없었습니다
+  (`question.md` M).
+- **`Record.luau`** — `Types.Record` 로 흡수했습니다.
+- **`Fut`/`Optional`** — 아직 열려 있습니다(`question.md` F).
 
 근거: `.claude/audit/container-contracts/`(계약·골격·모듈분할 실측),
 `.claude/audit/arr-type-redesign/`(타입 설계), `.claude/base/container-design-notes.md`

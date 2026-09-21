@@ -124,60 +124,126 @@ luau-analyze src tests      # 타입 검사 + 린트
   2026-09-21 폐기 — `const` 를 파싱하지 못하고 0.31.0 이 최신이라 올릴 곳이
   없었습니다. 잃은 것은 `empty_if`/`empty_loop` 과 미사용 변수 탐지 정밀도.
 
-## 컨테이너 표현: length-tagged table
+## 컨테이너 표현 — 종류마다 다릅니다
 
-`arr` 컨테이너는 Lua 배열을 `{ n: number, [number]: T }`로 감쌉니다
-(`src/arr.luau:727-730`의 `Arr<T>` 타입 정의). 기본 `#` 연산자는 쓰지 않고
-항상 `self.n`을 신뢰합니다. 추가로 `rawget(value, "__arr__")`로 런타입
-판별이 가능하도록 태그 필드를 심습니다(`arr_ifce.is_arr`, `src/arr.luau:163`).
-이유로 추정되는 것: Lua의 `#`는 희소 배열(trailing `nil`)에서 정의되지
-않은 동작을 하므로, 명시적 길이 필드로 이를 피합니다.
+**[2026-09-22 전면 재작성 후 확정]**
 
-새 컨테이너(`hashmap`/`hashset`/`treemap`/`treeset` 등)도 이 규약(길이
-필드 + 태그 필드 + `is_*` 판별 함수)을 따를지, 아니면 컨테이너 종류별로
-다른 표현이 필요한지는 아직 결정되지 않았습니다 — hash/tree 기반 구조는
-연속 정수 인덱스가 아니므로 `n` 필드가 그대로 적용되지 않을 수 있습니다.
-`.claude/question.md` 참고.
+| 컨테이너 | 표현 | 왜 |
+|---|---|---|
+| `Arr` | `{ n: number, [number]: T }` + `__arr__` 태그 | 연속 정수 인덱스. `#` 는 희소 배열에서 정의되지 않으므로 `n` 을 신뢰 |
+| `HashMap` | `{ data: { [K]: V }, size: number }` | 키를 `self` 에 바로 넣으면 `Set("size", v)` 가 길이 필드를 덮어씀 |
+| `HashSet` | `{ map: HashMap<T, true> }` | 맵 위에 단방향 |
+| `TreeMap` | `{ records: { Record }, size, compare, probe }` | 정렬 레코드 배열 + 이분 탐색 |
+| `TreeSet` | `{ map: TreeMap<T, true> }` | 맵 위에 단방향 |
+| `Heap` | `{ items: { T }, size, less }` | 배열에 담은 완전이진트리 |
 
-## 모듈 팩토리 패턴
+공통 규칙 셋:
 
-각 컨테이너 모듈은 다음 형태를 따릅니다(`src/arr.luau:1-16` 참고):
+- **길이는 명시 필드가 진실입니다.** `#` 를 믿지 않습니다.
+- **해시/트리 계열은 래퍼**입니다. 사용자 키가 내부 필드를 덮어쓸 수 없게.
+- **`data`/`records`/`items` 를 밖에서 건드리면 크기가 틀어집니다.** 읽기만
+  하세요. 안쪽을 직접 다뤄야 하는 구현(예: `HashSet` 이 자기 `HashMap` 을)은
+  같은 저장소 안이라 괜찮지만, 그게 아니면 공개 메소드를 쓰세요.
+
+런타임 판별은 컨테이너마다 다릅니다 — `Arr` 만 태그 필드(`__arr__`)를 쓰고
+(중첩 배열을 평탄화할 때 원소가 배열인지 봐야 하므로), 나머지는 메타테이블
+동일성(`getmetatable(v) == Ifce`)으로 봅니다.
+
+## 모듈 패턴
+
+**[2026-09-22 확정]** 각 컨테이너 모듈은 다음 형태입니다. `src/Arr.luau` 가
+정석이고 `src/HashMap.luau` 가 가장 작은 예입니다.
 
 ```lua
-local X_ifce = {}
-local X_constructor = {}
-X_ifce.__index = X_ifce
+local Types = require("./Types")
 
-function X_constructor.__call<T>(_, ...): X<T>
-    local result = ...
-    setmetatable(result, X_ifce)
-    return result
-end
-setmetatable(X_ifce, X_constructor)
+export type XxxData<T> = { … }          -- 데이터부
+local Ifce: XxxIfce & Types.SomeCore<…> -- 런타임 메소드 테이블 (전방 선언)
+
+const function Foo<T>(self: Xxx<T>, …) … end   -- 이름 붙은 top-level 함수들
+
+type XxxIfce = { Foo: typeof(Foo), … }  -- typeof 로 나열
+export type Xxx<T> = XxxData<T> & XxxIfce & Types.SomeCore<…>  -- 교집합
+
+Ifce = { Foo = Foo, … } :: any
+;(Ifce :: any).__index = Ifce
+
+return { New = New, … }                 -- 순수 테이블 네임스페이스
 ```
 
-즉 모듈 자체(`X_ifce`)가 인스턴스의 메타테이블이면서, 동시에 `X_constructor`를
-메타테이블로 얹어 **모듈을 직접 호출하면 생성자로 동작**합니다(`arr(1,2,3)`
-처럼). `src/tuple.luau`도 같은 패턴을 따르되 아직 완성되지 않았습니다.
+네 가지가 전부 실측으로 강제된 것입니다:
 
-## Comparator
+- **교집합(`&`)** — `setmetatable<>` 은 메소드 30개에서 무너집니다.
+- **이름 붙은 함수 + `typeof`** — 인라인 제네릭은 반환이 `Unifiable<Error>`
+  로 샙니다.
+- **순수 테이블 네임스페이스** — `__call` 로 만들면 제네릭 생성자가 타입
+  인자를 잃고 모듈 오타도 못 잡습니다.
+- **계약이 주는 멤버는 `XxxIfce` 에 다시 쓰지 않음** — self 타입이 달라
+  교집합이 충돌하고 메소드 타입이 통째로 죽습니다(진단 0건으로).
 
-`src/common.luau`의 `Comparator<T> = (a,b)->boolean & (a,b)->number` 유니온과
-`compareTo` 어댑터가 정렬/비교 관련 함수의 공통 인터페이스입니다. `arr.max`/
-`arr.min`은 시그니처에 `comp`를 받지만 **아직 실제로 쓰지 않습니다**
-(`src/arr.luau:544,555`, `--FIXME: comp 를 사용하도록 재작성` 주석 있음).
+자세한 근거는 `.claude/base/typing-limits.md` 와
+`.claude/audit/arr-type-redesign/REPORT.md`.
 
-## range 정규화
+## 비교 — 통화가 둘입니다
 
-`arr_ifce.range(arr_len, start, last)`가 음수 인덱스(끝에서부터)를 양수로
-정규화하는 공통 헬퍼입니다(`src/arr.luau:157-160`). `slice`, `erase_inplace`,
-`some`, `every`, `rangeflat` 등이 이걸 공유합니다. 새 range 기반 함수는
-직접 정규화 로직을 짜지 말고 이 헬퍼를 재사용하세요.
+**[2026-09-22 확정, 실측 근거 있음]**
 
-[테스트 방식은 위 "테스트: assert + print" 절이 소스입니다. 예전에 여기
-있던 `libs/test-luau` 프레임워크 계약 서술은 2026-08-22 lune 제거와 함께
-폐기됐고, 서브모듈도 같은 날 제거했습니다.]
+| 타입 | 모양 | 어디에 |
+|---|---|---|
+| `Types.LessThan<T>` | `(a, b) -> boolean` | **정렬·최대·최소·힙** |
+| `Types.Comparator<T>` | `(a, b) -> number` (3방향) | **정렬된 구조에서의 탐색** (`BSearch`, `TreeMap`, `TreeSet`) |
 
+`table.sort` 가 불리언을 받으므로 3방향을 쓰면 비교마다 래퍼 클로저가 붙어
+**1.82배** 느려집니다. 반대로 탐색은 "작다/같다/크다" 를 한 번에 알아야
+하는데 불리언이면 두 번 물어야 합니다. 그래서 갈랐습니다.
+
+둘 사이는 `Common.lessFrom` / `Common.compareFrom` 으로 건넙니다.
+**자동 변환은 일부러 넣지 않았습니다** — 비용이 눈에 보여야 합니다.
+
+옛 `common.luau` 의 "불리언과 숫자를 둘 다 받는 유니언 + `compareTo` 어댑터"
+는 폐기했습니다. 비교마다 반환 타입을 분기해야 했습니다.
+
+## 구간 정규화
+
+`src/Arr.luau` 안의 비공개 헬퍼 **둘**입니다. 새 구간 함수를 만들 때 직접
+정규화하지 말고 이걸 쓰세요.
+
+| 헬퍼 | 유효 범위 | 쓰는 곳 |
+|---|---|---|
+| `resolveRange(len, start?, last?)` | `1 .. len` | 조회·삭제 (`Slice`, `Erase`, `Fill`, `Some`, `Every`, `Flat`, 순서 연산) |
+| `resolveInsertPos(len, at)` | **`1 .. len + 1`** | 삽입 (`Insert`, `InsertMany`, `InsertArray`) |
+
+⚠️ **둘을 나눈 것이 핵심입니다.** 삽입 위치는 원소 위치보다 범위가 하나
+넓습니다(`len + 1` 이 "맨 뒤에 붙이기"). 같은 함수로 처리하면 **맨 뒤 삽입이
+원리적으로 불가능해집니다** — 같은 저자의 예전 구현이 실제로 그 버그를
+냈습니다(`.claude/base/container-design-notes.md` 6절).
+
+규약은 Lua 관례를 따릅니다: 닫힌 구간 `[start, last]`, 음수 인덱스는 끝에서
+부터, 범위를 넘으면 clamp, 뒤집히면 조용히 빈 결과 — `string.sub` 와 같습니다.
+
+`TreeMap`/`TreeSet` 의 키 구간(`RangeRecords`/`RangeItems`)은 인덱스가 아니라
+**키**로 자르므로 이 헬퍼가 아니라 `BSearch.LowerBound`/`UpperBound` 를 씁니다.
+
+[테스트 방식은 위 "테스트: assert + print" 절이 소스입니다.]
+
+
+## 파일이 커지면 어떻게 쪼개는가 (실측해둠)
+
+지금은 안 쪼갭니다 — `Arr.luau` 가 1200줄 안팎인데, 비교 대상 표준
+라이브러리들의 같은 파일이 1800~4000줄입니다.
+
+쪼개야 할 때를 위해 **미리 재뒀습니다**:
+
+⚠️ **컨테이너 타입을 반환하는 메소드는 그 타입이 선언된 곳과 같은 모듈에서
+보여야 합니다.** 순진하게 쪼개면 체이닝이 **타입과 런타임 양쪽에서** 깨집니다
+(`Key 'Map' not found`, `attempt to call missing method`).
+
+쪼갠다면 **quad 방식**입니다: `Types` 에 시그니처만 있는 스텁 함수를 두고
+`typeof` 로 인터페이스를 만들면, 구현 파일이 컨테이너 타입을 반환할 수
+있습니다. 실측으로 체이닝·런타임 모두 정상이었습니다.
+**비용은 시그니처 중복**입니다.
+
+실측 전량: `.claude/audit/container-contracts/module-split/`.
 
 ## Luau 메타메소드 — 이 저장소가 쓰는 것
 
@@ -188,9 +254,9 @@ setmetatable(X_ifce, X_constructor)
 | 메타메소드 | 우리 쓰임 |
 |---|---|
 | `__index` | 컨테이너 메소드 배선. 모든 컨테이너가 씁니다 |
-| `__eq` | `==` — `Arr` 의 요소별 비교. **양쪽 피연산자의 메타테이블이 같아야 불립니다** |
+| `__eq` | **쓰지 않습니다.** 양쪽 메타테이블이 같아야만 불리는 제약이 있어, 비교는 명시적인 `:Equal(other)` 메소드로 둡니다 |
 | `__len` | `#` — **쓰지 않습니다.** 이 저장소는 `self.n` 을 신뢰합니다(희소 배열) |
-| `__iter` | 제네릭 `for`. **보류** — 교집합 타입에서 루프 변수의 타입이 죽습니다(`.claude/audit/arr-type-redesign/`). 나중에 추가해도 breaking 이 아닙니다 |
+| `__iter` | **쓰지 않습니다.** 교집합 타입에서 루프 변수의 타입이 죽습니다. 대신 각 컨테이너가 `Iter()` 메소드로 이터레이터 삼중항을 돌려줍니다 — for-in 이 인덱서가 아니라 함수의 반환 타입을 보므로 타입이 삽니다(`spikes/37`) |
 | `__call` | **쓰지 않습니다.** 제네릭 생성자에서 타입 인자를 잃습니다(실측) |
 | `__lt`, `__le` | 정렬 가능한 컨테이너에서 검토 대상 |
 | `__tostring` | 디버깅 편의. 미착수 |

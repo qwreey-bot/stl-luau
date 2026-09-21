@@ -37,9 +37,9 @@
   `qwreey/stl_luau`, `[target] lib = "src/init.luau"`. **`[scripts]`는
   비어 있습니다** — `pesde run`이 항상 lune으로 실행하기 때문. pesde는
   의존성/배포 메타데이터 용도로만 씁니다.
-- 포매터: 로컬에 `stylua` 바이너리는 있지만 이 저장소엔 `stylua.toml`이
-  없습니다. 현재 파일들 인덴트가 탭(`src/arr.luau`)/스페이스(`src/tuple.luau`)로
-  혼재돼 있습니다.
+- 포매터: **없습니다.** `stylua` 바이너리가 이 환경에 없어 도입 영향을 잴 수
+  없었습니다(`.claude/question.md` 4번). 재작성으로 인덴트 혼재는 사라졌고
+  `src`/`tests` 전부 **탭**이며 120자 초과 줄이 없습니다.
 
 ## 모듈 구조 (2026-09-22 전면 재작성 후)
 
