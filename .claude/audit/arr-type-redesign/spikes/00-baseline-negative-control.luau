@@ -3,7 +3,7 @@
 -- 진단 0건은 의미가 없습니다 — **NEG-n 이 전부 에러로 나와야** 타입이 살아있는 것.
 -- CANARY 는 arr 과 무관한 자명한 타입 에러입니다. 이게 안 뜨면 이 파일이
 -- 애초에 검사되지 않고 있다는 뜻이라 측정 자체가 무효입니다.
-local arr = require("../../../../src/arr")
+local arr = require("../../../../src-old/arr")
 
 --#region POS: 정상 사용례 — 에러가 나면 안 됨
 local a = arr(1, 2, 3)

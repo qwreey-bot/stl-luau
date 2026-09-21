@@ -2,7 +2,7 @@
 -- quad typing-limits §1: "Foo<T> 안에서 -> Foo<U> 를 반환" 하면 타입 안전성이
 -- **조용히** 사라진다. arr 의 map/flatmap/reduce 가 정확히 그 모양이다.
 -- 여기서 실제로 새는지, 체이닝 깊이에 따라 어떤지 잰다.
-local arr = require("../../../../src/arr")
+local arr = require("../../../../src-old/arr")
 
 -- 1) 타입이 바뀌는 단일 map: Arr<number> -> Arr<string>
 local strs = arr(1, 2, 3):map(function(x: number)

@@ -8,7 +8,7 @@
 	"테스트: assert + print" 절 참고.
 ]]
 
-local arr = require("../src/arr")
+local arr = require("../src-old/arr")
 
 -- 배열 내용을 "[1,2,3]" 형태로 — assert 실패 메시지에 실제 값을 싣기 위함
 local function fmt(a: arr.Arr<any>): string

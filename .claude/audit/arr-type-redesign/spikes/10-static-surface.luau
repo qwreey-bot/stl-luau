@@ -1,6 +1,6 @@
 --!strict
 -- ArrStatic 이 실제로 쓰이는 스태틱을 다 담았는지 / 무엇이 좁아졌는지 확인.
-local arr = require("../../../../src/arr")
+local arr = require("../../../../src-old/arr")
 
 -- POS: 스태틱으로 남긴 것들 — 전부 통과해야 함
 local p1 = arr.sized(3, 0)

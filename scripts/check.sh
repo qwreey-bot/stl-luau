@@ -11,7 +11,7 @@ fail=0
 
 # tests 를 넣으면 require 로 src 도 같이 끌려와 같은 파일이 "src/arr.luau" 와
 # "./src/arr.luau" 두 경로로 중복 보고됩니다. 정규화 후 중복을 지웁니다.
-out=$(luau-analyze src tests 2>&1 | sed "s|^$PWD/||; s|^\./||" | sort -u)
+out=$(luau-analyze src src-old tests 2>&1 | sed "s|^$PWD/||; s|^\./||" | sort -u)
 [ -n "$out" ] && printf '%s\n' "$out"
 
 echo
@@ -60,23 +60,22 @@ fi
 # 진단 0건으로 통과하고 런타임에서만 크래시한다(quad qa-round5 PS-9, 자체 실측).
 # 그래서 모든 모듈을 실제로 require 해본다. init.luau 를 새로 추가할 때 특히 중요.
 echo
-echo "=== require 게이트 (모든 src 모듈을 런타임에 불러봄)"
+echo "=== require 게이트 (모든 src/src-old 모듈을 런타임에 불러봄)"
 # 프로브는 저장소 루트에 둬야 ./src 가 올바르게 해석된다
 req_probe=".check-require-probe.luau"
 trap 'rm -f "$req_probe"' EXIT
 req_fail=0
 while IFS= read -r m; do
 	[ -s "$m" ] || continue   # 빈 파일은 건너뜀
-	rel="${m#src/}"; rel="${rel%.luau}"
 	# init.luau 는 디렉터리 자신을 가리킨다: src/init.luau → ./src
-	if [ "$rel" = "init" ]; then path="./src"; else path="./src/${rel%/init}"; fi
+	rel="${m%.luau}"; rel="${rel%/init}"; path="./$rel"
 	printf 'require("%s")\nreturn true\n' "$path" > "$req_probe"
 	if ! out=$(luau "$req_probe" 2>&1); then
 		echo "  FAIL  $path"
 		printf '        %s\n' "$(printf '%s' "$out" | head -1)"
 		req_fail=1
 	fi
-done < <(find src -name "*.luau" | sort)
+done < <(find src src-old -name "*.luau" | sort)
 if [ "$req_fail" = "0" ]; then echo "  모든 모듈 require OK"; else fail=1; fi
 
 echo
