@@ -41,7 +41,7 @@
   없습니다. 현재 파일들 인덴트가 탭(`src/arr.luau`)/스페이스(`src/tuple.luau`)로
   혼재돼 있습니다.
 
-## 모듈 구조
+## 모듈 구조 (2026-09-22 전면 재작성 후)
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
@@ -50,50 +50,73 @@ mise.toml               툴체인 고정 (luau, luau-lsp)
 .vscode/settings.json   luau-lsp new solver 강제
 default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
 src/
-  init.luau           엔트리포인트 (구 루트 lib.luau, 그 전엔 init.luau). arr만 export
-  arr.luau            배열 컨테이너 — 가장 성숙한 모듈, 스트림형 API 다수 구현
-  common.luau         Comparator<T> 타입 + compareTo 어댑터. 20줄, arr가 씀
-  bsearch.luau        완전히 빈 파일 (0바이트)
-  heap.luau           완전히 빈 파일 (0바이트)
-  hashmap.luau        완전히 빈 파일 (0바이트)
-  hashset.luau        완전히 빈 파일 (0바이트)
-  treemap.luau        완전히 빈 파일 (0바이트)
-  treeset.luau        구 set.luau를 그대로 옮긴 것 — 함수 시그니처만 있고
-                       본문 대부분이 비어있거나 버그(아래 "알려진 문제" 참고)
-  tuple.luau          실험적 type function 기반 튜플. 런타임 pack()은 동작,
-                       모듈 자체는 아직 `return {}` (미완성)
-  typeutil.luau       tuple.luau가 쓰는 type-level 헬퍼(Merge/SetMetaProp/
-                       ExtractTagged/Tagged)
-  fut.luau            2줄, 네임스페이스+메타테이블만 있고 메소드 없음
-  record.luau         1줄, 타입 별칭만 있고 모듈 패턴을 안 따름
+  init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
+  Types.luau       ⭐ 공유 계약만. **말단 모듈** — 아무것도 require 안 함
+  Common.luau      비교자 어댑터와 기본 3방향 비교자
+  Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
+  BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
+  Arr.luau         배열. 메소드 54 + 생성자 8
+  HashMap.luau     해시 맵. { data, size } 래퍼
+  HashSet.luau     HashMap 위에 단방향으로 얹음
+  TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
+  TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
+  Heap.luau        이진 힙. 계약을 만족하지 않는 유일한 컨테이너
+  Tuple.luau       (실험, --!nocheck, 미export) type function 탐색
+  TypeUtil.luau    (실험, --!nocheck, 미export) Tuple 이 쓰는 헬퍼
 tests/
-  run.luau            전체 테스트 엔트리 (luau tests/run.luau)
-  arr.luau            arr 스모크 테스트 10개 절 (assert + print, 프레임워크 없음)
-scripts/check.sh        타입 검사 + 테스트
+  run.luau         전체 엔트리 (luau tests/run.luau)
+  spec.arr.luau    이하 컨테이너별 테스트. assert + print, 프레임워크 없음
+  spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
+  spec.heap.luau     spec.treemap.luau  spec.treeset.luau
+scripts/
+  check.sh               타입 + 음성 대조군 배터리 + require 게이트 + 테스트
+  spike-expectations.tsv 스파이크별 기대 진단 건수 (배터리의 단일 진실)
 refs-ignoreme/          (gitignore) Java/Rust/C++ 표준 라이브러리 — 설계 참고
 old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/Tree
 ```
 
-**서브모듈은 없습니다.** 예전에 `libs/test-luau` 서브모듈
-(`github.com/qwreey/test-luau`)이 있었지만 **2026-08-22 에 제거했습니다** —
-그 테스트 프레임워크가 `@lune/fs`·`@lune/stdio` 에 의존하는데 이 저장소가
-lune 을 걷어냈기 때문입니다(순수 luau 엔 `fs` 가 없어 소스 라인 뷰 기능이
-원천적으로 불가능). **test-luau 저장소 자체는 그대로 살아 있고** 제거 전에
-로컬 커밋도 전부 push 해뒀으니, 나중에 lute 로 옮겨서 다시 쓰고 싶어지면
-그 저장소에서 이어가면 됩니다.
+**서브모듈은 없습니다.** 예전에 `libs/test-luau` 서브모듈이 있었지만
+2026-08-22 에 제거했습니다 — 그 프레임워크가 lune 에 의존했기 때문입니다.
+저장소 자체는 살아 있으니 나중에 lute 로 옮기고 싶어지면 거기서 이어가면
+됩니다.
 
-## 모듈 현황 (구현 정도)
+## 검증 장치 — 이 저장소에서 가장 중요한 부분
 
-| 모듈 | 상태 |
+`./scripts/check.sh` 하나가 네 가지를 봅니다. **넷이 같이 있어야 뜻이
+있습니다.**
+
+| 게이트 | 무엇을 막는가 |
 |---|---|
-| `arr` | 구현 다수 — 생성자, push/insert/unshift 계열, map/filter/reduce, flat, slice, equal 등. **[2026-08-22]** 테스트를 처음 제대로 붙이면서 버그 5건(`sized` 공유 테이블 오염, `filter_inplace` 전면 오동작, `flat` 오동작, `flat_inplace` 크래시, `max`/`min` 반전)을 찾아 고치고 회귀 테스트를 붙였습니다. **[2026-08-31]** 비어 있던 함수 10개를 구현했습니다(`shuffle(_inplace)`, `reverse(_inplace)`, `rotate(_inplace)`, `sorted`/`sort_inplace`, `replace(_inplace)`, `erase`) — **이제 `arr` 에 빈 본문은 없습니다**. 같이 버그 2건(`clear` 가 `__arr__` 태그 삭제, `erase_inplace` 가 뒤집힌 구간에서 배열을 늘림)도 고쳤습니다. **[2026-08-31] `Arr<T>` 타입 재설계** — 음성 대조군이 0/6 이던(= 타입 검사가 죽어 있던) 상태를 6/6 으로 되살렸습니다. TypeError 301 → 126(재설계) → 41(테스트 헬퍼 주석). 런타임 무변경. `arr.오타` 를 못 잡는 구멍이 하나 남음(`question.md` 2번). `.claude/audit/arr-type-redesign/REPORT.md` |
-| `common` | 완성(작음) |
-| `bsearch`, `heap` | 미착수 (빈 파일) |
-| `hashmap`, `hashset`, `treemap` | 미착수 (빈 파일) |
-| `treeset` | **[2026-08-22 수정]** `has`/`add`의 `self` vs 모듈 테이블 버그 고침, 타입도 `TreeSet<T>`로 리네임 + `{ [T]: boolean }` 형태로 정정. `intersect`/`union`/`subtract`/`exclusive`/`is_subset_of`/`size`/`from_function`은 여전히 빈 함수. **생성자/메타테이블 배선이 없어 아직 인스턴스를 만들 수 없음** — `arr` 패턴(`.claude/base/architecture.md`의 "모듈 팩토리 패턴")을 따를지는 hash/tree 컨테이너 표현 결정(`.claude/question.md` #2)에 달림 |
-| `tuple`, `typeutil` | 실험 중, 미export |
-| `fut` | 뼈대만 |
-| `record` | 타입 별칭 하나, 모듈 아님 |
+| **TypeError 총계 0건** | 새 타입 에러가 들어오는 것 |
+| ⭐ **음성 대조군 배터리** | *타입 검사가 죽는 것* — 0건이 "깨끗한 0건" 인지 "검사가 죽은 0건" 인지 가름 |
+| **require 게이트** | 잘못된 require 경로. 정적 검사는 **진단 0건으로 통과**하고 런타임에서만 터짐 |
+| **테스트** | 동작 |
+
+둘째가 핵심입니다. 2026-08-31 에 음성 대조군이 **0/6** 이던 적이 있습니다 —
+타입 검사가 통째로 죽어 있었는데 진단은 0건이었습니다. 그래서 스파이크마다
+"이만큼의 에러가 나야 정상" 을 `scripts/spike-expectations.tsv` 에 고정하고,
+**줄어들면 실패시킵니다.** 컨테이너를 새로 만들면 음성 대조군 스파이크를
+반드시 같이 만드세요.
+
+## 모듈 현황
+
+전부 **재작성 후 상태**입니다. `src` 는 TypeError 0건이고 각 컨테이너마다
+테스트와 음성 대조군 스파이크가 있습니다.
+
+| 모듈 | 상태 | 음성 대조군 |
+|---|---|---|
+| `Types` / `Common` / `Algorithm` | 완성(작음) | — |
+| `Arr` | 메소드 54 + 생성자 8 | `spikes/40` |
+| `HashMap` / `HashSet` | 완성 | `spikes/41` |
+| `BSearch` | 완성 | `spikes/42` |
+| `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
+| `Heap` | 완성 | `spikes/44` |
+| `Tuple` / `TypeUtil` | 실험, `--!nocheck`, 미export | — |
+
+**없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 `Fut`/`Optional` 방향은
+열린 질문입니다. 옛 `record.luau`(타입 별칭 한 줄)는 **`Types.Record` 로
+흡수**됐습니다. 옛 `set.luau`/`treeset.luau` 의 내용은 사실 해시셋이었고
+지금 `HashSet` 이 그 자리입니다.
 
 ## 다른 저장소와의 관계
 

@@ -13,35 +13,77 @@
 
 ## 코드 스타일
 
-- **모듈 패턴**: `local X = {}` 네임스페이스 테이블 + `X.__index = X` +
-  생성자용 별도 `X_constructor` 메타테이블(`__call`로 팩토리화). `src/arr.luau`,
-  `src/tuple.luau`가 정석 예시입니다. 새 컨테이너 모듈은 이 패턴을 따르세요.
-  `src/record.luau`(타입 별칭 하나뿐, 모듈 테이블 없음)처럼 패턴을 벗어난 채로
-  방치하지 마세요 — 실제로 구현할 때 이 패턴으로 맞추거나, 그 전까진 다른
-  모듈이 참조하지 않게 두세요.
-- **네이밍**: 공개 인터페이스 함수/필드는 snake_case (`push_many`, `is_arr`).
-  내부 로컬 변수도 snake_case. 타입 이름(`Arr<T>`, `ArrInterface`)만 PascalCase.
-- **배열 표현**: 컨테이너는 `{ n: number, [number]: T }` 형태 + 태그 필드
-  (`__arr__` 등)로 `is_arr` 같은 런타임 판별을 지원합니다. Lua 기본 `#`
-  연산자 대신 `self.n`을 신뢰합니다 — 희소 배열/trailing nil 문제를 피하기
-  위함으로 보입니다(`arr_ifce.erase_inplace`가 꼬리를 `nil`로 지우고 `n`을
-  갱신하는 패턴 참고). 새 컨테이너도 이 규약을 따르세요.
-- **`table.move`/`table.create`로 벌크 연산을 최적화**하는 게 이 저장소
-  스타일입니다(단건일 때 분기해서 `select`/직접 대입으로 처理) — `arr_ifce.push_many`,
-  `merge`, `slice` 참고. 새 함수를 짤 때도 "1개/여러개/0개"를 나눠 처리하는
-  패턴을 유지하세요.
-- **`_inplace` 접미사 쌍**: 대부분의 변환 함수는 새 컨테이너를 만드는 버전과
-  `_inplace`로 자기 자신을 변형하는 버전을 쌍으로 둡니다(`map`/`map_inplace`,
-  `filter`/`filter_inplace`, `flat`/`flat_inplace` 등). 새 스트림 API를 추가할
-  땐 이 쌍을 같이 고려하세요(둘 다 필요하지 않다면 왜 아닌지 명확히 할 것).
-- `Comparator<T>`는 `(a, b) -> boolean` 과 `(a, b) -> number` 둘 다 허용하는
-  유니온입니다(`src/common.luau`의 `compareTo`가 그 어댑터). 정렬/비교가
-  필요한 새 함수는 이 타입을 재사용하세요.
-- stylua 설정 파일이 아직 없습니다 — `tbox`/`quad`의 `stylua.toml`
-  (`syntax = "Luau"`, `column_width = 120`, 스페이스 4칸)을 참고해 도입할지는
-  `.claude/question.md` 참고. 기존 파일은 탭 들여쓰기를 씁니다(`src/arr.luau`)
-  — `src/tuple.luau`/`src/typeutil.luau`만 스페이스 4칸이라 이미 혼재돼
-  있습니다.
+**[2026-09-22 전면 재작성 후 기준]** 확정 근거는 `.claude/base/rewrite-plan.md`
+1-5 / 1-6 절. 아래와 다른 옛 코드는 더 이상 저장소에 없습니다.
+
+- **네이밍**: 기준은 *"값을 만들거나 감싸는 것은 대문자, 판별 술어와 지역
+  변수는 소문자."*
+
+  | 무엇 | 케이싱 | 예 |
+  |---|---|---|
+  | 타입 | PascalCase | `Arr<T>`, `ArrView<T>`, `HashMapData<K, V>` |
+  | 생성자 | PascalCase | `Arr.Of`, `TreeMap.New`, `Heap.FromList` |
+  | 콜론 메소드 | PascalCase | `:PushBack()`, `:SortInplace()` |
+  | 술어 | camelCase, 최상위 | `stl.isArr(v)`, `stl.isHeap(v)` |
+  | 지역 변수 | camelCase | `arrLen`, `moveLen`, `outLen` |
+  | `require` 받은 모듈 | PascalCase | `local Common = require("./Common")` |
+  | 소스 파일 | PascalCase | `src/Arr.luau`, `src/HashSet.luau` |
+  | 테스트 파일 | 소문자 + dot | `tests/spec.arr.luau` |
+
+- **모듈 패턴**: 이름 붙은 top-level 함수들 + 런타임 메소드 테이블(`Ifce`) +
+  **순수 테이블 네임스페이스**를 `return` 합니다. 콜러블 네임스페이스
+  (`Arr(...)`)는 **쓰지 않습니다** — 제네릭 생성자가 `__call` 경유에서 타입
+  인자를 잃고 모듈 오타도 못 잡습니다(실측). `src/Arr.luau` 가 정석입니다.
+
+- **타입 3층**: 데이터부(`XxxData`) / 콜백이 받는 뷰(`XxxView`) / 전체형(`Xxx`).
+  전체형은 **교집합(`&`)** 입니다 — `setmetatable<>` 은 메소드 30개에서
+  무너집니다. **계약(`Types.ListCore` 등)이 주는 멤버를 구현 인터페이스에
+  다시 선언하지 마세요** — 진단 0건으로 메소드 타입이 통째로 죽습니다.
+  자세한 것은 `.claude/base/typing-limits.md`.
+
+- **메소드는 이름 붙은 함수 + `typeof` 나열**. 인라인 제네릭으로 쓰면 반환이
+  `Unifiable<Error>` 로 샙니다(실측).
+
+- **`const` 바인딩**: 재대입 없는 바인딩은 `const`. ⚠️ **`const` 는 `local`
+  을 대체하는 키워드입니다**(`const x = 1`). `local const x = 1` 이라고 쓰면
+  `const` 라는 지역변수를 만들고 `x = 1` 은 **전역 대입**이 됩니다 — 타입
+  주석이 없으면 문법 에러도 안 납니다.
+
+- **삼항 `and/or` 금지.** `if-then-else` 표현식만. 단순 2항 `x or y` 는 허용.
+
+- **`--!strict` 를 모든 파일 1행에.** 그 다음 `--[[ Module — 설명 ]]` 블록.
+  예외는 실험 파일 `Tuple`/`TypeUtil` 뿐(`--!nocheck`).
+
+- **탭 들여쓰기.** 주석은 한국어, 식별자와 에러 메시지는 영어
+  (`error("Arr: Range step must not be zero")` 형식).
+
+- **배열 표현**: `{ n: number, [number]: T }` + 태그 필드(`__arr__`).
+  Lua 기본 `#` 대신 `self.n` 을 신뢰합니다 — 희소 배열과 꼬리 `nil` 문제를
+  피하기 위함입니다. 1..n 사이에 구멍이 있을 수 있고, **각 메소드가 구멍을
+  어떻게 다루는지 주석에 적습니다**(지금은 전부 건너뜁니다).
+
+- **맵/셋 표현**: `{ data, size }` 래퍼. 인스턴스에 길이 필드를 직접 두면
+  `HashMap<string, …>` 에서 `Set("size", v)` 가 그걸 덮어씁니다.
+
+- **`Inplace` 접미사 쌍**: 새 컨테이너를 만드는 판과 자기를 변형하는 판을
+  쌍으로 둡니다(`Sort`/`SortInplace`, `Reverse`/`ReverseInplace`). 둘 다
+  필요하지 않다면 왜 아닌지 명확히 하세요.
+
+- **구간 규약**: 닫힌 구간 `[start, last]`, 음수 인덱스 지원, 범위를 넘으면
+  clamp, 뒤집힌 구간은 조용히 빈 결과 — `string.sub` 와 같습니다.
+  ⚠️ **삽입 위치는 유효 범위가 하나 넓습니다**(`1 .. n+1`). 조회용 clamp 로
+  삽입까지 처리하면 "맨 뒤에 삽입" 이 표현 불가능해집니다(실제로 났던 버그).
+
+- **비교의 통화가 둘입니다**: 정렬·최대·최소는 불리언 `LessThan`
+  (`table.sort` 가 받는 모양), 정렬된 구조에서의 탐색은 3방향 `Comparator`.
+  둘 사이는 `Common.lessFrom` / `Common.compareFrom` 으로 건넙니다 — 비용이
+  눈에 보이도록 자동 변환은 없습니다.
+
+- **`table.move`/`table.create` 로 벌크 처리**, 가변인자 다수는 `table.pack`
+  대신 `select` 루프. 근거는 아래 성능 절.
+
+- stylua 설정 파일은 아직 없습니다. 지금 `src`/`tests` 는 전부 탭으로
+  통일돼 있어 급하지 않습니다(`.claude/question.md` 참고).
 
 ## ⭐ 성능은 1급 관심사
 
@@ -94,10 +136,21 @@ print" 절이 소스입니다 — 여기서 반복하지 않습니다. 요점만
   실행은 `luau tests/run.luau`.
 - **lune 을 쓰지 마세요.** 이 저장소는 순수 `luau` 로만 돕니다
   (`architecture.md`의 "런타임: 순수 luau" 절에 근거와 제약).
-- 새 모듈/함수를 구현하면 `tests/<module>.luau`에 대응 테스트를 추가하고
-  `tests/run.luau`의 require 목록에도 반영하세요.
-- **커버리지 현황(2026-08-22)**: `tests/arr.luau`가 `arr`의 주요 함수 대부분을
-  덮습니다. 나머지 모듈은 전부 스텁이라 테스트가 없습니다.
+- 새 모듈을 구현하면 `tests/spec.<module>.luau` 를 만들고 `tests/run.luau`
+  의 require 목록에도 넣으세요. **테스트 파일은 끝에서 값을 `return` 해야
+  합니다** — 안 하면 `module must return a single value` 로 터집니다.
+- **모든 경계 케이스를 테스트로 고정하세요.** 이 저장소는 범위를 벗어나도
+  예외를 던지지 않고 조용히 clamp 하므로, 테스트가 없으면 "조용히 아무것도
+  안 함" 과 "조용히 망가짐" 을 구분할 수 없습니다. 빈 것 / 한 개 / 뒤집힌
+  구간 / 범위 초과 / 음수 인덱스를 매 절에 넣습니다.
+- **눈으로 안 보이는 것은 대조로 잡으세요.** 이분 탐색은 선형 탐색과,
+  `TreeSet` 의 병합 집합 연산은 `HashSet` 과, 힙은 정렬 결과와 무작위 입력
+  수백 회로 대조합니다 — 실제로 그렇게 짜여 있습니다.
+- **컨테이너를 새로 만들면 음성 대조군 스파이크를 반드시 같이 만드세요**
+  (`.claude/audit/arr-type-redesign/spikes/` + `scripts/spike-expectations.tsv`).
+  진단 0건은 축하가 아니라 경보입니다.
+- **커버리지 현황(2026-09-22)**: 컨테이너 전부에 테스트가 있고
+  `check.sh` 가 exit 0 입니다.
 
 ## 커밋
 
