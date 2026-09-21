@@ -96,8 +96,7 @@ luau 만 사용하거든. 혹은 나중에 lute 로 갈아타는게 답이야."*
 
 ```bash
 ./scripts/check.sh          # 타입 검사 + 테스트 (권장)
-luau-analyze src tests      # 타입 검사만
-selene src tests            # 린트
+luau-analyze src tests      # 타입 검사 + 린트
 ```
 
 - **타입 검사기는 `luau-analyze` 입니다**(2026-08-31 전환, quad 방식).
@@ -121,12 +120,9 @@ selene src tests            # 린트
 - 편집기(luau-lsp)는 기본이 구 solver 라 `.vscode/settings.json` 에
   `enableNewSolver` 를 켜뒀습니다. **편집기와 CLI 는 이제 다른 엔진입니다**
   — 숫자가 어긋나면 CLI(`luau-analyze`) 가 기준입니다.
-- selene 은 설정 파일을 **CWD 기준 `./selene.toml`** 로만 찾습니다(상위
-  디렉터리를 거슬러 올라가지 않음). 항상 저장소 루트에서 실행하세요.
-- `type function` 블록 앞에는 `-- selene: allow(undefined_variable)` 를
-  붙입니다(`types` 는 그 안에서만 주입되는 특수 전역이라 오탐).
-  **파일 최상단에 한 번 붙이는 방식은 안 먹습니다 — 각 선언 바로 앞에
-  붙여야 합니다**(실측).
+- **린트도 `luau-analyze` 가 합니다**(`.luaurc` 의 `lint: *`). selene 은
+  2026-09-21 폐기 — `const` 를 파싱하지 못하고 0.31.0 이 최신이라 올릴 곳이
+  없었습니다. 잃은 것은 `empty_if`/`empty_loop` 과 미사용 변수 탐지 정밀도.
 
 ## 컨테이너 표현: length-tagged table
 

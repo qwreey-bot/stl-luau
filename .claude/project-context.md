@@ -23,11 +23,14 @@
 ## 실행 환경
 
 - 런타임: **순수 `luau` CLI** (`luau tests/run.luau`). **lune 은 쓰지
-  않습니다** — 근거와 그로부터 오는 제약(`io`/`fs` 없음, `pesde run` 불가,
-  `const` 금지)은 `.claude/base/architecture.md`의 "런타임: 순수 luau" 절.
-- 타입 체크: **`luau-analyze`**(2026-08-31 전환, quad 방식). 린트:
-  `selene src tests`. 둘 다 `./scripts/check.sh` 나 `mise.toml` 로 고정된
-  버전으로 돕니다(`mise install`). **`luau` 실행기 자체는 타입 검사를 하지
+  않습니다** — 근거와 그로부터 오는 제약(`io`/`fs` 없음, `pesde run` 불가)은
+  `.claude/base/architecture.md`의 "런타임: 순수 luau" 절.
+  **`const` 는 2026-09-21 에 채택했습니다**(quad 가 2026-09-10 에 채택;
+  luau 0.734 통과). 예전의 "const 금지" 기록은 낡은 것입니다.
+- 타입 체크 + 린트: **`luau-analyze`** 하나로 합니다(2026-08-31 전환).
+  `./scripts/check.sh` 가 타입 검사와 테스트를 같이 돕니다.
+  **selene 은 2026-09-21 폐기** — `const` 를 파싱 못 하고 최신 버전이
+  0.31.0 이라 대안이 없었습니다(`check.sh` 에 원래 없어서 동작 변화 0). **`luau` 실행기 자체는 타입 검사를 하지
   않습니다.** 모든 모듈 상단에 `--!strict` 를 답니다 — `.luaurc` 하나에만
   의존하면 한 단어로 검사가 통째로 꺼집니다(실측).
 - 패키지 매니저: **pesde**(2026-08-22 도입). `pesde.toml`의 `name`은
@@ -42,9 +45,8 @@
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
-mise.toml               툴체인 고정 (luau-lsp, selene)
+mise.toml               툴체인 고정 (luau, luau-lsp)
 .luaurc                 languageMode strict + 전체 lint on
-selene.toml             린트 규칙 (quad 것과 동일)
 .vscode/settings.json   luau-lsp new solver 강제
 default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
 src/
@@ -67,7 +69,9 @@ src/
 tests/
   run.luau            전체 테스트 엔트리 (luau tests/run.luau)
   arr.luau            arr 스모크 테스트 10개 절 (assert + print, 프레임워크 없음)
-notes, todo             (루트) 예전 스크래치 노트 — Luau 메타메소드 참고표, API 아이디어
+scripts/check.sh        타입 검사 + 테스트
+refs-ignoreme/          (gitignore) Java/Rust/C++ 표준 라이브러리 — 설계 참고
+old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/Tree
 ```
 
 **서브모듈은 없습니다.** 예전에 `libs/test-luau` 서브모듈
