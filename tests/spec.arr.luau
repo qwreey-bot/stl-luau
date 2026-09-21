@@ -424,6 +424,44 @@ do
 end
 print("PASS")
 
+print("=== 13. FromIter / 제자리 순서 연산 ===")
+do
+	-- 값이 둘이면 둘째가 값, 하나면 그것이 값입니다.
+	-- ⚠️ 이터레이터를 any 로 받으므로 원소 타입은 캐스트로 적어야 합니다.
+	same(Arr.FromIter(ipairs({ 10, 20, 30 })) :: Arr<number>, { 10, 20, 30 }, "FromIter(ipairs)")
+	const dict: { [string]: number } = { only = 7 }
+	same(Arr.FromIter(pairs(dict)) :: Arr<number>, { 7 }, "FromIter(pairs) 는 값을 모음")
+	same(
+		Arr.FromIter(string.gmatch("a bb ccc", "%a+")) :: Arr<string>,
+		{ "a", "bb", "ccc" },
+		"FromIter(gmatch)"
+	)
+	same(Arr.FromIter(ipairs({})) :: Arr<number>, {}, "FromIter 빈 것")
+end
+do
+	-- 제자리 판은 자기 자신을 돌려주고 원본이 바뀌어야 합니다.
+	const a: Arr<number> = Arr.Of(1, 2, 3, 4)
+	const rotated = a:RotateInplace(1)
+	assert(rotated == a, "RotateInplace 는 자기 자신을 돌려줍니다")
+	same(a, { 2, 3, 4, 1 }, "RotateInplace 왼쪽")
+	a:RotateInplace(-1)
+	same(a, { 1, 2, 3, 4 }, "RotateInplace 음수는 오른쪽")
+	a:RotateInplace(1, 2, 3)
+	same(a, { 1, 3, 2, 4 }, "RotateInplace 구간")
+	same(Arr.Of(1):RotateInplace(1), { 1 }, "RotateInplace 한 개")
+	same(emptyNum():RotateInplace(1), {}, "RotateInplace 빈 것")
+
+	const b: Arr<number> = Arr.Of(1, 2, 3, 4, 5)
+	const shuffled = b:ShuffleInplace(nil, nil, function(min: number, _max: number)
+		return min
+	end)
+	assert(shuffled == b, "ShuffleInplace 는 자기 자신을 돌려줍니다")
+	assert(b.n == 5, "ShuffleInplace 는 길이를 보존")
+	same(b:Sort(), { 1, 2, 3, 4, 5 }, "ShuffleInplace 는 원소 집합을 보존")
+	same(emptyNum():ShuffleInplace(), {}, "ShuffleInplace 빈 것")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 

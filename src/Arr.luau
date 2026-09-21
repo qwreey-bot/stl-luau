@@ -1109,6 +1109,14 @@ end
 
 -- 임의의 for-in 이터레이터에서 값을 모읍니다.
 -- `Arr.FromIter(pairs(t))`, `Arr.FromIter(string.gmatch(s, "%a+"))` 처럼 씁니다.
+--
+-- ⚠️ **원소 타입을 캐스트로 적어야 합니다.** 이터레이터는 `any` 로 받으므로
+-- `T` 를 뽑을 재료가 없고, Luau 는 기대 타입을 제네릭 호출 안으로 전파하지
+-- 않습니다.
+--
+--     local a = Arr.FromIter(ipairs(list)) :: Arr<number>
+--
+-- (`.claude/base/typing-limits.md` 의 "조용히 타입을 잃는 자리 셋" 3번)
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	const result: Arr<T> = newSized(0)
 	local count = 0

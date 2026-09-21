@@ -11,17 +11,26 @@ fail=0
 
 # tests 를 넣으면 require 로 src 도 같이 끌려와 같은 파일이 "src/arr.luau" 와
 # "./src/arr.luau" 두 경로로 중복 보고됩니다. 정규화 후 중복을 지웁니다.
-out=$(luau-analyze src src-old tests 2>&1 | sed "s|^$PWD/||; s|^\./||" | sort -u)
+out=$(luau-analyze src tests 2>&1 | sed "s|^$PWD/||; s|^\./||" | sort -u)
 [ -n "$out" ] && printf '%s\n' "$out"
 
 echo
 echo "=== 타입 진단 요약 (파일별 TypeError)"
 printf '%s\n' "$out" | grep '): TypeError:' | grep -oE '^[^(]+' | sort | uniq -c
 echo "총 $(printf '%s\n' "$out" | grep -c '): TypeError:')건"
-# 총 건수로는 실패시키지 않습니다. 재작성이 끝날 때까지 src-old 가 남아 있어
-# 숫자가 계속 움직이고, 여기서 게이트를 걸면 스크립트가 늘 빨간불이라 쓸모가
-# 없어집니다. 이 스크립트는 그 숫자를 **재는** 도구이고, 게이트는 아래
-# 음성 대조군 배터리와 require 게이트와 테스트입니다.
+# ⭐ 총 건수 게이트. [2026-09-22 부터] 기준선은 **0건**입니다 — 재작성이
+# 끝나 src-old 가 사라졌으므로 더 이상 "원래 그만큼 났다" 가 없습니다.
+#
+# 0건을 기준으로 삼는 게 안전한 이유: 이 저장소에서 0건은 원래 경보입니다
+# (타입 검사가 통째로 죽어도 0건이 나옵니다). 그걸 아래 **음성 대조군
+# 배터리**가 막아 줍니다 — 틀린 코드가 정말 틀리다고 나오는지 따로 세니,
+# 0건이 "검사가 죽은 0건" 이 아니라 "정말 깨끗한 0건" 임이 보장됩니다.
+# 둘은 같이 있어야 뜻이 있습니다.
+total=$(printf '%s\n' "$out" | grep -c '): TypeError:')
+if [ "$total" != "0" ]; then
+	echo "  → TypeError 가 $total 건 있습니다. 기준선은 0건입니다."
+	fail=1
+fi
 
 # ⭐ 음성 대조군 배터리 — 이 저장소에서 가장 중요한 게이트다.
 # 진단 건수가 0 이 되는 것은 "타입이 완벽해졌다" 가 아니라 보통 "타입 검사가
@@ -60,7 +69,7 @@ fi
 # 진단 0건으로 통과하고 런타임에서만 크래시한다(quad qa-round5 PS-9, 자체 실측).
 # 그래서 모든 모듈을 실제로 require 해본다. init.luau 를 새로 추가할 때 특히 중요.
 echo
-echo "=== require 게이트 (모든 src/src-old 모듈을 런타임에 불러봄)"
+echo "=== require 게이트 (모든 src 모듈을 런타임에 불러봄)"
 # 프로브는 저장소 루트에 둬야 ./src 가 올바르게 해석된다
 req_probe=".check-require-probe.luau"
 trap 'rm -f "$req_probe"' EXIT
@@ -75,7 +84,7 @@ while IFS= read -r m; do
 		printf '        %s\n' "$(printf '%s' "$out" | head -1)"
 		req_fail=1
 	fi
-done < <(find src src-old -name "*.luau" | sort)
+done < <(find src -name "*.luau" | sort)
 if [ "$req_fail" = "0" ]; then echo "  모든 모듈 require OK"; else fail=1; fi
 
 echo

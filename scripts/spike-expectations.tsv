@@ -11,12 +11,13 @@
 # 형식: <기대건수><탭><파일경로>
 # 스파이크를 고쳤으면 이 숫자도 같이 고치세요. 각 audit 의 README 표는
 # 설명용이고, 게이트가 읽는 것은 이 파일입니다.
+#
+# [2026-09-22] 재작성 **이전** 코드를 재던 스파이크 셋(00/10/23)은 src-old 와
+# 함께 지웠습니다. 결론은 audit/arr-type-redesign/REPORT.md 에 있고 파일은
+# git 히스토리에 있습니다. 지금 남은 것은 전부 **현재 src 를 재는** 것들입니다.
 
-7	.claude/audit/arr-type-redesign/spikes/00-baseline-negative-control.luau
-1	.claude/audit/arr-type-redesign/spikes/10-static-surface.luau
 2	.claude/audit/arr-type-redesign/spikes/11-intersection-prop-hole.luau
 5	.claude/audit/arr-type-redesign/spikes/22-export-shape-comparison.luau
-3	.claude/audit/arr-type-redesign/spikes/23-chain-type-preservation.luau
 5	.claude/audit/arr-type-redesign/spikes/24-typeof-named-fn-fix.luau
 6	.claude/audit/arr-type-redesign/spikes/25-quad-style-namespace.luau
 5	.claude/audit/arr-type-redesign/spikes/26-setmetatable-selfhandle-boundary.luau
