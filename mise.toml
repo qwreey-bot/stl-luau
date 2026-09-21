@@ -1,5 +1,9 @@
 # 프로젝트 툴체인. quad(`qwreey/quad`)의 mise.toml 구성을 따릅니다.
 #
+# selene 은 2026-09-21 에 폐기했습니다 — `const` 를 파싱하지 못하고(0.31.0 이
+# 최신이라 올릴 곳이 없음) `const` 채택이 우선이었습니다. 린트는 luau-analyze
+# 의 것을 씁니다(`.luaurc` 의 `lint: *`).
+#
 # lune 은 의도적으로 없습니다. 이 저장소는 순수 luau 로만 실행/검증합니다
 # (`.claude/base/architecture.md` 의 "런타임: 순수 luau" 절 참고).
 #
@@ -12,4 +16,3 @@
 [tools]
 luau = "0.734"
 "github:JohnnyMorganz/luau-lsp" = "1.69.0"
-"aqua:Kampfkarren/selene" = "0.31.0"

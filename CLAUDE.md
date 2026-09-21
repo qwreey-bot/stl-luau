@@ -28,11 +28,21 @@ agent-memory 같은 무거운 장치는 아직 없습니다 — 필요해지면 
 | **타입이 안 잡힐 때 / 새 컨테이너 타입을 어떻게 선언할지 / 왜 체커가 `luau-analyze` 인지** | `.claude/base/typing-limits.md` |
 | `Arr<T>` 재설계 실측 전량(음성 대조군, 변형별 비교) | `.claude/audit/arr-type-redesign/REPORT.md` |
 | 사용자가 답해야 할 열린 질문 | `.claude/question.md` |
-| 예전 방식 스크래치 노트(Luau 메타메소드 참고, 초기 API 아이디어) | 루트 `notes`, `todo` |
+| **전면 재작성 계획(확정된 설계·개명표·순서)** | `.claude/base/rewrite-plan.md` |
+| 다른 언어 표준 라이브러리에서 얻은 설계 교훈 | `.claude/base/container-design-notes.md` |
 
-**참고 저장소**: quad 는 `/code/Projects/quad` 에 클론돼 있습니다(Luau 타입
-한계 연구가 방대함 — `.claude/base/typing-limits.md` 와 `.claude/audit/`).
-**tbox 는 이 환경에 클론돼 있지 않습니다** — 문서에 나오는 tbox 이야기는
-과거 세션의 기록이고, 지금 열어볼 수는 없습니다. (경로 정정 2026-08-31:
-예전에 적혀 있던 `/code/Projects/stl-luau-refs/quad` 와 `/code/Projects/tbox`
-는 둘 다 존재하지 않습니다.)
+**참고 자료** (전부 `.gitignore` 의 `*-ignoreme*` 로 무시됨 — 거기서 얻은 건
+원문을 옮기지 않고 **자기설명적으로 다시 써서** `.claude/` 에 남깁니다):
+
+| 어디 | 무엇 |
+|---|---|
+| `refs-ignoreme/openjdk` | OpenJDK `java.util` — List/Map/Set/Iterator 계열 |
+| `refs-ignoreme/rust` | Rust `alloc` — Vec/VecDeque/BTree/BinaryHeap/LinkedList |
+| `refs-ignoreme/ms-stl` | MSVC 표준 라이브러리 헤더 |
+| `old-homeworks-ignoreme` | 예전 학교 과제 — ADT 구현, visitor, Node/Tree |
+
+**quad** 는 `/code/Projects/quad` (무시 대상 아님, 별도 저장소). Luau 타입 한계
+연구가 방대합니다 — `.claude/base/typing-limits.md` 와 `.claude/audit/`.
+**읽기 전용으로만 보세요** — 다른 세션이 활발히 수정 중입니다.
+참고 Luau 저장소들(fusion/vide/charm/tbox/rbvm)은 `/code/Projects/quad-scratch/refs/`
+에 있습니다(예전에 문서가 가리키던 `initreq` 경로는 없어졌습니다).
