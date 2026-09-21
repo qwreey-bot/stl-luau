@@ -127,7 +127,52 @@ if stl.isArr(a) then end
 - **탭 들여쓰기.** 주석은 한국어(이 저장소 지배 스타일).
 - **에러 메시지는 영어, `Arr: <설명>` 형식.**
 
-### 1-7. selene 폐기 (사용자 확정)
+### 1-7. ⭐ 성능은 1급 관심사다 (사용자 확정 2026-09-21)
+
+사용자: *"이 프로젝트는 move 를 적극 쓰는걸 보면 알겠지만, 최적화를 엄청
+신경 써서 만들고 있다."*
+
+**API 가 편의를 위해 기본 경로를 느리게 만들지 않습니다.** 편의 기능은
+별도 이름으로 옆에 둡니다. 실제로 이 원칙이 `PushBack` 설계를 갈랐습니다:
+
+| 방식 | 단일 추가 비용 |
+|---|---|
+| `PushBack(self, v)` 고정 인자 | **기준 (0%)** |
+| `PushBack(self, first, ...)` 첫 인자만 고정 | +8.2% |
+| `PushBack(self, ...)` 전부 가변 | +12.6% |
+
+(5백만 회 × 3회 중 최소, 콜론 메소드 디스패치 경유. **래퍼 클로저를 끼고 재면
+상대 비용이 희석되니 주의** — 루프에서 직접 호출로 재야 합니다.)
+
+가변인자로 합치면 이름이 9개 → 6개로 줄지만 **가장 흔한 단일 추가가 느려집니다.**
+그래서 합치지 않았습니다. 대신 다중 추가는 `table.pack` 을 버리고 `select`
+루프로 바꿔 **지금보다 1.6~2.3배 빨라집니다**(4개/16개 실측).
+
+### 1-8. 범위·경계 규약 — Lua 관례를 따른다 (사용자 확정)
+
+세 표준 라이브러리는 만장일치로 반열림 `[start, end)` · 음수 인덱스 없음 ·
+범위 오류는 예외입니다. **우리는 따르지 않습니다.** 사용자가 Luau 를 쓰는
+사람들이고, 호스트 언어와 어긋나는 게 더 큰 비용이기 때문입니다.
+
+| 항목 | Lua/Luau 자신 | 세 표준 라이브러리 | **stl-luau** |
+|---|---|---|---|
+| 범위 | 닫힘 `[i, j]` | 반열림 | **닫힘** |
+| 음수 인덱스 | `string` 계열은 지원 | 없음 | **지원** |
+| 범위 초과 | `string` 은 clamp | 예외/패닉/UB | **clamp** |
+| 뒤집힌 범위 | 조용히 빈 결과 | 예외/패닉/UB | **빈 결과** |
+| 빈 것에서 조회 | `nil` | 예외 / `Option` / UB | **`nil`** |
+
+실측 근거: `string.sub("abcde", 2, 4)` → `bcd`(닫힘),
+`string.sub("abcde", -2)` → `de`(음수), `string.sub("abcde", 4, 2)` → `''`(뒤집힘),
+`table.move(src, 2, 4, …)` → 3개(닫힘), `table.remove({})` → `nil`.
+
+**대신 조용한 처리가 버그를 숨기지 않도록**:
+- 모든 경계 케이스를 테스트로 고정합니다(빈 것 / 1개 / 뒤집힘 / 초과 / 음수).
+- 각 메소드 주석에 계약을 명시합니다.
+- `erase_inplace(3, 1)` 이 배열을 늘렸던 것처럼, "조용히 아무것도 안 함" 과
+  "조용히 망가짐" 은 다릅니다. 후자는 버그입니다.
+
+### 1-9. selene 폐기 (사용자 확정)
 
 `const` 의 관문이었습니다:
 
@@ -162,7 +207,7 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 
 이후 컨테이너 타입도 전부 여기 모읍니다.
 
-### 3단계 — `src/Arr.luau` 재작성 (메소드 54 + 생성자 9)
+### 3단계 — `src/Arr.luau` 재작성 (메소드 52 + 생성자 10)
 
 - 이름 붙은 함수 + `typeof` 나열로 전면 재작성
 - `tests/spec.arr.luau` 동시 재작성 (호출부 207군데)
@@ -176,13 +221,13 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 
 ---
 
-## 3. 개명표
+## 3. 개명표 (확정)
 
-### 네임스페이스 (`stl.Arr.*`) — 생성자·술어
+### 네임스페이스 `stl.Arr.*` — 생성자 (9개)
 
 | 지금 | 재작성 후 |
 |---|---|
-| `arr(...)` | `Arr.Of(...)` |
+| `arr(...)` | **`Arr.Of(...)`** |
 | `arr.sized(...)` | `Arr.Sized(...)` |
 | `arr.from_table(...)` | `Arr.FromTable(...)` |
 | `arr.clone_from_table(...)` | `Arr.CloneFromTable(...)` |
@@ -191,70 +236,79 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 | `arr.pack(...)` | `Arr.Pack(...)` |
 | `arr.merge(...)` | `Arr.Merge(...)` |
 | `arr.range(...)` | `Arr.Range(...)` |
-| `arr.is_arr(...)` | `stl.isArr(...)` *(술어는 camelCase 최상위)* |
+| `arr.is_arr(v)` | **`stl.isArr(v)`** — 술어는 camelCase 최상위 |
 
-### 인스턴스 콜론 메소드 (54개)
+### 인스턴스 콜론 메소드 (54 → 52개)
 
-| 지금 | 재작성 후 | ArrView 포함 |
+| 지금 | 재작성 후 | 비고 |
 |---|---|---|
-| `:clear()` | `:Clear()` | — |
-| `:clone()` | `:Clone()` | ✅ 자기폐쇄 |
-| `:consume()` | `:Consume()` | — |
-| `:count()` | `:Count()` | ✅ 조회 |
-| `:each()` | `:Each()` | — |
-| `:empty()` | `:Empty()` | ✅ 조회 |
-| `:equal()` | `:Equal()` | ✅ 조회 |
-| `:erase()` | `:Erase()` | ✅ 자기폐쇄 |
-| `:erase_inplace()` | `:EraseInplace()` | — |
-| `:every()` | `:Every()` | ✅ 조회 |
-| `:fill()` | `:Fill()` | — |
-| `:filter()` | `:Filter()` | ✅ 자기폐쇄 |
-| `:filter_inplace()` | `:FilterInplace()` | — |
-| `:find()` | `:Find()` | ✅ 조회 |
-| `:flat()` | `:Flat()` | ✅ 자기폐쇄 |
-| `:flat_inplace()` | `:FlatInplace()` | — |
-| `:flatmap()` | `:Flatmap()` | ❌ 타입변환 |
-| `:flatmap_inplace()` | `:FlatmapInplace()` | ❌ 타입변환 |
-| `:insert()` | `:Insert()` | — |
-| `:insert_array()` | `:InsertArray()` | — |
-| `:insert_many()` | `:InsertMany()` | — |
-| `:iter()` | `:Iter()` | ✅ 조회 |
-| `:join()` | `:Join()` | ✅ 조회 |
-| `:len()` | `:Len()` | ✅ 조회 |
-| `:map()` | `:Map()` | ❌ 타입변환 |
-| `:map_inplace()` | `:MapInplace()` | ❌ 타입변환 |
-| `:max()` | `:Max()` | ✅ 조회 |
-| `:merge_inplace()` | `:MergeInplace()` | — |
-| `:min()` | `:Min()` | ✅ 조회 |
-| `:prod()` | `:Prod()` | ✅ 조회 |
-| `:push()` | `:Push()` | — |
-| `:push_array()` | `:PushArray()` | — |
-| `:push_many()` | `:PushMany()` | — |
-| `:rangeflat()` | `:Rangeflat()` | ✅ 자기폐쇄 |
-| `:rangeflat_inplace()` | `:RangeflatInplace()` | — |
-| `:reduce()` | `:Reduce()` | ❌ 타입변환 |
-| `:replace()` | `:Replace()` | — |
-| `:replace_inplace()` | `:ReplaceInplace()` | — |
-| `:reverse()` | `:Reverse()` | ✅ 자기폐쇄 |
-| `:reverse_inplace()` | `:ReverseInplace()` | — |
-| `:rotate()` | `:Rotate()` | ✅ 자기폐쇄 |
-| `:rotate_inplace()` | `:RotateInplace()` | — |
-| `:shuffle()` | `:Shuffle()` | — |
-| `:shuffle_inplace()` | `:ShuffleInplace()` | — |
-| `:slice()` | `:Slice()` | ✅ 자기폐쇄 |
-| `:slice_inplace()` | `:SliceInplace()` | — |
-| `:some()` | `:Some()` | ✅ 조회 |
-| `:sort_inplace()` | `:SortInplace()` | — |
-| `:sorted()` | `:Sorted()` | ✅ 자기폐쇄 |
-| `:sum()` | `:Sum()` | ✅ 조회 |
-| `:unpack()` | `:Unpack()` | ✅ 조회 |
-| `:unshift()` | `:Unshift()` | — |
-| `:unshift_array()` | `:UnshiftArray()` | — |
-| `:unshift_many()` | `:UnshiftMany()` | — |
+| `:clear()` | `:Clear()` |  |
+| `:clone()` | `:Clone()` |  |
+| `:consume()` | **`:Drain()`** | 순회하며 **비움**(Rust drain) |
+| `:count()` | `:Count()` |  |
+| `:each()` | `:Each()` | 누적값 + 조기 중단(콜백 2번째 반환이 truthy 면 멈춤) |
+| `:empty()` | `:Empty()` |  |
+| `:equal()` | `:Equal()` |  |
+| `:erase()` | `:Erase()` |  |
+| `:erase_inplace()` | `:EraseInplace()` |  |
+| `:every()` | `:Every()` |  |
+| `:fill()` | `:Fill()` |  |
+| `:filter()` | `:Filter()` |  |
+| `:filter_inplace()` | **`:Retain()`** | 조건에 맞는 것만 남김 |
+| `:find()` | `:Find()` |  |
+| `:flat()` | `:Flat()` | `Flat(start?, last?, to?)` 로 구간 인자를 받음 |
+| `:flat_inplace()` | `:FlatInplace()` | `FlatInplace(start?, last?)` |
+| `:flatmap()` | `:Flatmap()` |  |
+| `:flatmap_inplace()` | `:FlatmapInplace()` |  |
+| `:insert()` | `:Insert()` |  |
+| `:insert_array()` | `:InsertArray()` |  |
+| `:insert_many()` | `:InsertMany()` |  |
+| `:iter()` | `:Iter()` |  |
+| `:join()` | `:Join()` |  |
+| `:len()` | `:Len()` |  |
+| `:map()` | `:Map()` |  |
+| `:map_inplace()` | `:MapInplace()` |  |
+| `:max()` | `:Max()` | 빈 배열이면 `nil` |
+| `:merge_inplace()` | `:MergeInplace()` |  |
+| `:min()` | `:Min()` | 빈 배열이면 `nil` |
+| `:prod()` | `:Prod()` |  |
+| `:push()` | **`:PushBack()`** | 고정 인자(비용 0) |
+| `:push_array()` | **`:PushBackArray()`** | table.move |
+| `:push_many()` | **`:PushBackMany()`** | select 루프 |
+| `:rangeflat()` | ~~제거~~ | **제거** — Flat 이 구간을 받음 |
+| `:rangeflat_inplace()` | ~~제거~~ | **제거** |
+| `:reduce()` | `:Reduce()` |  |
+| `:replace()` | `:Replace()` |  |
+| `:replace_inplace()` | `:ReplaceInplace()` |  |
+| `:reverse()` | `:Reverse()` |  |
+| `:reverse_inplace()` | `:ReverseInplace()` |  |
+| `:rotate()` | `:Rotate()` |  |
+| `:rotate_inplace()` | `:RotateInplace()` |  |
+| `:shuffle()` | `:Shuffle()` |  |
+| `:shuffle_inplace()` | `:ShuffleInplace()` |  |
+| `:slice()` | `:Slice()` | 닫힘 `[start, last]`, 음수 OK, 넘치면 clamp, 뒤집히면 빈 것 |
+| `:slice_inplace()` | `:SliceInplace()` |  |
+| `:some()` | `:Some()` |  |
+| `:sort_inplace()` | `:SortInplace()` |  |
+| `:sorted()` | **`:Sort()`** | Reverse 와 대칭(동사원형) |
+| `:sum()` | `:Sum()` |  |
+| `:unpack()` | `:Unpack()` |  |
+| `:unshift()` | **`:PushFront()`** | 고정 인자 |
+| `:unshift_array()` | **`:PushFrontArray()`** |  |
+| `:unshift_many()` | **`:PushFrontMany()`** |  |
 
-**`ArrView` 구성**: 조회 14 + 자기폐쇄 9 = **23개**.
-빠지는 것은 타입 변환 5개(`Map`/`MapInplace`/`FlatMap`/`FlatMapInplace`/`Reduce`)
-와 변형 계열(`Push`/`Erase`/`Fill` 등 — 뷰는 읽기 관점이므로 의도적 제외).
+**`ArrView` 구성**: 조회 계열 + 자기폐쇄 재귀 계열. 자기폐쇄 메소드의 반환은
+`Arr<T>` 가 아니라 **`ArrView<T>`** 여야 합니다(1-3 절).
+빠지는 것: 타입 변환 5개(`Map`/`MapInplace`/`FlatMap`/`FlatMapInplace`/`Reduce`)
+— 넣으면 바깥 체이닝이 죽습니다. 변형 계열(`PushBack`/`Erase`/`Fill` 등)도
+뷰는 읽기 관점이므로 의도적으로 제외합니다.
+
+### 남은 이름 판단 하나 — `each`
+
+`each` 는 단순 순회가 아니라 **누적값을 받고, 콜백의 두 번째 반환이 truthy 면
+멈추는** fold 입니다. `Reduce` 와 다르고(조기 중단이 있음) `ForEach` 와도
+다릅니다(누적값이 있음). 이름을 `Each` 로 둘지 `FoldUntil` 류로 바꿀지
+**아직 안 정했습니다.**
 
 ---
 
