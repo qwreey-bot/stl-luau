@@ -9,22 +9,37 @@
 작업에 다다랐을 때 물으면 됩니다(`slice` 의 `to_start`, `nil` 구멍 정책,
 Index 저장 규약, `Record` 흡수, `Fut`/`Optional`).
 
-## 📍 지금 여기 (2026-09-22)
+## 📍 지금 여기 (2026-09-22 밤 작업 중)
 
-**스캐폴딩 제안서가 승인됐습니다**(`.claude/base/scaffolding-proposal.md`,
-질문 A). `Set` 은 `Map` 위에 단방향으로 얹습니다. 이제 아래 "전면 재작성"
-의 2단계(`src/Types.luau`)부터 실제 코드를 씁니다.
+재작성 3단계까지 끝났습니다. **`check.sh` 가 exit 0** 이고 `src` 와
+`tests/spec.arr.luau` 는 **TypeError 0건**입니다.
 
-조사·검증은 사용자 대응 없이 할 수 있는 데까지 해뒀습니다:
+| 단계 | 상태 |
+|---|---|
+| 1단계 검증 장치 | ✅ 음성 대조군 배터리 게이트(스파이크 26개) |
+| 2단계 `Types`/`Common`/`Algorithm`/`init` | ✅ |
+| 3단계 `Arr.luau` + `spec.arr.luau` | ✅ 메소드 54 + 생성자 8 |
+| 4단계 나머지 컨테이너 | ⬜ 다음 |
 
-- `.claude/audit/container-contracts/` — 계약 3종이 Luau 에서 서는 것 확인,
-  **실제로 도는 4파일 골격**, 모듈 분할 가능 여부, 선언 순서 누수 발견
-- `.claude/audit/list-index-abstraction/` — 위치 타입 제네릭이 54개 메소드와
-  합쳐도 버팀
-- `.claude/arr-worklist.md` — 메소드 54개 작업 체크리스트
-- `.claude/audit/known-bugs/` — 버그 재현(지금 5건 실패가 정상)
-- `.claude/base/container-design-notes.md` — Java/Rust/C++ 와 예전 과제에서
-  얻은 설계 교훈
+0건이 나왔다고 안심하면 안 되므로 **실제 `src/Arr` 를 쓰는 음성 대조군**을
+따로 뒀습니다 — `audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau`
+(NEG 10 + CANARY, 기대 13건). 이게 줄어들면 타입 검사가 죽은 것입니다.
+
+밤 작업에서 자유롭게 정한 것들은 **`question.md` 의 "🌙 제가 정한 것들"** 에
+모았습니다(I~N). 전부 되돌리기 쉬운 것들입니다.
+
+실측한 것은 `base/perf-measurements.md` 에 전량 있습니다 — 메타테이블 세금
+1.59배, `table.move` 가 손 루프 대비 14.3배, `Iter()` 가 교집합에서도 타입이
+사는 것(`__iter` 불필요), 비교자 1.82배, 구멍 검사 13%.
+
+### 다음 할 일
+
+1. **`HashMap` → `HashSet`** (셋은 맵 위에 단방향). 그 다음 `TreeMap`
+   (+`BSearch`) → `TreeSet` → `Heap`.
+2. 각 컨테이너마다 **음성 대조군 스파이크를 같이** 만들고
+   `scripts/spike-expectations.tsv` 에 등록할 것.
+3. 전부 서면 `src-old/` 와 `tests/spec.arr-old.luau` 를 지운다.
+4. 루트 정리(README/LICENSE 없음), `stylua.toml` 도입 여부.
 
 ## ⭐ 전면 재작성
 
