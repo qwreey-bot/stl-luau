@@ -22,6 +22,8 @@ local Types = require("@self/Types")
 local Common = require("@self/Common")
 local Algorithm = require("@self/Algorithm")
 local Arr = require("@self/Arr")
+local HashMap = require("@self/HashMap")
+local HashSet = require("@self/HashSet")
 
 -- 계약 타입은 최상위에서도 보이게 재수출합니다.
 export type Comparator<T> = Types.Comparator<T>
@@ -36,6 +38,8 @@ export type SetCore<T> = Types.SetCore<T>
 export type Arr<T> = Arr.Arr<T>
 export type ArrData<T> = Arr.ArrData<T>
 export type ArrView<T> = Arr.ArrView<T>
+export type HashMap<K, V> = HashMap.HashMap<K, V>
+export type HashSet<T> = HashSet.HashSet<T>
 
 return {
 	Common = Common,
@@ -44,7 +48,11 @@ return {
 	-- 컨테이너 네임스페이스. **순수 테이블입니다** — 콜러블로 만들면 제네릭
 	-- 생성자가 타입 인자를 잃고 모듈 오타도 못 잡습니다(실측).
 	Arr = Arr,
+	HashMap = HashMap,
+	HashSet = HashSet,
 
 	-- 술어는 camelCase 로 최상위에 둡니다.
 	isArr = Arr.isArr,
+	isHashMap = HashMap.isHashMap,
+	isHashSet = HashSet.isHashSet,
 }

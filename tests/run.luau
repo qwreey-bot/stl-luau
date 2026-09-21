@@ -19,6 +19,8 @@
 ]]
 
 require("./spec.arr")
+require("./spec.hashmap")
+require("./spec.hashset")
 require("./spec.arr-old")
 
 print()

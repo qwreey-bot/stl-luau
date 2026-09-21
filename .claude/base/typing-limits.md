@@ -260,3 +260,54 @@ quad 문서가 제시하는 회피법 중 이 저장소에 적용해볼 만한 �
 
 - `tuple.luau` 9건, `typeutil.luau` 3건, `treeset.luau` 1건
   (`subtract` 의 미타입 파라미터). 전부 스텁/실험 코드라 우선순위가 낮습니다.
+
+---
+
+## ⚠️ 제네릭 컨테이너를 쓸 때 조용히 타입을 잃는 자리 셋 (2026-09-22)
+
+전부 같은 뿌리입니다 — **Luau 는 기대 타입을 제네릭 호출 안으로 전파하지
+않습니다.** 그래서 추론할 재료가 인자에 없으면 `unknown` 이 되고, **진단은
+0건**이라 조용히 지나갑니다.
+
+### 1. 인자 없는 생성자
+
+```lua
+local m: HashMap<string, number> = HashMap.New()  -- ❌ HashMap<unknown, unknown>
+local m = HashMap.New() :: HashMap<string, number> -- ✅
+```
+
+**선언 주석은 안 되고 캐스트여야 합니다.** `Arr.Of()`(빈 배열),
+`HashSet.New()` 도 같습니다.
+
+### 2. 테이블 리터럴을 `{ [K]: V }` 자리에 넘기기
+
+```lua
+HashMap.FromTable({ a = 1 })   -- ❌ HashMap<unknown, unknown>
+```
+
+`{ a = 1 }` 의 타입은 `{ [string]: number }` 가 **아니라** 이름 붙은 속성을
+가진 레코드 `{ a: number }` 입니다. 맞출 `K`/`V` 가 없습니다.
+
+```lua
+local src: { [string]: number } = { a = 1 }
+local m = HashMap.FromTable(src)                              -- ✅
+local m = HashMap.FromTable({ a = 1 }) :: HashMap<string, number> -- ✅
+```
+
+**이게 제일 위험합니다.** 한 번 `unknown` 이 되면 그 뒤로 **무엇을 해도 안
+잡힙니다** — 키 타입이 틀려도, 값 타입이 틀려도 조용합니다.
+(`spikes/41` 의 "캐비엇" 절에 고정해뒀습니다.)
+
+### 3. 반환 타입으로만 제네릭이 결정되는 함수
+
+```lua
+local flat: Arr<number> = nested:Flat()      -- ❌ T 가 unknown
+local flat = nested:Flat() :: Arr<number>    -- ✅
+```
+
+### 어떻게 지키는가
+
+컨테이너마다 **실제 `src` 를 쓰는 음성 대조군 스파이크**를 두고
+`scripts/check.sh` 가 기대 건수를 대조합니다. 위 셋은 잡히지 않으므로,
+스파이크의 "캐비엇" 절에 *일부러 안 잡히는 것*으로 적어둡니다 — 나중에
+Luau 가 좋아져 잡히기 시작하면 기대 건수가 올라가 게이트가 알려줍니다.
