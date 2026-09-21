@@ -5,40 +5,47 @@
 
 ## 막힌 것 (사용자 결정 필요)
 
-**지금 구현을 막는 질문은 없습니다.** `.claude/question.md` 의 B~F 는 해당
-작업에 다다랐을 때 물으면 됩니다(`slice` 의 `to_start`, `nil` 구멍 정책,
-Index 저장 규약, `Record` 흡수, `Fut`/`Optional`).
+**재작성은 끝났습니다.** 남은 것은 전부 사용자 결정이 필요한 것들입니다 —
+`.claude/question.md` 에 무엇을 물어야 하는지까지 정리해뒀습니다.
 
-## 📍 지금 여기 (2026-09-22 밤 작업 중)
+| 무엇 | 왜 막혀 있나 |
+|---|---|
+| C. `nil` 구멍 정책 | 잠정 채택(전부 걸러냄)했고 13% 비용을 쟀습니다. 확인만 필요 |
+| D. 위치(Index) 저장 규약 | 문서 규약이냐 세대 카운터냐 |
+| F. `Fut` / `Optional` | 순수 luau 엔 스케줄러가 없습니다 |
+| 1. `Tuple` / `TypeUtil` 방향 | 실험 유지 중(`--!nocheck`) |
+| 3. README / LICENSE | 라이선스는 소유권, README 는 공개 의도 |
+| 4. stylua | 바이너리가 이 환경에 없어 영향을 못 잽니다 |
+| pesde 0.7.4 | `pesde self-upgrade` — 사용자 작업 |
 
-**컨테이너가 전부 섰습니다.** `check.sh` exit 0, 스파이크 30개 전부 기대치
-일치, `src` 는 TypeError 0건(남은 41건은 전부 `src-old` 와 `spec.arr-old` 몫).
+## 📍 지금 여기 (2026-09-22 밤 작업 완료)
 
-| 모듈 | 메소드 | 테스트 | 음성 대조군 |
-|---|---|---|---|
-| `Types` / `Common` / `Algorithm` / `init` | — | — | — |
-| `Arr` | 54 + 생성자 8 | `spec.arr` | `spikes/40` |
-| `HashMap` / `HashSet` | 13 / 16 | `spec.hashmap` / `spec.hashset` | `spikes/41` |
-| `BSearch` | 5 | `spec.bsearch` | `spikes/42` |
-| `TreeMap` / `TreeSet` | 18 / 21 | `spec.treemap` / `spec.treeset` | `spikes/43` |
-| `Heap` | 11 | `spec.heap` | `spikes/44` |
+**전면 재작성이 끝났습니다.** `./scripts/check.sh` 가 **exit 0** 이고 네
+게이트가 전부 섭니다:
 
-`audit/known-bugs/repro.luau` 도 새 API 로 옮겨 **0 실패**이고, 파일 끝에
-`assert(fails == 0)` 을 걸어 다시 깨지면 터집니다.
+| 게이트 | 상태 |
+|---|---|
+| TypeError 총계 | **0건** (기준선이자 게이트) |
+| 음성 대조군 배터리 | 스파이크 27개 전부 기대치 일치 |
+| require 게이트 | 모든 모듈 통과 |
+| 테스트 | 9개 스펙 전부 통과 |
 
-밤 작업에서 자유롭게 정한 것들은 **`question.md` 의 "🌙 제가 정한 것들"**
-(I~N)에, 실측은 **`base/perf-measurements.md`** 에 전량 있습니다.
+| 모듈 | 테스트 | 음성 대조군 |
+|---|---|---|
+| `Types` / `Common` / `Algorithm` / `BSearch` | `spec.bsearch`, `spec.contracts` | `spikes/42` |
+| `Arr` (메소드 54 + 생성자 8) | `spec.arr` (13절) | `spikes/40` |
+| `HashMap` / `HashSet` | `spec.hashmap` / `spec.hashset` | `spikes/41` |
+| `TreeMap` / `TreeSet` | `spec.treemap` / `spec.treeset` | `spikes/43` |
+| `Heap` | `spec.heap` | `spikes/44` |
+| `Tuple` / `TypeUtil` | — (실험, `--!nocheck`, 미export) | — |
 
-### 다음 할 일 — 마무리
+`spec.contracts` 가 **구현을 바꿔 끼울 수 있는지**를 고정합니다 — 같은
+`MapCore`/`SetCore` 자리에 해시 판과 트리 판을 넣어 돌립니다.
+`audit/known-bugs/repro.luau` 는 **0 실패**이고 파일 끝에 `assert` 가
+걸려 있습니다.
 
-1. **`src-old/` 와 `tests/spec.arr-old.luau` 삭제.** 새 `Arr` 가 옛 기능을
-   덮는지 한 번 대조하고 지웁니다. 지우면 TypeError 총계가 0 이 됩니다 —
-   그때부터는 **총계에도 게이트를 걸 수 있습니다.**
-2. **`project-context.md` 의 모듈 표가 통째로 낡았습니다.** 새 구조로 갱신.
-3. **README / LICENSE** — 둘 다 없습니다(`question.md` 참고).
-4. **stylua 도입 여부** — 새 `src` 는 전부 탭으로 통일돼 있습니다.
-5. `Fut` / `Optional` / `Record` / `Tuple` / `TypeUtil` 방향
-   (`question.md` E, F). `src-old` 에만 있고 새 `src` 엔 없습니다.
+밤 작업에서 자유롭게 정한 것은 `question.md` 의 **"🌙 제가 정한 것들"**(I~N),
+실측은 **`base/perf-measurements.md`**(10절까지)에 전량 있습니다.
 
 ## ⭐ 전면 재작성
 
