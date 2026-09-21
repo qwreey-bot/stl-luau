@@ -6,3 +6,10 @@ lune_packages/
 
 # luau-lsp/rojo 가 생성하는 소스맵 (rojo sourcemap 으로 재생성 가능)
 sourcemap.json
+
+# 참고용으로 클론/보관하는 것들. git 에 들어가지 않습니다.
+#   refs-ignoreme/        다른 언어 표준 라이브러리 (Rust/Java/C++) — 설계 참고용
+#   old-homeworks-ignoreme/  예전 학교 과제 (ADT 구현 등)
+# 여기서 얻은 것은 **자기설명적으로 다시 써서** .claude/ 나 소스 주석에 남깁니다
+# — 원문을 그대로 옮기지 않습니다(라이선스가 제각각이고, 참조가 끊기면 못 읽음).
+*-ignoreme*
