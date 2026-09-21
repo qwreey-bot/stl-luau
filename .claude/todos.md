@@ -19,7 +19,8 @@ Index 저장 규약, `Record` 흡수, `Fut`/`Optional`).
 | 1단계 검증 장치 | ✅ 음성 대조군 배터리 게이트(스파이크 26개) |
 | 2단계 `Types`/`Common`/`Algorithm`/`init` | ✅ |
 | 3단계 `Arr.luau` + `spec.arr.luau` | ✅ 메소드 54 + 생성자 8 |
-| 4단계 나머지 컨테이너 | ⬜ 다음 |
+| 4단계 `HashMap` / `HashSet` / `BSearch` | ✅ |
+| 4단계 `TreeMap` → `TreeSet` → `Heap` | ⬜ 다음 |
 
 0건이 나왔다고 안심하면 안 되므로 **실제 `src/Arr` 를 쓰는 음성 대조군**을
 따로 뒀습니다 — `audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau`
@@ -34,10 +35,10 @@ Index 저장 규약, `Record` 흡수, `Fut`/`Optional`).
 
 ### 다음 할 일
 
-1. **`HashMap` → `HashSet`** (셋은 맵 위에 단방향). 그 다음 `TreeMap`
-   (+`BSearch`) → `TreeSet` → `Heap`.
+1. **`TreeMap`**(정렬 유지, `BSearch` 백엔드) → **`TreeSet`**(맵 위에
+   단방향) → **`Heap`**.
 2. 각 컨테이너마다 **음성 대조군 스파이크를 같이** 만들고
-   `scripts/spike-expectations.tsv` 에 등록할 것.
+   `scripts/spike-expectations.tsv` 에 등록할 것(지금 28개).
 3. 전부 서면 `src-old/` 와 `tests/spec.arr-old.luau` 를 지운다.
 4. 루트 정리(README/LICENSE 없음), `stylua.toml` 도입 여부.
 
