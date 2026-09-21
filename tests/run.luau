@@ -18,6 +18,7 @@
 	디렉터리 인덱스 모듈로 특별 취급해서 require 가 모호해집니다.
 ]]
 
+require("./spec.common")
 require("./spec.contracts")
 require("./spec.arr")
 require("./spec.hashmap")
