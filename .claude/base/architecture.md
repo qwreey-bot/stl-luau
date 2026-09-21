@@ -196,3 +196,41 @@ setmetatable(X_ifce, X_constructor)
 | `__tostring` | 디버깅 편의. 미착수 |
 | `__mode` | 약한 참조 테이블. 현재 계획 없음 |
 | `__gc` | **Roblox 에서 비활성화**라 쓸 수 없습니다 |
+
+
+## require 경로 규칙 — 직관과 다르고, **정적 검사가 못 잡는다**
+
+quad 가 먼저 겪고 기록한 것(`pre-implementation-qa-round5.md` PS-8/9/10,
+`archive/surveys/2026-09-07-source-layout-plan.md`)이고, 2026-09-21 에
+이 저장소에서도 동일하게 실측했습니다.
+
+### 규칙
+
+| 어디서 | 폴더 **안** 형제 | 폴더 **밖** 형제 |
+|---|---|---|
+| `Foo/init.luau` | **`@self/Bar`** | **`./Types`** (`../Types` ❌) |
+| `Foo/Bar.luau` | `./Baz` | **`../Types`** (`./Types` ❌) |
+
+`init.luau` 는 **그 폴더 자신**이라 거기서만 `./` 가 부모를 가리킵니다.
+같은 폴더 안에서도 파일에 따라 경로가 다릅니다.
+
+### ⭐ 이 실수는 조용히 지나갑니다
+
+**`@self` 대신 `./` 를 쓰면 런타임에서 크래시하지만 `luau-analyze` 는 진단
+0건으로 통과합니다**(타입이 `Unifiable<Error>` 로 샘). 정적 검사만 돌리는
+작업은 이 실수를 **절대** 못 잡습니다.
+
+→ **`init.luau` 를 새로 추가하거나 require 를 고친 커밋은 반드시 런타임으로
+한 번 `require` 해봐야 합니다.** `scripts/check.sh` 가 이걸 게이트로 겁니다.
+
+### 폴더로 접는 것은 공짜
+
+`X.luau` → `X/init.luau` 로 바꿔도 안팎의 기존 `./` 경로가 그대로 유효합니다.
+새로 생긴 형제 파일만 `@self/` 로 부르면 됩니다.
+**단 `X.luau` 와 `X/` 를 동시에 두지 마세요**(해석 우선순위 미검증).
+
+### symlink 함정
+
+`pesde install` 은 워크스페이스 의존성을 symlink 로 거는데, Luau CLI 의
+require-by-string 은 **보안상 의도적으로 symlink 를 따라가지 않습니다.**
+`luau`/`luau-analyze` CLI 만의 문제이고 Rojo 경로는 투명하게 통과합니다.

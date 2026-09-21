@@ -13,3 +13,6 @@ sourcemap.json
 # 여기서 얻은 것은 **자기설명적으로 다시 써서** .claude/ 나 소스 주석에 남깁니다
 # — 원문을 그대로 옮기지 않습니다(라이선스가 제각각이고, 참조가 끊기면 못 읽음).
 *-ignoreme*
+
+# check.sh 가 쓰는 임시 프로브 (정상 종료 시 지워짐)
+.check-require-probe.luau
