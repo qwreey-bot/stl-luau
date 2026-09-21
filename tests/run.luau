@@ -21,6 +21,7 @@
 require("./spec.arr")
 require("./spec.hashmap")
 require("./spec.hashset")
+require("./spec.bsearch")
 require("./spec.arr-old")
 
 print()

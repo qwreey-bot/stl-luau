@@ -21,6 +21,7 @@
 local Types = require("@self/Types")
 local Common = require("@self/Common")
 local Algorithm = require("@self/Algorithm")
+local BSearch = require("@self/BSearch")
 local Arr = require("@self/Arr")
 local HashMap = require("@self/HashMap")
 local HashSet = require("@self/HashSet")
@@ -44,6 +45,7 @@ export type HashSet<T> = HashSet.HashSet<T>
 return {
 	Common = Common,
 	Algorithm = Algorithm,
+	BSearch = BSearch,
 
 	-- 컨테이너 네임스페이스. **순수 테이블입니다** — 콜러블로 만들면 제네릭
 	-- 생성자가 타입 인자를 잃고 모듈 오타도 못 잡습니다(실측).
