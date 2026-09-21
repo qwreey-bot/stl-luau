@@ -59,13 +59,33 @@ export type ListCore<E, I> = {
 넷째 항목이 핵심입니다 — 배열의 위치와 연결의 위치가 **타입으로 갈라져**
 섞이지 않습니다.
 
-## 남은 것
+## 54개 메소드와 합쳐도 버팀 (`spikes/01-combined-with-arr-scale.luau`, 기대 6건)
 
-- 이 구조를 지금의 `Arr<T>`(54개 콜론 메소드)와 **어떻게 잇는가**. `Arr` 이
-  `ListCore<T, number>` 를 만족하게 두고 공통 알고리즘을 자유 함수로 빼는
-  방식이 후보입니다. 메소드 수가 많으므로
-  `.claude/audit/arr-type-redesign/` 의 규모 실측(교집합 필수, 30개에서
-  `setmetatable` 붕괴)을 같이 만족해야 합니다 — **아직 합쳐서 재보지 않았습니다.**
+두 설계가 **합성됩니다.** 규모 증상 0건.
+
+```lua
+export type Arr<T> = ArrData<T> & ArrIfce & ListCore<T, number>
+```
+
+`Arr` 이 전체 인터페이스(54개)와 위치 타입이 `number` 인 코어를 **둘 다**
+만족하게 두고 확인한 것:
+
+| 검사 | 결과 |
+|---|---|
+| `Map` 2단 타입 변환 체이닝 | ✅ `ArrData<boolean> & ArrIfce & ListCore<boolean, number>` |
+| 공용 `IndexOf`/`CountOf` 가 `Arr` 과 연결 리스트 양쪽에 | ✅ |
+| 배열의 위치를 연결의 위치로 받기 | ✅ 검출 |
+| **다른 구현의 위치를 섞어 쓰기** | ✅ 검출 |
+| 없는 메소드 | ✅ 검출 |
+| `too complex` / `pending-expansion` | **0건** |
+
+즉 `ArrIfce`(교집합, 54개)와 `ListCore<E, I>` 를 같은 타입에 얹어도 서로를
+깨뜨리지 않습니다.
+
+## 남은 것
+- `Map`/`Filter`/`Reduce` 를 **조회기 위의 자유 함수로 올렸을 때도** 타입이
+  버티는지. 위는 `Arr` 의 메소드로 둔 채 `ListCore` 를 얹은 것이고, 변환
+  연산까지 자유 함수로 빼는 건 아직 안 쟀습니다.
 - 변경 연산(`Insert`/`Remove`)을 이 인터페이스에 넣을지. 위치 타입이 노드면
   삽입/삭제가 O(1) 이고 배열이면 O(n) 이라, 복잡도가 구현마다 다른 연산을
   공통 인터페이스에 두는 게 맞는지 판단이 필요합니다.
