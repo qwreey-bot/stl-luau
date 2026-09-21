@@ -207,7 +207,7 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 
 이후 컨테이너 타입도 전부 여기 모읍니다.
 
-### 3단계 — `src/Arr.luau` 재작성 (메소드 52 + 생성자 10)
+### 3단계 — `src/Arr.luau` 재작성 (메소드 54 + 생성자 10)
 
 - 이름 붙은 함수 + `typeof` 나열로 전면 재작성
 - `tests/spec.arr.luau` 동시 재작성 (호출부 207군데)
@@ -238,7 +238,7 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 | `arr.range(...)` | `Arr.Range(...)` |
 | `arr.is_arr(v)` | **`stl.isArr(v)`** — 술어는 camelCase 최상위 |
 
-### 인스턴스 콜론 메소드 (54 → 52개)
+### 인스턴스 콜론 메소드 (54 → 54개)
 
 | 지금 | 재작성 후 | 비고 |
 |---|---|---|
@@ -246,7 +246,7 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 | `:clone()` | `:Clone()` |  |
 | `:consume()` | **`:Drain()`** | 순회하며 **비움**(Rust drain) |
 | `:count()` | `:Count()` |  |
-| `:each()` | `:Each()` | 누적값 + 조기 중단(콜백 2번째 반환이 truthy 면 멈춤) |
+| `:each()` | **`:FoldUntil()`** | 초기값 먼저. 후행 조건이라 Until(Lua `repeat/until`) |
 | `:empty()` | `:Empty()` |  |
 | `:equal()` | `:Equal()` |  |
 | `:erase()` | `:Erase()` |  |
@@ -277,7 +277,7 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 | `:push_many()` | **`:PushBackMany()`** | select 루프 |
 | `:rangeflat()` | ~~제거~~ | **제거** — Flat 이 구간을 받음 |
 | `:rangeflat_inplace()` | ~~제거~~ | **제거** |
-| `:reduce()` | `:Reduce()` |  |
+| `:reduce()` | **`:Fold()`** | 초기값 먼저. 초기값 없는 판은 `:Reduce()` 로 분리 |
 | `:replace()` | `:Replace()` |  |
 | `:replace_inplace()` | `:ReplaceInplace()` |  |
 | `:reverse()` | `:Reverse()` |  |
@@ -297,20 +297,68 @@ quad 의 `quad-types` 방식. 배포 시 ModuleScript 가 덜 들고 LSP 부담�
 | `:unshift_array()` | **`:PushFrontArray()`** |  |
 | `:unshift_many()` | **`:PushFrontMany()`** |  |
 
+### 신설 메소드 (2개)
+
+| 새 이름 | 무엇 |
+|---|---|
+| `:FoldRight(init, fn)` | 오른쪽부터 접기 |
+| `:Reduce(fn)` | 초기값 없음, 첫 원소가 씨앗 → `T?` |
+
+(`rangeflat`/`rangeflat_inplace` 2개가 `Flat` 에 흡수되고 이 2개가 신설되어
+메소드 수는 54개 그대로입니다.)
+
 **`ArrView` 구성**: 조회 계열 + 자기폐쇄 재귀 계열. 자기폐쇄 메소드의 반환은
 `Arr<T>` 가 아니라 **`ArrView<T>`** 여야 합니다(1-3 절).
 빠지는 것: 타입 변환 5개(`Map`/`MapInplace`/`FlatMap`/`FlatMapInplace`/`Reduce`)
 — 넣으면 바깥 체이닝이 죽습니다. 변형 계열(`PushBack`/`Erase`/`Fill` 등)도
 뷰는 읽기 관점이므로 의도적으로 제외합니다.
 
-### 남은 이름 판단 하나 — `each`
+### Fold 계열 — `each` 는 제거하고 넷으로 가른다 (사용자 확정)
 
-`each` 는 단순 순회가 아니라 **누적값을 받고, 콜백의 두 번째 반환이 truthy 면
-멈추는** fold 입니다. `Reduce` 와 다르고(조기 중단이 있음) `ForEach` 와도
-다릅니다(누적값이 있음). 이름을 `Each` 로 둘지 `FoldUntil` 류로 바꿀지
-**아직 안 정했습니다.**
+`each` 는 사실 `reduce` 와 **인자 순서만 다른 중복**이었습니다(둘 다 fold).
+`each` 만 조기 중단이 있었습니다. 넷으로 가릅니다:
 
----
+```lua
+arr:Fold(0, function(acc, v) … end)       -- 왼쪽부터, 초기값 있음   -> U
+arr:FoldRight(0, function(acc, v) … end)  -- 오른쪽부터              -> U
+arr:Reduce(function(a, b) … end)          -- 초기값 없음, 첫 원소가 씨앗 -> T?
+arr:FoldUntil(0, function(acc, v) … end)  -- 조기 중단               -> (U, number?)
+```
+
+1. **초기값이 앞으로.** 지금 `reduce(fn, init)` 는 JS 순서인데 후행 클로저가
+   여러 줄이면 `0` 이 뒤에 붕 뜹니다. Rust·Haskell·Java 전부 초기값이 먼저입니다.
+2. **`Fold` 와 `Reduce` 를 가릅니다**(Rust 의 구분). 초기값이 있으면 `Fold`
+   (반환 `U`), 없으면 `Reduce`(첫 원소를 씨앗으로, 빈 배열이면 `nil` 이라 `T?`).
+   `arr:Reduce(math.max)` 가 자연스러워집니다.
+3. **조기 중단은 `Until` 입니다, `While` 이 아니라** (사용자 지적). 구현이
+   *원소를 처리한 뒤* `done` 을 보는 **후행 조건**이고, Lua 의 `repeat … until`
+   이 바로 그 의미입니다. `While` 이면 처리 전에 조건을 봐야 하는데 그 구조가
+   아닙니다.
+   콜백은 `(acc, done: boolean?)` 를 반환하고, `FoldUntil` 은 `(acc, 멈춘 인덱스)`
+   를 돌려줍니다 — 끝까지 갔으면 둘째가 `nil` 이라 완주 여부를 알 수 있습니다.
+
+**`for` 루프 대신 `Fold` 를 두는 이유**(사용자): 노출 표면이 충분히 작으면 코드
+품질이 더 중요하고, (a) `break` 대신 `return` 을 쓸 수 있으며 (b) **콜백을
+이름 붙여 여러 곳에서 재사용**할 수 있습니다.
+
+타입 검증: `spikes/36-fold-family.luau` (기대 6건). 다중 반환 콜백
+(`-> (U, boolean?)`)까지 정확히 타이핑되고 규모 증상 0건.
+
+### ⭐ 순회는 세 가지 — 무엇을 언제 쓰는가
+
+**교집합 타입은 `for-in` 루프 변수의 타입을 잃습니다**(최소 재현:
+`spikes/35-intersection-breaks-forin.luau`). `__iter` 와 무관하고, Luau 의
+for-in 이 인덱서를 보는데 교집합의 인덱서를 못 봐서 그렇습니다. 진단 0건이라
+**조용히** 죽습니다. 규모 때문에 교집합을 포기할 수 없으므로 이건 받아들입니다.
+
+| 방법 | 속도 | 타입 | 언제 |
+|---|---|---|---|
+| **`for i = 1, arr.n do … arr[i] …`** | **1.00x** | ✅ | **핫 루프. 속도·타입 양쪽에서 이김** |
+| `arr:Fold(init, fn)` 등 콜백 | 2.54x | ✅ | 체이닝, 콜백 재사용, `return` 로 빠져나오기 |
+| `for _, v in arr` (`__iter`) | 2.80x | ❌ **죽음** | **권하지 않음** |
+
+직접 인덱싱(`arr[i]`)은 교집합에서도 타입이 살아있습니다 — for-in 만 죽습니다.
+**`__iter` 를 제공할지는 미결** — 제공하면 문법은 되지만 타입을 잃습니다.
 
 ## 4. 보류 / 추적
 
