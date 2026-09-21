@@ -29,6 +29,7 @@
 5	.claude/audit/arr-type-redesign/spikes/34-iter-boundary.luau
 6	.claude/audit/arr-type-redesign/spikes/35-intersection-breaks-forin.luau
 6	.claude/audit/arr-type-redesign/spikes/36-fold-family.luau
+5	.claude/audit/arr-type-redesign/spikes/37-iter-method-vs-metamethod.luau
 6	.claude/audit/container-contracts/spikes/00-contracts.luau
 1	.claude/audit/container-contracts/spikes/01-contract-vs-intersection.luau
 1	.claude/audit/container-contracts/spikes/02-mutating-method-variance.luau

@@ -30,6 +30,7 @@ agent-memory 같은 무거운 장치는 아직 없습니다 — 필요해지면 
 | 사용자가 답해야 할 열린 질문 | `.claude/question.md` |
 | **전면 재작성 계획(확정된 설계·개명표·순서)** | `.claude/base/rewrite-plan.md` |
 | 다른 언어 표준 라이브러리에서 얻은 설계 교훈 | `.claude/base/container-design-notes.md` |
+| **성능 실측 전량 (메타테이블 세금, `table.move`, 순회, 비교자)** | `.claude/base/perf-measurements.md` |
 
 **참고 자료** (전부 `.gitignore` 의 `*-ignoreme*` 로 무시됨 — 거기서 얻은 건
 원문을 옮기지 않고 **자기설명적으로 다시 써서** `.claude/` 에 남깁니다):
