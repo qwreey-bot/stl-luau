@@ -5,17 +5,17 @@
 
 ## 막힌 것 (사용자 결정 필요)
 
-`.claude/question.md` 참고. 남은 질문은 3개(type function 실험 방향,
-**`arr(1, 2, 3)` 호출 형태 vs `arr.오타` 검출**, 라이선스/README)이며,
-아래 작업들을 막고 있진 않습니다.
+**지금 구현을 막는 질문은 없습니다.** `.claude/question.md` 의 B~F 는 해당
+작업에 다다랐을 때 물으면 됩니다(`slice` 의 `to_start`, `nil` 구멍 정책,
+Index 저장 규약, `Record` 흡수, `Fut`/`Optional`).
 
-## 📍 지금 여기 (2026-09-21)
+## 📍 지금 여기 (2026-09-22)
 
-**스캐폴딩 제안서를 썼고 사용자 검토를 기다립니다** —
-`.claude/base/scaffolding-proposal.md`. 질문은 `.claude/question.md` 의
-"지금 답을 기다리는 것" 절에 모았습니다(A 만 다음 작업을 막습니다).
+**스캐폴딩 제안서가 승인됐습니다**(`.claude/base/scaffolding-proposal.md`,
+질문 A). `Set` 은 `Map` 위에 단방향으로 얹습니다. 이제 아래 "전면 재작성"
+의 2단계(`src/Types.luau`)부터 실제 코드를 씁니다.
 
-조사·검증은 사용자 대응 없이 할 수 있는 데까지 했습니다:
+조사·검증은 사용자 대응 없이 할 수 있는 데까지 해뒀습니다:
 
 - `.claude/audit/container-contracts/` — 계약 3종이 Luau 에서 서는 것 확인,
   **실제로 도는 4파일 골격**, 모듈 분할 가능 여부, 선언 순서 누수 발견

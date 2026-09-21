@@ -1,7 +1,8 @@
 # `src/` 스캐폴딩 제안서
 
-**상태: 제안 — 사용자 검토 대기.** 결정되면 `rewrite-plan.md` 로 흡수하고
-이 파일은 지웁니다.
+**상태: 2026-09-22 사용자 승인 — 이대로 갑니다.** 아직 `rewrite-plan.md` 로
+흡수하지 않았습니다(구현이 끝나면 이 파일을 지우고 계획서에 합칩니다).
+`Set` 을 `Map` 위에 얹는 건에 대한 사용자 답: *"그래도 돼."*
 
 근거: `.claude/audit/container-contracts/`(계약·골격·모듈분할 실측),
 `.claude/audit/arr-type-redesign/`(타입 설계), `.claude/base/container-design-notes.md`
