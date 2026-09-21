@@ -24,6 +24,7 @@ require("./spec.hashset")
 require("./spec.bsearch")
 require("./spec.treemap")
 require("./spec.treeset")
+require("./spec.heap")
 require("./spec.arr-old")
 
 print()
