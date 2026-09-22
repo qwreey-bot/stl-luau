@@ -38,7 +38,7 @@
 1	.claude/audit/container-contracts/spikes/04-declaration-order-fixed.luau
 7	.claude/audit/list-index-abstraction/spikes/00-index-abstraction.luau
 6	.claude/audit/list-index-abstraction/spikes/01-combined-with-arr-scale.luau
-13	.claude/audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau
+17	.claude/audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau
 12	.claude/audit/arr-type-redesign/spikes/41-real-hashmap-hashset-negative-control.luau
 6	.claude/audit/arr-type-redesign/spikes/42-real-bsearch-negative-control.luau
 12	.claude/audit/arr-type-redesign/spikes/43-real-treemap-treeset-negative-control.luau

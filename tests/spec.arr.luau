@@ -462,6 +462,60 @@ do
 end
 print("PASS")
 
+print("=== 14. ⚠️ unchecked 계열 ===")
+do
+	-- 구멍이 없으면 checked 와 **같은 답**이 나와야 합니다.
+	const dense: Arr<number> = Arr.Of(3, 1, 2)
+	assert(dense:SumUnchecked() == dense:Sum(), "SumUnchecked 는 같은 답")
+	assert(dense:ProdUnchecked() == dense:Prod(), "ProdUnchecked 는 같은 답")
+	assert(dense:MaxUnchecked() == dense:Max(), "MaxUnchecked 는 같은 답")
+	assert(dense:MinUnchecked() == dense:Min(), "MinUnchecked 는 같은 답")
+	assert(dense:SortUnchecked():Equal(dense:Sort()), "SortUnchecked 는 같은 답")
+	assert(dense:SumUnchecked(10) == 16, "SumUnchecked 씨앗")
+	assert(dense:ProdUnchecked(2) == 12, "ProdUnchecked 씨앗")
+
+	-- 비교자를 준 경로도 같아야 합니다
+	const desc = function(a: number, b: number): boolean
+		return a > b
+	end
+	assert(dense:MaxUnchecked(desc) == dense:Max(desc), "MaxUnchecked 비교자")
+	assert(dense:MinUnchecked(desc) == dense:Min(desc), "MinUnchecked 비교자")
+	same(dense:SortUnchecked(desc), { 3, 2, 1 }, "SortUnchecked 비교자")
+
+	-- 빈 것과 한 개
+	assert(emptyNum():MaxUnchecked() == nil, "빈 것의 MaxUnchecked")
+	assert(emptyNum():MinUnchecked() == nil, "빈 것의 MinUnchecked")
+	assert(emptyNum():SumUnchecked() == 0, "빈 것의 SumUnchecked")
+	assert(emptyNum():ProdUnchecked() == 1, "빈 것의 ProdUnchecked")
+	assert(Arr.Of(5):MaxUnchecked() == 5, "한 개의 MaxUnchecked")
+	same(emptyNum():SortUnchecked(), {}, "빈 것의 SortUnchecked")
+
+	-- 제자리 판은 자기 자신을 돌려줍니다
+	const target: Arr<number> = Arr.Of(3, 1, 2)
+	assert(target:SortInplaceUnchecked() == target, "SortInplaceUnchecked 는 자기 자신")
+	same(target, { 1, 2, 3 }, "SortInplaceUnchecked 결과")
+
+	-- ⚠️ **구멍이 있을 때 문서대로 망가지는지**를 고정합니다. 이걸 고정해두지
+	-- 않으면 나중에 누가 "안전하게" 고쳐서 unchecked 의 존재 이유가 사라집니다.
+	const holed: Arr<number> = Arr.Sized(3) :: Arr<number>
+	holed[1], holed[3] = 1, 3
+	assert(not pcall(function()
+		return holed:SumUnchecked()
+	end), "SumUnchecked 는 구멍에서 터져야 합니다")
+	assert(not pcall(function()
+		return holed:MaxUnchecked()
+	end), "MaxUnchecked 는 구멍에서 터져야 합니다")
+	-- 반면 checked 는 멀쩡해야 합니다
+	assert(holed:Sum() == 4 and holed:Max() == 3, "checked 는 구멍에서 멀쩡")
+	-- 정렬만은 터지지 않고 **조용히** 다르게 동작합니다 — 그게 가장 위험한 점
+	const holedSorted: Arr<number> = Arr.Sized(3) :: Arr<number>
+	holedSorted[1], holedSorted[3] = 1, 3
+	assert(pcall(function()
+		return holedSorted:SortInplaceUnchecked()
+	end), "SortInplaceUnchecked 는 구멍에서도 터지지 않습니다 (조용히 다름)")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 

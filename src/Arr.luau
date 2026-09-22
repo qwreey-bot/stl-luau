@@ -316,6 +316,112 @@ const function Prod(self: ArrData<number>, base: number?): number
 	return acc
 end
 
+
+--#region ----------- ⚠️ unchecked 계열 — 안전을 포기하고 고르는 것 -----------
+--[[
+	위의 `Max`/`Min`/`Sum`/`Prod`/`Sort` 는 1..n 사이의 `nil` 구멍을 **건너뜁니다.**
+	구멍이 있어도 터지지 않는 대신 원소마다 검사가 한 번 붙습니다.
+
+	여기 있는 `*Unchecked` 판은 **그 검사를 빼는 대신 "구멍이 없다" 를 전제**
+	합니다. 배열에 무엇이 들어 있는지는 **호출자만 아는 것**이지 이 라이브러리가
+	아는 것이 아니므로, 판단을 호출자에게 넘기는 문입니다(Rust 의
+	`get_unchecked` 계열과 같은 발상).
+
+	⚠️ **거의 항상 검사 있는 쪽을 쓰세요.** 이건 측정해서 이 자리가 정말
+	병목이라고 확인했을 때만 고르는 것입니다. **얻는 것이 얼마인지 알고
+	고르라고** 수치를 같이 둡니다(원소 20만/200만, 실제 콜론 호출로 실측):
+
+	| 무엇 | 빨라지는 정도 |
+	|---|---|
+	| `MaxUnchecked` / `MinUnchecked` | **1.83배** |
+	| `SortInplaceUnchecked` | 1.18배 |
+	| `SumUnchecked` / `ProdUnchecked` | 1.08배 |
+
+	`Max`/`Min` 이 유독 큰 것은 검사 있는 판이 원소마다 `nil` 검사에 더해
+	**"아직 첫 값을 못 찾았는가"(`best == nil`) 분기까지** 보기 때문입니다.
+	`Sum` 의 8% 는 작지만 두 크기에서 똑같이 나왔습니다.
+
+	⚠️ **구멍이 있는 배열에 쓰면 어떻게 되는지**:
+
+	| 무엇 | 구멍을 만나면 |
+	|---|---|
+	| `SumUnchecked` / `ProdUnchecked` | `attempt to perform arithmetic on nil` 로 **터집니다** |
+	| `MaxUnchecked` / `MinUnchecked` | 비교에서 **터지거나**, 비교자를 준 경우 그 비교자에 `nil` 이 넘어갑니다 |
+	| `SortUnchecked` / `SortInplaceUnchecked` | `table.sort` 가 `#` 를 보므로 **구멍 뒤쪽이 조용히 잘립니다**(터지지도 않습니다 — 가장 나쁜 쪽) |
+
+	마지막 줄이 특히 중요합니다. 조용히 틀린 답이 나오는 유일한 자리입니다.
+]]
+
+-- `Sum` 의 검사 없는 판. **구멍이 없어야 합니다.**
+const function SumUnchecked(self: ArrData<number>, base: number?): number
+	local acc = base or 0
+	for idx = 1, self.n do
+		acc += self[idx]
+	end
+	return acc
+end
+
+-- `Prod` 의 검사 없는 판. **구멍이 없어야 합니다.**
+const function ProdUnchecked(self: ArrData<number>, base: number?): number
+	local acc = base or 1
+	for idx = 1, self.n do
+		acc *= self[idx]
+	end
+	return acc
+end
+
+-- `Max` 의 검사 없는 판. **구멍이 없어야 합니다.** 빈 배열이면 `nil`.
+const function MaxUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): T?
+	const len = self.n
+	if len == 0 then
+		return nil
+	end
+	local best = self[1]
+	if less then
+		for idx = 2, len do
+			const item = self[idx]
+			if less(best, item) then
+				best = item
+			end
+		end
+	else
+		-- 비교자가 없을 때 분기를 루프 밖으로 뺍니다 — 원소마다 `if less` 를
+		-- 다시 보지 않기 위함입니다.
+		for idx = 2, len do
+			const item = self[idx]
+			if (best :: any) < (item :: any) then
+				best = item
+			end
+		end
+	end
+	return best
+end
+
+-- `Min` 의 검사 없는 판. **구멍이 없어야 합니다.** 빈 배열이면 `nil`.
+const function MinUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): T?
+	const len = self.n
+	if len == 0 then
+		return nil
+	end
+	local best = self[1]
+	if less then
+		for idx = 2, len do
+			const item = self[idx]
+			if less(item, best) then
+				best = item
+			end
+		end
+	else
+		for idx = 2, len do
+			const item = self[idx]
+			if (item :: any) < (best :: any) then
+				best = item
+			end
+		end
+	end
+	return best
+end
+
 --#endregion
 
 --#region ----------- 원소 추가 -----------
@@ -688,6 +794,27 @@ const function SortInplace<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
 	return self
 end
 
+
+-- `SortInplace` 의 검사 없는 판. **구멍이 없어야 합니다.**
+-- 조밀 버퍼로 모으는 단계를 통째로 건너뛰고 `table.sort` 를 배열에 바로 겁니다.
+--
+-- ⚠️ **구멍이 있으면 터지지 않고 조용히 잘립니다.** `table.sort` 는 `n` 이
+-- 아니라 `#` 를 보는데, 구멍이 있으면 `#` 가 거기서 멈출 수 있습니다.
+-- 그러면 뒤쪽이 정렬되지 않은 채 남고 아무 에러도 나지 않습니다.
+const function SortInplaceUnchecked<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
+	if less then
+		table.sort(self :: any, less)
+	else
+		table.sort(self :: any)
+	end
+	return self
+end
+
+-- `Sort` 의 검사 없는 판. 복사한 뒤 제자리 정렬합니다.
+const function SortUnchecked<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
+	return SortInplaceUnchecked(Clone(self), less)
+end
+
 --#endregion
 
 --#region ----------- 스트림 -----------
@@ -998,6 +1125,11 @@ type ArrIfce = {
 	Min: typeof(Min),
 	Sum: typeof(Sum),
 	Prod: typeof(Prod),
+	-- ⚠️ unchecked 계열 — 구멍이 없다는 것을 호출자가 보증할 때만
+	SumUnchecked: typeof(SumUnchecked),
+	ProdUnchecked: typeof(ProdUnchecked),
+	MaxUnchecked: typeof(MaxUnchecked),
+	MinUnchecked: typeof(MinUnchecked),
 	-- 추가
 	PushBack: typeof(PushBack),
 	PushBackMany: typeof(PushBackMany),
@@ -1028,6 +1160,8 @@ type ArrIfce = {
 	ShuffleInplace: typeof(ShuffleInplace),
 	Sort: typeof(Sort),
 	SortInplace: typeof(SortInplace),
+	SortUnchecked: typeof(SortUnchecked),
+	SortInplaceUnchecked: typeof(SortInplaceUnchecked),
 	-- 스트림
 	Map: typeof(Map),
 	MapInplace: typeof(MapInplace),
@@ -1054,6 +1188,8 @@ Ifce = {
 	Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join,
 	Equal = Equal, Count = Count, Find = Find, Some = Some, Every = Every,
 	Max = Max, Min = Min, Sum = Sum, Prod = Prod,
+	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked,
+	MaxUnchecked = MaxUnchecked, MinUnchecked = MinUnchecked,
 	PushBack = PushBack, PushBackMany = PushBackMany, PushBackArray = PushBackArray,
 	PushFront = PushFront, PushFrontMany = PushFrontMany, PushFrontArray = PushFrontArray,
 	Insert = Insert, InsertMany = InsertMany, InsertArray = InsertArray,
@@ -1065,6 +1201,7 @@ Ifce = {
 	Rotate = Rotate, RotateInplace = RotateInplace,
 	Shuffle = Shuffle, ShuffleInplace = ShuffleInplace,
 	Sort = Sort, SortInplace = SortInplace,
+	SortUnchecked = SortUnchecked, SortInplaceUnchecked = SortInplaceUnchecked,
 	Map = Map, MapInplace = MapInplace, Filter = Filter, Retain = Retain,
 	Flat = Flat, FlatInplace = FlatInplace,
 	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace,

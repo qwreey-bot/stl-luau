@@ -7,7 +7,7 @@
 	전례가 있습니다. 그래서 "틀린 코드가 정말 틀리다고 나오는지" 를 따로
 	고정합니다.
 
-	기대 진단: 13건 (NEG 10 + CANARY 1 — neg6 은 한 줄에서 3건이 납니다)
+	기대 진단: 17건 (NEG 12 + CANARY 1 — neg6/neg11 은 한 줄에서 3건씩 납니다)
 ]]
 local stl = require("../../../../src")
 
@@ -53,6 +53,10 @@ end)
 local okUntil: number, okStop: number? = nums:FoldUntil(0, function(acc: number, v: number)
 	return acc + v, v > 2
 end)
+-- unchecked 계열도 checked 와 같은 타입이어야 합니다
+local okSumU: number = nums:SumUnchecked()
+local okMaxU: number? = nums:MaxUnchecked()
+local okSortU: Arr<number> = nums:SortUnchecked()
 
 --[[ NEG: 전부 에러여야 합니다 ]]
 local neg1: string = nums:Len()
@@ -69,10 +73,12 @@ local neg9: string = nums:Fold(0, function(acc: number, v: number)
 	return acc + v
 end)
 local neg10 = stl.Arr.Of(1, 2):Get("첫번째") -- 위치는 number
+local neg11 = strs:SumUnchecked() -- unchecked 도 숫자 배열 전용이어야 함
+local neg12: string = nums:MaxUnchecked() -- 원소는 number
 local canary: string = 42
 
 return {
 	okLen, okItem, okJoin, okChain, okDeep, okView, okFirst, okGet, okSum,
-	okFold, okReduce, okUntil, okStop,
-	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, canary,
+	okFold, okReduce, okUntil, okStop, okSumU, okMaxU, okSortU,
+	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, canary,
 }
