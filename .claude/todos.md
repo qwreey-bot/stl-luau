@@ -5,15 +5,10 @@
 
 ## 막힌 것 (사용자 결정 필요)
 
-**2026-09-22 에 대부분 답을 받았습니다.** 남은 것은 아래뿐이고, 전부
-`.claude/papers/` 에 무엇을 물어야 하는지까지 적혀 있습니다.
-
 | 무엇 | 어디 |
 |---|---|
-| `Tuple`/`TypeUtil` 을 **지금 지울까** | `papers/03-tuple.md` — 저장소에서 유일하게 `--!nocheck` 인 코드 |
-| `Fut` — 스케줄러 주입 / 저장소에 둘지 / 취소 / 다중 반환 | `papers/01-fut.md` |
-| `Optional` — 태그형 vs 빈칸형 / `Fillholes` 방향 | `papers/02-optional.md` |
-| tbox 를 어디서 받나 | `papers/03-tuple.md` |
+| ⭐ **`Optional` 의 이름** — `Some`/`None` vs `Present`/`Absent` | `papers/02-optional.md` 6절 |
+| `Fut` — 전역 provider 를 둘까 / 취소 / 다중 반환 | `papers/01-fut.md` |
 | README 를 지금 쓸지 / `pesde.toml` 의 `version` | `question.md` 3 |
 
 ## 📍 지금 여기 (2026-09-22)
@@ -33,14 +28,30 @@
 
 | 질문 | 결정 | 결과 |
 |---|---|---|
-| C. `nil` 구멍 | **checked / unchecked 로 가름** | `*Unchecked` 여섯 추가(메소드 60). `Max`/`Min` 이 1.83배 |
-| D. 위치 저장 | **문서 규약**. 세대 카운터 없음 | 판단 기준을 `container-design-notes` 2절에 표로 |
+| C. `nil` 구멍 | **checked / unchecked 로 가름** | `*Unchecked` 여섯(메소드 60). `Max`/`Min` 1.83배 |
+| D. 위치 저장 | **문서 규약**. 세대 카운터 없음 | 판단 기준을 표로 |
 | E. `Record` | `Types.Record` 로 흡수 | 완료 |
-| F. `Fut`/`Optional` | 페이퍼로 | `papers/01`, `papers/02` |
-| 1. `Tuple` | **type function 안 밂** | `papers/03` |
+| F. `Fut` | **스케줄러 주입**, 순수 luau 기본은 즉시 실행 | `papers/01` |
+| F. `Optional` | **태그형** + `Arr:Fillholes()` 방향 | `papers/02` |
+| 1. `type function` | **안 씀. `Tuple`/`TypeUtil` 을 내림** | `research/type-function-experiment/` — **`src` 전체가 strict** |
 | 3. 라이선스 | **MIT** | `LICENSE` + `pesde.toml` |
 | 4. stylua | **도입** | `mise.toml` 고정 + check.sh 게이트 |
-| 문서화 | **quad `docs/` 구조를 따름** | `base/docs-plan.md` (착수는 API 안정 후) |
+| 문서화 | **quad `docs/` 구조** | `base/docs-plan.md` |
+
+### ⭐ 같이 건진 것 — 명시적 타입 인자 `f<<T>>(...)`
+
+tbox 조사에서 나왔고 실측으로 확인했습니다. **"제네릭을 못 푸는 세 자리" 를
+전부 해결합니다** — 인자 없는 생성자, 테이블 리터럴, 반환으로만 결정되는 함수.
+
+```lua
+local m = HashMap.New<<string, number>>()
+local h = HashMap.FromTable<<string, number>>({ a = 1 })
+local f = nested:Flat<<number>>()
+```
+
+캐스트보다 낫습니다(캐스트는 단언, 이건 통지). **단 콜백 파라미터 주석
+요구는 이걸로 안 없어집니다** — 원인이 다른 한계입니다.
+전량은 `base/typing-limits.md`.
 
 ## ⭐ 전면 재작성
 
