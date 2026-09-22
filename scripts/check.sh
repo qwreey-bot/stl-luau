@@ -88,6 +88,20 @@ done < <(find src -name "*.luau" | sort)
 if [ "$req_fail" = "0" ]; then echo "  모든 모듈 require OK"; else fail=1; fi
 
 echo
+echo "=== 포맷 (stylua)"
+if command -v stylua >/dev/null 2>&1; then
+	if stylua --check src tests >/dev/null 2>&1; then
+		echo "  포맷 OK"
+	else
+		echo "  FAIL  포맷이 어긋납니다. \`stylua src tests\` 로 맞추세요:"
+		stylua --check src tests 2>&1 | grep '^Diff in' | sed 's/^/        /'
+		fail=1
+	fi
+else
+	echo "  건너뜀 — stylua 가 PATH 에 없습니다 (mise.toml 에 고정돼 있습니다)"
+fi
+
+echo
 echo "=== luau tests/run.luau"
 luau tests/run.luau || fail=1
 

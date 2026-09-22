@@ -28,42 +28,38 @@ local tuple_constructor = {}
 -- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
 -- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 type function TupleBuilderInner(ty: type)
-    local tb = types.newtable()
-    local funcParams = ty:parameters()
-    local funcParamsHead = funcParams.head
-    if not funcParamsHead then return types.never end
-    local tupData = {}
+	local tb = types.newtable()
+	local funcParams = ty:parameters()
+	local funcParamsHead = funcParams.head
+	if not funcParamsHead then
+		return types.never
+	end
+	local tupData = {}
 
-    local index = 1
-    for _, tupset in funcParamsHead do
-        local tupsetParams = tupset:parameters()
-        local tupsetParamsHead = tupsetParams.head
-        if not tupsetParamsHead then continue end
+	local index = 1
+	for _, tupset in funcParamsHead do
+		local tupsetParams = tupset:parameters()
+		local tupsetParamsHead = tupsetParams.head
+		if not tupsetParamsHead then
+			continue
+		end
 
-        for _, element in tupsetParamsHead do
-            tb:setproperty(
-                types.singleton("_" .. tostring(index)),
-                element
-            )
-            table.insert(tupData, element)
-            index += 1
-        end
-    end
-    tb:setproperty(
-        types.singleton("n", index - 1),
-        types.number
-    )
+		for _, element in tupsetParamsHead do
+			tb:setproperty(types.singleton("_" .. tostring(index)), element)
+			table.insert(tupData, element)
+			index += 1
+		end
+	end
+	tb:setproperty(types.singleton("n", index - 1), types.number)
 
-    local mt = types.newtable({
-        [types.singleton("__tuple")] = types.newfunction({ head = tupData });
-    })
-    tb:setmetatable(mt)
+	local mt = types.newtable({
+		[types.singleton("__tuple")] = types.newfunction({ head = tupData }),
+	})
+	tb:setmetatable(mt)
 
-    return tb
+	return tb
 end
 type TupleBuilder<T> = typeutil.Tagged<TupleBuilderInner<T>, "tuple-data">
-
-
 
 -- type function TupleExtract(ty: type)
 --     local mt = ty:metatable()
@@ -72,63 +68,63 @@ type TupleBuilder<T> = typeutil.Tagged<TupleBuilderInner<T>, "tuple-data">
 --     return mt:readproperty(types.singleton("__tuple")) or types.never
 -- end
 
-
-
 -- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
 -- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 type function TuplePush(ty: type, item: type)
-    local func
-    for i, tyv in ty:components() do
-        func = tyv:readproperty(types.singleton("__tuple__"))
-        if func and func.tag == "function" then break end
-    end
+	local func
+	for i, tyv in ty:components() do
+		func = tyv:readproperty(types.singleton("__tuple__"))
+		if func and func.tag == "function" then
+			break
+		end
+	end
 
-    return func
+	return func
 
-    -- local tb = types.newtable()
+	-- local tb = types.newtable()
 
-    -- local func = ty:readproperty(types.singleton("__tuple__"))
-    -- if not func then return types.never end
+	-- local func = ty:readproperty(types.singleton("__tuple__"))
+	-- if not func then return types.never end
 
-    -- local funcParams = ty:parameters()
-    -- local funcParamsHead = funcParams.head
-    -- local funcParamsLen = if funcParamsHead then #funcParamsHead else 0
-    -- funcParamsHead[funcParamsLen + 1] = item
+	-- local funcParams = ty:parameters()
+	-- local funcParamsHead = funcParams.head
+	-- local funcParamsLen = if funcParamsHead then #funcParamsHead else 0
+	-- funcParamsHead[funcParamsLen + 1] = item
 
-    -- ty:setproperty(
-    --     types.singleton("_" .. tostring(funcParamsLen + 1)),
-    --     item
-    -- )
-    -- ty:setproperty(
-    --     types.singleton("n", funcParamsLen + 1),
-    --     types.number
-    -- )
-    -- ty:setreadproperty(
-    --     types.singleton("__tuple__"),
-    --     types.newfunction({
-    --         head = funcParamsHead
-    --     })
-    -- )
+	-- ty:setproperty(
+	--     types.singleton("_" .. tostring(funcParamsLen + 1)),
+	--     item
+	-- )
+	-- ty:setproperty(
+	--     types.singleton("n", funcParamsLen + 1),
+	--     types.number
+	-- )
+	-- ty:setreadproperty(
+	--     types.singleton("__tuple__"),
+	--     types.newfunction({
+	--         head = funcParamsHead
+	--     })
+	-- )
 
-    -- return ty
+	-- return ty
 end
 --#endregion tuple type builder
 
 --#region functions
 function tuple_ifce.pack<Self, T...>(self: Self, ...: T...): Tuple<T...> & Self
-    local inst = {}
-    for idx = 1, select("#", ...) do
-        inst["_" .. idx] = select(idx, ...)
-    end
-    setmetatable(inst, tuple_meta)
-    return inst
+	local inst = {}
+	for idx = 1, select("#", ...) do
+		inst["_" .. idx] = select(idx, ...)
+	end
+	setmetatable(inst, tuple_meta)
+	return inst
 end
 local tuple_pack = tuple_ifce.pack
 --#endregion functions
 
 --#region constructor
 function tuple_constructor.__call<T...>(_, ...: T...): Tuple<T...>
-    return tuple_pack(...)
+	return tuple_pack(...)
 end
 --#endregion constructor
 

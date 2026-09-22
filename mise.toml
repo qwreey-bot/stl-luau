@@ -18,3 +18,7 @@
 [tools]
 luau = "0.734"
 "github:JohnnyMorganz/luau-lsp" = "1.69.0"
+# 포매터. 설정은 stylua.toml (tbox/quad 와 같은 모양).
+# scripts/check.sh 가 --check 로 게이트를 겁니다 — 다만 바이너리가 없으면
+# 건너뛰고 알려만 줍니다(테스트만 돌려보려는 사람을 막지 않기 위함).
+stylua = "2.5.2"

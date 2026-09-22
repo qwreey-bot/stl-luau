@@ -10,68 +10,69 @@ local module = {}
 -- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
 -- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 type function MergeInner(ty: type)
-    local funcParameters = ty:parameters()
-    local tb = types.newtable()
+	local funcParameters = ty:parameters()
+	local tb = types.newtable()
 
-    if funcParameters.head then
-        for paramIdx, paramVal in funcParameters.head do
-            for tblIdx, tblVal in paramVal:properties() do
-                tb:setreadproperty(tblIdx, tblVal.read)
-                tb:setwriteproperty(tblIdx, tblVal.write)
-            end
-        end
-    end
-    
-    return tb
+	if funcParameters.head then
+		for paramIdx, paramVal in funcParameters.head do
+			for tblIdx, tblVal in paramVal:properties() do
+				tb:setreadproperty(tblIdx, tblVal.read)
+				tb:setwriteproperty(tblIdx, tblVal.write)
+			end
+		end
+	end
+
+	return tb
 end
-export type Merge<T...> = MergeInner<(T...)->()>
+export type Merge<T...> = MergeInner<(T...) -> ()>
 
 -- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
 -- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 export type function SetMetaTable(base: type, metatable: type)
-    base:setmetatable(metatable)
-    return base
+	base:setmetatable(metatable)
+	return base
 end
 
 -- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
 -- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 export type function SetMetaProp(base: type, key: type, value: type)
-    local mt = base:metatable()
-    if not mt then
-        mt = types.newtable()
-        base:setmetatable(mt)
-    end
-    mt:setproperty(key, value)
-    base:setmetatable(mt)
-    return base
+	local mt = base:metatable()
+	if not mt then
+		mt = types.newtable()
+		base:setmetatable(mt)
+	end
+	mt:setproperty(key, value)
+	base:setmetatable(mt)
+	return base
 end
 
 -- selene: allow(undefined_variable) — `types` 는 type function 블록 안에서만
 -- 주입되는 특수 전역이라 selene 이 정의되지 않은 변수로 오탐합니다.
 export type function ExtractTagged(base: type, tag: type)
-    local tagStr = tag:value()
-    local components: {type} = (
-        if base:is("union") or base:is("intersection") then
-            base:components()
-        else
-            {base}
-    )
+	local tagStr = tag:value()
+	local components: { type } = (if base:is("union") or base:is("intersection") then base:components() else { base })
 
-    for i, v in components do
-        if not v:is("table") then continue end
+	for i, v in components do
+		if not v:is("table") then
+			continue
+		end
 
-        local mt = v:metatable()
-        if not mt then continue end
+		local mt = v:metatable()
+		if not mt then
+			continue
+		end
 
-        local vtag = mt:readproperty(types.singleton("__tag"))
-        if (not vtag) or (not vtag:is("singleton")) then continue end
+		local vtag = mt:readproperty(types.singleton("__tag"))
+		if (not vtag) or (not vtag:is("singleton")) then
+			continue
+		end
 
-        if tagStr == vtag:value() then
-            return v
-        end
-    end
+		if tagStr == vtag:value() then
+			return v
+		end
+	end
 
-    return types.never
+	return types.never
 end
 
 export type Tagged<T, Tag> = SetMetaProp<T, "__tag", Tag>
@@ -84,4 +85,3 @@ return module
 
 -- Omit
 -- Merge
-

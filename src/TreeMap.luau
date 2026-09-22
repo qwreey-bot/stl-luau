@@ -232,12 +232,15 @@ const function Clone<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
 		const rec = source[idx]
 		records[idx] = { key = rec.key, value = rec.value }
 	end
-	return setmetatable({
-		records = records,
-		size = self.size,
-		compare = self.compare,
-		probe = self.probe,
-	} :: any, Ifce :: any) :: any
+	return setmetatable(
+		{
+			records = records,
+			size = self.size,
+			compare = self.compare,
+			probe = self.probe,
+		} :: any,
+		Ifce :: any
+	) :: any
 end
 
 --#endregion
@@ -265,6 +268,9 @@ type TreeMapIfce = {
 
 export type TreeMap<K, V> = TreeMapData<K, V> & TreeMapIfce & Types.MapCore<K, V>
 
+-- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
+-- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
+-- stylua: ignore
 Ifce = {
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty,
 	Keys = Keys, Values = Values, Iter = Iter,
@@ -274,7 +280,7 @@ Ifce = {
 	-- 계약이 주는 것들.
 	Get = Get, Set = Set, Records = Records,
 } :: any
-;(Ifce :: any).__index = Ifce
+(Ifce :: any).__index = Ifce
 
 --#endregion
 
@@ -287,12 +293,15 @@ const function makeProbe<K, V>(compare: Comparator<K>): KeyProbe<K, V>
 end
 
 const function adopt<K, V>(records: { Record<K, V> }, size: number, compare: Comparator<K>): TreeMap<K, V>
-	return setmetatable({
-		records = records,
-		size = size,
-		compare = compare,
-		probe = makeProbe(compare),
-	} :: any, Ifce :: any) :: any
+	return setmetatable(
+		{
+			records = records,
+			size = size,
+			compare = compare,
+			probe = makeProbe(compare),
+		} :: any,
+		Ifce :: any
+	) :: any
 end
 
 -- ⚠️ **값 타입은 캐스트로 적어야 합니다.** 비교자에서 `K` 는 뽑히지만 `V` 는

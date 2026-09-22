@@ -42,9 +42,13 @@ same(Arr.Sized(3, 0), { 0, 0, 0 }, "Sized")
 assert(Arr.Sized(0, 0).n == 0, "Sized 0")
 same(Arr.FromTable({ 4, 5 }), { 4, 5 }, "FromTable")
 same(Arr.CloneFromTable({ 6, 7 }), { 6, 7 }, "CloneFromTable")
-same(Arr.FromFunc(3, function(i)
-	return i * i
-end), { 1, 4, 9 }, "FromFunc")
+same(
+	Arr.FromFunc(3, function(i)
+		return i * i
+	end),
+	{ 1, 4, 9 },
+	"FromFunc"
+)
 same(Arr.Merge(Arr.Of(1), Arr.Of(2, 3), emptyNum()), { 1, 2, 3 }, "Merge")
 same(Arr.Merge(), {}, "Merge 인자 없음")
 same(Arr.Range(1, 5), { 1, 2, 3, 4, 5 }, "Range")
@@ -223,9 +227,13 @@ do
 	assert(a[1] == 1, "Shuffle 은 원본을 건드리지 않아야 합니다")
 end
 same(Arr.Of(3, 1, 2):Sort(), { 1, 2, 3 }, "Sort 기본")
-same(Arr.Of(3, 1, 2):Sort(function(a: number, b: number)
-	return a > b
-end), { 3, 2, 1 }, "Sort 불리언 비교자")
+same(
+	Arr.Of(3, 1, 2):Sort(function(a: number, b: number)
+		return a > b
+	end),
+	{ 3, 2, 1 },
+	"Sort 불리언 비교자"
+)
 same(Arr.Of(3, 1, 2):Sort(Common.lessFrom(Common.compareNumber)), { 1, 2, 3 }, "Sort 3방향 어댑터")
 same(emptyNum():Sort(), {}, "Sort 빈 것")
 same(Arr.Of(1):Sort(), { 1 }, "Sort 한 개")
@@ -240,31 +248,63 @@ end
 print("PASS")
 
 print("=== 8. 스트림 — Map / Filter / Flat / Drain ===")
-same(Arr.Of(1, 2, 3):Map(function(v: number)
-	return v * 2
-end), { 2, 4, 6 }, "Map")
-same(emptyNum():Map(function(v: number)
-	return v
-end), {}, "Map 빈 것")
-same(Arr.Of(1, 2):Map(function(v)
-	return v
-end, Arr.Of(0)), { 0, 1, 2 }, "Map to 는 뒤에 이어붙임")
+same(
+	Arr.Of(1, 2, 3):Map(function(v: number)
+		return v * 2
+	end),
+	{ 2, 4, 6 },
+	"Map"
+)
+same(
+	emptyNum():Map(function(v: number)
+		return v
+	end),
+	{},
+	"Map 빈 것"
+)
+same(
+	Arr.Of(1, 2):Map(function(v)
+		return v
+	end, Arr.Of(0)),
+	{ 0, 1, 2 },
+	"Map to 는 뒤에 이어붙임"
+)
 -- Map 은 콜백에 (원소, 위치, 뷰) 를 줍니다
-same(Arr.Of(10, 20):Map(function(v: number, idx: number, arr: ArrView<number>)
-	return v + idx + arr.n
-end), { 13, 24 }, "Map 콜백 인자")
-same(Arr.Of(1, 2, 3):MapInplace(function(v: number)
-	return v * 10
-end), { 10, 20, 30 }, "MapInplace")
-same(Arr.Of(1, 2, 3, 4):Filter(function(v: number)
-	return v % 2 == 0
-end), { 2, 4 }, "Filter")
-same(Arr.Of(1, 2, 3, 4):Retain(function(v: number)
-	return v % 2 == 0
-end), { 2, 4 }, "Retain")
-same(Arr.Of(1, 2, 3):Retain(function()
-	return false
-end), {}, "Retain 전부 버림")
+same(
+	Arr.Of(10, 20):Map(function(v: number, idx: number, arr: ArrView<number>)
+		return v + idx + arr.n
+	end),
+	{ 13, 24 },
+	"Map 콜백 인자"
+)
+same(
+	Arr.Of(1, 2, 3):MapInplace(function(v: number)
+		return v * 10
+	end),
+	{ 10, 20, 30 },
+	"MapInplace"
+)
+same(
+	Arr.Of(1, 2, 3, 4):Filter(function(v: number)
+		return v % 2 == 0
+	end),
+	{ 2, 4 },
+	"Filter"
+)
+same(
+	Arr.Of(1, 2, 3, 4):Retain(function(v: number)
+		return v % 2 == 0
+	end),
+	{ 2, 4 },
+	"Retain"
+)
+same(
+	Arr.Of(1, 2, 3):Retain(function()
+		return false
+	end),
+	{},
+	"Retain 전부 버림"
+)
 do
 	local nested = Arr.Of(1, Arr.Of(2, 3) :: any, 4)
 	const flat = nested:Flat() :: Arr<number>
@@ -285,12 +325,20 @@ do
 	const flat = nested:FlatInplace() :: Arr<number>
 	same(flat, { 1 }, "FlatInplace 빈 중첩")
 end
-same(Arr.Of(1, 2):Flatmap(function(v: number)
-	return v, v * 10
-end), { 1, 10, 2, 20 }, "Flatmap")
-same(Arr.Of(1, 2):FlatmapInplace(function(v: number)
-	return v, v * 10
-end), { 1, 10, 2, 20 }, "FlatmapInplace")
+same(
+	Arr.Of(1, 2):Flatmap(function(v: number)
+		return v, v * 10
+	end),
+	{ 1, 10, 2, 20 },
+	"Flatmap"
+)
+same(
+	Arr.Of(1, 2):FlatmapInplace(function(v: number)
+		return v, v * 10
+	end),
+	{ 1, 10, 2, 20 },
+	"FlatmapInplace"
+)
 do
 	local a = Arr.Of(1, 2, 3)
 	local seen = 0
@@ -319,27 +367,39 @@ do
 	end)
 	assert(none == nil and noneIdx == nil, "Find 없음")
 end
-assert(Arr.Of(1, 2):Some(function(v)
-	return v == 2
-end), "Some")
+assert(
+	Arr.Of(1, 2):Some(function(v)
+		return v == 2
+	end),
+	"Some"
+)
 assert(not Arr.Of(1, 2):Some(function(v)
 	return v == 9
 end), "Some 없음")
-assert(Arr.Of(2, 4):Every(function(v: number)
-	return v % 2 == 0
-end), "Every")
+assert(
+	Arr.Of(2, 4):Every(function(v: number)
+		return v % 2 == 0
+	end),
+	"Every"
+)
 assert(not Arr.Of(2, 3):Every(function(v: number)
 	return v % 2 == 0
 end), "Every 아님")
-assert(emptyNum():Every(function(v: number)
-	return false
-end), "빈 것의 Every 는 공허 참")
+assert(
+	emptyNum():Every(function(v: number)
+		return false
+	end),
+	"빈 것의 Every 는 공허 참"
+)
 assert(not Arr.Of(1, 2, 3):Some(function(v)
 	return v == 1
 end, 2), "Some 구간 — start 앞의 원소는 안 봐야 합니다")
-assert(Arr.Of(1, 2, 3):Some(function(v)
-	return v == 3
-end, 2), "Some 구간 — start 뒤의 원소는 봐야 합니다")
+assert(
+	Arr.Of(1, 2, 3):Some(function(v)
+		return v == 3
+	end, 2),
+	"Some 구간 — start 뒤의 원소는 봐야 합니다"
+)
 assert(not Arr.Of(1, 2, 3):Every(function(v)
 	return v == 1
 end, 2), "Every 구간")
@@ -431,11 +491,7 @@ do
 	same(Arr.FromIter(ipairs({ 10, 20, 30 })) :: Arr<number>, { 10, 20, 30 }, "FromIter(ipairs)")
 	const dict: { [string]: number } = { only = 7 }
 	same(Arr.FromIter(pairs(dict)) :: Arr<number>, { 7 }, "FromIter(pairs) 는 값을 모음")
-	same(
-		Arr.FromIter(string.gmatch("a bb ccc", "%a+")) :: Arr<string>,
-		{ "a", "bb", "ccc" },
-		"FromIter(gmatch)"
-	)
+	same(Arr.FromIter(string.gmatch("a bb ccc", "%a+")) :: Arr<string>, { "a", "bb", "ccc" }, "FromIter(gmatch)")
 	same(Arr.FromIter(ipairs({})) :: Arr<number>, {}, "FromIter 빈 것")
 end
 do
@@ -510,9 +566,12 @@ do
 	-- 정렬만은 터지지 않고 **조용히** 다르게 동작합니다 — 그게 가장 위험한 점
 	const holedSorted: Arr<number> = Arr.Sized(3) :: Arr<number>
 	holedSorted[1], holedSorted[3] = 1, 3
-	assert(pcall(function()
-		return holedSorted:SortInplaceUnchecked()
-	end), "SortInplaceUnchecked 는 구멍에서도 터지지 않습니다 (조용히 다름)")
+	assert(
+		pcall(function()
+			return holedSorted:SortInplaceUnchecked()
+		end),
+		"SortInplaceUnchecked 는 구멍에서도 터지지 않습니다 (조용히 다름)"
+	)
 end
 print("PASS")
 

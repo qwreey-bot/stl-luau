@@ -257,6 +257,9 @@ type HashSetIfce = {
 
 export type HashSet<T> = HashSetData<T> & HashSetIfce & Types.SetCore<T>
 
+-- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
+-- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
+-- stylua: ignore
 Ifce = {
 	Len = Len, Empty = Empty, Iter = Iter, Clear = Clear, Clone = Clone,
 	Union = Union, Intersect = Intersect, Difference = Difference,
@@ -265,7 +268,7 @@ Ifce = {
 	-- 계약이 주는 것들.
 	Add = Add, Has = Has, Remove = Remove, Items = Items,
 } :: any
-;(Ifce :: any).__index = Ifce
+(Ifce :: any).__index = Ifce
 
 --#endregion
 

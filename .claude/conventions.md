@@ -82,8 +82,12 @@
 - **`table.move`/`table.create` 로 벌크 처리**, 가변인자 다수는 `table.pack`
   대신 `select` 루프. 근거는 아래 성능 절.
 
-- stylua 설정 파일은 아직 없습니다. 지금 `src`/`tests` 는 전부 탭으로
-  통일돼 있어 급하지 않습니다(`.claude/question.md` 참고).
+- **포매터는 stylua 입니다**(`stylua.toml`, `mise.toml` 에 2.5.2 고정).
+  `./scripts/check.sh` 가 `--check` 로 게이트를 걸고, 어긋나면
+  `stylua src tests` 로 맞추면 됩니다. 바이너리가 없는 환경에서는 건너뜁니다.
+  **디스패치 테이블(`Ifce = { … }`)만 `-- stylua: ignore` 로 빼뒀습니다** —
+  범주별 묶음이 읽기에 낫기 때문입니다. 새 컨테이너도 같게 하세요
+  (지시자는 **주석 전체가 정확히 `-- stylua: ignore`** 여야 먹습니다).
 
 ## ⭐ 성능은 1급 관심사
 

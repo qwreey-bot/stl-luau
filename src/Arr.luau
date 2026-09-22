@@ -316,7 +316,6 @@ const function Prod(self: ArrData<number>, base: number?): number
 	return acc
 end
 
-
 --#region ----------- ⚠️ unchecked 계열 — 안전을 포기하고 고르는 것 -----------
 --[[
 	위의 `Max`/`Min`/`Sum`/`Prod`/`Sort` 는 1..n 사이의 `nil` 구멍을 **건너뜁니다.**
@@ -794,7 +793,6 @@ const function SortInplace<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
 	return self
 end
 
-
 -- `SortInplace` 의 검사 없는 판. **구멍이 없어야 합니다.**
 -- 조밀 버퍼로 모으는 단계를 통째로 건너뛰고 `table.sort` 를 배열에 바로 겁니다.
 --
@@ -1184,6 +1182,9 @@ type ArrIfce = {
 -- **교집합입니다.** `setmetatable<>` 은 메소드 30개에서 무너집니다.
 export type Arr<T> = ArrData<T> & ArrIfce & Types.ListCore<T, number>
 
+-- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
+-- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
+-- stylua: ignore
 Ifce = {
 	Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join,
 	Equal = Equal, Count = Count, Find = Find, Some = Some, Every = Every,
@@ -1211,7 +1212,7 @@ Ifce = {
 	Get = Get, FirstIndex = FirstIndex, LastIndex = LastIndex,
 	NextIndex = NextIndex, PrevIndex = PrevIndex,
 } :: any
-;(Ifce :: any).__index = Ifce
+(Ifce :: any).__index = Ifce
 
 --#endregion
 
