@@ -31,6 +31,8 @@ agent-memory 같은 무거운 장치는 아직 없습니다 — 필요해지면 
 | **전면 재작성 계획(확정된 설계·개명표·순서)** | `.claude/base/rewrite-plan.md` |
 | 다른 언어 표준 라이브러리에서 얻은 설계 교훈 | `.claude/base/container-design-notes.md` |
 | **성능 실측 전량 (메타테이블 세금, `table.move`, 순회, 비교자)** | `.claude/base/perf-measurements.md` |
+| 문서화 계획과 백로그 (quad `docs/` 구조를 따름) | `.claude/base/docs-plan.md` |
+| **아직 안 정한 것의 설계 페이퍼** (`Fut` / `Optional` / `Tuple`) | `.claude/papers/` |
 
 **참고 자료** (전부 `.gitignore` 의 `*-ignoreme*` 로 무시됨 — 거기서 얻은 건
 원문을 옮기지 않고 **자기설명적으로 다시 써서** `.claude/` 에 남깁니다):
@@ -41,6 +43,7 @@ agent-memory 같은 무거운 장치는 아직 없습니다 — 필요해지면 
 | `refs-ignoreme/rust` | Rust `alloc` — Vec/VecDeque/BTree/BinaryHeap/LinkedList |
 | `refs-ignoreme/ms-stl` | MSVC 표준 라이브러리 헤더 |
 | `old-homeworks-ignoreme` | 예전 학교 과제 — ADT 구현, visitor, Node/Tree |
+| `refs-ignoreme/qwreey-js` | 사용자의 TS 유틸 모음 — `ts-util/src/result.ts` 의 `Result` 가 `Optional` 설계 참고 |
 
 **quad** 는 `/code/Projects/quad` (무시 대상 아님, 별도 저장소). Luau 타입 한계
 연구가 방대합니다 — `.claude/base/typing-limits.md` 와 `.claude/audit/`.
