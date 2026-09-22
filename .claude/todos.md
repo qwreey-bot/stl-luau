@@ -7,8 +7,7 @@
 
 | 무엇 | 어디 |
 |---|---|
-| `Fut` — 전역 provider 를 둘까 / 취소 / 다중 반환 | `papers/01-fut.md` |
-| README 를 지금 쓸지 / `pesde.toml` 의 `version` | `question.md` 3 |
+| (없음 — 남은 설계는 전부 "착수 전 스파이크" 단계. `papers/` 참고) | |
 
 ## 📍 지금 여기 (2026-09-22)
 
