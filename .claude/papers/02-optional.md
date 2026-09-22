@@ -89,8 +89,10 @@ export type Result<T, U> =
 그래서 `Optional` 도 **태그형**으로 갑니다:
 
 ```lua
-export type Optional<T> = { isSome: true, value: T } | { isSome: false, value: nil }
+export type Optional<T> = { isPresent: true, value: T } | { isPresent: false, value: nil }
 ```
+
+(이름은 6절에서 `Present`/`Absent` 로 확정)
 
 빈칸형(`{ value: T } | { value: nil }`)은 필드가 하나 적지만, **`T` 자체가
 `nil` 일 수 있는 일반형에서 "값이 nil 인 Some" 과 `None` 을 구분하지
@@ -235,7 +237,51 @@ Rust 의 `Option` 과 사용자의 `Result` 어휘를 섞되, 이 저장소 규�
 | 길이 | ✅ 짧음 | ❌ `Optional.Present(x)` |
 | *"Rust 를 베끼지 않는다"* | ❌ | ✅ |
 
-**→ 미결: 둘 중 어느 쪽인가요?**
+### ✅ [2026-09-23 사용자 결정] `Present` / `Absent`
+
+사용자: *"그 계보대로 가도록 하자. 안 겹치고, 오히려 None 은 그 자체로 값으로
+보이는데 … 데이터가 부재한다가 중요한지라 목적에 잘 맞아보여."*
+
+**새로 만든 말이 아니라 Java 계보입니다** — 조사자가 Luau 생태계 안만 봐서
+놓쳤던 부분입니다:
+
+- Java 8+ `java.util.Optional` 의 술어가 **`isPresent()`** 입니다
+  (`refs-ignoreme/openjdk` 의 `Optional.java` 166행에서 확인).
+- Java 8 이전 사실상 표준이던 Guava `Optional` 은 **`Optional.absent()`** /
+  `isPresent()` 였습니다(기억에 의존 — Guava 는 클론해 확인하지 않음).
+
+| 계보 | 짝 |
+|---|---|
+| Rust / OCaml | `Some` / `None` |
+| Haskell / Elm | `Just` / `Nothing` |
+| **Java / Guava** | **`Present` / `Absent`** ← 이것 |
+
+**결정적인 이유 둘**:
+
+1. **뜻이 목적에 맞습니다.** `None` 은 그 자체로 하나의 값처럼 읽힙니다
+   (모나드의 한 갈래). 여기서 중요한 것은 *"데이터가 부재한다"* 는 상태이고,
+   `Absent` 가 그걸 그대로 말합니다.
+2. **풀어 써도 안 부딪힙니다.** 네임스페이스로 쓸 땐 갈려 있던 `q.None` 과
+   `Optional.None` 이, `local None = …` 으로 풀어 쓰는 순간 한 파일 안에서
+   충돌합니다. `local Present, Absent = Optional.Present, Optional.Absent`
+   는 quad 와 함께 써도 깨끗합니다.
+
+**그래서 확정된 한 벌**:
+
+```lua
+export type Optional<T> = { isPresent: true, value: T } | { isPresent: false, value: nil }
+
+Optional.Present(v)     -- 생성
+Optional.Absent         -- 싱글턴
+Optional.Of(v)          -- T? 에서 건너오는 문 (nil 이면 Absent)
+stl.isOptional(v)       -- 최상위 술어
+```
+
+태그 필드는 Java 와 같이 **`isPresent`**. 저자의 `Result` 의 `ok` 에는
+맞추지 않습니다 — `ok` 는 성공/실패, 이건 있음/없음이라 뜻이 다릅니다.
+
+**구현은 아직 안 합니다** — 나머지 표면(4절)과 착수 전 스파이크(좁히기 +
+교집합 컨테이너와 섞였을 때의 체이닝)가 먼저입니다.
 
 ## 5. 안 하는 것
 

@@ -7,7 +7,6 @@
 
 | 무엇 | 어디 |
 |---|---|
-| ⭐ **`Optional` 의 이름** — `Some`/`None` vs `Present`/`Absent` | `papers/02-optional.md` 6절 |
 | `Fut` — 전역 provider 를 둘까 / 취소 / 다중 반환 | `papers/01-fut.md` |
 | README 를 지금 쓸지 / `pesde.toml` 의 `version` | `question.md` 3 |
 
@@ -32,7 +31,7 @@
 | D. 위치 저장 | **문서 규약**. 세대 카운터 없음 | 판단 기준을 표로 |
 | E. `Record` | `Types.Record` 로 흡수 | 완료 |
 | F. `Fut` | **스케줄러 주입**, 순수 luau 기본은 즉시 실행 | `papers/01` |
-| F. `Optional` | **태그형** + `Arr:Fillholes()` 방향 | `papers/02` |
+| F. `Optional` | **태그형** + `Arr:Fillholes()` 방향. 이름은 **`Present`/`Absent`**(Java 계보), 태그 `isPresent` | `papers/02` |
 | 1. `type function` | **안 씀. `Tuple`/`TypeUtil` 을 내림** | `research/type-function-experiment/` — **`src` 전체가 strict** |
 | 3. 라이선스 | **MIT** | `LICENSE` + `pesde.toml` |
 | 4. stylua | **도입** | `mise.toml` 고정 + check.sh 게이트 |
