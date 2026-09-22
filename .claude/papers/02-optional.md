@@ -73,15 +73,29 @@ export type Result<T, E> = { result: nil, error: E } | { result: T, error: nil }
 
 **그래서 `Optional` 도 두 모양이 후보입니다:**
 
-| 모양 | 좁히기 | 자리 차지 |
-|---|---|---|
-| **태그형** `{ isSome: true, value: T } \| { isSome: false }` | `if opt.isSome then` | ✅ 둘 다 테이블 |
-| **빈칸형** `{ value: T } \| { value: nil }` | `if opt.value ~= nil then` | ✅ 둘 다 테이블 |
+**사용자가 그 뒤 `Result` 를 고쳤다고 해서 클론해 확인했습니다** —
+지금은 **태그가 붙어 있고 양쪽 슬롯이 항상 존재**합니다:
 
-빈칸형은 `Result` 와 어휘가 통일되고 필드가 하나 적습니다. **다만 `T` 자체가
-`nil` 일 수 있는 일반형에서는 "값이 nil 인 Some" 과 `None` 이 구분되지
-않습니다** — 태그형은 그 구분이 됩니다. 이 저장소에서는 `T` 가 `nil` 인
-경우가 바로 문제의 원인이므로, **태그형이 맞아 보입니다.**
+```typescript
+export type Result<T, U> =
+  | { result: undefined; error: U;         ok: false }
+  | { result: T;         error: undefined; ok: true  };
+```
+
+두 갈래 모두 **세 필드를 다 갖는 것**이 요점입니다 — 객체 모양이 균일해서
+좁히기와 접근이 모두 단순해집니다. 짧은 별칭 `Ok`/`Err` 도 같이 export
+합니다.
+
+그래서 `Optional` 도 **태그형**으로 갑니다:
+
+```lua
+export type Optional<T> = { isSome: true, value: T } | { isSome: false, value: nil }
+```
+
+빈칸형(`{ value: T } | { value: nil }`)은 필드가 하나 적지만, **`T` 자체가
+`nil` 일 수 있는 일반형에서 "값이 nil 인 Some" 과 `None` 을 구분하지
+못합니다.** 이 저장소에서는 `T` 가 `nil` 인 경우가 바로 문제의 원인이라
+그 구분이 필요합니다.
 
 **→ 착수 전 첫 일: 스파이크로 두 모양의 좁히기를 재고, 교집합 컨테이너와
 섞였을 때(`Arr<Optional<number>>:Map(…)`) 체이닝이 사는지 같이 재기.**
@@ -99,7 +113,8 @@ export type Result<T, E> = { result: nil, error: E } | { result: T, error: nil }
 **A 가 사용자가 말한 "자리를 차지하면서 옵셔널함을 밝히는" 것에 맞습니다.**
 B 는 싸지만 `isSome` 필드가 없어 좁히기가 약합니다.
 
-**→ 질문 1: A 로 갈까요? `Some` 마다 테이블 하나를 치르는 것이 받아들여지나요?**
+**→ [2026-09-22 사용자 결정] 태그형(A)으로 갑니다.**
+*"빈칸은 T자체가 무엇이냐를 몰라서, 태그형을 밀어."*
 
 ## 4. 표면 초안
 
@@ -131,8 +146,32 @@ Rust 의 `Option` 과 사용자의 `Result` 어휘를 섞되, 이 저장소 규�
 전제("구멍이 없다")가 **보증되고**, 그 뒤로는 1.83배 빠른 경로를 안심하고
 쓸 수 있습니다. 즉 `Optional` 은 checked/unchecked 갈림의 **세 번째 답**입니다.
 
-**→ 질문 2: 이 방향이 맞나요?** 맞다면 `Optional` 의 우선순위가 올라갑니다
-(단독 유틸이 아니라 컨테이너 성능 경로의 일부가 되므로).
+**→ [2026-09-22 사용자 결정] 이 방향으로 갑니다.** *"될것 같음."*
+그래서 `Optional` 은 단독 유틸이 아니라 **컨테이너 성능 경로의 일부**입니다.
+
+## 6. ⭐ 남은 것 — 이름
+
+`Some`/`None` 인가 `Just`/`Nothing` 인가, 아니면 다른 것인가.
+**Luau 생태계에서 무엇이 관용인지 아직 모릅니다.**
+
+⚠️ **`None` 은 quad 과 겹칩니다.** quad 은 `q.None` 을 **센티넬**로 쓰고
+(`export type None = { read __quadNone: true }`), 코드베이스에서 **1105회**
+나옵니다. 뜻이 다릅니다 — quad 의 것은 *"이 프로퍼티를 건드리지 말라"* 는
+표시이고 우리 것은 *"값이 없다는 값"* 입니다. 두 라이브러리를 같이 쓰면
+`q.None` 과 `stl.None` 이 나란히 서는데 뜻이 달라 헷갈립니다.
+
+후보들:
+
+| 짝 | 출처 | 걸리는 점 |
+|---|---|---|
+| `Some` / `None` | Rust, OCaml, F# | **quad 충돌** |
+| `Just` / `Nothing` | Haskell, Elm | Luau 사용자에게 덜 익숙할 수 있음 |
+| `Some` / `Empty` | — | `Empty()` 메소드와 겹침(이 저장소에 이미 있음) |
+| `Present` / `Absent` | — | 길고 관용이 아님 |
+| `Value` / `Void` | — | `Void` 는 다른 뜻으로 읽힘 |
+
+**→ 미결: sonnet 에게 외부자 시선으로 Luau/Roblox 생태계 관용을 조사시키는
+중입니다.**
 
 ## 5. 안 하는 것
 
