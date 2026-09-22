@@ -1,7 +1,8 @@
 name = "qwreey/stl_luau"
 version = "0.1.0"
 description = "Roblox 엔진 Luau용 표준 라이브러리 스타일 컨테이너/알고리즘 모음"
-includes = ["pesde.toml", "src/**/*.luau"]
+license = "MIT"
+includes = ["pesde.toml", "src/**/*.luau", "LICENSE"]
 
 [target]
 environment = "roblox"
