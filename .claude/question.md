@@ -194,20 +194,21 @@ for i, v in arr:Iter() do … end   -- i: number, v: T — 교집합인데도 �
 require 경로 규칙은 lune 시절과 **정반대**로 바뀌었으니
 `base/architecture.md` 의 "require 경로 규칙" 절 표를 보세요.
 
-## 1. `Tuple`/`TypeUtil` 의 type function 실험을 계속 밀 것인가?
+## 1. `type function` — **[2026-09-22 사용자 결정] 안 밉니다**
 
-**재작성 후에도 그대로 살아 있습니다**(`src/Tuple.luau`, `src/TypeUtil.luau`).
-승인된 스캐폴딩 제안서가 "현행 유지(`--!nocheck`)" 라고 해서 파일명만
-PascalCase 로 바꾸고 머리말을 달았습니다. `init.luau` 에서 **export 하지
-않고** 다른 모듈이 의존하지 않습니다.
+*"quad에서도 이를 사용해보려 했지만 부작용이 너무 많았고 결국 대부분
+폐기했어. 타입 함수는 문제가 너무 많기 때문에, 가급적 사용을 피할거야."*
 
-⚠️ **이 둘만 `--!nocheck` 입니다.** 나머지는 전부 `--!strict` 이고
-TypeError 0건이 게이트인데, 이 둘은 검사에서 빠져 있습니다. 정식 API 로
-올리려면 먼저 `--!strict` 를 통과해야 합니다.
+`Tuple.luau` / `TypeUtil.luau` 를 `src/` 에서 내렸습니다 —
+*"지금은 지우고, 나중에 보기 위한 리서치 자료로 어딘가에 보관만 하자."*
+→ `.claude/research/type-function-experiment/`
 
-계속 밀지, 아니면 (a) 런타임 전용으로 단순화할지, (b) `tbox` 의
-`packages/tbox/src/types.luau` 에 비슷한 유틸이 있으니 거기서 가져올지
-판단이 필요합니다.
+**그래서 `src/` 전체가 `--!strict` 가 됐습니다.** 그 둘이 저장소에서
+유일하게 검사에서 빠져 있던 코드였습니다.
+
+`conventions.md` 의 "실험적 기능 사용 시 주의" 절을 **"쓰지 않습니다"** 로
+바꿔 올렸습니다. 튜플이 정말 필요해지는 구체적인 호출부가 생기면
+`papers/03-tuple.md` 를 다시 엽니다.
 
 ## [해소됨, 2026-08-22] hash/tree 컨테이너 표현
 

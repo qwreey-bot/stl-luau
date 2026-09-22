@@ -61,8 +61,10 @@ src/
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
   TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
   Heap.luau        이진 힙. 계약을 만족하지 않는 유일한 컨테이너
-  Tuple.luau       (실험, --!nocheck, 미export) type function 탐색
-  TypeUtil.luau    (실험, --!nocheck, 미export) Tuple 이 쓰는 헬퍼
+
+  ⭐ src 전체가 --!strict 이고 예외가 없습니다. type function 을 쓰던
+     Tuple/TypeUtil 은 2026-09-22 에 내렸습니다
+     (.claude/research/type-function-experiment/).
 tests/
   run.luau         전체 엔트리 (luau tests/run.luau)
   spec.arr.luau    이하 컨테이너별 테스트. assert + print, 프레임워크 없음
@@ -111,10 +113,10 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
 | `Heap` | 완성 | `spikes/44` |
-| `Tuple` / `TypeUtil` | 실험, `--!nocheck`, 미export | — |
 
-**없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 `Fut`/`Optional` 방향은
-열린 질문입니다. 옛 `record.luau`(타입 별칭 한 줄)는 **`Types.Record` 로
+**없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 `Fut`/`Optional` 은
+설계 페이퍼(`.claude/papers/`) 단계입니다. `Tuple`/`TypeUtil` 은
+`type function` 을 접으면서 `.claude/research/` 로 내렸습니다. 옛 `record.luau`(타입 별칭 한 줄)는 **`Types.Record` 로
 흡수**됐습니다. 옛 `set.luau`/`treeset.luau` 의 내용은 사실 해시셋이었고
 지금 `HashSet` 이 그 자리입니다.
 

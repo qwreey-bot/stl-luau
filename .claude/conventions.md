@@ -114,22 +114,27 @@
   붙은 컨테이너에서 14.3배 빠릅니다. 벌크로 할 수 있는 일을 원소 루프로
   쓰지 마세요.
 
-## 실험적 Luau 기능 사용 시 주의
+## ⭐ `type function` 을 쓰지 않습니다 (2026-09-22 사용자 확정)
 
-`src/tuple.luau`, `src/typeutil.luau`는 Luau의 **실험적** `type function`
-기능(타입 수준 메타프로그래밍)을 씁니다. 로컬 `luau` 바이너리에서 문법
-자체는 파싱/실행되는 것을 확인했지만, 이 기능은 upstream에서도 아직
-실험 단계입니다 — Luau 버전을 올릴 때 깨질 수 있음을 감안하세요. 이 두
-파일은 `src/init.luau`에서 아직 export되지 않은 순수 탐색 코드입니다
-(`return {}` placeholder). 정식 API로 승격하기 전엔 다른 모듈이 이 둘에
-의존하지 않게 하세요.
+*"타입 함수는 문제가 너무 많기 때문에, 가급적 사용을 피할거야."* quad 이
+같은 길을 먼저 갔고 부작용으로 대부분 폐기했습니다.
 
-`type function` 을 다룰 땐 **quad 의 `.claude/base/typing-limits.md` 를 먼저
-읽으세요** (`/code/Projects/quad`). 이미 실측된 함정이 많습니다 —
-`type function` 안에서 같은 파일의 바깥 로컬을 참조하면 컴파일이 실패하고,
-`error()` 대신 `print()` + `types.never` 를 써야 진단이 노출되며, 어떤 타입이
-`type function` 을 한 번 통과하면(그냥 `return t` 라도) 그 뒤 제네릭 `self`
-메소드 체이닝이 조용히 깨집니다.
+**이 저장소에서 `type function` 을 쓰던 코드는 전부 내렸습니다.** 지금
+`src/` 는 **전부 `--!strict`** 이고 예외가 없습니다.
+
+왜 쓰지 않는지, 세 함정:
+
+1. `type function` 안에서 같은 파일의 바깥 로컬을 참조하면 **컴파일 실패**
+2. `error()` 대신 `print()` + `types.never` 를 써야 진단이 노출됨
+3. ⭐ 어떤 타입이 `type function` 을 **한 번 통과하면**(그냥 `return t` 라도)
+   그 뒤 제네릭 `self` 메소드 체이닝이 **조용히 깨짐**
+
+셋째가 결정적입니다 — 이 저장소는 **체이닝이 공개 표면의 핵심**입니다
+(`arr:Map():Filter():Sort()`). 타입이 한 번이라도 그 관문을 지나면 그 뒤가
+조용히 죽습니다.
+
+내려둔 실험 코드와 그 경위는 `.claude/research/type-function-experiment/`,
+다시 열 때의 판단 재료는 `.claude/papers/03-tuple.md`.
 
 ## 테스트
 
