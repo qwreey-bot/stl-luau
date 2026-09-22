@@ -304,9 +304,10 @@ const function adopt<K, V>(records: { Record<K, V> }, size: number, compare: Com
 	) :: any
 end
 
--- ⚠️ **값 타입은 캐스트로 적어야 합니다.** 비교자에서 `K` 는 뽑히지만 `V` 는
--- 나올 자리가 없고, Luau 는 기대 타입을 제네릭 호출 안으로 전파하지 않습니다.
+-- ⚠️ **값 타입을 직접 알려줘야 합니다.** 비교자에서 `K` 는 뽑히지만 `V` 는
+-- 나올 자리가 없습니다.
 --
+--     local m = TreeMap.New<<number, string>>(Common.compareNumber)   -- 권장
 --     local m = TreeMap.New(Common.compareNumber) :: TreeMap<number, string>
 const function New<K, V>(compare: Comparator<K>): TreeMap<K, V>
 	return adopt({} :: { Record<K, V> }, 0, compare)

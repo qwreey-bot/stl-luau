@@ -269,15 +269,41 @@ quad 문서가 제시하는 회피법 중 이 저장소에 적용해볼 만한 �
 않습니다.** 그래서 추론할 재료가 인자에 없으면 `unknown` 이 되고, **진단은
 0건**이라 조용히 지나갑니다.
 
+### ⭐ 해법: 명시적 타입 인자 `f<<T>>(...)`
+
+**셋 다 이걸로 풀립니다**(2026-09-22 실측, luau 0.734). 캐스트보다 낫습니다 —
+캐스트는 *"내 말을 믿어라"* 이고 이건 *"답을 알려준다"* 입니다.
+
+```lua
+local a = Arr.Of<<number>>()                          -- 빈 배열
+local m = HashMap.New<<string, number>>()             -- 인자 없는 생성자
+local h = HashMap.FromTable<<string, number>>({ a = 1 })  -- 테이블 리터럴
+local f = nested:Flat<<number>>()                     -- 반환으로만 결정되는 것
+local i = Arr.FromIter<<number>>(ipairs(list))
+local s = Arr.Sized<<number>>(5)
+local mapped = nums:Map<<string>>(fn)                 -- 메소드에도 됩니다
+```
+
+tbox 가 이 문법을 **전역적으로 채택**했습니다 — *"추론 부작용을 피하기 위한
+의도적 선택"*. 같은 이유입니다.
+
+⚠️ **stylua 가 `<<`/`>>` 를 시프트 연산자로 잘못 재작성한다는 실측 경고가
+tbox 에 있습니다.** 우리가 고정한 **2.5.2 에서는 재현되지 않습니다**(포맷
+전후로 파싱·실행 동일함을 확인). **버전 고정이 값을 하는 자리이니
+`mise.toml` 의 stylua 를 올릴 땐 이걸 먼저 확인하세요.**
+
+### 그래도 아래 셋이 무엇인지는 알아야 합니다
+
 ### 1. 인자 없는 생성자
 
 ```lua
-local m: HashMap<string, number> = HashMap.New()  -- ❌ HashMap<unknown, unknown>
-local m = HashMap.New() :: HashMap<string, number> -- ✅
+local m: HashMap<string, number> = HashMap.New()   -- ❌ HashMap<unknown, unknown>
+local m = HashMap.New<<string, number>>()          -- ✅ 이게 낫습니다
+local m = HashMap.New() :: HashMap<string, number> -- ✅ 차선(캐스트)
 ```
 
-**선언 주석은 안 되고 캐스트여야 합니다.** `Arr.Of()`(빈 배열),
-`HashSet.New()` 도 같습니다.
+**선언 주석은 안 됩니다.** `Arr.Of()`(빈 배열), `HashSet.New()`,
+`Arr.Sized(5)`(fill 없이)도 같습니다.
 
 ### 2. 테이블 리터럴을 `{ [K]: V }` 자리에 넘기기
 
@@ -289,9 +315,9 @@ HashMap.FromTable({ a = 1 })   -- ❌ HashMap<unknown, unknown>
 가진 레코드 `{ a: number }` 입니다. 맞출 `K`/`V` 가 없습니다.
 
 ```lua
+local m = HashMap.FromTable<<string, number>>({ a = 1 })      -- ✅ 이게 낫습니다
 local src: { [string]: number } = { a = 1 }
-local m = HashMap.FromTable(src)                              -- ✅
-local m = HashMap.FromTable({ a = 1 }) :: HashMap<string, number> -- ✅
+local m = HashMap.FromTable(src)                              -- ✅ 차선
 ```
 
 **이게 제일 위험합니다.** 한 번 `unknown` 이 되면 그 뒤로 **무엇을 해도 안
@@ -302,8 +328,26 @@ local m = HashMap.FromTable({ a = 1 }) :: HashMap<string, number> -- ✅
 
 ```lua
 local flat: Arr<number> = nested:Flat()      -- ❌ T 가 unknown
-local flat = nested:Flat() :: Arr<number>    -- ✅
+local flat = nested:Flat<<number>>()         -- ✅ 이게 낫습니다
+local flat = nested:Flat() :: Arr<number>    -- ✅ 차선(캐스트)
 ```
+
+### ⚠️ 명시적 타입 인자가 **풀어주지 않는 것** — 콜백 파라미터 주석
+
+이건 별개 문제이고 그대로 남습니다(실측):
+
+```lua
+nums:Map<<number>>(function(v)      -- ❌ "Consider placing the following
+    return v * 2                    --     annotations on the arguments: v: number"
+end)
+nums:Map(function(v: number)        -- ✅ 지금은 이렇게 씁니다
+    return v * 2
+end)
+```
+
+원인이 다릅니다 — *"제네릭이 관여하는 함수 호출의 인자로 넘긴 함수 리터럴엔
+Luau 가 컨텍스트 타입을 전파하지 않는다"* 는 더 일반적인 한계입니다
+(RFC·이슈 없음, quad 이 20개 formulation 으로 재시도했으나 못 뚫음).
 
 ### 어떻게 지키는가
 

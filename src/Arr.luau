@@ -886,10 +886,10 @@ end
 -- 평탄화는 어차피 원소마다 런타임에 배열인지 보는 동적 연산이라, 결과 타입만
 -- 박고 입력은 여는 쪽이 정직합니다.
 --
--- ⚠️ **호출자는 결과 타입을 캐스트로 적어야 합니다** —
--- `local flat = nested:Flat() :: Arr<number>`. 선언 주석
--- (`local flat: Arr<number> = …`)은 안 됩니다: Luau 는 기대 타입을 제네릭
--- 호출 안으로 전파하지 않아 `T` 가 `unknown` 으로 남습니다(실측).
+-- ⚠️ **호출자가 결과 타입을 직접 알려줘야 합니다** —
+-- `nested:Flat<<number>>()` 가 권장이고 캐스트(`:: Arr<number>`)가 차선입니다.
+-- 선언 주석(`local flat: Arr<number> = …`)은 **안 됩니다**: Luau 는 기대
+-- 타입을 제네릭 호출 안으로 전파하지 않아 `T` 가 `unknown` 으로 남습니다.
 const function Flat<T>(self: ArrData<any>, start: number?, last: number?, to: Arr<T>?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const out: Arr<T> = to or newSized(0)
@@ -1250,13 +1250,13 @@ end
 -- 임의의 for-in 이터레이터에서 값을 모읍니다.
 -- `Arr.FromIter(pairs(t))`, `Arr.FromIter(string.gmatch(s, "%a+"))` 처럼 씁니다.
 --
--- ⚠️ **원소 타입을 캐스트로 적어야 합니다.** 이터레이터는 `any` 로 받으므로
--- `T` 를 뽑을 재료가 없고, Luau 는 기대 타입을 제네릭 호출 안으로 전파하지
--- 않습니다.
+-- ⚠️ **원소 타입을 직접 알려줘야 합니다.** 이터레이터는 `any` 로 받으므로
+-- `T` 를 뽑을 재료가 없습니다.
 --
---     local a = Arr.FromIter(ipairs(list)) :: Arr<number>
+--     local a = Arr.FromIter<<number>>(ipairs(list))   -- 권장
+--     local a = Arr.FromIter(ipairs(list)) :: Arr<number>  -- 차선
 --
--- (`.claude/base/typing-limits.md` 의 "조용히 타입을 잃는 자리 셋" 3번)
+-- (`.claude/base/typing-limits.md` 의 "조용히 타입을 잃는 자리 셋")
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	const result: Arr<T> = newSized(0)
 	local count = 0

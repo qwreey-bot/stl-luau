@@ -203,12 +203,12 @@ Ifce = {
 
 --#region ----------- 생성자 -----------
 
--- ⚠️ **빈 맵은 타입을 캐스트로 적어야 합니다** — 인자가 없어 `K`/`V` 를
--- 추론할 방법이 없고, Luau 는 기대 타입을 제네릭 호출 안으로 전파하지
--- 않습니다(선언 주석 `local m: HashMap<string, number> = HashMap.New()` 는
--- 안 됩니다).
+-- ⚠️ **빈 맵은 타입을 직접 알려줘야 합니다** — 인자가 없어 `K`/`V` 를 추론할
+-- 방법이 없습니다. 선언 주석(`local m: HashMap<string, number> = …`)은
+-- **안 됩니다**.
 --
---     local m = HashMap.New() :: HashMap<string, number>
+--     local m = HashMap.New<<string, number>>()          -- 권장
+--     local m = HashMap.New() :: HashMap<string, number> -- 차선
 --
 -- `Arr.Of()` 로 빈 배열을 만들 때와 같은 한계입니다.
 const function New<K, V>(): HashMap<K, V>
@@ -221,12 +221,12 @@ end
 -- ⚠️ **테이블 리터럴을 바로 넘기면 타입이 안 잡힙니다.** `{ a = 1 }` 은
 -- `{ [string]: number }` 가 아니라 **이름 붙은 속성을 가진 레코드**
 -- `{ a: number }` 라서, `{ [K]: V }` 에 맞출 `K`/`V` 가 없습니다. 결과가
--- 조용히 `HashMap<unknown, unknown>` 이 됩니다. 둘 중 하나를 하세요:
+-- 조용히 `HashMap<unknown, unknown>` 이 되고, **그 뒤로는 키 타입이 틀려도
+-- 값 타입이 틀려도 전부 조용합니다.**
 --
---     local src: { [string]: number } = { a = 1 }
+--     local m = HashMap.FromTable<<string, number>>({ a = 1 })  -- 권장
+--     local src: { [string]: number } = { a = 1 }               -- 차선
 --     local m = HashMap.FromTable(src)
---     -- 또는
---     local m = HashMap.FromTable({ a = 1 }) :: HashMap<string, number>
 const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0

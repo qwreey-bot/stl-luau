@@ -68,16 +68,40 @@ Luau 에는 이미 다중 반환이 있고, 이 저장소에는 **`Arr` 가 있�
 
 ## 4. 그래도 만든다면 — 두 갈래
 
-### A. tbox 식
+### A. tbox 식 — ⭐ **`type function` 없이도 됩니다** (2026-09-22 실물 확인)
 
-사용자 언급: *"대신 tbox 쪽에 tuple 이 있는데 그런 형식이 더 나을수도 있어."*
+`Sol-s-Studio/tbox` 를 받아서 봤습니다. `packages/tbox/src/types.luau`:
 
-⚠️ **tbox 의 실제 모양을 못 봤습니다.** `github.com/qwreey/tbox` 와
-`github.com/Sol-s-Studio/tbox` 둘 다 공개로는 받아지지 않습니다(2026-09-22
-확인 — `Repository not found`). 비공개이거나 다른 경로인 듯합니다.
+```lua
+export type TupleType<Components...> = (Components...) -> ()
+export type Tuple<Components...> = { [number]: any, n: number, _tup: TupleType<Components...> }
+const function Tuple<Components...>(...: Components...): Tuple<Components...>
+    return table.pack<<any>>(...) :: Tuple<Components...>
+end
+```
 
-**→ 질문: tbox 의 tuple 을 보려면 어디서 받아야 하나요?** 사설 저장소라면
-접근 방법을, 아니면 관련 부분만 붙여주셔도 됩니다.
+**트릭은 `_tup` 이라는 팬텀 필드입니다.** Luau 는 가변 타입 팩
+(`Components...`)을 **함수 인자 위치에만** 자연스럽게 담을 수 있으므로,
+함수 타입 하나(`(Components...) -> ()`)에 얹어 테이블 필드로 들고 다닙니다.
+값은 실제로 들어 있지 않고 타입에만 존재합니다.
+
+**이 구조 자체는 `type function` 이 아닙니다** — 평범한 제네릭 타입 별칭 +
+평범한 함수입니다. 런타임은 `table.pack` 이고 우리 `Arr` 처럼 `n` 을
+신뢰합니다.
+
+**`type function` 이 필요해지는 지점은 따로 있습니다**: 보관해둔 팩에서
+**개별 컴포넌트 타입을 다시 꺼내 매핑**할 때(tbox 의 `GetTupleType` →
+`StaticTuple`). tbox 는 스키마 라이브러리라 그게 필요하지만, **"그냥 다시
+풀어내기"만 필요하다면 그 층 없이 갈 수 있습니다.**
+
+### tbox 가 가변인자를 `Tuple` 로 감싸는 진짜 이유
+
+`union.luau` 주석: *"new solver 는 infer 중에 부작용이 있으므로…
+`Components...` 에 대해 infer 된다면 다른 후행 함수 인자 요소가 오염됩니다."*
+
+**사용자가 말한 `select(Tup:all(), 1)` 식과 정확히 같은 동기입니다** —
+가변 타입 팩을 함수 시그니처에 직접 놓지 않고 한 겹 감싸서, 뒤따르는
+인자(옵션 등)가 오염되지 않게 하는 것.
 -> https://github.com/Sol-s-Studio/tbox 퍼블릭임.
 
 ### B. `select` 를 쓰는 형식
@@ -95,10 +119,31 @@ Luau 에는 이미 다중 반환이 있고, 이 저장소에는 **`Arr` 가 있�
 **→ 질문 3: 인용하신 `select(Tup:all(), 1)` 의 인자 순서가 의도하신 것인가요?**
 -> 실수임
 
-## 5. 결론 제안
+## 5. 결론 — 1·2 는 완료, 3 은 열어둠
 
-1. `Tuple`/`TypeUtil` 을 **지웁니다**(git 히스토리에 남습니다).
-2. `type function` 회피를 **`conventions.md` 에 확정 규약으로** 올립니다 —
-   지금은 "주의" 로 적혀 있는데 "쓰지 않는다" 가 됐습니다.
-3. 튜플이 정말 필요해지는 **구체적인 호출부가 생기면** 그때 B 안으로
-   다시 엽니다. 지금은 가정입니다.
+1. ✅ `Tuple`/`TypeUtil` 을 `src/` 에서 내렸습니다 →
+   `.claude/research/type-function-experiment/`. **`src` 전체가 `--!strict`
+   가 됐습니다.**
+2. ✅ `type function` 회피를 `conventions.md` 에 **확정 규약**으로 올렸습니다
+   (전엔 "주의" 였습니다).
+3. **튜플이 정말 필요해지는 구체적인 호출부가 생기면 다시 엽니다.**
+   그때는 **tbox 의 팬텀 필드 방식**이 출발점입니다 — `type function` 없이
+   되는 것이 확인됐으므로, 앞서 "포기하면 남는 게 없다" 고 적었던 판단은
+   **틀렸습니다.** 길이와 원소별 타입을 *보관* 하는 것까지는 됩니다.
+   못 하는 것은 그 팩을 **다시 꺼내 매핑**하는 것뿐입니다.
+
+## 6. 덤 — tbox 에서 같이 건진 것
+
+- ⭐ **명시적 타입 인자 `f<<T>>(...)`.** tbox 가 *"추론 부작용을 피하기 위해"*
+  전역 채택했습니다. 우리 저장소의 "제네릭을 못 푸는 세 자리" 를 **전부
+  해결합니다**(실측 확인) — `base/typing-limits.md` 에 반영했습니다.
+- ⚠️ **stylua 가 `<<`/`>>` 를 시프트 연산자로 잘못 재작성한다**는 실측 경고가
+  tbox 에 있습니다. **우리가 고정한 2.5.2 에서는 재현되지 않습니다**(확인
+  완료). 버전을 올릴 땐 이걸 먼저 보세요.
+- **Luau 의 교집합은 불가능한 조합을 `never` 로 붕괴시키지 않습니다**
+  (TypeScript 는 `number & string` 을 `never` 로 만듭니다). tbox 가 Intersect
+  를 제공하지 않는 이유로 README 에 적어뒀습니다. **우리는 교집합을 전면적으로
+  쓰므로 알아둘 값이 있습니다.**
+- tbox 는 에러를 문자열이 아니라 **클로저**(`(() -> string)?`)로 돌려줍니다 —
+  실패가 정상 흐름인 자리에서 문자열 포매팅 비용을 안 내려는 것입니다.
+  우리 `*Unchecked` 와 같은 종류의 사고방식입니다.
