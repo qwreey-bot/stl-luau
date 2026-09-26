@@ -28,6 +28,7 @@ require("./spec.treemap")
 require("./spec.treeset")
 require("./spec.heap")
 require("./spec.optional")
+require("./spec.fut")
 
 print()
 print("=== ALL SUITES PASS ===")

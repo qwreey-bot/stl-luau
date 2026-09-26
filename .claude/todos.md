@@ -56,8 +56,8 @@ local f = nested:Flat<<number>>()
 1. ~~**`Optional`**~~ — **2026-09-26 구현 완료.** `src/Optional.luau` + `Arr` 의
    구멍 다루기 넷. 그 과정에서 **원소가 유니온인 컨테이너가 전부 무너지던
    문제**를 찾아 고쳤습니다(`spikes/46`).
-2. **`Fut`** — 착수 전 스파이크(가변 타입 팩이 `AndThen` 체이닝을 버티는지)
-   → `src/Fut.luau`(스케줄러 provider, 순수 luau 기본은 즉시 실행).
+2. ~~**`Fut`**~~ — **2026-09-26 첫 판 구현.** 스케줄러 provider, 다중 반환,
+   `AndThen`/`Chain`/`Catch`/`Async`/`Await`. 뺀 것(`All`/재시도 등)은
    `papers/01-fut.md`.
 3. **문서 사이트** — API 가 한 바퀴 안정된 뒤. `base/docs-plan.md`.
 

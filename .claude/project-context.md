@@ -63,6 +63,7 @@ src/
   TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
   Heap.luau        이진 힙. 계약을 만족하지 않는 유일한 컨테이너
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
+  Fut.luau         코루틴 래퍼(프로미스). 스케줄러 provider, 다중 반환
 
   ⭐ src 전체가 --!strict 이고 예외가 없습니다. type function 을 쓰던
      Tuple/TypeUtil 은 2026-09-22 에 내렸습니다
@@ -73,7 +74,7 @@ tests/
   spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
   spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
-  spec.optional.luau
+  spec.optional.luau  spec.fut.luau
 scripts/
   check.sh               타입 + 음성 대조군 배터리 + require + 포맷 + 테스트
   spike-expectations.tsv 스파이크별 기대 진단 건수 (배터리의 단일 진실)
@@ -118,9 +119,10 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
 | `Heap` | 완성 | `spikes/44` |
 | `Optional` | 완성 | `spikes/45`, `47` |
+| `Fut` | 첫 판(`All`/재시도 없음) | `spikes/48` |
 
-**없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 `Fut` 은 설계 페이퍼
-(`.claude/papers/01-fut.md`) 단계입니다. `Tuple`/`TypeUtil` 은
+**없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 새 `Fut.luau` 로 다시
+썼습니다. `Tuple`/`TypeUtil` 은
 `type function` 을 접으면서 `.claude/research/` 로 내렸습니다. 옛 `record.luau`(타입 별칭 한 줄)는 **`Types.Record` 로
 흡수**됐습니다. 옛 `set.luau`/`treeset.luau` 의 내용은 사실 해시셋이었고
 지금 `HashSet` 이 그 자리입니다.
