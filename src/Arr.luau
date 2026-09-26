@@ -214,7 +214,7 @@ const function Equal<T>(self: ArrData<T>, other: ArrData<T>): boolean
 end
 
 -- 조건을 만족하는 원소의 개수.
-const function Count<T>(self: Arr<T>, fn: Predicate<T>): number
+const function Count<T>(self: ArrData<T>, fn: Predicate<T>): number
 	local total = 0
 	for idx = 1, self.n do
 		if fn(self[idx], idx, self :: any) then
@@ -225,7 +225,7 @@ const function Count<T>(self: Arr<T>, fn: Predicate<T>): number
 end
 
 -- 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
-const function Find<T>(self: Arr<T>, fn: Predicate<T>): (T?, number?)
+const function Find<T>(self: ArrData<T>, fn: Predicate<T>): (T?, number?)
 	for idx = 1, self.n do
 		const item = self[idx]
 		if fn(item, idx, self :: any) then
@@ -236,7 +236,7 @@ const function Find<T>(self: Arr<T>, fn: Predicate<T>): (T?, number?)
 end
 
 -- 하나라도 만족하는가. 구간 인자를 받습니다.
-const function Some<T>(self: Arr<T>, fn: Predicate<T>, start: number?, last: number?): boolean
+const function Some<T>(self: ArrData<T>, fn: Predicate<T>, start: number?, last: number?): boolean
 	local s, l = resolveRange(self.n, start, last)
 	for idx = s, l do
 		if fn(self[idx], idx, self :: any) then
@@ -247,7 +247,7 @@ const function Some<T>(self: Arr<T>, fn: Predicate<T>, start: number?, last: num
 end
 
 -- 전부 만족하는가. 빈 구간이면 참입니다(공허 참).
-const function Every<T>(self: Arr<T>, fn: Predicate<T>, start: number?, last: number?): boolean
+const function Every<T>(self: ArrData<T>, fn: Predicate<T>, start: number?, last: number?): boolean
 	local s, l = resolveRange(self.n, start, last)
 	for idx = s, l do
 		if not fn(self[idx], idx, self :: any) then
@@ -427,18 +427,18 @@ end
 
 -- 맨 뒤에 하나 추가. **고정 인자입니다**(가변인자로 만들면 가장 흔한 이
 -- 경로가 8~13% 느려집니다). 여러 개는 `PushBackMany`, 배열은 `PushBackArray`.
-const function PushBack<T>(self: Arr<T>, item: T): Arr<T>
+const function PushBack<T>(self: ArrData<T>, item: T): Arr<T>
 	const n = self.n + 1
 	self[n] = item
 	self.n = n
-	return self
+	return self :: any
 end
 
 -- 맨 뒤에 여러 개 추가. `table.pack` 이 아니라 `select` 루프입니다(1.6~2.3배).
-const function PushBackMany<T>(self: Arr<T>, ...: T): Arr<T>
+const function PushBackMany<T>(self: ArrData<T>, ...: T): Arr<T>
 	const count = select("#", ...)
 	if count == 0 then
-		return self
+		return self :: any
 	end
 	local n = self.n
 	for idx = 1, count do
@@ -446,37 +446,37 @@ const function PushBackMany<T>(self: Arr<T>, ...: T): Arr<T>
 		self[n] = select(idx, ...)
 	end
 	self.n = n
-	return self
+	return self :: any
 end
 
 -- 다른 배열의 내용을 맨 뒤에 이어붙입니다. `table.move` 라 원소 수와 무관하게
 -- 한 번에 끝납니다.
-const function PushBackArray<T>(self: Arr<T>, source: ArrData<T>): Arr<T>
+const function PushBackArray<T>(self: ArrData<T>, source: ArrData<T>): Arr<T>
 	const sourceLen = source.n
 	if sourceLen == 0 then
-		return self
+		return self :: any
 	end
 	table.move(source :: any, 1, sourceLen, self.n + 1, self :: any)
 	self.n += sourceLen
-	return self
+	return self :: any
 end
 
 -- 맨 앞에 하나 추가. **뒤 원소를 전부 밀어야 하므로 `PushBack` 과 달리
 -- O(n) 입니다** — 이름이 대칭이라고 비용까지 대칭이 아닙니다.
-const function PushFront<T>(self: Arr<T>, item: T): Arr<T>
+const function PushFront<T>(self: ArrData<T>, item: T): Arr<T>
 	const len = self.n
 	table.move(self :: any, 1, len, 2)
 	self[1] = item
 	self.n = len + 1
-	return self
+	return self :: any
 end
 
 -- 맨 앞에 여러 개 추가. 인자 순서가 보존됩니다(`PushFrontMany(1, 2)` 뒤엔
 -- 앞에서부터 `1, 2, …` 입니다). O(n) 입니다.
-const function PushFrontMany<T>(self: Arr<T>, ...: T): Arr<T>
+const function PushFrontMany<T>(self: ArrData<T>, ...: T): Arr<T>
 	const count = select("#", ...)
 	if count == 0 then
-		return self
+		return self :: any
 	end
 	const len = self.n
 	table.move(self :: any, 1, len, count + 1)
@@ -484,26 +484,26 @@ const function PushFrontMany<T>(self: Arr<T>, ...: T): Arr<T>
 		self[idx] = select(idx, ...)
 	end
 	self.n = len + count
-	return self
+	return self :: any
 end
 
 -- 다른 배열을 맨 앞에 이어붙입니다. O(n) 입니다.
-const function PushFrontArray<T>(self: Arr<T>, source: ArrData<T>): Arr<T>
+const function PushFrontArray<T>(self: ArrData<T>, source: ArrData<T>): Arr<T>
 	const sourceLen = source.n
 	if sourceLen == 0 then
-		return self
+		return self :: any
 	end
 	const len = self.n
 	table.move(self :: any, 1, len, sourceLen + 1)
 	table.move(source :: any, 1, sourceLen, 1, self :: any)
 	self.n = len + sourceLen
-	return self
+	return self :: any
 end
 
 -- `at` 위치에 하나 끼워넣습니다. 기존 원소는 뒤로 밀립니다.
 -- **`at` 의 유효 범위는 `1 .. n + 1`** 이고 `n + 1` 이 "맨 뒤에 붙이기" 입니다.
 -- 음수는 끝에서부터(`-1` = 마지막 원소 앞).
-const function Insert<T>(self: Arr<T>, at: number, item: T): Arr<T>
+const function Insert<T>(self: ArrData<T>, at: number, item: T): Arr<T>
 	const len = self.n
 	const pos = resolveInsertPos(len, at)
 	if pos <= len then
@@ -511,13 +511,13 @@ const function Insert<T>(self: Arr<T>, at: number, item: T): Arr<T>
 	end
 	self[pos] = item
 	self.n = len + 1
-	return self
+	return self :: any
 end
 
-const function InsertMany<T>(self: Arr<T>, at: number, ...: T): Arr<T>
+const function InsertMany<T>(self: ArrData<T>, at: number, ...: T): Arr<T>
 	const count = select("#", ...)
 	if count == 0 then
-		return self
+		return self :: any
 	end
 	const len = self.n
 	const pos = resolveInsertPos(len, at)
@@ -528,13 +528,13 @@ const function InsertMany<T>(self: Arr<T>, at: number, ...: T): Arr<T>
 		self[pos + idx - 1] = select(idx, ...)
 	end
 	self.n = len + count
-	return self
+	return self :: any
 end
 
-const function InsertArray<T>(self: Arr<T>, at: number, source: ArrData<T>): Arr<T>
+const function InsertArray<T>(self: ArrData<T>, at: number, source: ArrData<T>): Arr<T>
 	const sourceLen = source.n
 	if sourceLen == 0 then
-		return self
+		return self :: any
 	end
 	const len = self.n
 	const pos = resolveInsertPos(len, at)
@@ -543,7 +543,7 @@ const function InsertArray<T>(self: Arr<T>, at: number, source: ArrData<T>): Arr
 	end
 	table.move(source :: any, 1, sourceLen, pos, self :: any)
 	self.n = len + sourceLen
-	return self
+	return self :: any
 end
 
 --#endregion
@@ -551,7 +551,7 @@ end
 --#region ----------- 복제·비우기·채우기 -----------
 
 -- 얕은 복사. 원소 자체는 공유합니다.
-const function Clone<T>(self: Arr<T>): Arr<T>
+const function Clone<T>(self: ArrData<T>): Arr<T>
 	const len = self.n
 	const result = newSized(len)
 	table.move(self :: any, 1, len, 1, result :: any)
@@ -560,21 +560,21 @@ end
 
 -- 내용을 비웁니다. **`n` 도 0 이 되고 태그는 유지됩니다** — `table.clear` 를
 -- 쓰면 태그까지 날아가 비운 배열이 `isArr` 를 통과 못 하는 버그가 있었습니다.
-const function Clear<T>(self: Arr<T>): Arr<T>
+const function Clear<T>(self: ArrData<T>): Arr<T>
 	for idx = 1, self.n do
 		self[idx] = nil :: any
 	end
 	self.n = 0
-	return self
+	return self :: any
 end
 
 -- 구간을 같은 값으로 채웁니다. 길이는 바뀌지 않습니다.
-const function Fill<T>(self: Arr<T>, item: T, start: number?, last: number?): Arr<T>
+const function Fill<T>(self: ArrData<T>, item: T, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	for idx = s, l do
 		self[idx] = item
 	end
-	return self
+	return self :: any
 end
 
 --#endregion
@@ -583,7 +583,7 @@ end
 
 -- 구간을 잘라낸 **새 배열**. `to` 를 주면 그 배열의 **뒤에 이어붙이고** 그것을
 -- 돌려줍니다(누적용). 뒤집힌 구간은 빈 결과입니다.
-const function Slice<T>(self: Arr<T>, start: number?, last: number?, to: Arr<T>?): Arr<T>
+const function Slice<T>(self: ArrData<T>, start: number?, last: number?, to: Arr<T>?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const count = if l >= s then l - s + 1 else 0
 	if to == nil then
@@ -601,7 +601,7 @@ const function Slice<T>(self: Arr<T>, start: number?, last: number?, to: Arr<T>?
 end
 
 -- 구간만 남기고 나머지를 버립니다(제자리).
-const function SliceInplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+const function SliceInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	if l < s then
@@ -615,11 +615,11 @@ const function SliceInplace<T>(self: Arr<T>, start: number?, last: number?): Arr
 		self[idx] = nil :: any
 	end
 	self.n = count
-	return self
+	return self :: any
 end
 
 -- 구간을 **지운** 새 배열. 원본은 그대로입니다.
-const function Erase<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+const function Erase<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	if l < s then
@@ -635,11 +635,11 @@ end
 -- 구간을 지웁니다(제자리).
 -- ⚠️ 뒤집힌 구간에서 아무것도 안 하는 가드가 필수입니다 — 없으면 지운 개수가
 -- 음수가 되어 배열이 **오히려 늘어납니다**(실제로 났던 버그).
-const function EraseInplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+const function EraseInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	if l < s then
-		return self
+		return self :: any
 	end
 	if s == 1 and l == len then
 		return Clear(self)
@@ -651,11 +651,11 @@ const function EraseInplace<T>(self: Arr<T>, start: number?, last: number?): Arr
 		self[idx] = nil :: any
 	end
 	self.n = afterLen
-	return self
+	return self :: any
 end
 
 -- 구간을 `with` 의 내용으로 바꾼 **새 배열**. 길이가 달라질 수 있습니다.
-const function Replace<T>(self: Arr<T>, start: number, last: number, with: ArrData<T>): Arr<T>
+const function Replace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	const removed = if l >= s then l - s + 1 else 0
@@ -668,7 +668,7 @@ const function Replace<T>(self: Arr<T>, start: number, last: number, with: ArrDa
 end
 
 -- `Replace` 의 제자리 판.
-const function ReplaceInplace<T>(self: Arr<T>, start: number, last: number, with: ArrData<T>): Arr<T>
+const function ReplaceInplace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	const removed = if l >= s then l - s + 1 else 0
@@ -682,7 +682,7 @@ const function ReplaceInplace<T>(self: Arr<T>, start: number, last: number, with
 		self[idx] = nil :: any
 	end
 	self.n = afterLen
-	return self
+	return self :: any
 end
 
 --#endregion
@@ -693,58 +693,58 @@ end
 -- 덮어쓰기냐" 가 갈려 실제로 데이터를 잃는 버그를 냈던 자리입니다.
 
 -- 구간을 뒤집습니다(제자리).
-const function ReverseInplace<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+const function ReverseInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
 	local s, l = resolveRange(self.n, start, last)
 	while s < l do
 		self[s], self[l] = self[l], self[s]
 		s += 1
 		l -= 1
 	end
-	return self
+	return self :: any
 end
 
 -- 구간을 뒤집은 **새 배열**(나머지는 그대로).
-const function Reverse<T>(self: Arr<T>, start: number?, last: number?): Arr<T>
+const function Reverse<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
 	return ReverseInplace(Clone(self), start, last)
 end
 
 -- 구간을 회전합니다(제자리). **양수 shift 가 왼쪽 회전**입니다
 -- (`std::rotate` 방향). 구간 길이로 나눈 나머지만 의미가 있습니다.
-const function RotateInplace<T>(self: Arr<T>, shift: number, start: number?, last: number?): Arr<T>
+const function RotateInplace<T>(self: ArrData<T>, shift: number, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	if l <= s then
-		return self
+		return self :: any
 	end
 	const span = l - s + 1
 	const k = shift % span
 	if k == 0 then
-		return self
+		return self :: any
 	end
 	const buffer = table.create(k)
 	table.move(self :: any, s, s + k - 1, 1, buffer)
 	table.move(self :: any, s + k, l, s)
 	table.move(buffer, 1, k, l - k + 1, self :: any)
-	return self
+	return self :: any
 end
 
-const function Rotate<T>(self: Arr<T>, shift: number, start: number?, last: number?): Arr<T>
+const function Rotate<T>(self: ArrData<T>, shift: number, start: number?, last: number?): Arr<T>
 	return RotateInplace(Clone(self), shift, start, last)
 end
 
 -- 구간을 섞습니다(제자리). Fisher-Yates.
 -- `rng` 를 주입할 수 있습니다(`(min, max) -> number`). 기본은 `math.random`
 -- 이고, 테스트에서 결정적으로 만들려면 직접 넣으세요.
-const function ShuffleInplace<T>(self: Arr<T>, start: number?, last: number?, rng: Rng?): Arr<T>
+const function ShuffleInplace<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const random = rng or math.random
 	for idx = l, s + 1, -1 do
 		const pick = random(s, idx)
 		self[idx], self[pick] = self[pick], self[idx]
 	end
-	return self
+	return self :: any
 end
 
-const function Shuffle<T>(self: Arr<T>, start: number?, last: number?, rng: Rng?): Arr<T>
+const function Shuffle<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
 	return ShuffleInplace(Clone(self), start, last, rng)
 end
 
@@ -773,7 +773,7 @@ const function sortInto<T>(self: ArrData<T>, buffer: { T }, less: LessThan<T>?):
 	return count
 end
 
-const function Sort<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
+const function Sort<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
 	const len = self.n
 	const buffer = table.create(len)
 	const count = sortInto(self, buffer, less)
@@ -782,7 +782,7 @@ const function Sort<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
 	return result
 end
 
-const function SortInplace<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
+const function SortInplace<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
 	const len = self.n
 	const buffer = table.create(len)
 	const count = sortInto(self, buffer, less)
@@ -790,7 +790,7 @@ const function SortInplace<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
 	for idx = count + 1, len do
 		self[idx] = nil :: any
 	end
-	return self
+	return self :: any
 end
 
 -- `SortInplace` 의 검사 없는 판. **구멍이 없어야 합니다.**
@@ -799,17 +799,17 @@ end
 -- ⚠️ **구멍이 있으면 터지지 않고 조용히 잘립니다.** `table.sort` 는 `n` 이
 -- 아니라 `#` 를 보는데, 구멍이 있으면 `#` 가 거기서 멈출 수 있습니다.
 -- 그러면 뒤쪽이 정렬되지 않은 채 남고 아무 에러도 나지 않습니다.
-const function SortInplaceUnchecked<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
+const function SortInplaceUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
 	if less then
 		table.sort(self :: any, less)
 	else
 		table.sort(self :: any)
 	end
-	return self
+	return self :: any
 end
 
 -- `Sort` 의 검사 없는 판. 복사한 뒤 제자리 정렬합니다.
-const function SortUnchecked<T>(self: Arr<T>, less: LessThan<T>?): Arr<T>
+const function SortUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
 	return SortInplaceUnchecked(Clone(self), less)
 end
 
@@ -818,7 +818,7 @@ end
 --#region ----------- 스트림 -----------
 
 -- 각 원소를 변환한 **새 배열**. `to` 를 주면 그 뒤에 이어붙입니다.
-const function Map<T, G>(self: Arr<T>, fn: Mapper<T, G>, to: Arr<G>?): Arr<G>
+const function Map<T, G>(self: ArrData<T>, fn: Mapper<T, G>, to: Arr<G>?): Arr<G>
 	const len = self.n
 	if to == nil then
 		const result = newSized(len)
@@ -837,7 +837,7 @@ const function Map<T, G>(self: Arr<T>, fn: Mapper<T, G>, to: Arr<G>?): Arr<G>
 end
 
 -- 각 원소를 변환해 **제자리에** 덮어씁니다. 타입이 바뀔 수 있습니다.
-const function MapInplace<T, G>(self: Arr<T>, fn: Mapper<T, G>): Arr<G>
+const function MapInplace<T, G>(self: ArrData<T>, fn: Mapper<T, G>): Arr<G>
 	for idx = 1, self.n do
 		(self :: any)[idx] = fn(self[idx], idx, self :: any)
 	end
@@ -845,7 +845,7 @@ const function MapInplace<T, G>(self: Arr<T>, fn: Mapper<T, G>): Arr<G>
 end
 
 -- 조건을 만족하는 원소만 모은 **새 배열**. `to` 를 주면 그 뒤에 이어붙입니다.
-const function Filter<T>(self: Arr<T>, fn: Predicate<T>, to: Arr<T>?): Arr<T>
+const function Filter<T>(self: ArrData<T>, fn: Predicate<T>, to: Arr<T>?): Arr<T>
 	const len = self.n
 	const out: Arr<T> = to or newSized(0)
 	local outLen = out.n
@@ -861,7 +861,7 @@ const function Filter<T>(self: Arr<T>, fn: Predicate<T>, to: Arr<T>?): Arr<T>
 end
 
 -- 조건을 만족하는 원소만 **남깁니다**(제자리). 나머지는 버립니다.
-const function Retain<T>(self: Arr<T>, fn: Predicate<T>): Arr<T>
+const function Retain<T>(self: ArrData<T>, fn: Predicate<T>): Arr<T>
 	const len = self.n
 	local kept = 0
 	for idx = 1, len do
@@ -875,7 +875,7 @@ const function Retain<T>(self: Arr<T>, fn: Predicate<T>): Arr<T>
 		self[idx] = nil :: any
 	end
 	self.n = kept
-	return self
+	return self :: any
 end
 
 -- 한 겹 평탄화한 **새 배열**. 구간 인자를 받습니다(예전의 `rangeflat` 이
@@ -967,7 +967,7 @@ end
 
 -- 각 원소를 여러 값으로 펼쳐 이어붙인 **새 배열**. 콜백은 값 여러 개를
 -- 돌려줄 수 있습니다.
-const function Flatmap<T, G>(self: Arr<T>, fn: Spreader<T, G>, to: Arr<G>?): Arr<G>
+const function Flatmap<T, G>(self: ArrData<T>, fn: Spreader<T, G>, to: Arr<G>?): Arr<G>
 	const out: Arr<G> = to or newSized(0)
 	local outLen = out.n
 	for idx = 1, self.n do
@@ -989,7 +989,7 @@ end
 
 -- `Flatmap` 의 제자리 판. 버퍼에 모은 뒤 한 번에 되돌려 씁니다 — 원소마다
 -- 밀면 O(n^2) 가 됩니다.
-const function FlatmapInplace<T, G>(self: Arr<T>, fn: Spreader<T, G>): Arr<G>
+const function FlatmapInplace<T, G>(self: ArrData<T>, fn: Spreader<T, G>): Arr<G>
 	const len = self.n
 	const buffer = table.create(len)
 	local outLen = 0
@@ -1014,18 +1014,18 @@ end
 
 -- 순회하며 **비웁니다**(Rust 의 drain). 콜백이 각 원소를 받고, 끝나면 배열은
 -- 비어 있습니다.
-const function Drain<T>(self: Arr<T>, fn: Mapper<T, any>): Arr<T>
+const function Drain<T>(self: ArrData<T>, fn: Mapper<T, any>): Arr<T>
 	const len = self.n
 	for idx = 1, len do
 		fn(self[idx], idx, self :: any)
 		self[idx] = nil :: any
 	end
 	self.n = 0
-	return self
+	return self :: any
 end
 
 -- 다른 배열들을 뒤에 이어붙입니다(제자리).
-const function MergeInplace<T>(self: Arr<T>, ...: ArrData<T>): Arr<T>
+const function MergeInplace<T>(self: ArrData<T>, ...: ArrData<T>): Arr<T>
 	const count = select("#", ...)
 	local outLen = self.n
 	for argIdx = 1, count do
@@ -1037,7 +1037,7 @@ const function MergeInplace<T>(self: Arr<T>, ...: ArrData<T>): Arr<T>
 		end
 	end
 	self.n = outLen
-	return self
+	return self :: any
 end
 
 --#endregion
@@ -1047,7 +1047,7 @@ end
 -- `FoldUntil` 조기 중단. **초기값이 앞에 옵니다** — 후행 클로저가 여러 줄일 때
 -- 초기값이 뒤에 붕 뜨지 않게 하려는 것이고 Rust·Haskell·Java 도 그렇습니다.
 
-const function Fold<T, U>(self: Arr<T>, init: U, fn: Folder<T, U>): U
+const function Fold<T, U>(self: ArrData<T>, init: U, fn: Folder<T, U>): U
 	local acc = init
 	for idx = 1, self.n do
 		acc = fn(acc, self[idx], idx, self :: any)
@@ -1055,7 +1055,7 @@ const function Fold<T, U>(self: Arr<T>, init: U, fn: Folder<T, U>): U
 	return acc
 end
 
-const function FoldRight<T, U>(self: Arr<T>, init: U, fn: Folder<T, U>): U
+const function FoldRight<T, U>(self: ArrData<T>, init: U, fn: Folder<T, U>): U
 	local acc = init
 	for idx = self.n, 1, -1 do
 		acc = fn(acc, self[idx], idx, self :: any)
@@ -1065,7 +1065,7 @@ end
 
 -- 초기값 없이 **첫 원소를 씨앗으로** 접습니다. 빈 배열이면 `nil`.
 -- `arr:Reduce(math.max)` 같은 게 자연스러워집니다.
-const function Reduce<T>(self: Arr<T>, fn: (a: T, b: T, index: number, arr: ArrView<T>) -> T): T?
+const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<T>) -> T): T?
 	const len = self.n
 	if len == 0 then
 		return nil
@@ -1083,7 +1083,7 @@ end
 --
 -- 돌려주는 둘째 값은 **멈춘 위치**입니다. 끝까지 갔으면 `nil` 이라 완주
 -- 여부를 알 수 있습니다.
-const function FoldUntil<T, U>(self: Arr<T>, init: U, fn: UntilFolder<T, U>): (U, number?)
+const function FoldUntil<T, U>(self: ArrData<T>, init: U, fn: UntilFolder<T, U>): (U, number?)
 	local acc = init
 	for idx = 1, self.n do
 		const nextAcc, done = fn(acc, self[idx], idx, self :: any)

@@ -43,3 +43,5 @@
 6	.claude/audit/arr-type-redesign/spikes/42-real-bsearch-negative-control.luau
 12	.claude/audit/arr-type-redesign/spikes/43-real-treemap-treeset-negative-control.luau
 9	.claude/audit/arr-type-redesign/spikes/44-real-heap-negative-control.luau
+9	.claude/audit/arr-type-redesign/spikes/45-optional-shape.luau
+10	.claude/audit/arr-type-redesign/spikes/46-union-elements.luau

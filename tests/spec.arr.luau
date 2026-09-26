@@ -575,6 +575,25 @@ do
 end
 print("PASS")
 
+print("=== 15. 원소가 유니온인 배열 ===")
+do
+	-- ⭐ self 를 전체형으로 받던 시절엔 이 절 전체가 타입 에러였습니다(spikes/46).
+	local maybe = Arr.Of<<number?>>(1, nil, 3)
+	assert(maybe.n == 3, "n 은 구멍을 포함")
+	const kept = maybe:Filter(function(v: number?)
+		return v ~= nil
+	end)
+	assert(kept.n == 2, "Filter 가 구멍을 거름")
+	const filled = maybe:Map(function(v: number?): number
+		return v or 0
+	end)
+	same(filled, { 1, 0, 3 }, "Map 으로 구멍을 메움")
+	assert(maybe:Count(function(v: number?)
+		return v == nil
+	end) == 1, "Count")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 

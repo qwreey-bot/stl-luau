@@ -44,6 +44,13 @@
 - **메소드는 이름 붙은 함수 + `typeof` 나열**. 인라인 제네릭으로 쓰면 반환이
   `Unifiable<Error>` 로 샙니다(실측).
 
+- ⭐ **메소드의 `self` 는 데이터부(`XxxData<T>`)로 받고, 반환만 전체형으로.**
+  `self: Arr<T>` 로 받으면 **원소가 유니온일 때**(`Arr<number?>`,
+  `Arr<number | string>`) 그 메소드가 전부 *"No valid instantiation"* 으로
+  무너집니다 — 전체형에 섞인 계약 조각의 `Get` 이 `E?` 를 돌려주는데, `T`
+  자체가 유니온이면 역추론 경계가 모순됩니다. 자기 자신을 돌려줄 땐
+  `return self :: any`. 근거와 전 컨테이너 대조는 `spikes/46`.
+
 - **제네릭이 안 풀릴 땐 명시적 타입 인자** `f<<T>>(...)` 를 씁니다 —
   `Arr.Of<<number>>()`, `HashMap.New<<string, number>>()`,
   `nested:Flat<<number>>()`. 캐스트(`:: Arr<number>`)는 차선입니다.
@@ -59,7 +66,7 @@
 - **삼항 `and/or` 금지.** `if-then-else` 표현식만. 단순 2항 `x or y` 는 허용.
 
 - **`--!strict` 를 모든 파일 1행에.** 그 다음 `--[[ Module — 설명 ]]` 블록.
-  예외는 실험 파일 `Tuple`/`TypeUtil` 뿐(`--!nocheck`).
+  예외는 없습니다(`--!nocheck` 이던 `Tuple`/`TypeUtil` 은 내렸습니다).
 
 - **탭 들여쓰기.** 주석은 한국어, 식별자와 에러 메시지는 영어
   (`error("Arr: Range step must not be zero")` 형식).
