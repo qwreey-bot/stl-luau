@@ -37,15 +37,16 @@
   `qwreey/stl_luau`, `[target] lib = "src/init.luau"`. **`[scripts]`는
   비어 있습니다** — `pesde run`이 항상 lune으로 실행하기 때문. pesde는
   의존성/배포 메타데이터 용도로만 씁니다.
-- 포매터: **없습니다.** `stylua` 바이너리가 이 환경에 없어 도입 영향을 잴 수
-  없었습니다(`.claude/question.md` 4번). 재작성으로 인덴트 혼재는 사라졌고
-  `src`/`tests` 전부 **탭**이며 120자 초과 줄이 없습니다.
+- 포매터: **stylua 2.5.2**(`mise.toml` 고정, `stylua.toml`). `check.sh` 가
+  `--check` 로 게이트를 겁니다.
 
 ## 모듈 구조 (2026-09-22 전면 재작성 후)
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
-mise.toml               툴체인 고정 (luau, luau-lsp)
+mise.toml               툴체인 고정 (luau, luau-lsp, stylua)
+stylua.toml             포매터 설정
+README.md, LICENSE      간단한 소개(API 가 굳으면 다시 씀), MIT
 .luaurc                 languageMode strict + 전체 lint on
 .vscode/settings.json   luau-lsp new solver 강제
 default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
@@ -55,7 +56,7 @@ src/
   Common.luau      비교자 어댑터와 기본 3방향 비교자
   Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
-  Arr.luau         배열. 메소드 54 + 생성자 8
+  Arr.luau         배열. 메소드 60(checked/unchecked 포함) + 생성자 8
   HashMap.luau     해시 맵. { data, size } 래퍼
   HashSet.luau     HashMap 위에 단방향으로 얹음
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
@@ -70,8 +71,9 @@ tests/
   spec.arr.luau    이하 컨테이너별 테스트. assert + print, 프레임워크 없음
   spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
+  spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
 scripts/
-  check.sh               타입 + 음성 대조군 배터리 + require 게이트 + 테스트
+  check.sh               타입 + 음성 대조군 배터리 + require + 포맷 + 테스트
   spike-expectations.tsv 스파이크별 기대 진단 건수 (배터리의 단일 진실)
 refs-ignoreme/          (gitignore) Java/Rust/C++ 표준 라이브러리 — 설계 참고
 old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/Tree
@@ -84,8 +86,8 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 ## 검증 장치 — 이 저장소에서 가장 중요한 부분
 
-`./scripts/check.sh` 하나가 네 가지를 봅니다. **넷이 같이 있어야 뜻이
-있습니다.**
+`./scripts/check.sh` 하나가 다섯 가지를 봅니다(아래 넷 + stylua 포맷).
+**앞의 넷이 같이 있어야 뜻이 있습니다.**
 
 | 게이트 | 무엇을 막는가 |
 |---|---|
@@ -108,7 +110,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
 | `Types` / `Common` / `Algorithm` | 완성(작음) | — |
-| `Arr` | 메소드 54 + 생성자 8 | `spikes/40` |
+| `Arr` | 메소드 60 + 생성자 8 | `spikes/40` |
 | `HashMap` / `HashSet` | 완성 | `spikes/41` |
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
@@ -129,16 +131,8 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
   구조 패턴**(짧은 `CLAUDE.md` + `@import` + `base/`는 확정 결정만 +
   `question.md`)만 참고하고, 무거운 도구는 프로젝트가 그 정도 복잡도에
   도달하기 전까진 들이지 않습니다.
-- **`qwreey/tbox`** (예전엔 `/code/Projects/tbox`, **지금은 이 환경에
-  클론돼 있지 않습니다** — 아래 내용은 과거 세션의 기록입니다):
-  Luau용 스키마 라이브러리.
-  pesde **워크스페이스(모노레포)** 구조(`packages/tbox`, `packages/tbox_squish`
-  등 여러 작은 패키지)를 씁니다. stl-luau는 **단일 패키지로 유지하기로
-  결정**(2026-08-22, `.claude/question.md`의 옛 "저장소 구조" 질문 참고 —
-  지금은 지워졌고 이 결정만 남음)했으므로, tbox의 모노레포보다는
-  `packages/tbox` 안 단일 패키지 구조(하나의 `pesde.toml` + `src/`)가
-  더 가까운 참고 대상입니다.
-- **`../tbox/`** (사용자가 언급): 위와 동일 저장소, Luau 타입 시스템을
-  깊이 쓰는 부분(특히 `packages/tbox/src/types.luau`의 type function
-  유틸)이 `src/tuple.luau`/`src/typeutil.luau`와 접근이 비슷합니다 —
-  이 둘을 더 다듬을 때 참고할 만합니다.
+- **`Sol-s-Studio/tbox`** (`refs-ignoreme/tbox` 에 클론, 2026-09-22 공개):
+  Luau 스키마 라이브러리. pesde 워크스페이스(모노레포)지만 stl-luau 는 **단일
+  패키지 유지**(2026-08-22 결정). 여기서 건진 것 — **명시적 타입 인자
+  `f<<T>>(...)`**, **팬텀 필드로 가변 타입 팩 보관**(`_tup: (T...) -> ()`) —
+  은 `base/typing-limits.md` 와 `papers/03-tuple.md` 에 있습니다.
