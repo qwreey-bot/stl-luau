@@ -14,12 +14,14 @@ Roblox 엔진 언어 **Luau**용 표준 라이브러리 스타일 유틸리티 �
 
 | 모듈 | 무엇 |
 |---|---|
-| `Arr<T>` | 배열. 메소드 60개 — map/filter/sort/slice 등, 체이닝됨 |
+| `Arr<T>` | 배열. 메소드 64개 — map/filter/sort/slice 등, 체이닝됨 |
 | `HashMap<K, V>` | 해시 맵. Luau 테이블을 그대로 쓰되 크기를 따로 추적 |
 | `HashSet<T>` | `HashMap` 위에 얹은 셋 (`Add`/`Has`/`Remove`) |
 | `TreeMap<K, V>` | 정렬을 유지하는 맵. 정렬 배열 + 이분 탐색으로 구현 |
 | `TreeSet<T>` | `TreeMap` 위에 얹은 정렬 셋 |
 | `Heap<T>` | 이진 힙. 기본은 최소 힙, 비교자를 뒤집으면 최대 힙 |
+| `Optional<T>` | `nil` 구멍을 값으로 — `Optional.Present(v)` / `Optional.Absent` |
+| `Fut<T...>` | 코루틴 래퍼(프로미스). 스케줄러 주입, 다중 반환 |
 | `BSearch` | 정렬된 일반 배열 위의 이분 탐색 (컨테이너를 모름) |
 | `Common` | 비교자 어댑터 (`LessThan` ↔ `Comparator` 변환) |
 | `Algorithm` | 계약(`Types.ListCore` 등)만 아는 공용 알고리즘 |

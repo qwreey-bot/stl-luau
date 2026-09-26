@@ -162,6 +162,43 @@ Luau 테이블 자체가 해시맵이라 문자열/숫자 키에는 해시 함�
 
 ---
 
+## 🔁 2026-09-26 작업에서 **제가 정한 것들** (되돌리기 쉬움)
+
+### O. `Optional` 은 메소드가 아니라 네임스페이스 함수입니다
+
+`o:UnwrapOr(0)` 이 아니라 `Optional.UnwrapOr(o, 0)`. 태그 유니온에 메소드
+교집합을 얹으면 메소드의 `T` 가 `number | nil` 로 잡혀 추론이 무너집니다
+(`spikes/45`). 덤으로 메타테이블이 없어 `.value` 읽기에 세금이 없습니다.
+**메소드 체인이 꼭 필요하면** 다른 모양을 다시 재야 합니다.
+
+### P. `Optional` 표면에서 `Filter` 를 뺐습니다
+
+페이퍼 초안엔 있었는데 부르는 곳이 없어서입니다. `Present`/`Absent`/`Of`/
+`Unwrap`/`UnwrapOr`/`Map`/`ToNil`/`isOptional` 만 있습니다.
+
+### Q. `Arr` 에 구멍 다루기 넷 — `FillHoles`/`Compact`/`CompactInplace`/`ToOptionals`
+
+`Fillholes` 가 아니라 **`FillHoles`** 로 썼습니다(단어마다 대문자, 이 저장소
+규약). `ToOptionals` 가 따로 있는 건 `arr:Map(Optional.Of)` 가 타입 에러라서
+입니다.
+
+⚠️ 실측으로 정정한 것: 구멍을 한 번 정리하고 unchecked 를 **한 번만** 쓰면
+오히려 손해(0.87x)이고 **두 번째 연산부터** 이득입니다.
+
+### R. `Fut` — `AndThen` 과 `Chain` 을 가릅니다
+
+콜백이 값을 돌려주면 `AndThen`, `Fut` 을 돌려주면 `Chain`(펼침). JS `then`
+처럼 하나로 합치면 "돌려준 게 Fut 이면 펼친다" 를 Luau 타입으로 표현할 수
+없습니다. 이름을 `Chain` 으로 한 게 마음에 안 드시면 바꿉니다
+(`AndThenFut`, `FlatMap` 등).
+
+### S. `Fut` 첫 판에서 뺀 것
+
+`All`/`Race`, 재시도(`Retry`/`OnRetry` — 옛 `promise.lua` 에 있던 것), `Finally`,
+처리 안 된 실패 경고. 부르는 곳이 생기면 얹습니다.
+
+---
+
 ### G. mlua 바인딩 — **보류 확정**
 
 사용자: *"얹혀지는 구조여도 좋아 … 여기에 얽메일 필요는 없어."*
