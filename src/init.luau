@@ -28,6 +28,7 @@ local HashSet = require("@self/HashSet")
 local TreeMap = require("@self/TreeMap")
 local TreeSet = require("@self/TreeSet")
 local Heap = require("@self/Heap")
+local Optional = require("@self/Optional")
 
 -- 계약 타입은 최상위에서도 보이게 재수출합니다.
 export type Comparator<T> = Types.Comparator<T>
@@ -47,6 +48,7 @@ export type HashSet<T> = HashSet.HashSet<T>
 export type TreeMap<K, V> = TreeMap.TreeMap<K, V>
 export type TreeSet<T> = TreeSet.TreeSet<T>
 export type Heap<T> = Heap.Heap<T>
+export type Optional<T> = Optional.Optional<T>
 
 return {
 	Common = Common,
@@ -61,6 +63,7 @@ return {
 	TreeMap = TreeMap,
 	TreeSet = TreeSet,
 	Heap = Heap,
+	Optional = Optional,
 
 	-- 술어는 camelCase 로 최상위에 둡니다.
 	isArr = Arr.isArr,
@@ -69,4 +72,5 @@ return {
 	isTreeMap = TreeMap.isTreeMap,
 	isTreeSet = TreeSet.isTreeSet,
 	isHeap = Heap.isHeap,
+	isOptional = Optional.isOptional,
 }

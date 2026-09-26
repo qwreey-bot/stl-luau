@@ -1,6 +1,16 @@
 # 페이퍼 — `Optional` (`nil` 구멍을 값으로 만들기)
 
-**상태: 미결. 구현하지 않았습니다.**
+**상태: ✅ 구현됨 (2026-09-26).** `src/Optional.luau` + `Arr` 의
+`FillHoles`/`Compact`/`CompactInplace`/`ToOptionals`. 착수 전 스파이크는
+`spikes/45`, 실제 모듈의 음성 대조군은 `spikes/47`.
+
+구현하며 달라진 것:
+- 표면은 4절 초안에서 **`Filter` 를 뺐습니다**(부르는 곳이 없음). 나머지
+  `Present`/`Absent`/`Of`/`Unwrap`/`UnwrapOr`/`Map`/`ToNil`/`isOptional` 그대로.
+- **메소드가 아니라 네임스페이스 함수**입니다 — 태그 유니온에 메소드 교집합을
+  얹으면 `T` 가 무너집니다(`spikes/45`).
+- `Arr:GetOptional` 류는 두지 않았습니다 — `Optional.Of(arr:Get(i))` 로 됩니다.
+- 이름을 `Fillholes` 가 아니라 **`FillHoles`**(단어마다 대문자) 로 했습니다.
 
 > 사용자(2026-09-22): *"`Optional` 은 **nil hole** 이 이유야. sort 나 여러
 > 처리가 필요한 부분에서 nil 이 문제가 되는 부분이 있다면 그 부분을 처리를
@@ -147,6 +157,10 @@ Rust 의 `Option` 과 사용자의 `Result` 어휘를 섞되, 이 저장소 규�
 **`Fillholes` 가 특히 값집니다.** 구멍을 한 번 메우고 나면 `*Unchecked` 의
 전제("구멍이 없다")가 **보증되고**, 그 뒤로는 1.83배 빠른 경로를 안심하고
 쓸 수 있습니다. 즉 `Optional` 은 checked/unchecked 갈림의 **세 번째 답**입니다.
+
+> **[2026-09-26 실측 정정]** 위 서술은 조건 하나를 빼먹었습니다 — **정리 비용**.
+> 정리 한 번이 checked 집계 한 번만큼 들어서, 한 번만 쓰면 오히려 손해(0.87x)
+> 이고 **두 번째 연산부터** 이득입니다(`base/perf-measurements.md` 12절).
 
 **→ [2026-09-22 사용자 결정] 이 방향으로 갑니다.** *"될것 같음."*
 그래서 `Optional` 은 단독 유틸이 아니라 **컨테이너 성능 경로의 일부**입니다.

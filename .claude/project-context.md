@@ -56,12 +56,13 @@ src/
   Common.luau      비교자 어댑터와 기본 3방향 비교자
   Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
-  Arr.luau         배열. 메소드 60(checked/unchecked 포함) + 생성자 8
+  Arr.luau         배열. 메소드 64(checked/unchecked, 구멍 다루기 포함) + 생성자 8
   HashMap.luau     해시 맵. { data, size } 래퍼
   HashSet.luau     HashMap 위에 단방향으로 얹음
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
   TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
   Heap.luau        이진 힙. 계약을 만족하지 않는 유일한 컨테이너
+  Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
 
   ⭐ src 전체가 --!strict 이고 예외가 없습니다. type function 을 쓰던
      Tuple/TypeUtil 은 2026-09-22 에 내렸습니다
@@ -72,6 +73,7 @@ tests/
   spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
   spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
+  spec.optional.luau
 scripts/
   check.sh               타입 + 음성 대조군 배터리 + require + 포맷 + 테스트
   spike-expectations.tsv 스파이크별 기대 진단 건수 (배터리의 단일 진실)
@@ -110,14 +112,15 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
 | `Types` / `Common` / `Algorithm` | 완성(작음) | — |
-| `Arr` | 메소드 60 + 생성자 8 | `spikes/40` |
+| `Arr` | 메소드 64 + 생성자 8 | `spikes/40`, `46` |
 | `HashMap` / `HashSet` | 완성 | `spikes/41` |
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
 | `Heap` | 완성 | `spikes/44` |
+| `Optional` | 완성 | `spikes/45`, `47` |
 
-**없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 `Fut`/`Optional` 은
-설계 페이퍼(`.claude/papers/`) 단계입니다. `Tuple`/`TypeUtil` 은
+**없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 `Fut` 은 설계 페이퍼
+(`.claude/papers/01-fut.md`) 단계입니다. `Tuple`/`TypeUtil` 은
 `type function` 을 접으면서 `.claude/research/` 로 내렸습니다. 옛 `record.luau`(타입 별칭 한 줄)는 **`Types.Record` 로
 흡수**됐습니다. 옛 `set.luau`/`treeset.luau` 의 내용은 사실 해시셋이었고
 지금 `HashSet` 이 그 자리입니다.

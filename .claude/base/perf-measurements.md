@@ -239,3 +239,33 @@ for i, v in arr:Iter() do … end   -- i: number, v: T  (교집합인데도 정�
 | `SortUnchecked` / `SortInplaceUnchecked` | `table.sort` 가 `#` 를 보므로 **구멍 뒤쪽이 조용히 잘림** |
 
 셋 중 마지막만 터지지 않습니다. 그래서 문서에서 그 줄을 특히 강조합니다.
+
+## 12. 구멍을 정리하고 unchecked 로 가는 것 — 한 번이면 손해 (2026-09-26)
+
+원소 20만, 구멍 10%.
+
+| 무엇 | 배수 (checked `Sum` = 1.00) |
+|---|---|
+| `FillHoles` 만 | 1.02x |
+| `FillHoles` + `SumUnchecked` | **1.88x (더 느림)** |
+| `CompactInplace` + `SumUnchecked` | 2.41x |
+| `Compact` + `SumUnchecked` | 2.53x |
+| `ToOptionals` | 4.96x |
+
+**정리 한 번이 checked 집계 한 번만큼 듭니다.** 그래서 손익은 횟수로
+갈립니다 — 한 번 정리하고 `Max` 를 k 번:
+
+| k | checked 대비 |
+|---|---|
+| 1 | 0.87x (손해) |
+| 2 | 1.15x |
+| 3 | 1.32x |
+| 5 | 1.50x |
+| 10 | 1.69x → 11절의 1.83x 로 수렴 |
+
+**교훈**: `*Unchecked` 의 1.83배는 구멍이 **이미 없는** 데이터에서의 숫자입니다.
+구멍을 치우는 비용까지 셈에 넣으면 **두 번째 연산부터** 이득입니다.
+`papers/02-optional.md` 가 "Fillholes 로 1.83배 경로를 안심하고 쓴다" 고
+적었던 것은 이 조건을 빼먹은 서술이었습니다.
+
+`Optional.Present` 하나는 **128바이트**입니다.

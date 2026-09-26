@@ -49,8 +49,10 @@
 	— 실제로 그 버그를 낸 선례가 있습니다. 그래서 정규화 함수를 둘로 나눴습니다.
 ]]
 local Types = require("./Types")
+local Optional = require("./Optional")
 
 type LessThan<T> = Types.LessThan<T>
+type Optional<T> = Optional.Optional<T>
 
 export type ArrData<T> = { n: number, [number]: T }
 
@@ -419,6 +421,111 @@ const function MinUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): T?
 		end
 	end
 	return best
+end
+
+--#endregion
+
+--#region ----------- 구멍 다루기 -----------
+--[[
+	1..n 사이의 `nil` 구멍을 없애는 세 갈래. 이 셋 중 하나를 거치면
+	**`*Unchecked` 계열의 전제("구멍이 없다")가 보증**되어 그 빠른 경로를
+	안심하고 쓸 수 있습니다 — checked/unchecked 갈림의 세 번째 답입니다.
+
+	| 무엇 | 길이 | 구멍 자리 |
+	|---|---|---|
+	| `FillHoles(v)` | 그대로 | `v` 로 채움 (제자리, 할당 없음) |
+	| `Compact()` / `CompactInplace()` | 줄어듦 | 없앰 (순서 유지) |
+	| `ToOptionals()` | 그대로 | `Optional.Absent` 로, 값은 `Present` 로 감쌈 |
+
+	⚠️ **한 번만 쓸 거면 정리하지 마세요.** 정리 한 번이 checked 집계 한 번만큼
+	듭니다. 원소 20만(구멍 10%), `Max` 를 k 번(실측):
+
+	| k | checked | `FillHoles` + unchecked |
+	|---|---|---|
+	| 1 | 1.00x | **0.87x (더 느림)** |
+	| 2 | 1.00x | 1.15x |
+	| 5 | 1.00x | 1.50x |
+	| 10 | 1.00x | 1.69x |
+
+	**한 번 정리하고 여러 번 쓸 때**(또는 데이터를 들여올 때 한 번 정리해 두는
+	자리)에만 값을 합니다. `ToOptionals` 는 칸마다 테이블(128바이트)을 만들어
+	checked 합의 약 5배라 성능 경로가 아니라 **표현** 경로입니다.
+
+	`ToOptionals` 가 따로 있는 이유: 자연스러운 `arr:Map(Optional.Of)` 는
+	**타입 에러**입니다 — 제네릭 함수 값을 콜백으로 그대로 넘기면 Luau 가
+	`T` 를 인스턴스화하지 못합니다(실측, 명시적 타입 인자로도 안 됨).
+]]
+
+-- `Compact`/`CompactInplace`/`ToOptionals` 는 `self` 를 **읽기 전용 인덱서**로
+-- 받습니다. 그래야 `Arr<number>`(런타임에만 구멍)와 `Arr<number?>`(타입에도
+-- 드러남)를 **둘 다** 받으면서 `T = number` 로 잡고, 결과에서 `?` 를 뺄 수
+-- 있습니다. 읽기·쓰기 인덱서는 불변이라 `Arr<number>` 가 `ArrData<number?>`
+-- 자리에 안 들어갑니다(실측).
+type ArrRead<T> = { read n: number, read [number]: T }
+
+-- 구멍을 `value` 로 채웁니다(제자리). 길이는 그대로입니다.
+--
+-- ⚠️ **이것만 `self` 가 불변(`ArrData<T>`)입니다.** 공변으로 받으면
+-- `arr:FillHoles("문자열")` 이 `T` 를 `number | string` 으로 넓혀 **통과**하고,
+-- 제자리 변형이라 원래 변수(`Arr<number?>`)에 문자열이 들어갑니다(실측 —
+-- 타입 건전성 구멍). 입력으로 `T` 를 받는 건 이 메소드뿐이라 여기만 막습니다.
+--
+-- 대가: `Arr<number?>` 는 채운 뒤에도 `Arr<number?>` 로 남습니다. `?` 를
+-- 빼고 싶으면 `Compact` 를 쓰거나 캐스트하세요. `Arr<number>` 는 그대로
+-- `arr:FillHoles(0):SumUnchecked()` 로 이어집니다.
+const function FillHoles<T>(self: ArrData<T>, value: T): Arr<T>
+	for idx = 1, self.n do
+		if self[idx] == nil then
+			self[idx] = value
+		end
+	end
+	return self :: any
+end
+
+-- 구멍을 빼고 조밀하게 모은 **새 배열**. 순서는 유지됩니다.
+const function Compact<T>(self: ArrRead<T?>): Arr<T>
+	const len = self.n
+	const result = newSized(len)
+	local count = 0
+	for idx = 1, len do
+		const item = self[idx]
+		if item ~= nil then
+			count += 1
+			result[count] = item
+		end
+	end
+	result.n = count
+	return result :: any
+end
+
+-- `Compact` 의 제자리 판.
+const function CompactInplace<T>(self: ArrRead<T?>): Arr<T>
+	const raw = self :: any
+	const len = raw.n
+	local count = 0
+	for idx = 1, len do
+		const item = raw[idx]
+		if item ~= nil then
+			count += 1
+			raw[count] = item
+		end
+	end
+	for idx = count + 1, len do
+		raw[idx] = nil
+	end
+	raw.n = count
+	return raw
+end
+
+-- 구멍은 `Optional.Absent` 로, 값은 `Optional.Present` 로 감싼 **새 배열**.
+-- 원소마다 테이블이 하나씩 생깁니다(값이 있는 칸만) — 공짜가 아닙니다.
+const function ToOptionals<T>(self: ArrRead<T?>): Arr<Optional<T>>
+	const len = self.n
+	const result = newSized(len)
+	for idx = 1, len do
+		result[idx] = Optional.Of(self[idx])
+	end
+	return result :: any
 end
 
 --#endregion
@@ -1128,6 +1235,11 @@ type ArrIfce = {
 	ProdUnchecked: typeof(ProdUnchecked),
 	MaxUnchecked: typeof(MaxUnchecked),
 	MinUnchecked: typeof(MinUnchecked),
+	-- 구멍 다루기
+	FillHoles: typeof(FillHoles),
+	Compact: typeof(Compact),
+	CompactInplace: typeof(CompactInplace),
+	ToOptionals: typeof(ToOptionals),
 	-- 추가
 	PushBack: typeof(PushBack),
 	PushBackMany: typeof(PushBackMany),
@@ -1191,6 +1303,8 @@ Ifce = {
 	Max = Max, Min = Min, Sum = Sum, Prod = Prod,
 	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked,
 	MaxUnchecked = MaxUnchecked, MinUnchecked = MinUnchecked,
+	FillHoles = FillHoles, Compact = Compact, CompactInplace = CompactInplace,
+	ToOptionals = ToOptionals,
 	PushBack = PushBack, PushBackMany = PushBackMany, PushBackArray = PushBackArray,
 	PushFront = PushFront, PushFrontMany = PushFrontMany, PushFrontArray = PushFrontArray,
 	Insert = Insert, InsertMany = InsertMany, InsertArray = InsertArray,

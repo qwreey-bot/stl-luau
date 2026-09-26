@@ -53,8 +53,9 @@ local f = nested:Flat<<number>>()
 
 ## 다음 할 일 (2026-09-26~)
 
-1. **`Optional`** — 착수 전 스파이크(태그형 좁히기 + 교집합 컨테이너와의
-   체이닝) → `src/Optional.luau` + `Arr:Fillholes()`. `papers/02-optional.md`.
+1. ~~**`Optional`**~~ — **2026-09-26 구현 완료.** `src/Optional.luau` + `Arr` 의
+   구멍 다루기 넷. 그 과정에서 **원소가 유니온인 컨테이너가 전부 무너지던
+   문제**를 찾아 고쳤습니다(`spikes/46`).
 2. **`Fut`** — 착수 전 스파이크(가변 타입 팩이 `AndThen` 체이닝을 버티는지)
    → `src/Fut.luau`(스케줄러 provider, 순수 luau 기본은 즉시 실행).
    `papers/01-fut.md`.
