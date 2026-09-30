@@ -199,6 +199,24 @@ end
 
 --#region ----------- 조회 -----------
 
+-- 음수를 받는 단일 조회. `At(-1)` 은 마지막 원소입니다(JS `Array.prototype.at`).
+-- 소수는 구간 규약처럼 0 쪽으로 자릅니다. **범위 밖은 clamp 하지 않고 `nil`** —
+-- 구간은 "가능한 만큼" 이 자연스럽지만 단일 조회에서 가장 가까운 칸을 주면
+-- 거짓말이 됩니다.
+--
+-- `Get` 은 계약(`Types.ListCore`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
+-- `FirstIndex`/`NextIndex` 로 얻은 위치를 그대로 넣는 자리이고, 거기에 음수
+-- 변환을 끼우면 매 조회에 분기가 붙습니다.
+const function At<T>(self: ArrData<T>, idx: number): T?
+	const len = self.n
+	const i = toIndex(idx)
+	const pos = if i < 0 then len + i + 1 else i
+	if pos < 1 or pos > len then
+		return nil
+	end
+	return self[pos]
+end
+
 const function Len<T>(self: ArrData<T>): number
 	return self.n
 end
@@ -822,7 +840,14 @@ const function EraseInplace<T>(self: ArrData<T>, start: number?, last: number?):
 end
 
 -- 구간을 `with` 의 내용으로 바꾼 **새 배열**. 길이가 달라질 수 있습니다.
-const function Replace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
+-- `with` 가 비면 구간 삭제, 구간이 비면(`last < start`) 그 자리에 삽입입니다.
+--
+-- ⚠️ **JS 의 `splice` 와 기본값이 반대입니다.** JS 는 제자리에서 바꾸고 **지운
+-- 원소들을** 돌려주지만, 여기 `Splice` 는 이 저장소 관례대로 **새 배열**을
+-- 돌려주고 제자리 판은 `SpliceInplace` 입니다(자기 자신을 돌려줌). 인자도
+-- 개수가 아니라 **닫힌 구간** `[start, last]` 입니다. (2026-09-30 에
+-- `Replace` 에서 개명 — C++ `replace` 는 값→값 치환이라 오해를 불렀습니다.)
+const function Splice<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
 	const len = self.n
 	const rs, l = resolveRange(len, start, last)
 	-- 지울 구간이 비면 `with` 는 **삽입 위치**에 들어가므로 `1..n+1` 로 자릅니다.
@@ -837,8 +862,8 @@ const function Replace<T>(self: ArrData<T>, start: number, last: number, with: A
 	return result
 end
 
--- `Replace` 의 제자리 판.
-const function ReplaceInplace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
+-- `Splice` 의 제자리 판.
+const function SpliceInplace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
 	const len = self.n
 	const rs, l = resolveRange(len, start, last)
 	-- 지울 구간이 비면 `with` 는 **삽입 위치**에 들어가므로 `1..n+1` 로 자릅니다.
@@ -1200,8 +1225,10 @@ const function Drain<T>(self: ArrData<T>, fn: Mapper<T, any>): Arr<T>
 	return self :: any
 end
 
--- 다른 배열들을 뒤에 이어붙입니다(제자리).
-const function MergeInplace<T>(self: ArrData<T>, ...: ArrData<T>): Arr<T>
+-- 다른 배열들을 뒤에 이어붙입니다(제자리). 새 배열판은 생성자 `Arr.Concat`.
+-- (2026-09-30 에 `MergeInplace` 에서 개명 — `merge` 는 C++·정렬 전통에서 정렬
+-- 유지 병합이라 오해를 불렀습니다. 그건 `MergeSorted` 자리입니다.)
+const function ConcatInplace<T>(self: ArrData<T>, ...: ArrData<T>): Arr<T>
 	const count = select("#", ...)
 	local outLen = self.n
 	for argIdx = 1, count do
@@ -1285,6 +1312,7 @@ end
 -- 충돌하고 메소드 타입이 통째로 죽습니다(진단 0건으로).
 type ArrIfce = {
 	-- 조회
+	At: typeof(At),
 	Len: typeof(Len),
 	Empty: typeof(Empty),
 	Iter: typeof(Iter),
@@ -1329,8 +1357,8 @@ type ArrIfce = {
 	SliceInplace: typeof(SliceInplace),
 	Erase: typeof(Erase),
 	EraseInplace: typeof(EraseInplace),
-	Replace: typeof(Replace),
-	ReplaceInplace: typeof(ReplaceInplace),
+	Splice: typeof(Splice),
+	SpliceInplace: typeof(SpliceInplace),
 	-- 순서
 	Reverse: typeof(Reverse),
 	ReverseInplace: typeof(ReverseInplace),
@@ -1352,7 +1380,7 @@ type ArrIfce = {
 	Flatmap: typeof(Flatmap),
 	FlatmapInplace: typeof(FlatmapInplace),
 	Drain: typeof(Drain),
-	MergeInplace: typeof(MergeInplace),
+	ConcatInplace: typeof(ConcatInplace),
 	-- 접기
 	Fold: typeof(Fold),
 	FoldRight: typeof(FoldRight),
@@ -1368,7 +1396,7 @@ export type Arr<T> = ArrData<T> & ArrIfce & Types.ListCore<T, number>
 -- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
 -- stylua: ignore
 Ifce = {
-	Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join,
+	At = At, Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join,
 	Equal = Equal, Count = Count, Find = Find, Some = Some, Every = Every,
 	Max = Max, Min = Min, Sum = Sum, Prod = Prod,
 	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked,
@@ -1382,7 +1410,7 @@ Ifce = {
 	Clone = Clone, Clear = Clear, Fill = Fill,
 	Slice = Slice, SliceInplace = SliceInplace,
 	Erase = Erase, EraseInplace = EraseInplace,
-	Replace = Replace, ReplaceInplace = ReplaceInplace,
+	Splice = Splice, SpliceInplace = SpliceInplace,
 	Reverse = Reverse, ReverseInplace = ReverseInplace,
 	Rotate = Rotate, RotateInplace = RotateInplace,
 	Shuffle = Shuffle, ShuffleInplace = ShuffleInplace,
@@ -1391,7 +1419,7 @@ Ifce = {
 	Map = Map, MapInplace = MapInplace, Filter = Filter, Retain = Retain,
 	Flat = Flat, FlatInplace = FlatInplace,
 	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace,
-	Drain = Drain, MergeInplace = MergeInplace,
+	Drain = Drain, ConcatInplace = ConcatInplace,
 	Fold = Fold, FoldRight = FoldRight, Reduce = Reduce, FoldUntil = FoldUntil,
 	-- 계약이 주는 것들. 타입 선언엔 없지만 런타임 테이블엔 당연히 있어야 합니다.
 	Get = Get, FirstIndex = FirstIndex, LastIndex = LastIndex,
@@ -1482,8 +1510,8 @@ const function FromFunc<T>(len: number, fn: (index: number) -> T): Arr<T>
 	return result
 end
 
--- 여러 배열을 이어붙인 새 배열.
-const function Merge<T>(...: ArrData<T>): Arr<T>
+-- 여러 배열을 이어붙인 새 배열. 제자리 판은 `ConcatInplace`.
+const function Concat<T>(...: ArrData<T>): Arr<T>
 	const count = select("#", ...)
 	local total = 0
 	for argIdx = 1, count do
@@ -1544,7 +1572,7 @@ return {
 	CloneFromTable = CloneFromTable,
 	FromIter = FromIter,
 	FromFunc = FromFunc,
-	Merge = Merge,
+	Concat = Concat,
 	Range = Range,
 	isArr = isArr,
 
@@ -1552,7 +1580,7 @@ return {
 	-- 라이브러리의 정식 모양입니다(`Arr.X(v, …)`). 콜론 호출과 같은 함수이고,
 	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
 	-- (`.claude/base/perf-measurements.md` 14절).
-	Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join, Equal = Equal, Count = Count,
+	At = At, Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join, Equal = Equal, Count = Count,
 	Find = Find, Some = Some, Every = Every, Max = Max, Min = Min, Sum = Sum, Prod = Prod,
 	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked, MaxUnchecked = MaxUnchecked,
 	MinUnchecked = MinUnchecked, FillHoles = FillHoles, FillHolesInplace = FillHolesInplace, Compact = Compact,
@@ -1561,12 +1589,12 @@ return {
 	PushFrontMany = PushFrontMany, PushFrontArray = PushFrontArray, Insert = Insert,
 	InsertMany = InsertMany, InsertArray = InsertArray, Clone = Clone, Clear = Clear, Fill = Fill,
 	Slice = Slice, SliceInplace = SliceInplace, Erase = Erase, EraseInplace = EraseInplace,
-	Replace = Replace, ReplaceInplace = ReplaceInplace, Reverse = Reverse,
+	Splice = Splice, SpliceInplace = SpliceInplace, Reverse = Reverse,
 	ReverseInplace = ReverseInplace, Rotate = Rotate, RotateInplace = RotateInplace, Shuffle = Shuffle,
 	ShuffleInplace = ShuffleInplace, Sort = Sort, SortInplace = SortInplace,
 	SortUnchecked = SortUnchecked, SortInplaceUnchecked = SortInplaceUnchecked, Map = Map,
 	MapInplace = MapInplace, Filter = Filter, Retain = Retain, Flat = Flat, FlatInplace = FlatInplace,
-	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace, Drain = Drain, MergeInplace = MergeInplace,
+	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace, Drain = Drain, ConcatInplace = ConcatInplace,
 	Fold = Fold, FoldRight = FoldRight, Reduce = Reduce, FoldUntil = FoldUntil, Get = Get,
 	FirstIndex = FirstIndex, LastIndex = LastIndex, NextIndex = NextIndex, PrevIndex = PrevIndex,
 }

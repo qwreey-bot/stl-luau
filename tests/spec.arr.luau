@@ -59,8 +59,8 @@ same(
 	{ 1, 4, 9 },
 	"FromFunc"
 )
-same(Arr.Merge(Arr.Of(1), Arr.Of(2, 3), emptyNum()), { 1, 2, 3 }, "Merge")
-same(Arr.Merge(), {}, "Merge 인자 없음")
+same(Arr.Concat(Arr.Of(1), Arr.Of(2, 3), emptyNum()), { 1, 2, 3 }, "Concat")
+same(Arr.Concat(), {}, "Concat 인자 없음")
 same(Arr.Range(1, 5), { 1, 2, 3, 4, 5 }, "Range")
 same(Arr.Range(5, 1), {}, "Range 방향이 안 맞으면 빈 것")
 same(Arr.Range(1, 7, 3), { 1, 4, 7 }, "Range step")
@@ -174,7 +174,22 @@ same(Arr.Of(1, 2, 3):Fill(9, -1), { 1, 2, 9 }, "Fill 음수 start")
 same(Arr.Of(1, 2, 3):Fill(9, 1, 99), { 9, 9, 9 }, "Fill 범위 초과는 clamp")
 print("PASS")
 
-print("=== 6. 구간 — Slice / Erase / Replace ===")
+print("=== 5b. At — 음수를 받는 단일 조회 ===")
+do
+	const a = Arr.Of(10, 20, 30)
+	assert(a:At(1) == 10 and a:At(3) == 30, "At 양수")
+	assert(Arr.At(a, -1) == 30 and Arr.At(a, -3) == 10, "At 음수는 뒤에서")
+	-- 범위 밖은 clamp 하지 않고 nil — 단일 조회라 "가장 가까운 것" 은 거짓말입니다
+	assert(a:At(0) == nil and a:At(4) == nil and a:At(-4) == nil, "At 범위 밖은 nil")
+	-- 소수는 구간 규약처럼 0 쪽으로 자릅니다
+	assert(a:At(2.7) == 20 and a:At(-1.5) == 30, "At 소수는 0 쪽으로")
+	assert(emptyNum():At(1) == nil and emptyNum():At(-1) == nil, "빈 것의 At")
+	-- 구멍은 nil 로 — 타입이 T? 라 정직합니다
+	assert(Arr.Of<<number?>>(10, nil, 30):At(-2) == nil, "At 구멍")
+end
+print("PASS")
+
+print("=== 6. 구간 — Slice / Erase / Splice ===")
 same(Arr.Of(1, 2, 3, 4):Slice(2, 3), { 2, 3 }, "Slice 닫힌 구간")
 same(Arr.Of(1, 2, 3, 4):Slice(), { 1, 2, 3, 4 }, "Slice 인자 없으면 전체")
 same(Arr.Of(1, 2, 3, 4):Slice(-2), { 3, 4 }, "Slice 음수 start")
@@ -199,11 +214,11 @@ end
 same(Arr.Of(1, 2, 3):EraseInplace(), {}, "EraseInplace 전부")
 same(Arr.Of(1, 2, 3):EraseInplace(-1), { 1, 2 }, "EraseInplace 음수")
 
-same(Arr.Of(1, 2, 3, 4):Replace(2, 3, Arr.Of(9)), { 1, 9, 4 }, "Replace 줄어듦")
-same(Arr.Of(1, 2, 4):Replace(2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "Replace 늘어남")
-same(Arr.Of(1, 2, 3):Replace(2, 2, emptyNum()), { 1, 3 }, "Replace 빈 것으로 = 삭제")
-same(Arr.Of(1, 2, 3, 4):ReplaceInplace(2, 3, Arr.Of(9)), { 1, 9, 4 }, "ReplaceInplace 줄어듦")
-same(Arr.Of(1, 2, 4):ReplaceInplace(2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "ReplaceInplace 늘어남")
+same(Arr.Of(1, 2, 3, 4):Splice(2, 3, Arr.Of(9)), { 1, 9, 4 }, "Splice 줄어듦")
+same(Arr.Of(1, 2, 4):Splice(2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "Splice 늘어남")
+same(Arr.Of(1, 2, 3):Splice(2, 2, emptyNum()), { 1, 3 }, "Splice 빈 것으로 = 삭제")
+same(Arr.Of(1, 2, 3, 4):SpliceInplace(2, 3, Arr.Of(9)), { 1, 9, 4 }, "SpliceInplace 줄어듦")
+same(Arr.Of(1, 2, 4):SpliceInplace(2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "SpliceInplace 늘어남")
 print("PASS")
 
 print("=== 7. 순서 — Reverse / Rotate / Shuffle / Sort ===")
@@ -361,8 +376,8 @@ do
 	assert(seen == 6, "Drain 은 전부 순회")
 	assert(a.n == 0 and a[1] == nil, "Drain 은 비워야 합니다")
 end
-same(Arr.Of(1):MergeInplace(Arr.Of(2), Arr.Of(3, 4)), { 1, 2, 3, 4 }, "MergeInplace")
-same(Arr.Of(1):MergeInplace(), { 1 }, "MergeInplace 인자 없음")
+same(Arr.Of(1):ConcatInplace(Arr.Of(2), Arr.Of(3, 4)), { 1, 2, 3, 4 }, "ConcatInplace")
+same(Arr.Of(1):ConcatInplace(), { 1 }, "ConcatInplace 인자 없음")
 print("PASS")
 
 print("=== 9. 조건 조회 — Count / Find / Some / Every ===")
@@ -608,15 +623,15 @@ print("PASS")
 
 print("=== 16. 회귀 — 2026-09-30 리뷰 ===")
 do
-	-- (1) Replace 의 시작점이 n+1 을 넘으면 n 바깥에 쓰던 것 — 삽입 위치처럼 1..n+1 로
-	same(Arr.Of(1, 2, 3):Replace(10, 12, Arr.Of(9)), { 1, 2, 3, 9 }, "Replace 시작점이 n+1 초과")
+	-- (1) Splice 의 시작점이 n+1 을 넘으면 n 바깥에 쓰던 것 — 삽입 위치처럼 1..n+1 로
+	same(Arr.Of(1, 2, 3):Splice(10, 12, Arr.Of(9)), { 1, 2, 3, 9 }, "Splice 시작점이 n+1 초과")
 	do
 		const a: Arr<number> = Arr.Of(1, 2, 3)
-		a:ReplaceInplace(5, 4, Arr.Of(9))
-		same(a, { 1, 2, 3, 9 }, "ReplaceInplace 시작점이 n+1 초과")
+		a:SpliceInplace(5, 4, Arr.Of(9))
+		same(a, { 1, 2, 3, 9 }, "SpliceInplace 시작점이 n+1 초과")
 		assert(a[5] == nil, "n 밖에 남은 값이 없어야 함")
 	end
-	same(Arr.Of(1, 2, 3):Replace(4, 3, Arr.Of(9)), { 1, 2, 3, 9 }, "Replace 시작점이 정확히 n+1")
+	same(Arr.Of(1, 2, 3):Splice(4, 3, Arr.Of(9)), { 1, 2, 3, 9 }, "Splice 시작점이 정확히 n+1")
 
 	-- (3) 정수가 아닌 인덱스는 Luau 처럼 0 쪽으로 자른다 (string.sub("abc", 1.5) == "abc")
 	same(Arr.Of(1, 2, 3, 4):Rotate(1.5), { 2, 3, 4, 1 }, "Rotate 1.5 는 1")

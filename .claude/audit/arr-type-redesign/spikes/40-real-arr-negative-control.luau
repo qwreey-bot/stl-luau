@@ -7,7 +7,8 @@
 	전례가 있습니다. 그래서 "틀린 코드가 정말 틀리다고 나오는지" 를 따로
 	고정합니다.
 
-	기대 진단: 17건 (NEG 12 + CANARY 1 — neg6/neg11 은 한 줄에서 3건씩 납니다)
+	기대 진단: 21건 (NEG 15 + CANARY 1 — neg6/neg11 은 한 줄에서 3건씩, neg15 는 2건)
+	(2026-09-30 M1: `At`/`Concat`/`Splice` 를 POS·NEG 하나씩 더함, 17 → 21)
 ]]
 local stl = require("../../../../src")
 
@@ -75,10 +76,19 @@ end)
 local neg10 = stl.Arr.Of(1, 2):Get("첫번째") -- 위치는 number
 local neg11 = strs:SumUnchecked() -- unchecked 도 숫자 배열 전용이어야 함
 local neg12: string = nums:MaxUnchecked() -- 원소는 number
+local neg13: string = nums:At(-1) -- At 은 T? 를 돌려줌
+local neg14: Arr<string> = stl.Arr.Concat(nums, nums) -- 원소는 number
+local neg15: Arr<number> = nums:Splice(1, 1, strs) -- with 도 같은 T
 local canary: string = 42
+
+--[[ POS (M1) ]]
+local okAt: number? = stl.Arr.At(nums, -1)
+local okConcat: Arr<number> = stl.Arr.Concat(nums, nums)
+local okSplice: Arr<number> = nums:Splice(2, 3, stl.Arr.Of(9))
+local okConcatIn: Arr<number> = nums:ConcatInplace(nums)
 
 return {
 	okLen, okItem, okJoin, okChain, okDeep, okView, okFirst, okGet, okSum,
-	okFold, okReduce, okUntil, okStop, okSumU, okMaxU, okSortU,
-	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, canary,
+	okFold, okReduce, okUntil, okStop, okSumU, okMaxU, okSortU, okAt, okConcat, okSplice, okConcatIn,
+	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, neg13, neg14, neg15, canary,
 }
