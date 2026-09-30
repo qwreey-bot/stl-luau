@@ -1171,6 +1171,86 @@ do
 		assert(not ok and string.find(tostring(err), "NaN", 1, true) ~= nil, `NaN 인자: {err}`)
 		assert(string.find(tostring(err), "spec.arr", 1, true) ~= nil, `에러가 사용자 줄이 아님: {err}`)
 	end
+
+	-- (8) 3라운드 리뷰. 메시지와 **사용자 줄**을 같이 봅니다 — 메시지만 보면 에러
+	--     수준(level)이 틀려도, `table.create` 가 대신 터져도 통과했습니다.
+	local function expectError(label: string, needle: string, run: () -> ())
+		const ok, err = pcall(run)
+		const text = tostring(err)
+		assert(not ok, `{label}: 에러가 안 남`)
+		assert(string.find(text, needle, 1, true) ~= nil, `{label}: 메시지에 "{needle}" 없음: {text}`)
+		assert(string.find(text, "spec.arr", 1, true) ~= nil, `{label}: 사용자 줄이 아님: {text}`)
+	end
+	-- 삽입 위치의 NaN: InsertArray 는 값이 음수 키로 조용히 사라졌고(버그), Insert/
+	-- InsertMany 는 라이브러리 줄의 "table index is NaN" 이었음
+	expectError("Insert NaN", "NaN", function()
+		Arr.Of(10, 20, 30):Insert(0 / 0, 99)
+	end)
+	expectError("InsertMany NaN", "NaN", function()
+		Arr.Of(10, 20, 30):InsertMany(0 / 0, 98, 99)
+	end)
+	expectError("InsertArray NaN", "NaN", function()
+		Arr.Of(10, 20, 30):InsertArray(0 / 0, Arr.Of(98, 99))
+	end)
+	-- 에러 수준을 지키는 줄들(돌연변이로 level 을 바꿔도 통과하던 것)
+	expectError("Rotate shift", "finite", function()
+		Arr.Of(10, 20, 30):Rotate(math.huge)
+	end)
+	expectError("RotateInplace shift", "finite", function()
+		Arr.Of(10, 20, 30):RotateInplace(0 / 0)
+	end)
+	expectError("Shuffle rng", "rng", function()
+		Arr.Of(10, 20, 30):Shuffle(nil, nil, function(lo: number, _hi: number): number
+			return lo + 0.5
+		end)
+	end)
+	expectError("엄격성", "strict", function()
+		Arr.Of(30, 10, 20):NthElement(2, function(a: number, b: number): boolean
+			return a <= b
+		end)
+	end)
+	expectError("Sized 무한", "length", function()
+		Arr.Sized(math.huge, 0)
+	end)
+	expectError("Sized 너무 김", "length", function()
+		Arr.Sized(1e300, 0)
+	end)
+	expectError("FromFunc 무한", "length", function()
+		Arr.FromFunc(math.huge, function(i: number): number
+			return i
+		end)
+	end)
+	-- Range: from/to 의 NaN·무한과 step 에러도 사용자 줄에서
+	expectError("Range to 무한", "Range", function()
+		Arr.Range(1, math.huge)
+	end)
+	expectError("Range from NaN", "Range", function()
+		Arr.Range(0 / 0, 5)
+	end)
+	expectError("Range step 0", "Range", function()
+		Arr.Range(1, 5, 0)
+	end)
+	-- 빈 구간이어도 shift 는 검사합니다(구간 NaN 이 빈 배열에서도 에러인 것과 같게)
+	expectError("빈 배열 Rotate NaN", "finite", function()
+		Arr.Of<<number>>():Rotate(0 / 0)
+	end)
+	-- At 의 NaN 도 같은 정책(조용한 nil 대신 에러)
+	expectError("At NaN", "NaN", function()
+		Arr.Of(10, 20):At(0 / 0)
+	end)
+
+	-- 진입 검사가 **비교가 필요 없는 호출**까지 깨뜨리던 회귀(3라운드): 비교할 수
+	-- 없는 원소라도 비교가 안 일어나면 전처럼 동작해야 합니다(`Sort` 와 같게).
+	const lonely = {}
+	assert(Arr.Of(lonely):NthElement(1) == lonely, "원소 하나의 NthElement 는 비교 없음")
+	assert(Arr.Of({}, {}):NthElement(5) == nil, "범위 밖 k 는 비교 없음")
+	assert(Arr.Of({}, {}):PartialSort(0).n == 0, "PartialSort(0) 은 비교 없음")
+	assert(Arr.Of(true):PartialSort(1).n == 1, "원소 하나의 PartialSort 는 비교 없음")
+	assert(Arr.Of(lonely):NthElementInplace(1)[1] == lonely, "원소 하나의 NthElementInplace")
+	assert(Arr.Of(lonely):PartialSortInplace(1)[1] == lonely, "원소 하나의 PartialSortInplace")
+
+	-- n 이 -0 이 되던 것(`Sized(-0.5)` → `tostring(n) == "-0"`)
+	assert(tostring(Arr.Sized(-0.5, 1).n) == "0", "길이는 +0")
 end
 print("PASS")
 

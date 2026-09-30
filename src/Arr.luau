@@ -156,6 +156,11 @@ end
 -- `len + 1` 이 "맨 뒤에 붙이기" 입니다. 조회용과 같은 함수를 쓰면 이게
 -- 표현 불가능해집니다.
 const function resolveInsertPos(len: number, at: number): number
+	-- NaN 은 가둘 방향이 없습니다. `InsertArray` 는 값이 음수 키로 조용히
+	-- 사라졌습니다(2026-09-30 3라운드 리뷰). 구간 NaN 과 같은 정책.
+	if at ~= at then
+		error("Arr: insert position is NaN", 3)
+	end
 	const whole = toIndex(at)
 	local pos = if whole < 0 then len + whole + 1 else whole
 	if pos < 1 then
@@ -174,15 +179,20 @@ const function wrap<T>(raw: { [number]: T }, len: number): Arr<T>
 	return setmetatable(result, Ifce :: any) :: any
 end
 
+-- `table.create` 가 받는 최대 크기(실측: 2^26 은 되고 그 위는 "table overflow").
+-- 그보다 긴 길이는 라이브러리 줄의 엉뚱한 에러 대신 우리 메시지로 거절합니다.
+const MAX_LENGTH = 2 ^ 26
+
 -- 길이 인자. 소수는 구간 규약처럼 0 쪽으로 자르고, 음수·NaN 은 에러입니다
 -- (`Sized(2.5, 0)` 이 `n = 2.5` 를 만들어 뒤에 넣은 값이 3.5 키로 사라졌음,
 -- 2026-09-30 리뷰).
 const function checkLength(len: number, who: string): number
 	const count = toIndex(len)
-	if not (count >= 0) or count == math.huge then
-		error(`Arr: {who} length must be a non-negative finite number (got {len})`, 3)
+	if not (count >= 0) or count > MAX_LENGTH then
+		error(`Arr: {who} length must be in [0, {MAX_LENGTH}] (got {len})`, 3)
 	end
-	return count
+	-- `-0 + 0 = +0` — `Sized(-0.5)` 가 `n = -0` 을 만들었습니다(`tostring` 이 "-0").
+	return count + 0
 end
 
 const function newSized<T>(len: number): Arr<T>
@@ -227,6 +237,10 @@ end
 -- `FirstIndex`/`NextIndex` 로 얻은 위치를 그대로 넣는 자리이고, 거기에 음수
 -- 변환을 끼우면 매 조회에 분기가 붙습니다.
 const function At<T>(self: ArrData<T>, idx: number): T?
+	-- NaN 은 "범위 밖" 이 아니라 인자 오류입니다(구간·k 의 NaN 과 같은 정책).
+	if idx ~= idx then
+		error("Arr: At index is NaN", 2)
+	end
 	const len = self.n
 	const i = toIndex(idx)
 	const pos = if i < 0 then len + i + 1 else i
@@ -938,11 +952,12 @@ end
 
 -- `level` 은 에러가 가리킬 프레임 — 이 헬퍼를 부른 공개 함수의 호출자.
 const function rotateRange<T>(self: ArrData<T>, shift: number, s: number, l: number, level: number)
-	if l <= s then
-		return
-	end
+	-- 빈 구간이어도 shift 를 먼저 봅니다 — 구간 NaN 이 빈 배열에서도 에러인 것과 같게.
 	if shift ~= shift or shift == math.huge or shift == -math.huge then
 		error("Arr: Rotate shift must be finite", level)
+	end
+	if l <= s then
+		return
 	end
 	const span = l - s + 1
 	const k = toIndex(shift) % span
@@ -1070,8 +1085,11 @@ end
 
 --#region ----------- 정렬 가족 -----------
 --[[
-	`table.sort` 하나로는 안 되는 정렬들. 전부 **순수 Luau** 이고, 구멍은 `Sort`
-	와 같은 규약입니다 — 값만 모아 다루고 구멍은 꼬리로 보내며 `n` 은 그대로.
+	`table.sort` 하나로는 안 되는 정렬들. 전부 **순수 Luau** 이고 구멍은 값만
+	모아 다룹니다. 배열을 그대로 돌려주는 것(`StableSort`/`SortBy` 와 모든
+	`*Inplace`)은 `Sort` 와 같이 **구멍을 꼬리로 보내고 `n` 은 그대로**이고,
+	`PartialSort`(길이 `min(k, 값 개수)`)·`MergeSorted`(값 개수)는 조밀한 새
+	배열, `NthElement` 는 값 하나를 돌려줍니다 — 각 함수 주석이 기준입니다.
 
 	| 무엇 | 언제 | 실측(비교자 준 `table.sort` = 1.00, 원소 10만) |
 	|---|---|---|
@@ -1090,9 +1108,12 @@ end
 	빠릅니다**(0.24x — VM 안에서 비교). 안정성이 필요 없으면 `Sort` 를 쓰세요.
 
 	⚠️ **비교자는 엄격해야 합니다**(`less(x, x) == false`, 즉 `<` 이지 `<=` 가
-	아님 — `table.sort` 와 같은 계약). 어기면 병합 계열은 안정성만 잃지만 선택
-	계열(`NthElement`/`PartialSortInplace`)은 `"invalid order function"` 에러로
-	멈춥니다. **NaN** 이 섞인 숫자는 어떤 순서와도 비교가 거짓이라 결과 순서가
+	아님 — `table.sort` 와 같은 계약). 어기면:
+	- 선택·부분 정렬(`NthElement`/`NthElementInplace`/`PartialSort`/
+	  `PartialSortInplace`)은 `"invalid order function"` **에러**로 멈춥니다
+	  (진입에서 `less(x, x)` 를 한 번 보고, 선택의 스캔도 경계에서 잡음).
+	- 병합 계열(`StableSort`/`SortBy`/`MergeSorted`)은 에러 없이 **안정성만** 잃습니다.
+	- `IsSorted` 는 에러 없이 **틀립니다**(`<=` 면 같은 값 이웃에서 거짓). **NaN** 이 섞인 숫자는 어떤 순서와도 비교가 거짓이라 결과 순서가
 	의미 없고 `IsSorted` 도 참을 줄 수 있습니다(C++ 와 같음) — 먼저 걸러내세요.
 
 	정렬·선택 작업은 전부 **메타테이블 없는 날 버퍼**에서 합니다 — 원소를
@@ -1188,11 +1209,15 @@ const STRICT_ERROR = "Arr: invalid order function (less must be strict: less(x, 
 -- (Luau `table.sort` 는 `<=` 에서 조용히 오정렬 — 2라운드 리뷰, 1만 회 중 6601회).
 -- 원소 하나로 `less(x, x)` 를 한 번 봅니다. 모든 위반을 잡지는 못하지만
 -- `<=` 처럼 흔한 실수는 잡습니다. `k` 의 NaN 도 구간 NaN 과 같은 정책(에러).
-const function checkSelectArgs(sample: any, k: number, less: (any, any) -> boolean)
+--
+-- `willCompare` 가 거짓이면(값이 둘 미만이거나 k 가 범위 밖·0) 엄격성은 보지
+-- 않습니다 — 비교할 수 없는 원소(테이블 등)라도 비교가 안 일어나는 호출은
+-- `Sort` 처럼 통과해야 합니다(3라운드 리뷰가 진입 검사의 회귀로 재현).
+const function checkSelectArgs(sample: any, k: number, less: (any, any) -> boolean, willCompare: boolean)
 	if k ~= k then
 		error("Arr: k is NaN", 3)
 	end
-	if sample ~= nil and less(sample, sample) then
+	if willCompare and less(sample, sample) then
 		error(STRICT_ERROR, 3)
 	end
 end
@@ -1325,9 +1350,9 @@ end
 const function NthElement<T>(self: ArrData<T>, k: number, less: LessThan<T>?): T?
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
-	checkSelectArgs(buffer[1], k, less or defaultLess)
 	const i = toIndex(k)
 	const pos = if i < 0 then count + i + 1 else i
+	checkSelectArgs(buffer[1], k, less or defaultLess, count >= 2 and pos >= 1 and pos <= count)
 	if pos < 1 or pos > count then
 		return nil
 	end
@@ -1341,9 +1366,9 @@ end
 const function NthElementInplace<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
-	checkSelectArgs(buffer[1], k, less or defaultLess)
 	const i = toIndex(k)
 	const pos = if i < 0 then count + i + 1 else i
+	checkSelectArgs(buffer[1], k, less or defaultLess, count >= 2 and pos >= 1 and pos <= count)
 	if pos >= 1 and pos <= count then
 		selectRange(buffer, 1, count, pos, less or defaultLess)
 	end
@@ -1356,14 +1381,20 @@ end
 -- `partial_sort` 와 같음). 가장 큰 k 개는 `less` 를 뒤집어 넘기세요.
 const function PartialSort<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
 	const lt: (any, any) -> boolean = less or defaultLess
+	-- 값이 둘 이상일 때만 비교가 일어납니다 — 첫 값을 표본으로.
 	local sample: any = nil
+	local values = 0
 	for idx = 1, self.n do
 		if self[idx] ~= nil then
-			sample = self[idx]
-			break
+			values += 1
+			if values == 1 then
+				sample = self[idx]
+			else
+				break
+			end
 		end
 	end
-	checkSelectArgs(sample, k, lt)
+	checkSelectArgs(sample, k, lt, values >= 2 and k >= 1)
 	-- 값 개수보다 큰 k 는 전체 — k 로 버퍼를 잡으면 `math.huge` 에서 크래시,
 	-- 큰 k 에서 원소 수가 아니라 k 에 비례해 느렸습니다(2026-09-30 리뷰).
 	const want = math.min(math.max(0, toIndex(k)), self.n)
@@ -1423,7 +1454,7 @@ const function PartialSortInplace<T>(self: ArrData<T>, k: number, less: LessThan
 	const lt: (any, any) -> boolean = less or defaultLess
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
-	checkSelectArgs(buffer[1], k, lt)
+	checkSelectArgs(buffer[1], k, lt, count >= 2 and k >= 1)
 	const want = math.min(math.max(0, toIndex(k)), count)
 	if want > 0 then
 		if want < count then
@@ -2066,14 +2097,22 @@ end
 const function Range(from: number, to: number, step: number?): Arr<number>
 	const by = step or 1
 	if by == 0 then
-		error("Arr: Range step must not be zero")
+		error("Arr: Range step must not be zero", 2)
 	end
-	if by ~= by or by == math.huge or by == -math.huge then
-		error("Arr: Range step must be finite")
+	-- 끝점·step 의 NaN·무한은 `table.create` 의 엉뚱한 에러(라이브러리 줄)였습니다
+	-- (3라운드 리뷰). `x - x ~= 0` 은 NaN 과 ±inf 를 한 번에 가립니다.
+	if by - by ~= 0 then
+		error("Arr: Range step must be finite", 2)
+	end
+	if from - from ~= 0 or to - to ~= 0 then
+		error("Arr: Range bounds must be finite", 2)
 	end
 	const span = math.floor((to - from) / by)
 	if span < 0 then
 		return newSized(0) :: Arr<number>
+	end
+	if span + 1 > MAX_LENGTH then
+		error(`Arr: Range is too long ({span + 1} > {MAX_LENGTH})`, 2)
 	end
 	const result = newSized(span + 1) :: Arr<number>
 	for idx = 0, span do

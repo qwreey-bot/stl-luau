@@ -46,7 +46,16 @@ spike_n=0
 # `|| [ -n "$want" ]`: 파일 끝에 개행이 없으면 `read` 가 마지막 줄에서 거짓을
 # 돌려 그 스파이크를 **조용히 건너뛰었습니다**(2026-09-30 2라운드 리뷰).
 while IFS=$'\t' read -r want path lines || [ -n "$want" ]; do
-	case "$want" in ''|\#*) continue ;; esac
+	# 건너뛰기는 아래 행 수 세기(grep)와 **같은 규칙**이어야 합니다 — 앞에 공백을
+	# 둔 주석이나 공백만 있는 줄이 경로 없는 MISSING 으로 떨어졌습니다(3라운드).
+	if [[ $want =~ ^[[:space:]]*(#|$) ]]; then
+		continue
+	fi
+	# CRLF 의 \r 과 칸 끝 공백은 눈에 안 보이는 "줄이 다릅니다" 를 만들었습니다.
+	want=${want//[[:space:]]/}
+	path=${path%$'\r'}
+	path=${path%%[[:space:]]}
+	lines=${lines//[[:space:]]/}
 	if [ ! -f "$path" ]; then
 		echo "  MISSING  $path"
 		spike_fail=1
