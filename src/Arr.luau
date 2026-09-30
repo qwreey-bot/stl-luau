@@ -91,9 +91,19 @@ const TAG = "__arr__"
 -- 조회용 구간 정규화. 닫힌 구간 `[start, last]`, 음수는 끝에서부터,
 -- 범위를 벗어나면 clamp. 뒤집힌 구간은 그대로 돌려주고 **호출자가 검사**합니다
 -- (`start > last` 이면 빈 구간).
+-- 정수가 아닌 인덱스는 **0 쪽으로 자릅니다** — Luau 자신이 그렇습니다
+-- (`string.sub("abcdef", 1.5)` 는 1, `-1.5` 는 -1). 자르지 않으면 `table.move`/
+-- `table.create` 에 소수가 그대로 들어가 회전이 아니라 뒤섞임이 나왔습니다
+-- (2026-09-30 리뷰).
+const function toIndex(x: number): number
+	return if x >= 0 then math.floor(x) else math.ceil(x)
+end
+
 const function resolveRange(len: number, start: number?, last: number?): (number, number)
-	local s = if start == nil then 1 elseif start < 0 then len + start + 1 else start
-	local l = if last == nil then len elseif last < 0 then len + last + 1 else last
+	const st = if start == nil then nil else toIndex(start)
+	const la = if last == nil then nil else toIndex(last)
+	local s = if st == nil then 1 elseif st < 0 then len + st + 1 else st
+	local l = if la == nil then len elseif la < 0 then len + la + 1 else la
 	if s < 1 then
 		s = 1
 	end
@@ -107,7 +117,8 @@ end
 -- `len + 1` 이 "맨 뒤에 붙이기" 입니다. 조회용과 같은 함수를 쓰면 이게
 -- 표현 불가능해집니다.
 const function resolveInsertPos(len: number, at: number): number
-	local pos = if at < 0 then len + at + 1 else at
+	const whole = toIndex(at)
+	local pos = if whole < 0 then len + whole + 1 else whole
 	if pos < 1 then
 		pos = 1
 	elseif pos > len + 1 then
@@ -764,7 +775,10 @@ end
 -- 구간을 `with` 의 내용으로 바꾼 **새 배열**. 길이가 달라질 수 있습니다.
 const function Replace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
 	const len = self.n
-	const s, l = resolveRange(len, start, last)
+	const rs, l = resolveRange(len, start, last)
+	-- 지울 구간이 비면 `with` 는 **삽입 위치**에 들어가므로 `1..n+1` 로 자릅니다.
+	-- 안 자르면 `n` 바깥에 쓰고 가운데에 구멍이 생겼습니다(2026-09-30 리뷰).
+	const s = math.min(rs, len + 1)
 	const removed = if l >= s then l - s + 1 else 0
 	const withLen = with.n
 	const result = newSized(len - removed + withLen)
@@ -777,7 +791,10 @@ end
 -- `Replace` 의 제자리 판.
 const function ReplaceInplace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
 	const len = self.n
-	const s, l = resolveRange(len, start, last)
+	const rs, l = resolveRange(len, start, last)
+	-- 지울 구간이 비면 `with` 는 **삽입 위치**에 들어가므로 `1..n+1` 로 자릅니다.
+	-- 안 자르면 `n` 바깥에 쓰고 가운데에 구멍이 생겼습니다(2026-09-30 리뷰).
+	const s = math.min(rs, len + 1)
 	const removed = if l >= s then l - s + 1 else 0
 	const withLen = with.n
 	const afterLen = len - removed + withLen
@@ -822,8 +839,11 @@ const function RotateInplace<T>(self: ArrData<T>, shift: number, start: number?,
 	if l <= s then
 		return self :: any
 	end
+	if shift ~= shift or shift == math.huge or shift == -math.huge then
+		error("Arr: Rotate shift must be finite", 2)
+	end
 	const span = l - s + 1
-	const k = shift % span
+	const k = toIndex(shift) % span
 	if k == 0 then
 		return self :: any
 	end
@@ -1421,10 +1441,18 @@ end
 
 -- 숫자 구간. `Arr.Range(1, 5)` → `1, 2, 3, 4, 5`. **닫힌 구간**입니다.
 -- `step` 이 0 이면 에러, 방향이 맞지 않으면 빈 배열입니다.
+--
+-- ⚠️ **소수 step 에서는 끝점이 빠질 수 있습니다** — `Range(0, 0.3, 0.1)` 은
+-- `0, 0.1, 0.2` 입니다(`0.3 / 0.1` 이 2.9999… 라서). **Lua 의 `for i = 0, 0.3,
+-- 0.1` 과 같은 동작**이라 호스트 관례를 따릅니다. 끝점이 꼭 필요하면 정수로
+-- 만들고 나누세요: `Arr.Map(Arr.Range(0, 3), function(i) return i / 10 end)`.
 const function Range(from: number, to: number, step: number?): Arr<number>
 	const by = step or 1
 	if by == 0 then
 		error("Arr: Range step must not be zero")
+	end
+	if by ~= by or by == math.huge or by == -math.huge then
+		error("Arr: Range step must be finite")
 	end
 	const span = math.floor((to - from) / by)
 	if span < 0 then

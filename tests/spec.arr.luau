@@ -594,6 +594,35 @@ do
 end
 print("PASS")
 
+print("=== 16. 회귀 — 2026-09-30 리뷰 ===")
+do
+	-- (1) Replace 의 시작점이 n+1 을 넘으면 n 바깥에 쓰던 것 — 삽입 위치처럼 1..n+1 로
+	same(Arr.Of(1, 2, 3):Replace(10, 12, Arr.Of(9)), { 1, 2, 3, 9 }, "Replace 시작점이 n+1 초과")
+	do
+		const a: Arr<number> = Arr.Of(1, 2, 3)
+		a:ReplaceInplace(5, 4, Arr.Of(9))
+		same(a, { 1, 2, 3, 9 }, "ReplaceInplace 시작점이 n+1 초과")
+		assert(a[5] == nil, "n 밖에 남은 값이 없어야 함")
+	end
+	same(Arr.Of(1, 2, 3):Replace(4, 3, Arr.Of(9)), { 1, 2, 3, 9 }, "Replace 시작점이 정확히 n+1")
+
+	-- (3) 정수가 아닌 인덱스는 Luau 처럼 0 쪽으로 자른다 (string.sub("abc", 1.5) == "abc")
+	same(Arr.Of(1, 2, 3, 4):Rotate(1.5), { 2, 3, 4, 1 }, "Rotate 1.5 는 1")
+	same(Arr.Of(1, 2, 3, 4, 5):Rotate(2.5), { 3, 4, 5, 1, 2 }, "Rotate 2.5 는 2")
+	same(Arr.Of(1, 2, 3, 4):Slice(1.5, 3.9), { 1, 2, 3 }, "Slice 소수 구간")
+	same(Arr.Of(1, 2, 3, 4):Slice(-1.5), { 4 }, "Slice 음수 소수는 0 쪽으로(-1)")
+	same(Arr.Of(1, 3):Insert(1.9, 0), { 0, 1, 3 }, "Insert 소수 위치")
+	assert(not pcall(function()
+		return Arr.Of(1, 2):Rotate(math.huge)
+	end), "Rotate 무한대는 에러")
+
+	-- (4) Range 는 Lua 의 for 와 같게 — 소수 step 에서 끝점이 빠질 수 있음(문서화)
+	assert(Arr.Range(0, 0.3, 0.1).n == 3, "Range(0, 0.3, 0.1) 은 for 루프처럼 3개")
+	assert(not pcall(Arr.Range, 1, 5, math.huge), "무한대 step 은 에러")
+	assert(not pcall(Arr.Range, 1, 5, 0 / 0), "NaN step 은 에러")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 
