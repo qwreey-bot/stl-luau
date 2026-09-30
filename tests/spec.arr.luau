@@ -1242,14 +1242,12 @@ do
 	const bigShift = Arr.Range(1, 11)
 	bigShift:RotateInplace(1e17)
 	assert(bigShift.n == 11 and bigShift[0] == nil and bigShift[11] ~= nil, "큰 shift 가 배열을 망가뜨림")
-	same(bigShift, Arr.Range(1, 11):Rotate(math.fmod(1e17, 11)) :: any, "큰 shift 는 정확한 나머지만큼")
-	-- math.fmod 는 정확합니다: -2^53 = -9007199254740992 ≡ -2 ≡ 3 (mod 5)
+	-- 기대 나머지는 구현(math.fmod)과 **독립적으로** 정수 산술로 계산한 상수입니다
+	-- (5라운드 리뷰가 Python 으로 확인): 1e17 mod 11 = 10, 1e300 mod 11 = 7,
+	-- -2^53 = -9007199254740992 ≡ -2 ≡ 3 (mod 5).
+	same(bigShift, Arr.Range(1, 11):Rotate(10) :: any, "큰 shift 는 정확한 나머지만큼")
 	same(Arr.Of(10, 20, 30, 40, 50):Rotate(-2 ^ 53), Arr.Of(10, 20, 30, 40, 50):Rotate(3) :: any, "-2^53 mod 5 = 3")
-	same(
-		Arr.Range(1, 11):Rotate(1e300),
-		Arr.Range(1, 11):Rotate(math.fmod(1e300, 11)) :: any,
-		"1e300 도 정확한 나머지"
-	)
+	same(Arr.Range(1, 11):Rotate(1e300), Arr.Range(1, 11):Rotate(7) :: any, "1e300 도 정확한 나머지")
 
 	-- 빈 구간이어도 shift 는 검사합니다(구간 NaN 이 빈 배열에서도 에러인 것과 같게)
 	expectError("빈 배열 Rotate NaN", "finite", function()
