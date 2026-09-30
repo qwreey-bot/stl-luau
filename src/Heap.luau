@@ -132,6 +132,9 @@ end
 
 --#region ----------- 변형 -----------
 
+-- ⚠️ 비교자가 도중에 에러를 내면 원소는 **이미 들어간 채** 힙 성질이 깨질 수
+-- 있습니다(먼저 담고 밀어올리므로). 대부분의 라이브러리가 그렇고, 비교자는
+-- 던지지 않는 것이 계약입니다(2026-09-30 리뷰 — 문서로 둠).
 const function Push<T>(self: HeapData<T>, item: T): Heap<T>
 	const size = self.size + 1
 	self.items[size] = item

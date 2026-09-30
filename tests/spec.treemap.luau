@@ -165,6 +165,74 @@ do
 end
 print("PASS")
 
+print("=== 7. 회귀 — 2026-09-30 리뷰 ===")
+do
+	-- (1) 무한대 키: compareNumber 가 a - b 이던 시절 inf - inf = NaN 이라 망가졌음
+	const inf = TreeMap.New<<number, string>>(Common.compareNumber)
+	inf:Set(math.huge, "a")
+	inf:Set(math.huge, "b")
+	inf:Set(-math.huge, "m")
+	inf:Set(1, "x")
+	assert(inf:Len() == 3, `무한대 키가 중복됨: {inf:Len()}`)
+	assert(inf:Get(math.huge) == "b" and inf:Get(-math.huge) == "m", "무한대 키 조회")
+	assert(inf:Remove(math.huge) == "b" and inf:Len() == 2, "무한대 키 삭제")
+
+	-- (2) NaN 키는 시끄럽게 거절 — 조용히 넣으면 다른 키까지 망가졌음
+	const n = TreeMap.New<<number, string>>(Common.compareNumber)
+	n:Set(1, "one")
+	assert(not pcall(function()
+		n:Set(0 / 0, "nan")
+	end), "NaN 키는 에러")
+	assert(n:Len() == 1 and n:Get(1) == "one", "거절 뒤에도 멀쩡")
+	assert(n:Get(0 / 0) == nil and not n:Has(0 / 0), "NaN 으로 조회하면 없음")
+	assert(n:Remove(0 / 0) == nil and n:Len() == 1, "NaN 으로 삭제해도 아무 일 없음")
+	assert(not pcall(function()
+		TreeMap.FromRecords({ { key = 0 / 0, value = 1 } }, Common.compareNumber)
+	end), "FromRecords 도 NaN 을 거절")
+
+	-- (3) Set(k, nil) 은 삭제 — Lua 의 t[k] = nil 과 같음. HashMap 과 같은 규칙
+	const z = TreeMap.New<<number, string?>>(Common.compareNumber)
+	z:Set(1, "a")
+	z:Set(1, nil)
+	assert(z:Len() == 0 and not z:Has(1), "Set(k, nil) 은 삭제")
+	z:Set(2, nil)
+	assert(z:Len() == 0, "없는 키에 nil 은 아무 일 없음")
+
+	-- Iter 가 키를 인덱스로 쓰던 버그 — 키가 1,2,3 이 아니면 드러남
+	const far = TreeMap.New<<number, string>>(Common.compareNumber)
+	far:Set(10, "a")
+	far:Set(20, "b")
+	far:Set(30, "c")
+	local joined = ""
+	for key, value in far:Iter() do
+		joined ..= `{key}={value},`
+	end
+	assert(joined == "10=a,20=b,30=c,", `키 10/20/30 의 Iter: {joined}`)
+	const words = TreeMap.New<<string, number>>(Common.compareString)
+	words:Set("y", 2)
+	words:Set("x", 1)
+	local order = ""
+	for key in words:Iter() do
+		order ..= key
+	end
+	assert(order == "xy", `문자열 키의 Iter: {order}`)
+
+	-- (6) 내준 레코드를 고쳐도 맵은 멀쩡 — 레코드까지 복사본
+	const r = TreeMap.New<<number, string>>(Common.compareNumber)
+	r:Set(1, "a")
+	r:Set(2, "b")
+	r:Set(3, "c")
+	r:Records()[1].key = 99
+	const firstRec: any = r:First()
+	firstRec.key = 50
+	r:RangeRecords(2, 3)[1].value = "Z"
+	const lastRec: any = r:Last()
+	lastRec.value = "X"
+	assert(r:Get(1) == "a" and r:Get(2) == "b" and r:Get(3) == "c", "레코드를 고쳐도 맵은 그대로")
+	assert(r:Len() == 3, "크기도 그대로")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeMap) ===")
 

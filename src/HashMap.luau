@@ -53,12 +53,24 @@ end
 
 -- 값을 넣습니다. 이미 있으면 덮어씁니다.
 -- 반환이 없는 것은 계약이 그렇게 정해서입니다 — 체이닝은 못 합니다.
+--
+-- ⭐ **값이 `nil` 이면 삭제입니다** — Lua 의 `t[k] = nil` 과 같습니다. 예전엔
+-- 크기만 올리고 실제로는 아무것도 안 들어가 `size` 가 틀어졌습니다
+-- (2026-09-30 리뷰). `TreeMap` 도 같은 규칙입니다.
+--
+-- **먼저 쓰고 나서 셉니다.** 키가 NaN 이나 `nil` 이면 Lua 가 쓰기에서
+-- 에러를 내는데, 세는 게 먼저면 실패한 쓰기가 크기만 올렸습니다.
 const function Set<K, V>(self: HashMapData<K, V>, key: K, value: V): ()
 	const data = self.data
-	if data[key] == nil then
+	const had = data[key] ~= nil
+	data[key] = value
+	if value == nil then
+		if had then
+			self.size -= 1
+		end
+	elseif not had then
 		self.size += 1
 	end
-	data[key] = value
 end
 
 -- 키-값 쌍의 목록. **순서는 보장하지 않습니다**(해시 순서).
@@ -242,10 +254,16 @@ const function FromRecords<K, V>(records: { Record<K, V> }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
 	for _, rec in records do
-		if copy[rec.key] == nil then
+		-- Set 과 같은 규칙: 뒤엣것이 이기고, 값이 nil 이면 삭제입니다.
+		const had = copy[rec.key] ~= nil
+		copy[rec.key] = rec.value
+		if rec.value == nil then
+			if had then
+				count -= 1
+			end
+		elseif not had then
 			count += 1
 		end
-		copy[rec.key] = rec.value
 	end
 	return setmetatable({ data = copy, size = count } :: any, Ifce :: any) :: any
 end

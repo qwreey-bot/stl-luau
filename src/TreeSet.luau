@@ -98,21 +98,23 @@ const function Empty<T>(self: TreeSetData<T>): boolean
 	return self.map.size == 0
 end
 
--- `for item in set:Iter() do … end` — **정렬 순서로** 돕니다.
--- ⭐ **값을 하나만 돌려줍니다.** 셋의 더미 값(`true`)은 쓸모가 없고, 둘을
--- 돌려주면 루프 변수를 하나만 쓰는 자연스러운 형태에서 진단이 납니다.
--- `T` 로 비옵셔널 선언인 것은 `ipairs` 와 같은 이유입니다.
-const function iterStep<T>(self: TreeSetData<T>, idx: number): (number, T)
-	const nextIdx = idx + 1
+-- `for item in set:Iter() do … end` 또는 `for _, item in …` — **정렬 순서로**.
+--
+-- ⭐ **원소를 두 자리 모두에 돌려주고, 상태는 클로저에 담습니다.** 그래서 두
+-- 형태가 다 되고 `HashSet` 과 바꿔 끼울 수 있습니다. 예전엔 `(인덱스, 원소)` 를
+-- 돌려줘서 `for item in` 이 **인덱스**를 받았고(주석과 반대, 2026-09-30 리뷰),
+-- 원소 타입이 number 면 타입 검사도 그걸 못 잡았습니다.
+const function Iter<T>(self: TreeSetData<T>): () -> (T, T)
 	const map = self.map
-	if nextIdx > map.size then
-		return nil :: any, nil :: any
+	local idx = 0
+	return function(): (T, T)
+		idx += 1
+		if idx > map.size then
+			return nil :: any, nil :: any
+		end
+		const item = map.records[idx].key
+		return item, item
 	end
-	return nextIdx, map.records[nextIdx].key
-end
-
-const function Iter<T>(self: TreeSetData<T>): (typeof(iterStep), TreeSetData<T>, number)
-	return iterStep, self, 0
 end
 
 --#endregion
@@ -177,12 +179,24 @@ end
 -- 테이블을 공유하게 되는데, 셋에서는 값이 항상 `true` 라 지금은 안전하지만
 -- 나중에 값에 뭔가를 담게 되면 조용히 깨집니다.
 
+-- ⭐ **두 셋의 비교자가 같은 함수여야 합니다.** 다르면 병합이 뜻을 잃고,
+-- 결과가 **불변식이 깨진 셋**(중복·정렬 깨짐)으로 조용히 퍼졌습니다
+-- (2026-09-30 리뷰). 같은지 한 번 보는 값은 거의 0 이라 막습니다 — 뜻이 같은
+-- 비교자라도 **다른 함수 값**이면 에러이니 `Common.compareNumber` 처럼 같은
+-- 함수를 나눠 쓰세요.
+const function sameOrder<T>(a: TreeSetData<T>, b: TreeSetData<T>)
+	if a.map.compare ~= b.map.compare then
+		error("TreeSet: sets use different comparators", 3)
+	end
+end
+
 const function rec<T>(key: T): Record<T, true>
 	return { key = key, value = true }
 end
 
 -- 합집합. O(n + m).
 const function Union<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
 	const out = table.create(a.size + b.size) :: { Record<T, true> }
@@ -216,6 +230,7 @@ end
 
 -- 교집합. O(n + m).
 const function Intersect<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
 	const out = table.create(math.min(a.size, b.size)) :: { Record<T, true> }
@@ -238,6 +253,7 @@ end
 
 -- 차집합. 이쪽에는 있고 저쪽에는 없는 것. O(n + m).
 const function Difference<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
 	const out = table.create(a.size) :: { Record<T, true> }
@@ -264,6 +280,7 @@ end
 
 -- 대칭차. 한쪽에만 있는 것. O(n + m).
 const function SymmetricDifference<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
 	const out = table.create(a.size + b.size) :: { Record<T, true> }
@@ -296,6 +313,7 @@ end
 
 -- 이쪽이 저쪽에 통째로 들어가는가. 크기를 먼저 보고 걸러냅니다.
 const function IsSubsetOf<T>(self: TreeSetData<T>, other: TreeSetData<T>): boolean
+	sameOrder(self, other)
 	const a, b = self.map, other.map
 	if a.size > b.size then
 		return false
@@ -320,6 +338,7 @@ const function IsSubsetOf<T>(self: TreeSetData<T>, other: TreeSetData<T>): boole
 end
 
 const function IsDisjointFrom<T>(self: TreeSetData<T>, other: TreeSetData<T>): boolean
+	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
 	local i, j = 1, 1
@@ -338,6 +357,7 @@ end
 
 -- 원소가 완전히 같은가. 정렬돼 있으니 **나란히 대조**하면 됩니다.
 const function Equal<T>(self: TreeSetData<T>, other: TreeSetData<T>): boolean
+	sameOrder(self, other)
 	const a, b = self.map, other.map
 	if a.size ~= b.size then
 		return false
@@ -409,6 +429,12 @@ const function FromList<T>(list: { T }, compare: Comparator<T>): TreeSet<T>
 	const count = #list
 	if count == 0 then
 		return adopt({} :: { Record<T, true> }, 0, compare)
+	end
+	for idx = 1, count do
+		const item = list[idx]
+		if item ~= item then
+			error("TreeSet: NaN item", 2)
+		end
 	end
 	const sorted = table.create(count) :: { T }
 	table.move(list, 1, count, 1, sorted)

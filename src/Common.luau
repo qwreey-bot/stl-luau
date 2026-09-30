@@ -35,8 +35,18 @@ local exports = {}
 
 --[[ 기본 3방향 비교자 ]]
 
+-- ⚠️ `a - b` 로 쓰면 안 됩니다 — `math.huge - math.huge` 가 NaN 이라 무한대가
+-- 자기 자신과 "같지 않다" 고 나와 TreeMap 이 무한대 키를 중복으로 넣고
+-- 못 찾았습니다(2026-09-30 리뷰). 비교 연산자로 답합니다.
+-- NaN 은 무엇과도 작지도 크지도 않아 0 이 나옵니다 — 정렬 구조가 NaN 키를
+-- 받지 않는 이유입니다(TreeMap 이 거절).
 function exports.compareNumber(a: number, b: number): number
-	return a - b
+	if a < b then
+		return -1
+	elseif a > b then
+		return 1
+	end
+	return 0
 end
 
 function exports.compareString(a: string, b: string): number

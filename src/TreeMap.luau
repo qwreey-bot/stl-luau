@@ -55,7 +55,30 @@ local Ifce: TreeMapIfce & Types.MapCore<any, any>
 --#region ----------- 계약 구현 (Types.MapCore) -----------
 -- ⚠️ 이 셋은 `TreeMapIfce` 에 **다시 쓰지 않습니다.** 계약이 이미 줍니다.
 
+-- ⭐ **NaN 키는 받지 않습니다.** NaN 은 자기 자신과도 같지 않아 어떤 3방향
+-- 비교자로도 순서가 서지 않고, 조용히 넣으면 **다른 키까지** 못 찾게 되고
+-- 같은 키가 중복으로 들어갔습니다(2026-09-30 리뷰). `HashMap` 은 Lua 가 이미
+-- `table index is NaN` 으로 시끄럽게 거절하므로 같은 태도입니다.
+-- 조회·삭제에 NaN 을 주면 "없음" 입니다.
+const function isNaN(key: any): boolean
+	return key ~= key
+end
+
+-- `pos` 의 레코드를 빼고 뒤를 당깁니다. `Set(k, nil)` 과 `Remove` 가 같이 씁니다.
+const function removeAt<K, V>(self: TreeMapData<K, V>, pos: number): V
+	const records = self.records
+	const size = self.size
+	const removed = records[pos].value
+	table.move(records, pos + 1, size, pos)
+	records[size] = nil :: any
+	self.size = size - 1
+	return removed
+end
+
 const function Get<K, V>(self: TreeMapData<K, V>, key: K): V?
+	if isNaN(key) then
+		return nil
+	end
 	const pos = BSearch.Find(self.records, self.size, key, self.probe)
 	if pos == nil then
 		return nil
@@ -65,12 +88,26 @@ end
 
 -- 값을 넣습니다. 이미 있으면 덮어쓰고, 없으면 **정렬 위치에 끼워넣습니다**.
 -- 끼워넣기는 뒤를 미는 O(n) 이지만 `table.move` 라 C 안에서 돕니다.
+--
+-- ⭐ **값이 `nil` 이면 삭제입니다** — `HashMap` 과 같은 규칙이고 Lua 의
+-- `t[k] = nil` 과 같습니다. 예전엔 `nil` 값을 레코드로 저장해서 같은 `MapCore`
+-- 인데 두 맵의 뜻이 달랐습니다(2026-09-30 리뷰).
 const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
+	if isNaN(key) then
+		error("TreeMap: NaN key", 2)
+	end
 	const records = self.records
 	const size = self.size
 	const pos = BSearch.LowerBound(records, size, key, self.probe)
-	if pos <= size and self.probe(records[pos], key) == 0 then
-		records[pos].value = value
+	const found = pos <= size and self.probe(records[pos], key) == 0
+	if value == nil then
+		if found then
+			removeAt(self, pos)
+		end
+		return
+	end
+	if found then
+		(records[pos] :: any).value = value
 		return
 	end
 	if pos <= size then
@@ -80,12 +117,22 @@ const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
 	self.size = size + 1
 end
 
--- 키-값 쌍의 목록. **정렬 순서입니다.**
--- 내부 배열을 그대로 주지 않고 **복사합니다** — 받은 쪽이 건드려도 정렬과
--- `size` 가 깨지지 않게 하려는 것입니다.
+-- 받은 쪽에 내줄 레코드. **새로 만듭니다** — 내부 레코드를 그대로 주면
+-- 받은 쪽이 `rec.key = 99` 로 고쳤을 때 정렬이 깨져 **다른 키까지** 못 찾게
+-- 됐습니다(2026-09-30 리뷰). `HashMap.Records` 도 원래 새로 만들어 주므로 비용
+-- 모양이 같습니다. 할당 없이 돌려면 `Iter` 를 쓰세요.
+const function copyRecord<K, V>(rec: Record<K, V>): Record<K, V>
+	return { key = rec.key, value = rec.value }
+end
+
+-- 키-값 쌍의 목록. **정렬 순서이고, 레코드까지 복사본입니다.**
 const function Records<K, V>(self: TreeMapData<K, V>): { Record<K, V> }
-	const out = table.create(self.size) :: { Record<K, V> }
-	table.move(self.records, 1, self.size, 1, out)
+	const size = self.size
+	const records = self.records
+	const out = table.create(size) :: { Record<K, V> }
+	for idx = 1, size do
+		out[idx] = copyRecord(records[idx])
+	end
 	return out
 end
 
@@ -94,10 +141,16 @@ end
 --#region ----------- 조회 -----------
 
 const function Has<K, V>(self: TreeMapData<K, V>, key: K): boolean
+	if isNaN(key) then
+		return false
+	end
 	return BSearch.Find(self.records, self.size, key, self.probe) ~= nil
 end
 
 const function GetOr<K, V>(self: TreeMapData<K, V>, key: K, fallback: V): V
+	if isNaN(key) then
+		return fallback
+	end
 	const pos = BSearch.Find(self.records, self.size, key, self.probe)
 	if pos == nil then
 		return fallback
@@ -133,18 +186,23 @@ const function Values<K, V>(self: TreeMapData<K, V>): { V }
 end
 
 -- `for key, value in map:Iter() do … end` — **정렬 순서로** 돕니다.
--- ⭐ `(K, V)` 로 비옵셔널 선언입니다(`ipairs` 와 같은 방식).
-const function iterStep<K, V>(self: TreeMapData<K, V>, idx: number): (K, V)
-	const nextIdx = idx + 1
-	if nextIdx > self.size then
-		return nil :: any, nil :: any
+--
+-- ⭐ **상태를 클로저에 담습니다.** 예전엔 인덱스를 제어 변수로 쓰면서 첫
+-- 반환값으로 **키**를 돌려줘서, generic for 가 키를 다음 인덱스로 넘겼습니다.
+-- 키가 우연히 `1, 2, 3` 인 테스트만 통과했고, 키가 `10, 20` 이면 첫 원소에서
+-- 멈추고 문자열이면 크래시했습니다(2026-09-30 발견). `Iter()` 한 번에 클로저
+-- 하나가 들고 원소마다 드는 비용은 없습니다.
+-- `(K, V)` 비옵셔널 선언인 것은 `ipairs` 와 같은 이유입니다.
+const function Iter<K, V>(self: TreeMapData<K, V>): () -> (K, V)
+	local idx = 0
+	return function(): (K, V)
+		idx += 1
+		if idx > self.size then
+			return nil :: any, nil :: any
+		end
+		const rec = self.records[idx]
+		return rec.key, rec.value
 	end
-	const rec = self.records[nextIdx]
-	return rec.key, rec.value
-end
-
-const function Iter<K, V>(self: TreeMapData<K, V>): (typeof(iterStep), TreeMapData<K, V>, number)
-	return iterStep, self, 0
 end
 
 --#endregion
@@ -156,18 +214,21 @@ const function First<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 	if self.size == 0 then
 		return nil
 	end
-	return self.records[1]
+	return copyRecord(self.records[1])
 end
 
 const function Last<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 	if self.size == 0 then
 		return nil
 	end
-	return self.records[self.size]
+	return copyRecord(self.records[self.size])
 end
 
 -- `key` **이하**인 키 중 가장 큰 것. 없으면 `nil`.
 const function FloorKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if isNaN(key) then
+		return nil
+	end
 	const pos = BSearch.UpperBound(self.records, self.size, key, self.probe)
 	if pos == 1 then
 		return nil
@@ -177,6 +238,9 @@ end
 
 -- `key` **이상**인 키 중 가장 작은 것. 없으면 `nil`.
 const function CeilingKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if isNaN(key) then
+		return nil
+	end
 	const pos = BSearch.LowerBound(self.records, self.size, key, self.probe)
 	if pos > self.size then
 		return nil
@@ -187,6 +251,9 @@ end
 -- 키 구간 `[fromKey, toKey]` 의 쌍들. **양끝 포함**이고 정렬 순서입니다.
 -- 구간이 뒤집혀 있으면 빈 목록입니다(이 저장소의 구간 규약).
 const function RangeRecords<K, V>(self: TreeMapData<K, V>, fromKey: K, toKey: K): { Record<K, V> }
+	if isNaN(fromKey) or isNaN(toKey) then
+		return {}
+	end
 	const records = self.records
 	const size = self.size
 	const first = BSearch.LowerBound(records, size, fromKey, self.probe)
@@ -195,7 +262,9 @@ const function RangeRecords<K, V>(self: TreeMapData<K, V>, fromKey: K, toKey: K)
 		return {}
 	end
 	const out = table.create(last - first + 1) :: { Record<K, V> }
-	table.move(records, first, last, 1, out)
+	for idx = first, last do
+		out[idx - first + 1] = copyRecord(records[idx])
+	end
 	return out
 end
 
@@ -205,17 +274,14 @@ end
 
 -- 키를 지우고 **지워진 값**을 돌려줍니다. 없었으면 `nil`.
 const function Remove<K, V>(self: TreeMapData<K, V>, key: K): V?
-	const records = self.records
-	const size = self.size
-	const pos = BSearch.Find(records, size, key, self.probe)
+	if isNaN(key) then
+		return nil
+	end
+	const pos = BSearch.Find(self.records, self.size, key, self.probe)
 	if pos == nil then
 		return nil
 	end
-	const removed = records[pos].value
-	table.move(records, pos + 1, size, pos)
-	records[size] = nil :: any
-	self.size = size - 1
-	return removed
+	return removeAt(self, pos)
 end
 
 const function Clear<K, V>(self: TreeMapData<K, V>): ()
@@ -328,6 +394,9 @@ const function FromRecords<K, V>(records: { Record<K, V> }, compare: Comparator<
 	end
 	const order = table.create(count) :: { number }
 	for idx = 1, count do
+		if isNaN(records[idx].key) then
+			error("TreeMap: NaN key", 2)
+		end
 		order[idx] = idx
 	end
 	table.sort(order, function(x: number, y: number): boolean
@@ -349,7 +418,19 @@ const function FromRecords<K, V>(records: { Record<K, V> }, compare: Comparator<
 			out[size] = { key = source.key, value = source.value }
 		end
 	end
-	return adopt(out, size, compare)
+	-- `Set` 과 같은 규칙: 마지막 값이 nil 인 키는 삭제된 것으로 봅니다.
+	local kept = 0
+	for pos = 1, size do
+		const rec = out[pos]
+		if rec.value ~= nil then
+			kept += 1
+			out[kept] = rec
+		end
+	end
+	for pos = kept + 1, size do
+		out[pos] = nil :: any
+	end
+	return adopt(out, kept, compare)
 end
 
 const function isTreeMap(value: any): boolean

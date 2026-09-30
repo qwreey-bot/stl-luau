@@ -175,6 +175,42 @@ do
 end
 print("PASS")
 
+print("=== 7. 회귀 — 2026-09-30 리뷰 ===")
+do
+	-- (5) for item in 이 인덱스가 아니라 원소를 돌려줘야 함 — HashSet 과 바꿔 끼울 수 있게
+	const s = setOf(10, 20, 30)
+	local one = ""
+	for item in s:Iter() do
+		one ..= tostring(item) .. ","
+	end
+	assert(one == "10,20,30,", `for item in: {one}`)
+	local two = ""
+	for _, item in s:Iter() do
+		two ..= tostring(item) .. ","
+	end
+	assert(two == "10,20,30,", `for _, item in: {two}`)
+
+	-- (2) NaN 원소는 거절
+	assert(not pcall(function()
+		TreeSet.FromList({ 3, 0 / 0, 1 }, Common.compareNumber)
+	end), "FromList 가 NaN 을 거절")
+	assert(not pcall(function()
+		setOf(1):Add(0 / 0)
+	end), "Add 가 NaN 을 거절")
+
+	-- 비교자가 다른 두 셋을 섞으면 곧바로 에러 — 불변식이 깨진 셋이 퍼지지 않게
+	const desc = TreeSet.FromList({ 30, 20, 5 }, function(a: number, b: number): number
+		return b - a
+	end)
+	assert(not pcall(function()
+		return setOf(10, 20):Union(desc)
+	end), "비교자가 다르면 Union 은 에러")
+	assert(not pcall(function()
+		return setOf(10, 20):IsSubsetOf(desc)
+	end), "비교자가 다르면 IsSubsetOf 도 에러")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeSet) ===")
 

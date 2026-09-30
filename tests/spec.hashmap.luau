@@ -148,6 +148,33 @@ do
 end
 print("PASS")
 
+print("=== 7. 회귀 — 2026-09-30 리뷰 ===")
+do
+	-- (3) Set(k, nil) 은 삭제 — 크기가 틀어지면 안 됨
+	const m = HashMap.New<<string, number?>>()
+	m:Set("a", nil)
+	assert(m:Len() == 0 and m:Empty(), `없는 키에 nil: {m:Len()}`)
+	m:Set("b", 1)
+	m:Set("b", nil)
+	assert(m:Len() == 0 and not m:Has("b"), `있던 키에 nil 은 삭제: {m:Len()}`)
+	assert(#m:Records() == m:Len(), "Records 개수와 Len 이 같음")
+
+	const fr = HashMap.FromRecords<<string, number?>>({
+		{ key = "x", value = 1 },
+		{ key = "x", value = nil },
+		{ key = "y", value = nil },
+	})
+	assert(fr:Len() == 0, `FromRecords 의 nil 값: {fr:Len()}`)
+
+	-- (4) Set 이 실패하면 크기도 그대로
+	const f = HashMap.New<<number, number>>()
+	assert(not pcall(function()
+		f:Set(0 / 0, 1)
+	end), "NaN 키는 Lua 가 거절")
+	assert(f:Len() == 0, `실패한 Set 뒤 크기: {f:Len()}`)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (HashMap) ===")
 
