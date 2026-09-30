@@ -224,15 +224,20 @@ Luau 테이블 자체가 해시맵이라 문자열/숫자 키에는 해시 함�
 
 ## ❓ 2026-09-30 리뷰에서 나온 정책 질문
 
-### T. 콜백 계열이 구멍을 어떻게 다룰까 — **[2026-09-30 사용자 결정] (b)**
+### T. 콜백 계열이 구멍을 어떻게 다룰까 — **[2026-09-30 사용자 결정] (b), 같은 날 구현**
 
 사용자: *"네 추천대로 가는게 맞는것 같아. 이건 러스트에 maybe uninit 과도
 유사한듯. 우리가 default 가 없어서, 채워주는걸 못 하고, 그럼 선택지가
 드러내기가 가장 명시적이야."* → **구멍은 타입에 `T?` 로 드러냅니다.**
-**아직 구현 안 함** — 할 일: `Sized(len, fill)` 의 `fill` 을 필수로(구멍을
-원하면 `Arr.Sized<<number?>>(5, nil)`), 구멍이 생기는 다른 자리(`FromTable`
-의 `#`, `FromIter` 등) 점검, 콜백 계열 주석에 "구멍은 `nil` 로 넘김, 타입이
-`T?` 이면 콜백도 `T?`" 명시, conventions 의 "정책 미결" 문장 교체, 테스트.
+**구현한 것**: `Sized(len, fill)` 의 `fill` 필수(구멍은
+`Arr.Sized<<number?>>(5, nil)`). 다른 생성자는 점검 결과 이미 정직했습니다 —
+`Of(1, nil, 3)` 과 `FromTable({ 1, nil, 3 })` 은 `Arr<number?>`, `FromIter` 는
+첫 `nil` 에서 멈춰 구멍을 못 만들고, `FromFunc` 는 콜백 반환 타입을 따릅니다.
+`FromTable` 의 `#` 가 구멍 뒤를 **조용히 자를 수 있는 것**은 주석으로
+적었습니다. 규약은 `Arr.luau` 머리말과 `conventions.md` 로, 음성 대조군은
+`spikes/50`. `Fut.All` 의 결과 버퍼는 fail-fast 라 밖에서 구멍을 볼 일이
+없어 `T` 로 단언했습니다. 구현하며 정한 것 하나(U)와 새 질문 하나(V)가
+아래에 있습니다.
 
 
 **지금**: 집계·정렬(`Sum`/`Max`/`Sort`/`Join`)은 구멍을 건너뛰는데, 콜백 계열
@@ -262,6 +267,49 @@ Arr.Map(s, function(x: number) return x * 2 end)   -- 0건 → arithmetic on nil
 
 (a) 를 고르시면 `Map` 이 구멍 자리를 구멍으로 두는지, `Reduce` 가 첫 **값**을
 씨앗으로 잡는지 같은 세부를 같이 정해야 합니다.
+
+### U. `FillHoles` 를 새 배열판으로, 제자리판은 `FillHolesInplace` 로 (제가 정함, 되돌리기 쉬움)
+
+(b) 에서는 구멍이 `Arr<number?>` 로 드러나는데, 예전 `FillHoles` 는 제자리
+변형이라 건전성 때문에 `self` 를 불변으로 받아 **채운 뒤에도 `Arr<number?>`**
+로 남았습니다 — `?` 를 떼는 길이 `Compact`(길이가 바뀜)뿐이었습니다. 그래서:
+
+| | 무엇 | 타입 | 비용(`Sum` = 1.00) |
+|---|---|---|---|
+| `FillHoles(v)` | **새 배열**, 원본 불변 | `Arr<number?>` → **`Arr<number>`** | 1.45x |
+| `FillHolesInplace(v)` | 제자리(예전 `FillHoles`) | 불변 — `?` 유지 | 1.03x |
+
+이름은 이 저장소의 **`Inplace` 쌍 관례**(`Sort`/`SortInplace`)에 맞춘 것이기도
+합니다 — 예전 `FillHoles` 는 이름과 달리 제자리였습니다. 새 배열판은 `v` 가
+다른 타입이면 `T` 가 넓어지지만(`number | string`) 원본이 안 바뀌어 건전합니다.
+
+### V. ❓ `Arr` 콜백의 셋째 인자(`arr: ArrView<T>`)에서 `T` 를 뺄까
+
+`spikes/50` 을 쓰다 나온 체커 구멍입니다. **네임스페이스 호출**에서 콜백 원소를
+더 좁게 적으면 안 잡힙니다:
+
+```lua
+local holed = Arr.Sized<<number?>>(3, nil)
+Arr.Map(holed, function(v: number) return v * 2 end)   -- 0건 → 런타임 arithmetic on nil
+holed:Map(function(v: number) return v * 2 end)        -- 잡힘
+```
+
+`T?` 만이 아니라 `Arr<number | string>` 에 `(v: number)` 도 같습니다. 원인을
+좁혀보니 **콜백 타입의 다른 인자가 `T` 를 품은 테이블**(`arr: ArrView<T>`)이고
+람다가 그 인자를 생략할 때입니다(`base/typing-limits.md` 새 절). 절차적 호출이
+정식 모양이라 가볍지 않습니다.
+
+| | (a) 그대로 두고 문서화 | (b) 셋째 인자를 `ArrView<any>` 로 |
+|---|---|---|
+| 이 구멍 | 남음 | **닫힘**(실측, spikes/50 이 10건) |
+| 잃는 것 | 없음 | ① 콜백 안 `arr` 의 원소 타입(`arr[1]` 이 `any`) ② **주석 없는 람다 + `to` 인자** 자리에서 새 에러 하나: `Arr.Of(1, 2):Map(function(v) return v end, Arr.Of(0))` — `ArrView<T>` 가 거기서 `T` 를 붙잡아 주고 있었음 |
+| 셋째 인자를 쓰는 곳 | — | 저장소 안에 테스트 둘, 스파이크 POS 하나. 적어둔 `arr: ArrView<number>` 주석은 그대로 통과 |
+
+**제 추천은 (b)** 입니다. 셋째 인자는 JS 관례를 따른 덤이고 거의 안 쓰는
+반면, 원소 파라미터는 모든 콜백이 씁니다 — 자주 쓰는 쪽의 건전성을 사는
+게 맞습니다. ②는 콜백 주석을 달면 사라지고, 콜백 파라미터 주석은 어차피
+지금도 요구되는 한계라(`typing-limits` "명시적 타입 인자가 풀어주지 않는
+것") 새 부담이 거의 없습니다. 다만 공개 콜백 타입이 바뀌니 여쭙니다.
 
 ---
 

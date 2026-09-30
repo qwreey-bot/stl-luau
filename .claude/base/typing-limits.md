@@ -280,7 +280,7 @@ local m = HashMap.New<<string, number>>()             -- 인자 없는 생성자
 local h = HashMap.FromTable<<string, number>>({ a = 1 })  -- 테이블 리터럴
 local f = nested:Flat<<number>>()                     -- 반환으로만 결정되는 것
 local i = Arr.FromIter<<number>>(ipairs(list))
-local s = Arr.Sized<<number>>(5)
+local s = Arr.Sized<<number?>>(5, nil)                 -- 구멍으로 시작(타입에 드러냄)
 local mapped = nums:Map<<string>>(fn)                 -- 메소드에도 됩니다
 ```
 
@@ -307,8 +307,8 @@ local m = HashMap.New<<string, number>>()          -- ✅ 이게 낫습니다
 local m = HashMap.New() :: HashMap<string, number> -- ✅ 차선(캐스트)
 ```
 
-**선언 주석은 안 됩니다.** `Arr.Of()`(빈 배열), `HashSet.New()`,
-`Arr.Sized(5)`(fill 없이)도 같습니다.
+**선언 주석은 안 됩니다.** `Arr.Of()`(빈 배열), `HashSet.New()` 도 같습니다.
+(`Arr.Sized(5)` 도 여기 있었는데 2026-09-30 에 `fill` 이 필수가 되어 없어졌습니다.)
 
 ### 2. 테이블 리터럴을 `{ [K]: V }` 자리에 넘기기
 
@@ -360,6 +360,38 @@ Luau 가 컨텍스트 타입을 전파하지 않는다"* 는 더 일반적인 �
 `scripts/check.sh` 가 기대 건수를 대조합니다. 위 셋은 잡히지 않으므로,
 스파이크의 "캐비엇" 절에 *일부러 안 잡히는 것*으로 적어둡니다 — 나중에
 Luau 가 좋아져 잡히기 시작하면 기대 건수가 올라가 게이트가 알려줍니다.
+
+---
+
+## ⚠️ 콜백 원소 파라미터를 **더 좁게** 적으면 안 잡힌다 (2026-09-30)
+
+구멍을 타입에 드러내기로 한 뒤(`question.md` T) 음성 대조군을 쓰다 나왔습니다.
+
+```lua
+local holed = Arr.Sized<<number?>>(3, nil)       -- Arr<number?>
+Arr.Map(holed, function(v: number) return v * 2 end)   -- ⚠️ 0건 (잡혀야 함)
+holed:Map(function(v: number) return v * 2 end)        -- ✅ 잡힘
+Arr.Map<<number?, number>>(holed, function(v: number) …) -- ✅ 잡힘
+Arr.Map(holed, function(v: string) … end)              -- ✅ 잡힘 (넓은/다른 쪽)
+```
+
+`T?` 만의 문제가 아닙니다 — `Arr<number | string>` 에 `(v: number)` 도 같습니다.
+**조건 셋이 겹칠 때** 뚫립니다(실측으로 하나씩 뺐습니다):
+
+1. 제네릭 함수에 **이름으로**(네임스페이스·`local`) 부른다 — 콜론은 잡힘
+2. 콜백 타입의 다른 인자가 **`T` 를 품은 테이블**이다 — `Mapper` 의 셋째
+   인자 `arr: ArrView<T>`. `{ read [number]: T }` 도 같고, `(T) -> ()` 는 잡힘
+3. 람다가 **그 인자를 생략**한다 — 셋 다 적으면 잡힘
+
+평범한 `{ n: number, [number]: T }` 와 두 인자 콜백 `(T, number) -> G` 로
+줄이면 잡힙니다. 셋째 인자를 `ArrView<any>` 로 바꾸면 **닫히지만** 대신
+주석 없는 람다에 `to` 를 같이 넘기는 자리(`Arr.Of(1, 2):Map(function(v)
+return v end, Arr.Of(0))`)에서 *"No valid instantiation"* 이 새로 납니다 —
+`ArrView<T>` 가 그 자리에서 `T` 를 붙잡아 주고 있었습니다. 맞바꿈이라
+`question.md` V 로 올렸습니다.
+
+`spikes/50` 의 `hole7` 이 이 줄입니다(지금 0건이 기대치 — 막히면 배터리가
+알려줍니다).
 
 ---
 
