@@ -17,8 +17,19 @@
 	같은 방식).
 
 	- **기본은 즉시 실행**입니다. 아무것도 안 해도 순수 luau 에서 돕니다.
-	- Roblox 에서는 `Fut.UseScheduler(task.defer)` 한 줄이면 콜백이 다음
-	  프레임 경계로 밀려 **예측 가능한 타이밍**을 얻습니다.
+	- provider 는 세 가지를 정합니다 — **언제 돌리나**(`schedule`), **이
+	  스레드에서 기다려도 되나**(`canWait`), **기다리던 스레드를 어떻게
+	  깨우나**(`resume`). 빠진 것은 기본값을 씁니다.
+	- Roblox 라면 이렇게 꽂습니다(이 모듈은 환경에 중립이라 기본으로 넣지
+	  않습니다 — 쓰는 곳에 맞추는 건 쓰는 쪽의 일입니다):
+
+	  ```lua
+	  Fut.UseProvider({
+	      schedule = task.defer,           -- 예측 가능한 타이밍
+	      canWait = coroutine.isyieldable, -- task.spawn 스레드에서도 Await
+	      resume = task.spawn,             -- 깨운 스레드의 에러가 보고되도록
+	  })
+	  ```
 	- 테스트는 큐 스케줄러를 꽂고 손으로 비워서 **결정적으로** 돌립니다.
 
 	⚠️ **즉시 실행 스케줄러에서는 `Resolve` 를 부른 그 자리에서 콜백이 돕니다.**
@@ -47,6 +58,21 @@
 
 export type Status = "Pending" | "Resolved" | "Rejected"
 export type Scheduler = (job: () -> ()) -> ()
+
+-- 환경에 맞추는 세 갈래. 빠진 것은 기본값을 씁니다.
+export type Provider = {
+	-- 콜백을 언제 돌리나. 기본은 즉시 실행.
+	schedule: Scheduler?,
+	-- 지금 스레드에서 `Await` 가 기다려도 되나. 기본은 **`Fut` 이 만든
+	-- 코루틴일 때만** 참(아래 `ownThreads` 참고).
+	canWait: (() -> boolean)?,
+	-- 기다리던 스레드를 깨우는 방법. 기본은 `coroutine.resume`.
+	-- ⚠️ `coroutine.resume` 은 깨운 스레드의 에러를 **조용히 삼킵니다.**
+	-- `Fut` 이 만든 코루틴은 본문 전체가 `pcall` 로 감싸져 있어 괜찮지만,
+	-- `canWait` 를 넓혀 남의 스레드까지 기다리게 했다면 에러를 보고하는
+	-- 방법(Roblox 의 `task.spawn`)을 주세요.
+	resume: ((co: thread) -> ())?,
+}
 
 type Packed = { n: number, [number]: any }
 
@@ -77,6 +103,16 @@ const function spawnOwned(body: () -> ())
 	ownThreads[co] = true
 	coroutine.resume(co)
 end
+
+const function ownThreadOnly(): boolean
+	return ownThreads[coroutine.running()] == true
+end
+const function plainResume(co: thread)
+	coroutine.resume(co)
+end
+
+local canWait: () -> boolean = ownThreadOnly
+local resumeThread: (co: thread) -> () = plainResume
 
 --#region ----------- 내부 -----------
 
@@ -146,18 +182,19 @@ const function Status<T...>(self: FutData): Status
 end
 
 -- 끝날 때까지 **현재 코루틴을 멈추고** 결과를 돌려줍니다. 실패했으면 에러.
--- ⚠️ **아직 안 끝났다면 `Fut` 이 만든 코루틴 안에서만 기다릴 수 있습니다**
--- (`Fut.Async` 의 본문, `Fut.New` 의 executor, `AndThen`/`Catch` 의 콜백).
--- 그 밖에서 부르면 에러입니다 — 이미 끝난 Fut 은 어디서든 됩니다.
+-- ⚠️ **아직 안 끝났다면 기본으로는 `Fut` 이 만든 코루틴 안에서만 기다릴 수
+-- 있습니다**(`Fut.Async` 의 본문, `Fut.New` 의 executor, `AndThen`/`Catch` 의
+-- 콜백). 그 밖에서 부르면 에러입니다 — 이미 끝난 Fut 은 어디서든 됩니다.
+-- 넓히려면 provider 의 `canWait` 를 주세요(`Fut.UseProvider`).
 const function Await<T...>(self: Fut<T...>): T...
 	const data = self :: FutData
 	if data.status == "Pending" then
-		if not ownThreads[coroutine.running()] then
+		if not canWait() then
 			error("Fut: Await on a pending Fut outside a Fut coroutine (wrap it in Fut.Async)", 2)
 		end
 		const co = coroutine.running()
 		onSettle(data, function()
-			coroutine.resume(co)
+			resumeThread(co)
 		end)
 		coroutine.yield()
 	end
@@ -173,12 +210,12 @@ end
 const function AwaitSafe<T...>(self: Fut<T...>): (boolean, ...any)
 	const data = self :: FutData
 	if data.status == "Pending" then
-		if not ownThreads[coroutine.running()] then
+		if not canWait() then
 			return false, "Fut: Await on a pending Fut outside a Fut coroutine (wrap it in Fut.Async)"
 		end
 		const co = coroutine.running()
 		onSettle(data, function()
-			coroutine.resume(co)
+			resumeThread(co)
 		end)
 		coroutine.yield()
 	end
@@ -318,12 +355,15 @@ const function Rejected<T...>(reason: any): Fut<T...>
 	return fut :: any
 end
 
--- ⭐ 스케줄러 provider. **전역**입니다 — 한 번 꽂으면 그 뒤로 만드는 모든
--- Fut 의 콜백이 이걸로 돕니다. 이전 스케줄러를 돌려주니 테스트에서
--- 복구하세요. `nil` 을 주면 즉시 실행으로 돌아갑니다.
-const function UseScheduler(next: Scheduler?): Scheduler
-	const previous = scheduler
-	scheduler = next or immediate
+-- ⭐ provider. **전역**입니다 — 한 번 꽂으면 그 뒤로 모든 Fut 이 이걸 씁니다.
+-- 빠진 갈래는 기본값으로 돌아갑니다. **이전 provider 를 돌려주니** 테스트에서
+-- 되돌리세요. `nil` 을 주면 전부 기본값입니다.
+const function UseProvider(provider: Provider?): Provider
+	const previous: Provider = { schedule = scheduler, canWait = canWait, resume = resumeThread }
+	const given: Provider = provider or {}
+	scheduler = given.schedule or immediate
+	canWait = given.canWait or ownThreadOnly
+	resumeThread = given.resume or plainResume
 	return previous
 end
 
@@ -338,6 +378,6 @@ return {
 	Async = Async,
 	Resolved = Resolved,
 	Rejected = Rejected,
-	UseScheduler = UseScheduler,
+	UseProvider = UseProvider,
 	isFut = isFut,
 }

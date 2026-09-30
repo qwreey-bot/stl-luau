@@ -53,6 +53,7 @@ export type Optional<T> = Optional.Optional<T>
 export type Fut<T...> = Fut.Fut<T...>
 export type FutStatus = Fut.Status
 export type FutScheduler = Fut.Scheduler
+export type FutProvider = Fut.Provider
 
 return {
 	Common = Common,
