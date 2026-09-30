@@ -318,6 +318,42 @@ holed:Map(function(v: number) return v * 2 end)        -- 잡힘
 
 ---
 
+## ❓ 2026-09-30 빠진 표면 리서치에서 나온 질문 (`papers/04-surface-gaps.md`)
+
+### W. 무엇을 어떤 순서로 더할까
+
+리서처 셋(C++ / Rust·Java / Luau 생태계)의 결과와 정렬 실측을 합쳐 **다섯
+파도**로 나눴습니다: ① `Arr` 빈 조각(`PopBack`/`PopFront`, `SwapRemove`,
+`Contains`/`IndexOf`, `FindLast`, `Zip`, `Dedup`/`Unique`, `Partition`,
+`Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile`)
+② 정렬 가족(`StableSort`, `SortBy`, `NthElement`, `TopK`, `MergeSorted`)
+③ 맵·셋(`GetOrInsert(With)`, 누적, `Extend`, `Retain`, `Lower`/`HigherKey`,
+`PopFirst`/`PopLast`, `GroupBy`/`CountBy`) ④ 새 컨테이너(`Deque` 상, `Counter`·
+`OrderedMap` 중, `buffer` 기반 `BitSet` 하~중) ⑤ `Fut`(`Race`, `Timeout`, `Retry`,
+`AllSettled`, `Finally`). 상세와 근거는 페이퍼.
+
+세부 질문:
+
+- **W1. 순서**: 제 추천은 **이름 정리(W3) → ② 정렬 → ① → ③ → ④ Deque → ⑤**.
+  정렬을 앞에 두는 건 사용자가 짚은 것이고 실측이 가장 확실해서입니다
+  (top-k 7~20배, 선택 6.7배, 안정 정렬 1.43x). 이름 정리를 맨 앞에 두는 건
+  새 표면이 옛 이름 위에 쌓이기 전에 하는 게 싸서입니다.
+- **W2. `Zip` 의 짝 표현**: Luau 에는 튜플 테이블 타입이 없습니다. (a) `ZipWith(a,
+  b, fn)` 만 둠 — 할당 없음, 타입 정확 (b) `Zip` 이 `Arr<{ first: T, second: U }>`
+  를 돌려줌 — 칸마다 테이블 (c) 둘 다. **추천 (c)** — 성능 경로는 `ZipWith`,
+  편의는 `Zip`(편의를 기본 경로와 분리하는 관례).
+- **W3. 이름 정리**: `Arr.Merge`/`MergeInplace` → **`Concat`/`ConcatInplace`**
+  (정렬 병합이 아닌데 `std::merge` 를 연상), `Replace`/`ReplaceInplace` →
+  **`Splice`/`SpliceInplace`**(C++ `replace` 는 값→값), 음수를 받는 **`At(idx)`**
+  추가(`Get` 은 계약 멤버라 원시 조회로 둠). 맵 누적은 `Merge` 가 Java 어휘지만
+  `Arr.Merge` 와 헷갈리니 **`Upsert(k, v, combine)`** 추천.
+- **W4. 범위**: `buffer` 기반 컨테이너(`BitSet`, packed 숫자 배열)와
+  `Freeze`(`table.freeze`) — 이 라이브러리 범위에 넣을까요? 제 생각은
+  `BitSet` 은 ④ 뒤에 실측 주제로, `Freeze` 는 메타테이블·`n` 과 얽혀 있어
+  수요가 생기면.
+
+---
+
 ### G. mlua 바인딩 — **보류 확정**
 
 사용자: *"얹혀지는 구조여도 좋아 … 여기에 얽메일 필요는 없어."*

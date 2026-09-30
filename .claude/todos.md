@@ -7,7 +7,7 @@
 
 | 무엇 | 어디 |
 |---|---|
-| (없음) | |
+| **W. 빠진 표면 — 순서·이름·범위** (W1~W4) | `question.md` W, `papers/04-surface-gaps.md` |
 
 ## 📍 지금 여기 (2026-09-22)
 
@@ -66,7 +66,13 @@ local f = nested:Flat<<number>>()
    `Sized` 의 fill 필수, `FillHoles`(새 배열, `?` 를 뗌)/`FillHolesInplace`
    쌍(`question.md` U), 음성 대조군 `spikes/50`. 하다가 나온 체커 구멍은
    콜백 셋째 인자를 `ArrView<any>` 로 바꿔 닫음(V, 사용자 결정).
-6. **문서 사이트** — API 가 한 바퀴 안정된 뒤. `base/docs-plan.md`.
+6. **⭐ 다음: 빠진 표면 리서치** (2026-09-30 사용자 요청) — *"stl 은 필요한
+   요소가 하나가 아니니까. 소트 알고리즘도 여럿 있고(일반 소트가 아닌것도)"*.
+   C++ STL / Rust·Java / Luau 생태계 대조로 무엇을 구현할지 고름.
+   **리서치 완료** → `papers/04-surface-gaps.md`(다섯 파도), 정렬 실측은
+   `perf-measurements` 15절. 사용자 답(W) 기다림.
+7. **문서 사이트는 맨 마지막 스테이지** (2026-09-30 사용자 결정) — *"다른거
+   다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md`.
 
 ## 백로그 (당장 안 함)
 
