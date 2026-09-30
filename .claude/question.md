@@ -347,6 +347,11 @@ holed:Map(function(v: number) return v * 2 end)        -- 잡힘
   **`Splice`/`SpliceInplace`**(C++ `replace` 는 값→값), 음수를 받는 **`At(idx)`**
   추가(`Get` 은 계약 멤버라 원시 조회로 둠). 맵 누적은 `Merge` 가 Java 어휘지만
   `Arr.Merge` 와 헷갈리니 **`Upsert(k, v, combine)`** 추천.
+- **W3 이름 검토 결과(2026-09-30)**: 내부자·외부자 sonnet 둘의 판정을
+  `papers/04` 부록에 합쳤습니다. `Concat`/`At`/`NthElement` 등 대부분은 둘이
+  같은 판정으로 유지, **`Upsert` 는 둘 다 반대**, 갈린 것은 `Contains`(→`Has`?),
+  `Splice`, `Extend`(맵 두 이름을 묶어 고르는 문제), `TopK`/`PartialSort`,
+  `Counter`/`Multiset`.
 - **W4. 범위**: `buffer` 기반 컨테이너(`BitSet`, packed 숫자 배열)와
   `Freeze`(`table.freeze`) — 이 라이브러리 범위에 넣을까요? 제 생각은
   `BitSet` 은 ④ 뒤에 실측 주제로, `Freeze` 는 메타테이블·`n` 과 얽혀 있어

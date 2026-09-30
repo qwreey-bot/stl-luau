@@ -156,3 +156,58 @@ evaera Promise 대비. 수요 순: `Race`, `Timeout`(**타이머가 필요** —
   [TableUtil](https://sleitnick.github.io/RbxUtil/api/TableUtil/),
   [Roblox/dash](https://github.com/Roblox/dash),
   [evaera Promise](https://eryn.io/roblox-lua-promise/api/Promise/)
+
+---
+
+## 부록 — 이름 검토: 내부자·외부자 (2026-09-30)
+
+사용자: *"외부자/내부자 시선으로 sonnet 한번 포크해볼래? … 나는 주관적이라 이런
+부분에 있어서 강점이 없고, 너 또한 단일 세션이라서 의견의 강도가 높지 않아."*
+sonnet 둘을 독립적으로 돌렸습니다. 초안은 "한 세션의 의견" 으로만 주고
+편들지 말라고 했습니다.
+
+- **내부자**: Luau VM 소스(`ltablib.cpp`), Roblox 생태계 라이브러리(Sift,
+  Llama, TableUtil, LuauPolyfill), 저장소 안의 기존 이름
+- **외부자**: JS/lodash, Python, Rust, C++, Java, C#, Kotlin, Swift, Go, Scala
+  (로컬 소스 + 웹)
+
+### 둘이 같은 판정 — 그대로 가도 근거가 강한 것
+
+`Concat`/`ConcatInplace`(옛 `Merge`), `At`, `PopBack`/`PopFront`, `SwapRemove`
+(TableUtil 에 이름·동작이 똑같이 있음), `IndexOf`/`LastIndexOf`, `FindLast`,
+`Zip`/`ZipWith`, `Dedup`(인접)/`Unique`(전체) — itertools 가 정확히 이 쌍,
+`Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile`,
+`StableSort`, `SortBy`, **`NthElement`**(대안 `Select` 는 둘 다 **반대** — C#/SQL
+에서 map 의 뜻, Roblox `Selection` 서비스와도 겹침), `MergeSorted`,
+`GetOrInsert`/`GetOrInsertWith`, `Retain` 확장, `LowerKey`/`HigherKey`,
+`PopFirst`/`PopLast`, `GroupBy`/`CountBy`/`KeyBy`(lodash 셋 다 일치), `Deque`,
+`OrderedMap`, `BitSet`.
+
+**문서로 못박을 것**(이름은 유지): `Partition` 은 C++/Swift 식 제자리 재배치가
+아니라 두 배열을 돌려줌. `Retain` 은 Java `retainAll`(다른 컬렉션을 받음)과
+다르게 술어를 받음.
+
+### 둘 다 반대 — 바꿔야 함
+
+- **`Upsert`**: 외부자 — 주류 언어의 인메모리 컬렉션 API 어디에도 없는 DB
+  어휘. 내부자 — SQL upsert 는 충돌 시 콜백을 받지 않아 이름과 동작이 어긋남.
+  대안: 외부자 `MergeWith`(Java `Map.merge` 선례)/`AddOrUpdate`(C#), 내부자
+  `Update`(Llama `Dictionary.update`)/`Accumulate`.
+
+### 한쪽만 짚었거나 갈린 것
+
+| 이름 | 내부자 | 외부자 | 핵심 근거 |
+|---|---|---|---|
+| `Arr.Contains` | **`Has` 로** (강) | 유지 | 저장소 안 `HashMap`/`HashSet`/`TreeMap` 이 전부 `Has` — 한 라이브러리에 같은 개념 단어가 둘. 생태계도 `includes` 노선이라 `Contains` 는 소수파 |
+| `Splice` | 유지 (강) | 애매 — 문서로 경고 | 내부자: Llama `List.splice` 설명이 우리 동작과 문구까지 일치(Llama 는 불변이라 **새 리스트를 돌려줌** — 우리 기본과 같음). 외부자: JS `splice` 는 제자리 + 지운 것을 반환해 기본값이 반대 |
+| `HashMap.Extend` | **`Merge` 로** (강) | 유지, **`Merge` 는 쓰지 말 것** (강) | 내부자: TableUtil `Extend` 는 배열 이어붙이기, Sift·Llama `Dictionary.merge` 는 얕은 덮어쓰기 합침(2건). 외부자: Rust `HashMap` 의 `Extend`·lodash `_.extend` 가 정확히 이 뜻, lodash `_.merge` 는 딥 머지 |
+| `TopK` vs `PartialSort` | 취향 | `PartialSort` 쪽이 표준 라이브러리답다(약하게) | C++ `partial_sort` 선례 vs 실무 관용어 |
+| `Counter` | `Multiset` 고려 (중) | 유지 (Python 정확 일치) | 우리 컨테이너는 전부 Java 계보(`HashMap`/`TreeSet`/`Deque`/`BitSet`)인데 `Counter` 만 Python 계보 |
+
+**맵 두 이름은 묶어서 골라야 합니다** — `Extend` 를 `Merge` 로 옮기면 누적은
+`Merge` 계열 이름을 쓸 수 없습니다. 일관된 조합은 둘입니다:
+
+| 조합 | 덮어 합치기 | 누적(combine) | 기댄 곳 |
+|---|---|---|---|
+| (가) Luau 생태계 쪽 | `HashMap.Merge(other)` | `HashMap.Update(k, v, combine)` 또는 `Accumulate` | Sift·Llama |
+| (나) 언어 표준 쪽 | `HashMap.Extend(other)` | `HashMap.MergeWith(k, v, combine)` | Rust·lodash / Java |
