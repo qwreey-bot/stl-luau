@@ -40,7 +40,10 @@ echo
 echo "=== 음성 대조군 배터리 (스파이크별 기대 진단 건수)"
 spike_fail=0
 spike_n=0
-while IFS=$'\t' read -r want path; do
+# 셋째 칸(선택)은 **에러가 난 줄 번호 목록**입니다(같은 줄 여러 건은 반복).
+# 건수만 세면 한 NEG 가 사라진 자리에 다른 줄의 에러가 새로 생겨 **상쇄**될
+# 수 있습니다 — 2026-09-30 리뷰가 실제로 21 → 21 상쇄를 재현했습니다.
+while IFS=$'\t' read -r want path lines; do
 	case "$want" in ''|\#*) continue ;; esac
 	if [ ! -f "$path" ]; then
 		echo "  MISSING  $path"
@@ -48,12 +51,20 @@ while IFS=$'\t' read -r want path; do
 		continue
 	fi
 	base=$(basename "$path")
-	got=$(luau-analyze "$path" 2>&1 |
-		grep -cE "(^|/)${base//./\\.}\([0-9]+,[0-9]+\): TypeError: ")
+	got_lines=$(luau-analyze "$path" 2>&1 |
+		grep -oE "(^|/)${base//./\\.}\([0-9]+,[0-9]+\): TypeError: " |
+		sed -E 's/.*\(([0-9]+),.*/\1/' | sort -n | paste -sd, -)
+	got=$(if [ -z "$got_lines" ]; then echo 0; else echo "$got_lines" | tr ',' '\n' | wc -l | tr -d ' '; fi)
 	spike_n=$((spike_n + 1))
 	if [ "$got" != "$want" ]; then
 		echo "  FAIL  $path"
-		echo "        기대 $want 건, 실측 $got 건"
+		echo "        기대 $want 건, 실측 $got 건 (줄: ${got_lines:-없음})"
+		spike_fail=1
+	elif [ -n "$lines" ] && [ "$lines" != "$got_lines" ]; then
+		echo "  FAIL  $path"
+		echo "        건수는 같지만 에러 줄이 다릅니다 — NEG 가 사라진 자리를 다른 에러가 메웠을 수 있음"
+		echo "        기대 줄: $lines"
+		echo "        실측 줄: $got_lines"
 		spike_fail=1
 	fi
 done < scripts/spike-expectations.tsv

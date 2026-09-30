@@ -731,6 +731,15 @@ do
 	const holedIn = Arr.Of<<number?>>(nil, 20, nil, 10)
 	holedIn:StableSortInplace()
 	assert(holedIn.n == 4 and holedIn[1] == 10 and holedIn[2] == 20 and holedIn[3] == nil, "StableSortInplace 구멍")
+	-- [4] 는 입력에서 값(10)이던 칸 — 꼬리를 정말 비웠는지는 여기서만 보입니다
+	assert(holedIn[4] == nil, "StableSortInplace 는 꼬리를 비움")
+	-- "이미 순서면 병합 생략" 이 살아 있는지: 정렬된 입력에서 비교가 n 에 가깝게
+	local compares = 0
+	Arr.StableSort(Arr.Range(1, 200), function(a: number, b: number): boolean
+		compares += 1
+		return a < b
+	end)
+	assert(compares < 2 * 200, `정렬된 입력의 StableSort 비교 횟수 {compares}`)
 
 	-- SortBy: 키는 값마다 한 번, 안정, 구멍엔 키를 안 부름
 	local calls = 0
@@ -740,7 +749,15 @@ do
 		return #(w :: string)
 	end)
 	assert(calls == 4, `SortBy 키는 값마다 한 번 ({calls})`)
-	samePrefix(byLen, { "a", "bb", "dd", "ccc" }, "SortBy 안정(bb 가 dd 앞)")
+	samePrefix(byLen, { "a", "bb", "dd", "ccc" }, "SortBy 키 순서")
+	-- 안정성은 입력 순서가 사전순과 **반대**일 때만 보입니다
+	samePrefix(
+		Arr.Of("dd", "bb", "a"):SortBy(function(w: string): number
+			return #w
+		end),
+		{ "a", "dd", "bb" },
+		"SortBy 안정(dd 가 bb 앞 — 입력 순서)"
+	)
 	assert(byLen.n == 5 and byLen[5] == nil, "SortBy 구멍은 꼬리로")
 	same(
 		Arr.SortBy(Arr.Of(10, 30, 20), function(v: number): number
@@ -766,6 +783,14 @@ do
 		return -v
 	end) == byInplace, "SortByInplace 는 자기 자신")
 	same(byInplace, { 30, 20, 10 }, "SortByInplace")
+	const byHoled = Arr.Of<<number?>>(30, nil, 10)
+	byHoled:SortByInplace(function(v: number?): number
+		return v :: number
+	end)
+	assert(
+		byHoled.n == 3 and byHoled[1] == 10 and byHoled[2] == 30 and byHoled[3] == nil,
+		"SortByInplace 구멍은 꼬리로"
+	)
 
 	-- NthElement: 모든 k 를 정렬 결과와 대조, 음수, 범위 밖, 원본 불변
 	for _ = 1, 100 do
@@ -785,6 +810,9 @@ do
 	)
 	assert(emptyNum():NthElement(1) == nil, "NthElement 빈 것")
 	assert(Arr.Of<<number?>>(30, nil, 10, 20):NthElement(3) == 30, "NthElement 는 구멍을 뺀 순위")
+	-- 음수도 구멍을 뺀 개수 기준 — n 기준이면 -1 이 한 칸 어긋납니다
+	assert(Arr.Of<<number?>>(30, nil, 10, 20):NthElement(-1) == 30, "NthElement 음수는 구멍을 뺀 개수 기준")
+	assert(Arr.Of<<number?>>(30, nil, 10, 20):NthElement(-3) == 10, "NthElement 음수 끝")
 	assert(five:NthElement((five:Len() + 1) // 2) == 30, "NthElement 중앙값")
 
 	-- NthElementInplace: k 자리 값이 맞고 왼쪽 ≤, 오른쪽 ≥
@@ -807,6 +835,17 @@ do
 	assert(
 		holedNth.n == 5 and holedNth[2] == 20 and holedNth[4] == nil and holedNth[5] == nil,
 		"NthElementInplace 구멍"
+	)
+	const holedNthNeg = Arr.Of<<number?>>(nil, 30, nil, 10, 20)
+	holedNthNeg:NthElementInplace(-1)
+	assert(holedNthNeg[3] == 30, "NthElementInplace 음수는 구멍을 뺀 개수 기준")
+	-- 범위 밖 k 는 구멍만 치웁니다(문서화된 동작)
+	const holedNthOut = Arr.Of<<number?>>(nil, 20, nil, 10)
+	holedNthOut:NthElementInplace(99)
+	assert(holedNthOut[1] ~= nil and holedNthOut[2] ~= nil, "NthElementInplace 범위 밖: 값은 앞으로")
+	assert(
+		holedNthOut[3] == nil and holedNthOut[4] == nil and holedNthOut.n == 4,
+		"NthElementInplace 범위 밖: 구멍은 꼬리로"
 	)
 
 	-- PartialSort: 정렬 결과의 앞 k 개와 같음
@@ -873,6 +912,8 @@ do
 	assert(Arr.Of(10, 20, 20, 30):IsSorted(), "IsSorted 같은 값 허용")
 	assert(not Arr.Of(10, 30, 20):IsSorted(), "IsSorted 아님")
 	assert(Arr.Of<<number?>>(10, nil, 20):IsSorted(), "IsSorted 구멍 건너뜀")
+	-- 구멍에서 비교를 끊으면(prev 리셋) 이게 통과해 버립니다
+	assert(not Arr.Of<<number?>>(20, nil, 10):IsSorted(), "IsSorted 는 구멍 너머로 비교")
 	assert(emptyNum():IsSorted() and Arr.Of(10):IsSorted(), "IsSorted 빈 것·하나")
 	assert(
 		Arr.Of(30, 20, 10):IsSorted(function(a: number, b: number): boolean

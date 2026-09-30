@@ -76,8 +76,8 @@ end)
 local neg10 = stl.Arr.Of(1, 2):Get("첫번째") -- 위치는 number
 local neg11 = strs:SumUnchecked() -- unchecked 도 숫자 배열 전용이어야 함
 local neg12: string = nums:MaxUnchecked() -- 원소는 number
-local neg13: string = nums:At(-1) -- At 은 T? 를 돌려줌
-local neg14: Arr<string> = stl.Arr.Concat(nums, nums) -- 원소는 number
+local neg13: number = nums:At(-1) -- At 은 T? 를 돌려줌 — `?` 를 지키는 줄(string 이면 원소 타입 때문에 에러라 `?` 를 못 지킴)
+local neg14 = stl.Arr.Concat(nums, strs) -- 원소 타입이 섞임(같은 타입끼리면 가변인자가 any 여도 통과해 못 지킴)
 local neg15: Arr<number> = nums:Splice(1, 1, strs) -- with 도 같은 T
 local canary: string = 42
 

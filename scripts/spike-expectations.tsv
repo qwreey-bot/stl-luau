@@ -8,7 +8,11 @@
 #   - require 로 끌려온 다른 파일의 진단은 빼고,
 #   - 린트 경고(LocalUnused 등)도 빼고, TypeError 만.
 #
-# 형식: <기대건수><탭><파일경로>
+# 형식: <기대건수><탭><파일경로><탭><에러 줄 번호 목록>
+#   셋째 칸은 에러가 난 줄 번호를 쉼표로(같은 줄 여러 건이면 반복). 건수만
+#   세면 NEG 하나가 사라진 자리에 다른 줄의 에러가 생겨 **상쇄**됩니다(2026-09-30
+#   리뷰가 21 → 21 로 재현). 실패하면 check.sh 가 실측 줄을 찍어주니 의도한
+#   변화면 그걸 옮겨 적으세요.
 # 스파이크를 고쳤으면 이 숫자도 같이 고치세요. 각 audit 의 README 표는
 # 설명용이고, 게이트가 읽는 것은 이 파일입니다.
 #
@@ -16,37 +20,37 @@
 # 함께 지웠습니다. 결론은 audit/arr-type-redesign/REPORT.md 에 있고 파일은
 # git 히스토리에 있습니다. 지금 남은 것은 전부 **현재 src 를 재는** 것들입니다.
 
-2	.claude/audit/arr-type-redesign/spikes/11-intersection-prop-hole.luau
-5	.claude/audit/arr-type-redesign/spikes/22-export-shape-comparison.luau
-5	.claude/audit/arr-type-redesign/spikes/24-typeof-named-fn-fix.luau
-6	.claude/audit/arr-type-redesign/spikes/25-quad-style-namespace.luau
-5	.claude/audit/arr-type-redesign/spikes/26-setmetatable-selfhandle-boundary.luau
-9	.claude/audit/arr-type-redesign/spikes/27-constructor-organization.luau
-4	.claude/audit/arr-type-redesign/spikes/29-intersection-at-scale.luau
-12	.claude/audit/arr-type-redesign/spikes/30-final-design-at-scale.luau
-5	.claude/audit/arr-type-redesign/spikes/31-callback-view-type.luau
-5	.claude/audit/arr-type-redesign/spikes/32-iter-and-fold.luau
-3	.claude/audit/arr-type-redesign/spikes/33-iter-typing-variants.luau
-5	.claude/audit/arr-type-redesign/spikes/34-iter-boundary.luau
-6	.claude/audit/arr-type-redesign/spikes/35-intersection-breaks-forin.luau
-6	.claude/audit/arr-type-redesign/spikes/36-fold-family.luau
-5	.claude/audit/arr-type-redesign/spikes/37-iter-method-vs-metamethod.luau
-6	.claude/audit/container-contracts/spikes/00-contracts.luau
-1	.claude/audit/container-contracts/spikes/01-contract-vs-intersection.luau
-1	.claude/audit/container-contracts/spikes/02-mutating-method-variance.luau
-2	.claude/audit/container-contracts/spikes/03-declaration-order.luau
-1	.claude/audit/container-contracts/spikes/04-declaration-order-fixed.luau
-7	.claude/audit/list-index-abstraction/spikes/00-index-abstraction.luau
-6	.claude/audit/list-index-abstraction/spikes/01-combined-with-arr-scale.luau
-21	.claude/audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau
-12	.claude/audit/arr-type-redesign/spikes/41-real-hashmap-hashset-negative-control.luau
-6	.claude/audit/arr-type-redesign/spikes/42-real-bsearch-negative-control.luau
-12	.claude/audit/arr-type-redesign/spikes/43-real-treemap-treeset-negative-control.luau
-9	.claude/audit/arr-type-redesign/spikes/44-real-heap-negative-control.luau
-9	.claude/audit/arr-type-redesign/spikes/45-optional-shape.luau
-10	.claude/audit/arr-type-redesign/spikes/46-union-elements.luau
-12	.claude/audit/arr-type-redesign/spikes/47-real-optional-negative-control.luau
-12	.claude/audit/arr-type-redesign/spikes/48-real-fut-negative-control.luau
-10	.claude/audit/arr-type-redesign/spikes/49-namespace-calls.luau
-11	.claude/audit/arr-type-redesign/spikes/50-holes-in-types.luau
-11	.claude/audit/arr-type-redesign/spikes/51-sort-family.luau
+2	.claude/audit/arr-type-redesign/spikes/11-intersection-prop-hole.luau	11,14
+5	.claude/audit/arr-type-redesign/spikes/22-export-shape-comparison.luau	20,27,33,34,36
+5	.claude/audit/arr-type-redesign/spikes/24-typeof-named-fn-fix.luau	26,27,47,53,56
+6	.claude/audit/arr-type-redesign/spikes/25-quad-style-namespace.luau	28,31,39,43,46,48
+5	.claude/audit/arr-type-redesign/spikes/26-setmetatable-selfhandle-boundary.luau	19,33,43,56,59
+9	.claude/audit/arr-type-redesign/spikes/27-constructor-organization.luau	18,19,20,32,33,47,48,49,52
+4	.claude/audit/arr-type-redesign/spikes/29-intersection-at-scale.luau	268,269,270,271
+12	.claude/audit/arr-type-redesign/spikes/30-final-design-at-scale.luau	281,282,283,284,285,286,287,288,291,296,300,302
+5	.claude/audit/arr-type-redesign/spikes/31-callback-view-type.luau	287,288,290,294,296
+5	.claude/audit/arr-type-redesign/spikes/32-iter-and-fold.luau	64,67,70,73,74
+3	.claude/audit/arr-type-redesign/spikes/33-iter-typing-variants.luau	42,48,52
+5	.claude/audit/arr-type-redesign/spikes/34-iter-boundary.luau	9,16,25,34,46
+6	.claude/audit/arr-type-redesign/spikes/35-intersection-breaks-forin.luau	14,15,16,20,26,29
+6	.claude/audit/arr-type-redesign/spikes/36-fold-family.luau	61,62,63,64,67,70
+5	.claude/audit/arr-type-redesign/spikes/37-iter-method-vs-metamethod.luau	69,75,81,86,88
+6	.claude/audit/container-contracts/spikes/00-contracts.luau	65,70,71,72,73,75
+1	.claude/audit/container-contracts/spikes/01-contract-vs-intersection.luau	41
+1	.claude/audit/container-contracts/spikes/02-mutating-method-variance.luau	42
+2	.claude/audit/container-contracts/spikes/03-declaration-order.luau	26,27
+1	.claude/audit/container-contracts/spikes/04-declaration-order-fixed.luau	24
+7	.claude/audit/list-index-abstraction/spikes/00-index-abstraction.luau	60,61,62,63,63,64,66
+6	.claude/audit/list-index-abstraction/spikes/01-combined-with-arr-scale.luau	284,285,286,286,287,288
+21	.claude/audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau	63,64,65,66,67,70,70,70,71,72,73,76,77,77,77,78,79,80,81,81,82
+12	.claude/audit/arr-type-redesign/spikes/41-real-hashmap-hashset-negative-control.luau	52,53,54,55,56,57,58,59,60,61,62,72
+6	.claude/audit/arr-type-redesign/spikes/42-real-bsearch-negative-control.luau	27,28,29,30,31,34
+12	.claude/audit/arr-type-redesign/spikes/43-real-treemap-treeset-negative-control.luau	52,53,54,55,56,57,58,59,60,61,62,63
+9	.claude/audit/arr-type-redesign/spikes/44-real-heap-negative-control.luau	36,37,38,39,40,41,42,45,48
+9	.claude/audit/arr-type-redesign/spikes/45-optional-shape.luau	49,53,55,58,61,67,73,86,91
+10	.claude/audit/arr-type-redesign/spikes/46-union-elements.luau	74,75,76,77,78,79,80,81,82,83
+12	.claude/audit/arr-type-redesign/spikes/47-real-optional-negative-control.luau	49,52,53,54,57,58,59,60,61,62,63,64
+12	.claude/audit/arr-type-redesign/spikes/48-real-fut-negative-control.luau	41,42,43,46,47,48,49,50,51,52,53,54
+10	.claude/audit/arr-type-redesign/spikes/49-namespace-calls.luau	53,56,57,58,61,64,65,66,67,68
+11	.claude/audit/arr-type-redesign/spikes/50-holes-in-types.luau	44,45,46,47,48,49,50,53,54,56,59
+11	.claude/audit/arr-type-redesign/spikes/51-sort-family.luau	48,49,50,53,58,61,62,63,64,67,68
