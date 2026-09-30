@@ -56,6 +56,9 @@
 	있다고 보고 쓰세요.
 ]]
 
+const ArrModule = require("./Arr")
+type Arr<T> = ArrModule.Arr<T>
+
 export type Status = "Pending" | "Resolved" | "Rejected"
 export type Scheduler = (job: () -> ()) -> ()
 
@@ -355,6 +358,45 @@ const function Rejected<T...>(reason: any): Fut<T...>
 	return fut :: any
 end
 
+-- 전부 성공하면 결과를 **입력 순서대로** 담은 `Arr` 로 성공합니다.
+-- 하나라도 실패하면 **그 즉시** 그 이유로 실패합니다(나머지를 기다리지 않음).
+-- 빈 목록이면 빈 `Arr` 로 곧바로 성공합니다.
+--
+-- ⚠️ 각 Fut 은 **값 하나**여야 합니다 — 목록 타입이 `{ Fut<T> }` 라 다중 반환
+-- Fut 은 타입에서 걸립니다. 여럿을 모으고 싶으면 `AndThen` 으로 먼저 하나로
+-- 묶으세요.
+--
+-- 결과가 `Arr` 인 게 이 모듈을 컨테이너 저장소 안에 두는 값어치입니다 —
+-- 받은 뒤 바로 `Arr.Map` / `Arr.Sum` 으로 이어집니다.
+const function All<T>(futs: { Fut<T> }): Fut<Arr<T>>
+	const count = #futs
+	const target = newPending()
+	const results = ArrModule.Sized<<T>>(count)
+	if count == 0 then
+		settle(target, "Resolved", table.pack(results), nil)
+		return target :: any
+	end
+	local remaining = count
+	for idx, fut in futs do
+		const source = (fut :: any) :: FutData
+		onSettle(source, function()
+			if target.status ~= "Pending" then
+				return -- 이미 다른 하나가 실패시켰음
+			end
+			if source.status == "Resolved" then
+				results[idx] = (source.values :: Packed)[1]
+				remaining -= 1
+				if remaining == 0 then
+					settle(target, "Resolved", table.pack(results), nil)
+				end
+			else
+				settle(target, "Rejected", nil, source.reason)
+			end
+		end)
+	end
+	return target :: any
+end
+
 -- ⭐ provider. **전역**입니다 — 한 번 꽂으면 그 뒤로 모든 Fut 이 이걸 씁니다.
 -- 빠진 갈래는 기본값으로 돌아갑니다. **이전 provider 를 돌려주니** 테스트에서
 -- 되돌리세요. `nil` 을 주면 전부 기본값입니다.
@@ -379,6 +421,7 @@ return {
 	Async = Async,
 	Resolved = Resolved,
 	Rejected = Rejected,
+	All = All,
 	UseProvider = UseProvider,
 	isFut = isFut,
 

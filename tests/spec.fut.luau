@@ -316,6 +316,50 @@ do
 end
 print("PASS")
 
+print("=== 10. All ===")
+do
+	-- 끝나는 순서를 뒤섞어도 결과는 입력 순서
+	const resolvers: { (number) -> () } = {}
+	const futs: { Fut<number> } = {}
+	for idx = 1, 3 do
+		futs[idx] = Fut.New(function(resolve: (number) -> (), _reject: (any) -> ())
+			resolvers[idx] = resolve
+		end)
+	end
+	const all = Fut.All(futs)
+	resolvers[3](30)
+	resolvers[1](10)
+	assert(all:Status() == "Pending", "하나라도 남으면 대기")
+	resolvers[2](20)
+	const ok, result = all:AwaitSafe()
+	assert(ok and stl.isArr(result), "결과는 Arr")
+	assert(result.n == 3 and result[1] == 10 and result[2] == 20 and result[3] == 30, "입력 순서대로")
+	assert(stl.Arr.Sum(result) == 60, "받은 뒤 바로 Arr 함수로 이어짐")
+
+	-- 빈 목록은 빈 Arr 로 곧바로
+	const empty = Fut.All({} :: { Fut<number> })
+	const emptyOk, emptyResult = empty:AwaitSafe()
+	assert(emptyOk and emptyResult.n == 0, "빈 목록")
+
+	-- 실패는 그 즉시, 나머지를 기다리지 않음
+	local release: ((number) -> ())? = nil
+	const slow = Fut.New(function(resolve: (number) -> (), _reject: (any) -> ())
+		release = resolve
+	end)
+	const failing = Fut.All({ slow, Fut.Rejected<<(number)>>("먼저 실패") })
+	assert(failing:Status() == "Rejected", "느린 것을 안 기다리고 바로 실패")
+	const _, why = failing:AwaitSafe()
+	assert(why == "먼저 실패", "실패 이유 그대로");
+	(release :: (number) -> ())(1) -- 뒤늦게 끝나도 결과가 안 바뀜
+	assert(failing:Status() == "Rejected", "뒤늦은 성공은 무시")
+
+	-- 두 번째 실패는 첫 번째 이유를 덮지 않음
+	const twice = Fut.All({ Fut.Rejected<<(number)>>("첫째"), Fut.Rejected<<(number)>>("둘째") })
+	const _, firstWhy = twice:AwaitSafe()
+	assert(firstWhy == "첫째", "첫 실패 이유가 남음")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Fut) ===")
 

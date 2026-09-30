@@ -63,7 +63,7 @@ src/
   TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
   Heap.luau        이진 힙. 계약을 만족하지 않는 유일한 컨테이너
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
-  Fut.luau         코루틴 래퍼(프로미스). 스케줄러 provider, 다중 반환
+  Fut.luau         코루틴 래퍼(프로미스). provider, 다중 반환, All → Arr
 
   ⭐ src 전체가 --!strict 이고 예외가 없습니다. type function 을 쓰던
      Tuple/TypeUtil 은 2026-09-22 에 내렸습니다
@@ -113,13 +113,13 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
 | `Types` / `Common` / `Algorithm` | 완성(작음) | — |
-| `Arr` | 메소드 64 + 생성자 8 | `spikes/40`, `46` |
+| `Arr` | 메소드 64 + 생성자 8 | `spikes/40`, `46`, `49` |
 | `HashMap` / `HashSet` | 완성 | `spikes/41` |
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
 | `Heap` | 완성 | `spikes/44` |
 | `Optional` | 완성 | `spikes/45`, `47` |
-| `Fut` | 첫 판(`All`/재시도 없음) | `spikes/48` |
+| `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 
 **없어진 것들**: 옛 `fut.luau`(뼈대만 2줄)는 지웠고 새 `Fut.luau` 로 다시
 썼습니다. `Tuple`/`TypeUtil` 은

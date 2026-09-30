@@ -56,10 +56,11 @@ local f = nested:Flat<<number>>()
 1. ~~**`Optional`**~~ — **2026-09-26 구현 완료.** `src/Optional.luau` + `Arr` 의
    구멍 다루기 넷. 그 과정에서 **원소가 유니온인 컨테이너가 전부 무너지던
    문제**를 찾아 고쳤습니다(`spikes/46`).
-2. ~~**`Fut`**~~ — **2026-09-26 첫 판 구현.** 스케줄러 provider, 다중 반환,
-   `AndThen`/`Chain`/`Catch`/`Async`/`Await`. 뺀 것(`All`/재시도 등)은
-   `papers/01-fut.md`.
-3. **문서 사이트** — API 가 한 바퀴 안정된 뒤. `base/docs-plan.md`.
+2. ~~**`Fut`**~~ — **2026-09-26 첫 판, 09-30 `All` 과 provider 세 갈래.**
+   아직 없는 것(`Race`/재시도/`Finally`)은 `papers/01-fut.md`.
+3. ~~**네임스페이스 함수 노출**~~ — **2026-09-30.** 절차적 호출이 정식 모양
+   (사용자 방향). 콜론보다 18% 빠름(`perf-measurements` 14절).
+4. **문서 사이트** — API 가 한 바퀴 안정된 뒤. `base/docs-plan.md`.
 
 ## 백로그 (당장 안 함)
 
