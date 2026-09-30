@@ -30,30 +30,34 @@ Roblox 엔진 언어 **Luau**용 표준 라이브러리 스타일 유틸리티 �
 
 ```lua
 local stl = require(path.to.stl_luau)
+local Arr = stl.Arr
 
-local numbers = stl.Arr.Of(5, 2, 8, 3, 6)
+local numbers = Arr.Of(5, 2, 8, 3, 6)
 
 -- 짝수만 골라 10배 하고, 큰 것부터 정렬합니다
-local result = numbers
-	:Filter(function(v: number): boolean
-		return v % 2 == 0
-	end)
-	:Map(function(v: number): number
-		return v * 10
-	end)
-	:Sort(function(a: number, b: number): boolean
-		return a > b
-	end)
+local evens = Arr.Filter(numbers, function(v: number): boolean
+	return v % 2 == 0
+end)
+local scaled = Arr.Map(evens, function(v: number): number
+	return v * 10
+end)
+local result = Arr.Sort(scaled, function(a: number, b: number): boolean
+	return a > b
+end)
 
 print(stl.isArr(result), result.n) -- true  3
-print(result:Join(", "))           -- 80, 60, 20
-print(numbers:Join(", "))          -- 5, 2, 8, 3, 6   (원본은 그대로)
+print(Arr.Join(result, ", "))      -- 80, 60, 20
+print(Arr.Join(numbers, ", "))     -- 5, 2, 8, 3, 6   (원본은 그대로)
 
 -- 인자로 타입을 알 수 없는 생성자는 명시적 타입 인자로
 local ages = stl.HashMap.New<<string, number>>()
-ages:Set("철수", 20)
-print(ages:Get("철수"), ages:Len()) -- 20  1
+stl.HashMap.Set(ages, "철수", 20)
+print(stl.HashMap.Get(ages, "철수")) -- 20
 ```
+
+**절차적 호출(`Arr.Map(a, fn)`)이 정식 모양입니다.** 같은 함수를 콜론으로도
+부를 수 있고(`a:Map(fn)`, 체이닝 가능), 뜨거운 루프에서는
+`local Map = Arr.Map` 으로 받아 쓰면 가장 빠릅니다.
 
 콜백 파라미터에는 타입을 적어 주세요(`function(v: number)`). 지금 Luau 는
 제네릭 호출에 넘긴 함수 리터럴의 파라미터 타입을 추론해주지 않습니다.

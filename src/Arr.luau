@@ -1444,6 +1444,7 @@ end
 
 --#endregion
 
+-- stylua: ignore
 return {
 	Of = Of,
 	Sized = Sized,
@@ -1454,4 +1455,26 @@ return {
 	Merge = Merge,
 	Range = Range,
 	isArr = isArr,
+
+	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
+	-- 라이브러리의 정식 모양입니다(`Arr.X(v, …)`). 콜론 호출과 같은 함수이고,
+	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
+	-- (`.claude/base/perf-measurements.md` 14절).
+	Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join, Equal = Equal, Count = Count,
+	Find = Find, Some = Some, Every = Every, Max = Max, Min = Min, Sum = Sum, Prod = Prod,
+	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked, MaxUnchecked = MaxUnchecked,
+	MinUnchecked = MinUnchecked, FillHoles = FillHoles, Compact = Compact,
+	CompactInplace = CompactInplace, ToOptionals = ToOptionals, PushBack = PushBack,
+	PushBackMany = PushBackMany, PushBackArray = PushBackArray, PushFront = PushFront,
+	PushFrontMany = PushFrontMany, PushFrontArray = PushFrontArray, Insert = Insert,
+	InsertMany = InsertMany, InsertArray = InsertArray, Clone = Clone, Clear = Clear, Fill = Fill,
+	Slice = Slice, SliceInplace = SliceInplace, Erase = Erase, EraseInplace = EraseInplace,
+	Replace = Replace, ReplaceInplace = ReplaceInplace, Reverse = Reverse,
+	ReverseInplace = ReverseInplace, Rotate = Rotate, RotateInplace = RotateInplace, Shuffle = Shuffle,
+	ShuffleInplace = ShuffleInplace, Sort = Sort, SortInplace = SortInplace,
+	SortUnchecked = SortUnchecked, SortInplaceUnchecked = SortInplaceUnchecked, Map = Map,
+	MapInplace = MapInplace, Filter = Filter, Retain = Retain, Flat = Flat, FlatInplace = FlatInplace,
+	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace, Drain = Drain, MergeInplace = MergeInplace,
+	Fold = Fold, FoldRight = FoldRight, Reduce = Reduce, FoldUntil = FoldUntil, Get = Get,
+	FirstIndex = FirstIndex, LastIndex = LastIndex, NextIndex = NextIndex, PrevIndex = PrevIndex,
 }

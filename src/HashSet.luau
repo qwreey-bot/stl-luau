@@ -310,9 +310,19 @@ end
 
 --#endregion
 
+-- stylua: ignore
 return {
 	New = New,
 	Of = Of,
 	FromList = FromList,
 	isHashSet = isHashSet,
+
+	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
+	-- 라이브러리의 정식 모양입니다(`HashSet.X(v, …)`). 콜론 호출과 같은 함수이고,
+	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
+	-- (`.claude/base/perf-measurements.md` 14절).
+	Len = Len, Empty = Empty, Iter = Iter, Clear = Clear, Clone = Clone, Union = Union,
+	Intersect = Intersect, Difference = Difference, SymmetricDifference = SymmetricDifference,
+	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal, Add = Add, Has = Has,
+	Remove = Remove, Items = Items,
 }

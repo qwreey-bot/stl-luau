@@ -266,8 +266,16 @@ end
 
 --#endregion
 
+-- stylua: ignore
 return {
 	New = New,
 	FromList = FromList,
 	isHeap = isHeap,
+
+	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
+	-- 라이브러리의 정식 모양입니다(`Heap.X(v, …)`). 콜론 호출과 같은 함수이고,
+	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
+	-- (`.claude/base/perf-measurements.md` 14절).
+	Len = Len, Empty = Empty, Peek = Peek, Items = Items, Sorted = Sorted, Push = Push, Pop = Pop,
+	PushPop = PushPop, Replace = Replace, Clear = Clear, Clone = Clone,
 }

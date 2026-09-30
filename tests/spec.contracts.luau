@@ -122,6 +122,42 @@ do
 end
 print("PASS")
 
+print("=== 5. 네임스페이스 함수와 메소드는 같은 함수 ===")
+do
+	-- 절차적 호출(`Arr.Map(a, fn)`)이 정식 모양이고 콜론은 같은 함수의 설탕입니다.
+	-- 모든 컨테이너에서 메타테이블의 메소드와 네임스페이스의 함수가 **같은 값**
+	-- 이어야 합니다 — 하나만 고치고 하나를 잊는 일이 없게.
+	const samples: { { name: string, ns: any, instance: any } } = {
+		{ name = "Arr", ns = stl.Arr, instance = stl.Arr.Of(1) },
+		{ name = "HashMap", ns = stl.HashMap, instance = stl.HashMap.New() },
+		{ name = "HashSet", ns = stl.HashSet, instance = stl.HashSet.New() },
+		{ name = "TreeMap", ns = stl.TreeMap, instance = stl.TreeMap.New(Common.compareNumber) },
+		{ name = "TreeSet", ns = stl.TreeSet, instance = stl.TreeSet.New(Common.compareNumber) },
+		{ name = "Heap", ns = stl.Heap, instance = stl.Heap.New(function(a: number, b: number)
+			return a < b
+		end) },
+		{ name = "Fut", ns = stl.Fut, instance = stl.Fut.Resolved() },
+	}
+	for _, sample in samples do
+		const methods = getmetatable(sample.instance)
+		local count = 0
+		for key, value in methods do
+			if key ~= "__index" then
+				count += 1
+				assert(
+					sample.ns[key] == value,
+					`{sample.name}.{key} 가 네임스페이스에 없거나 다른 함수입니다`
+				)
+			end
+		end
+		assert(count > 0, `{sample.name} 의 메소드를 하나도 못 찾았습니다`)
+	end
+	-- 호출 결과도 같아야 합니다
+	const a = stl.Arr.Of(3, 1, 2)
+	assert(stl.Arr.Sort(a):Join(",") == a:Sort():Join(","), "Arr.Sort(a) == a:Sort()")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (계약) ===")
 
