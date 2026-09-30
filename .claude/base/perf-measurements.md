@@ -246,8 +246,10 @@ for i, v in arr:Iter() do … end   -- i: number, v: T  (교집합인데도 정�
 
 | 무엇 | 배수 (checked `Sum` = 1.00) |
 |---|---|
-| `FillHoles` 만 | 1.02x |
-| `FillHoles` + `SumUnchecked` | **1.88x (더 느림)** |
+| `FillHolesInplace` 만 | 1.02x |
+| `FillHolesInplace` + `SumUnchecked` | **1.88x (더 느림)** |
+| `FillHoles`(새 배열) 만 — 2026-09-30 | 1.45x |
+| `FillHoles`(새 배열) + `SumUnchecked` — 2026-09-30 | 2.33x |
 | `CompactInplace` + `SumUnchecked` | 2.41x |
 | `Compact` + `SumUnchecked` | 2.53x |
 | `ToOptionals` | 4.96x |
@@ -267,6 +269,12 @@ for i, v in arr:Iter() do … end   -- i: number, v: T  (교집합인데도 정�
 구멍을 치우는 비용까지 셈에 넣으면 **두 번째 연산부터** 이득입니다.
 `papers/02-optional.md` 가 "Fillholes 로 1.83배 경로를 안심하고 쓴다" 고
 적었던 것은 이 조건을 빼먹은 서술이었습니다.
+
+(2026-09-30) 이 표의 제자리 판은 그때 이름이 `FillHoles` 였고 지금은
+`FillHolesInplace` 입니다. 새 배열판 `FillHoles` 는 구멍을 타입에 드러내기로
+하면서(`question.md` T, U) 들였고 `?` 를 떼는 정식 경로입니다 — 할당이 있어도
+`Compact`(1.8~1.9x)보다 쌉니다. 같은 조건에서 다시 재니 제자리 판은
+1.03~1.05x, `+ SumUnchecked` 는 1.91x 로 위 숫자와 맞았습니다.
 
 `Optional.Present` 하나는 **128바이트**입니다.
 

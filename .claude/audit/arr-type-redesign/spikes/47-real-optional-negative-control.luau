@@ -6,10 +6,12 @@
 	- 태그 좁히기가 실제 모듈에서 사는가
 	- `Absent` 싱글턴이 어느 `Optional<T>` 자리에나 들어가는가
 	- 공변 `self`(`Compact`/`ToOptionals`)가 결과에서 `?` 를 빼는가
-	- ⭐ `FillHoles` 에 다른 타입을 넣으면 잡히는가 — 공변으로 받던 초안에서
-	  `T` 가 넓어져 **통과**하던 건전성 구멍이다
+	- ⭐ `FillHolesInplace` 에 다른 타입을 넣으면 잡히는가 — 공변으로 받던
+	  초안에서 `T` 가 넓어져 **통과**하던 건전성 구멍이다
+	- 새 배열판 `FillHoles` 는 넓어지는 게 건전하다(원본 불변). 대신 넓어진
+	  결과를 좁은 타입에 담으면 잡혀야 한다 (2026-09-30, 질문 T (b))
 
-	기대 진단: 11건 (NEG 10 + CANARY 1)
+	기대 진단: 12건 (NEG 11 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Optional = stl.Optional
@@ -39,7 +41,8 @@ local okCompact: Arr<number> = maybe:Compact() -- ? 가 빠짐
 local okCompactIn: Arr<number> = maybe:CompactInplace()
 local okOpts: Arr<Optional<number>> = maybe:ToOptionals()
 local okOptsPlain: Arr<Optional<number>> = plain:ToOptionals()
-local okFillSum: number = plain:FillHoles(0):SumUnchecked()
+local okFillSum: number = plain:FillHolesInplace(0):SumUnchecked()
+local okFillNew: Arr<number> = maybe:FillHoles(0) -- ? 가 빠짐
 
 --[[ NEG ]]
 if p.isPresent then
@@ -54,12 +57,13 @@ end)
 local neg5: Optional<number> = s -- Optional<string> 을 Optional<number> 에
 local neg6: Arr<string> = maybe:Compact()
 local neg7: Arr<Optional<string>> = maybe:ToOptionals()
-local neg8 = maybe:FillHoles("문자열") -- ⭐ 건전성 구멍이던 자리
-local neg9 = plain:FillHoles("문자열")
+local neg8 = maybe:FillHolesInplace("문자열") -- ⭐ 건전성 구멍이던 자리
+local neg9 = plain:FillHolesInplace("문자열")
+local neg11: Arr<number> = maybe:FillHoles("문자열") -- 넓어진 결과
 local neg10 = Optional.Nope
 local canary: string = 42
 
 return {
-	okUnwrap, okOr, okMap, okNil, okIs, okCompact, okCompactIn, okOpts, okOptsPlain, okFillSum,
-	neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, canary,
+	okUnwrap, okOr, okMap, okNil, okIs, okCompact, okCompactIn, okOpts, okOptsPlain, okFillSum, okFillNew,
+	neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, canary,
 }

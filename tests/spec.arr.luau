@@ -40,6 +40,16 @@ assert(emptyNum().n == 0, "Of 빈 것")
 assert(Arr.Of(1, nil, 3).n == 3, "Of 는 인자 사이의 nil 을 보존해야 합니다")
 same(Arr.Sized(3, 0), { 0, 0, 0 }, "Sized")
 assert(Arr.Sized(0, 0).n == 0, "Sized 0")
+do
+	-- 구멍으로 시작하려면 타입에 드러냅니다(질문 T (b)). 칸은 전부 구멍이고
+	-- 콜백 계열은 그걸 `nil` 로 받습니다 — 타입이 `number?` 라 건전합니다.
+	const holes = Arr.Sized<<number?>>(3, nil)
+	assert(holes.n == 3 and holes[1] == nil and holes[3] == nil, "Sized 구멍")
+	const seen = Arr.Map(holes, function(v: number?): number
+		return if v == nil then -1 else v
+	end)
+	same(seen, { -1, -1, -1 }, "구멍은 콜백에 nil 로 넘어감")
+end
 same(Arr.FromTable({ 4, 5 }), { 4, 5 }, "FromTable")
 same(Arr.CloneFromTable({ 6, 7 }), { 6, 7 }, "CloneFromTable")
 same(
@@ -553,7 +563,7 @@ do
 
 	-- ⚠️ **구멍이 있을 때 문서대로 망가지는지**를 고정합니다. 이걸 고정해두지
 	-- 않으면 나중에 누가 "안전하게" 고쳐서 unchecked 의 존재 이유가 사라집니다.
-	const holed: Arr<number> = Arr.Sized(3) :: Arr<number>
+	const holed = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
 	holed[1], holed[3] = 1, 3
 	assert(not pcall(function()
 		return holed:SumUnchecked()
@@ -564,7 +574,7 @@ do
 	-- 반면 checked 는 멀쩡해야 합니다
 	assert(holed:Sum() == 4 and holed:Max() == 3, "checked 는 구멍에서 멀쩡")
 	-- 정렬만은 터지지 않고 **조용히** 다르게 동작합니다 — 그게 가장 위험한 점
-	const holedSorted: Arr<number> = Arr.Sized(3) :: Arr<number>
+	const holedSorted = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
 	holedSorted[1], holedSorted[3] = 1, 3
 	assert(
 		pcall(function()

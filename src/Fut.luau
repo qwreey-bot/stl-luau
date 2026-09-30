@@ -451,7 +451,11 @@ const function All<T>(futs: { Fut<T> }): Fut<Arr<T>>
 			return target :: any
 		end
 	end
-	const results = ArrModule.Sized<<T>>(count)
+	-- 비어서 시작하지만 **전부 이행돼야** 밖으로 나가므로(fail-fast) 받는 쪽에서
+	-- 구멍을 볼 일이 없습니다 — 그래서 `Arr<T?>` 로 드러내지 않고 `nil` 을
+	-- `T` 자리에 단언합니다. 원천이 `nil` 로 이행한 칸은 `T` 자체가 `nil` 을
+	-- 품으니(`Fut<number?>`) 역시 정직합니다.
+	const results = ArrModule.Sized<<T>>(count, nil :: any)
 	if count == 0 then
 		settle(target, "Resolved", table.pack(results), nil)
 		return target :: any

@@ -45,6 +45,7 @@
 9	.claude/audit/arr-type-redesign/spikes/44-real-heap-negative-control.luau
 9	.claude/audit/arr-type-redesign/spikes/45-optional-shape.luau
 10	.claude/audit/arr-type-redesign/spikes/46-union-elements.luau
-11	.claude/audit/arr-type-redesign/spikes/47-real-optional-negative-control.luau
+12	.claude/audit/arr-type-redesign/spikes/47-real-optional-negative-control.luau
 12	.claude/audit/arr-type-redesign/spikes/48-real-fut-negative-control.luau
 10	.claude/audit/arr-type-redesign/spikes/49-namespace-calls.luau
+9	.claude/audit/arr-type-redesign/spikes/50-holes-in-types.luau

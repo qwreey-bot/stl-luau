@@ -26,7 +26,7 @@ Luau 에 `T?` 가 이미 있는데 왜 또 두는가. **`T?` 는 테이블 안�
 차지하지 못합니다.**
 
 ```lua
-local a = Arr.Sized(3)
+local a = Arr.Sized<<number?>>(3, nil)   -- 2026-09-30 부터 fill 필수
 a[1], a[3] = 1, 3        -- a[2] 는 구멍
 a:Sum()                  -- 구멍을 건너뛰어야 함 (13% 비용)
 a:SortUnchecked()        -- ⚠️ 조용히 잘림

@@ -77,7 +77,8 @@ print("PASS")
 
 print("=== 4. Arr — 구멍 다루기 넷 ===")
 do
-	const holed = Arr.Sized<<number>>(5)
+	-- 구멍이 있는 배열은 타입에도 `?` 가 드러납니다(질문 T (b)).
+	const holed = Arr.Sized<<number?>>(5, nil)
 	holed[1], holed[3], holed[5] = 10, 30, 50
 
 	-- Compact: 새 배열, 순서 유지, 원본 불변
@@ -87,18 +88,27 @@ do
 	assert(Arr.Of<<number>>():Compact().n == 0, "빈 것의 Compact")
 
 	-- CompactInplace: 제자리, 꼬리를 비움
-	const inplace = Arr.Sized<<number>>(4)
+	const inplace = Arr.Sized<<number?>>(4, nil)
 	inplace[2], inplace[4] = 2, 4
 	const same = inplace:CompactInplace()
 	assert(same == inplace, "CompactInplace 는 자기 자신")
 	assert(inplace.n == 2 and inplace[1] == 2 and inplace[2] == 4, "CompactInplace 결과")
 	assert(inplace[3] == nil and inplace[4] == nil, "CompactInplace 는 꼬리를 비움")
 
-	-- FillHoles: 제자리, 길이 불변
-	const fill = Arr.Sized<<number>>(3)
+	-- FillHoles: 새 배열, 길이 불변, 원본 불변. 결과 타입에서 `?` 가 빠집니다.
+	const fillSource = Arr.Sized<<number?>>(3, nil)
+	fillSource[2] = 7
+	const filled: Arr<number> = fillSource:FillHoles(0)
+	assert(filled ~= fillSource, "FillHoles 는 새 배열")
+	assert(filled.n == 3 and filled[1] == 0 and filled[2] == 7 and filled[3] == 0, "FillHoles")
+	assert(fillSource[1] == nil and fillSource[3] == nil, "FillHoles 는 원본을 안 건드림")
+	assert(Arr.Of<<number?>>():FillHoles(0).n == 0, "빈 것의 FillHoles")
+
+	-- FillHolesInplace: 제자리, 길이 불변
+	const fill = Arr.Sized<<number?>>(3, nil)
 	fill[2] = 7
-	fill:FillHoles(0)
-	assert(fill.n == 3 and fill[1] == 0 and fill[2] == 7 and fill[3] == 0, "FillHoles")
+	assert(fill:FillHolesInplace(0) == fill, "FillHolesInplace 는 자기 자신")
+	assert(fill.n == 3 and fill[1] == 0 and fill[2] == 7 and fill[3] == 0, "FillHolesInplace")
 
 	-- ToOptionals: 길이 불변, 구멍은 Absent 싱글턴
 	const opts = holed:ToOptionals()
@@ -110,7 +120,9 @@ print("PASS")
 
 print("=== 5. ⭐ 구멍을 정리하면 *Unchecked 가 안전해지는가 ===")
 do
-	const holed = Arr.Sized<<number>>(5)
+	-- 타입은 거짓말하는 쪽(`Arr<number>`)으로 둡니다 — checked 가 **런타임
+	-- 그물**로 받아내는지, unchecked 가 문서대로 망가지는지를 보는 절이라서요.
+	const holed = (Arr.Sized<<number?>>(5, nil) :: any) :: Arr<number>
 	holed[1], holed[3], holed[5] = 3, 1, 2
 	-- 정리 전: SumUnchecked 는 터지고 SortInplaceUnchecked 는 조용히 틀린다
 	assert(not pcall(function()
@@ -118,7 +130,7 @@ do
 	end), "정리 전 SumUnchecked 는 터짐")
 
 	-- FillHoles 뒤: checked 와 같은 답
-	const filled = holed:Clone():FillHoles(0)
+	const filled = holed:FillHoles(0)
 	assert(filled:SumUnchecked() == holed:Sum(), "FillHoles 뒤 SumUnchecked == Sum")
 	assert(filled:MaxUnchecked() == holed:Max(), "FillHoles 뒤 MaxUnchecked == Max")
 

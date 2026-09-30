@@ -9,6 +9,26 @@
 	사이에 `nil` 구멍이 있을 수 있고, 그걸 각 메소드가 어떻게 다루는지는
 	메소드마다 주석에 적습니다.
 
+	## ⭐ 구멍은 타입에 드러납니다 (`Arr<T?>`)
+
+	Rust 의 `MaybeUninit` 과 같은 결입니다 — 기본값이 없는 언어라 칸을 대신
+	채워줄 수 없으니, **비어 있을 수 있는 칸은 타입이 `T?` 라고 말하게** 합니다.
+	구멍이 생기는 생성자는 전부 `Arr<T?>` 를 돌려주거나(`Of(1, nil, 3)`,
+	`FromTable({ 1, nil, 3 })`), 명시를 요구합니다(`Sized(n, fill)` 의 `fill`
+	은 필수 — 구멍을 원하면 `Arr.Sized<<number?>>(n, nil)`).
+
+	그래서 두 갈래가 어긋나지 않습니다:
+
+	- **콜백 계열**(`Map`/`Filter`/`Fold`/`Count`/`Find`/`Some`/`Every`/`Reduce`
+	  …)은 구멍을 **`nil` 그대로 콜백에 넘깁니다.** 타입이 `Arr<number?>` 면
+	  콜백도 `number?` 를 받으니 건전합니다 — `Map(a, function(v) return v or
+	  0 end)` 처럼 구멍을 **보고 싶을 때** 볼 수 있습니다.
+	- **집계·정렬**(`Sum`/`Prod`/`Max`/`Min`/`Sort`/`Join`)은 `ArrData<number>`
+	  처럼 구멍 없는 타입을 받으므로 `Arr<number?>` 에서는 타입이 먼저
+	  `Compact`/`FillHoles` 를 하라고 알려줍니다. 그래도 구멍을 **건너뛰는**
+	  것은 캐스트나 직접 대입(`a[5] = nil`)으로 타입이 거짓말할 때를 위한
+	  **런타임 그물**입니다 — 그 그물을 걷은 게 `*Unchecked` 입니다.
+
 	## 타입 3층 (전부 실측 근거 있음 — .claude/audit/arr-type-redesign/)
 
 	| 타입 | 무엇 | 어디에 |
@@ -444,14 +464,14 @@ end
 
 	| 무엇 | 길이 | 구멍 자리 |
 	|---|---|---|
-	| `FillHoles(v)` | 그대로 | `v` 로 채움 (제자리, 할당 없음) |
+	| `FillHoles(v)` / `FillHolesInplace(v)` | 그대로 | `v` 로 채움 |
 	| `Compact()` / `CompactInplace()` | 줄어듦 | 없앰 (순서 유지) |
 	| `ToOptionals()` | 그대로 | `Optional.Absent` 로, 값은 `Present` 로 감쌈 |
 
 	⚠️ **한 번만 쓸 거면 정리하지 마세요.** 정리 한 번이 checked 집계 한 번만큼
 	듭니다. 원소 20만(구멍 10%), `Max` 를 k 번(실측):
 
-	| k | checked | `FillHoles` + unchecked |
+	| k | checked | `FillHolesInplace` + unchecked |
 	|---|---|---|
 	| 1 | 1.00x | **0.87x (더 느림)** |
 	| 2 | 1.00x | 1.15x |
@@ -467,24 +487,42 @@ end
 	`T` 를 인스턴스화하지 못합니다(실측, 명시적 타입 인자로도 안 됨).
 ]]
 
--- `Compact`/`CompactInplace`/`ToOptionals` 는 `self` 를 **읽기 전용 인덱서**로
+-- `FillHoles`/`Compact`/`CompactInplace`/`ToOptionals` 는 `self` 를 **읽기 전용 인덱서**로
 -- 받습니다. 그래야 `Arr<number>`(런타임에만 구멍)와 `Arr<number?>`(타입에도
 -- 드러남)를 **둘 다** 받으면서 `T = number` 로 잡고, 결과에서 `?` 를 뺄 수
 -- 있습니다. 읽기·쓰기 인덱서는 불변이라 `Arr<number>` 가 `ArrData<number?>`
 -- 자리에 안 들어갑니다(실측).
 type ArrRead<T> = { read n: number, read [number]: T }
 
--- 구멍을 `value` 로 채웁니다(제자리). 길이는 그대로입니다.
+-- 구멍을 `value` 로 채운 **새 배열**. 길이는 그대로이고 원본은 안 건드립니다.
+-- `Arr<number?>` 를 받아 **`Arr<number>` 를 돌려줍니다** — 구멍을 타입에
+-- 드러내는 규약(질문 T (b))에서 `?` 를 떼는 정식 경로입니다.
+--
+-- `value` 가 다른 타입이면(`FillHoles("x")`) `T` 가 `number | string` 으로
+-- 넓어집니다. 새 배열이라 원래 변수는 그대로 `Arr<number?>` 이므로 건전합니다.
+const function FillHoles<T>(self: ArrRead<T?>, value: T): Arr<T>
+	const len = self.n
+	-- 메타테이블 없는 날 테이블에 먼저 채우고 마지막에 씌웁니다(인덱싱 세금 회피).
+	const raw = table.create(len)
+	for idx = 1, len do
+		const item = self[idx]
+		raw[idx] = if item == nil then value else item
+	end
+	return wrap(raw, len)
+end
+
+-- `FillHoles` 의 제자리 판. 할당이 없습니다.
 --
 -- ⚠️ **이것만 `self` 가 불변(`ArrData<T>`)입니다.** 공변으로 받으면
--- `arr:FillHoles("문자열")` 이 `T` 를 `number | string` 으로 넓혀 **통과**하고,
--- 제자리 변형이라 원래 변수(`Arr<number?>`)에 문자열이 들어갑니다(실측 —
--- 타입 건전성 구멍). 입력으로 `T` 를 받는 건 이 메소드뿐이라 여기만 막습니다.
+-- `arr:FillHolesInplace("문자열")` 이 `T` 를 `number | string` 으로 넓혀
+-- **통과**하고, 제자리 변형이라 원래 변수(`Arr<number?>`)에 문자열이 들어갑니다
+-- (실측 — 타입 건전성 구멍). 새 배열을 만드는 `FillHoles` 는 이 문제가 없습니다.
 --
 -- 대가: `Arr<number?>` 는 채운 뒤에도 `Arr<number?>` 로 남습니다. `?` 를
--- 빼고 싶으면 `Compact` 를 쓰거나 캐스트하세요. `Arr<number>` 는 그대로
--- `arr:FillHoles(0):SumUnchecked()` 로 이어집니다.
-const function FillHoles<T>(self: ArrData<T>, value: T): Arr<T>
+-- 빼야 하면 `FillHoles`(새 배열)나 `Compact` 를 쓰세요. `Arr<number>`(캐스트나
+-- 직접 대입으로 런타임에만 구멍이 난 것)는 그대로
+-- `arr:FillHolesInplace(0):SumUnchecked()` 로 이어집니다.
+const function FillHolesInplace<T>(self: ArrData<T>, value: T): Arr<T>
 	for idx = 1, self.n do
 		if self[idx] == nil then
 			self[idx] = value
@@ -1257,6 +1295,7 @@ type ArrIfce = {
 	MinUnchecked: typeof(MinUnchecked),
 	-- 구멍 다루기
 	FillHoles: typeof(FillHoles),
+	FillHolesInplace: typeof(FillHolesInplace),
 	Compact: typeof(Compact),
 	CompactInplace: typeof(CompactInplace),
 	ToOptionals: typeof(ToOptionals),
@@ -1323,7 +1362,8 @@ Ifce = {
 	Max = Max, Min = Min, Sum = Sum, Prod = Prod,
 	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked,
 	MaxUnchecked = MaxUnchecked, MinUnchecked = MinUnchecked,
-	FillHoles = FillHoles, Compact = Compact, CompactInplace = CompactInplace,
+	FillHoles = FillHoles, FillHolesInplace = FillHolesInplace,
+	Compact = Compact, CompactInplace = CompactInplace,
 	ToOptionals = ToOptionals,
 	PushBack = PushBack, PushBackMany = PushBackMany, PushBackArray = PushBackArray,
 	PushFront = PushFront, PushFrontMany = PushFrontMany, PushFrontArray = PushFrontArray,
@@ -1361,15 +1401,28 @@ const function Of<T>(...: T): Arr<T>
 	return setmetatable(raw, Ifce :: any) :: any
 end
 
--- 길이가 정해진 배열. `fill` 을 주면 그 값으로 채웁니다.
+-- 길이가 정해진 배열을 `fill` 로 채웁니다.
+--
+-- ⭐ **`fill` 은 필수입니다**(질문 T (b)). 빼먹으면 칸이 전부 `nil` 인데 타입은
+-- `Arr<number>` 라서 `Arr.Map(s, function(x: number) return x * 2 end)` 가
+-- 타입 검사를 통과하고 런타임에 터졌습니다. 구멍으로 시작하고 싶으면 **타입에
+-- 드러내세요**: `Arr.Sized<<number?>>(5, nil)` → `Arr<number?>`.
+--
 -- ⚠️ `fill` 에 테이블을 주면 **모든 칸이 같은 테이블을 공유**합니다
 -- (`table.create` 의 동작). 칸마다 다른 것이 필요하면 `FromFunc` 를 쓰세요.
-const function Sized<T>(len: number, fill: T?): Arr<T>
+const function Sized<T>(len: number, fill: T): Arr<T>
 	return wrap(table.create(len, fill) :: any, len)
 end
 
 -- 평범한 Lua 배열을 **그대로 입양합니다**(복사 안 함). 넘긴 테이블을 뒤에서
 -- 또 건드리면 이 배열도 같이 바뀝니다. 복사가 필요하면 `CloneFromTable`.
+--
+-- ⚠️ **길이는 `#` 로 잽니다.** 입력에 구멍이 있으면 `#` 는 경계 중 **아무
+-- 곳**이나 돌려줄 수 있어(Lua 규격) 구멍 뒤의 값이 **조용히 잘릴 수**
+-- 있습니다 — `{ 1, nil, 3 }` 리터럴은 3 이지만 `t[1] = 1; t[3] = 3` 으로
+-- 채운 테이블은 1 입니다. 구멍이 있을 수 있는 데이터는 `Of(...)` 나
+-- `table.pack` 결과처럼 **길이를 따로 아는 경로**로 만드세요. 타입은
+-- 입력대로 `Arr<number?>` 가 됩니다.
 const function FromTable<T>(tbl: { T }): Arr<T>
 	return wrap(tbl :: any, #tbl)
 end
@@ -1491,7 +1544,7 @@ return {
 	Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join, Equal = Equal, Count = Count,
 	Find = Find, Some = Some, Every = Every, Max = Max, Min = Min, Sum = Sum, Prod = Prod,
 	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked, MaxUnchecked = MaxUnchecked,
-	MinUnchecked = MinUnchecked, FillHoles = FillHoles, Compact = Compact,
+	MinUnchecked = MinUnchecked, FillHoles = FillHoles, FillHolesInplace = FillHolesInplace, Compact = Compact,
 	CompactInplace = CompactInplace, ToOptionals = ToOptionals, PushBack = PushBack,
 	PushBackMany = PushBackMany, PushBackArray = PushBackArray, PushFront = PushFront,
 	PushFrontMany = PushFrontMany, PushFrontArray = PushFrontArray, Insert = Insert,

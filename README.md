@@ -14,7 +14,7 @@ Roblox 엔진 언어 **Luau**용 표준 라이브러리 스타일 유틸리티 �
 
 | 모듈 | 무엇 |
 |---|---|
-| `Arr<T>` | 배열. 메소드 64개 — map/filter/sort/slice 등, 체이닝됨 |
+| `Arr<T>` | 배열. 메소드 65개 — map/filter/sort/slice 등, 체이닝됨 |
 | `HashMap<K, V>` | 해시 맵. Luau 테이블을 그대로 쓰되 크기를 따로 추적 |
 | `HashSet<T>` | `HashMap` 위에 얹은 셋 (`Add`/`Has`/`Remove`) |
 | `TreeMap<K, V>` | 정렬을 유지하는 맵. 정렬 배열 + 이분 탐색으로 구현 |
@@ -69,10 +69,15 @@ print(stl.HashMap.Get(ages, "철수")) -- 20
   `string.sub`와 같은 규약입니다.
 - **길이는 `n` 필드가 진실**입니다. Lua 기본 `#`는 안 씁니다 — 희소 배열과
   꼬리 `nil`을 피하기 위함입니다.
-- 배열에 `nil` 구멍이 있을 수 있는 연산(`Sum`/`Max`/`Sort` 등)은 기본이
-  구멍을 건너뛰는 **checked** 판이고, 구멍이 없음을 보장할 수 있으면 더 빠른
-  `*Unchecked` 판(`SumUnchecked`, `MaxUnchecked`, `SortInplaceUnchecked` …)을
-  씁니다.
+- **`nil` 구멍은 타입에 드러납니다.** 구멍이 있을 수 있는 배열은
+  `Arr<number?>` 이고(`Arr.Of(1, nil, 3)`, `Arr.Sized<<number?>>(5, nil)` —
+  `Sized` 의 채울 값은 필수), 콜백도 `number?` 를 받습니다. 합계·정렬처럼
+  구멍 없는 배열을 요구하는 연산 앞에서는 `Compact()` 나 `FillHoles(v)` 로
+  `?` 를 뗍니다.
+- 그래도 집계·정렬(`Sum`/`Max`/`Sort` 등)의 기본은 구멍을 건너뛰는 **checked**
+  판입니다(캐스트나 `a[i] = nil` 로 타입이 어긋날 때의 그물). 구멍이 없음을
+  보장할 수 있으면 더 빠른 `*Unchecked` 판(`SumUnchecked`, `MaxUnchecked`,
+  `SortInplaceUnchecked` …)을 씁니다.
 - 제네릭을 추론할 단서가 없는 자리(인자 없는 생성자 등)는 명시적 타입 인자
   `f<<T>>(...)` 를 씁니다 — 예: `stl.HashMap.New<<string, number>>()`.
 - 벌크 연산은 손 루프 대신 `table.move`/`table.create`를 씁니다.
