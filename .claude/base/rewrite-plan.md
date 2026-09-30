@@ -344,7 +344,9 @@ arr:FoldUntil(0, function(acc, v) … end)  -- 조기 중단               -> (U
    여러 줄이면 `0` 이 뒤에 붕 뜹니다. Rust·Haskell·Java 전부 초기값이 먼저입니다.
 2. **`Fold` 와 `Reduce` 를 가릅니다**(Rust 의 구분). 초기값이 있으면 `Fold`
    (반환 `U`), 없으면 `Reduce`(첫 원소를 씨앗으로, 빈 배열이면 `nil` 이라 `T?`).
-   `arr:Reduce(math.max)` 가 자연스러워집니다.
+   (예전엔 여기 "`arr:Reduce(math.max)` 가 자연스러워집니다" 라고 적었는데
+   **틀렸습니다** — 콜백이 `(acc, v, index, arr)` 를 받아 `math.max` 가 위치와
+   배열까지 받습니다. 2026-09-30 리뷰가 재현.)
 3. **조기 중단은 `Until` 입니다, `While` 이 아니라** (사용자 지적). 구현이
    *원소를 처리한 뒤* `done` 을 보는 **후행 조건**이고, Lua 의 `repeat … until`
    이 바로 그 의미입니다. `While` 이면 처리 전에 조건을 봐야 하는데 그 구조가

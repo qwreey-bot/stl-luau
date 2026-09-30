@@ -455,6 +455,10 @@ const function All<T>(futs: { Fut<T> }): Fut<Arr<T>>
 	-- 구멍을 볼 일이 없습니다 — 그래서 `Arr<T?>` 로 드러내지 않고 `nil` 을
 	-- `T` 자리에 단언합니다. 원천이 `nil` 로 이행한 칸은 `T` 자체가 `nil` 을
 	-- 품으니(`Fut<number?>`) 역시 정직합니다.
+	-- ⚠️ 다만 그런 목록을 **만들기**가 번거롭습니다: `Fut._pack` 이 불변이라
+	-- `{ Fut.Resolved(1), Fut.Resolved(nil :: number?) }` 는 첫 원소가
+	-- `Fut<number>` 로 잡혀 에러이고, `<<number?>>` 나 `{ Fut<number?> }` 주석으로도
+	-- 안 풀립니다. 원소마다 값을 넓혀서 만드세요: `Fut.Resolved(1 :: number?)`.
 	const results = ArrModule.Sized<<T>>(count, nil :: any)
 	if count == 0 then
 		settle(target, "Resolved", table.pack(results), nil)

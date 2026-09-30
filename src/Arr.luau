@@ -110,6 +110,8 @@ export type Folder<T, U> = (accumulator: U, element: T, index: number, arr: ArrV
 export type UntilFolder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<any>) -> (U, boolean?)
 -- 값을 여러 개 돌려줄 수 있는 변환 콜백. `Flatmap` 계열이 씁니다.
 export type Spreader<T, G> = (element: T, index: number, arr: ArrView<any>) -> ...G
+-- `[min, max]` 의 **정수**를 기대합니다(`math.random` 모양). 실수나 범위 밖이
+-- 오면 0 쪽으로 잘라 범위에 가둡니다 — 분포는 rng 책임입니다.
 export type Rng = (min: number, max: number) -> number
 
 -- 런타임 메소드 테이블. 아래에서 채웁니다.
@@ -133,6 +135,11 @@ end
 const function resolveRange(len: number, start: number?, last: number?): (number, number)
 	const st = if start == nil then nil else toIndex(start)
 	const la = if last == nil then nil else toIndex(last)
+	-- NaN 은 clamp 할 방향이 없습니다. 그냥 두면 `table.move` 의 엉뚱한 에러나
+	-- (`Some`/`Every` 에서) 조용한 무동작이 됐습니다(2026-09-30 리뷰).
+	if st ~= st or la ~= la then
+		error("Arr: range bound is NaN", 3)
+	end
 	local s = if st == nil then 1 elseif st < 0 then len + st + 1 else st
 	local l = if la == nil then len elseif la < 0 then len + la + 1 else la
 	if s < 1 then
@@ -164,6 +171,17 @@ const function wrap<T>(raw: { [number]: T }, len: number): Arr<T>
 	result.n = len
 	result[TAG] = true
 	return setmetatable(result, Ifce :: any) :: any
+end
+
+-- 길이 인자. 소수는 구간 규약처럼 0 쪽으로 자르고, 음수·NaN 은 에러입니다
+-- (`Sized(2.5, 0)` 이 `n = 2.5` 를 만들어 뒤에 넣은 값이 3.5 키로 사라졌음,
+-- 2026-09-30 리뷰).
+const function checkLength(len: number, who: string): number
+	const count = toIndex(len)
+	if not (count >= 0) then
+		error(`Arr: {who} length must be a non-negative number (got {len})`, 3)
+	end
+	return count
 end
 
 const function newSized<T>(len: number): Arr<T>
@@ -939,7 +957,14 @@ const function ShuffleInplace<T>(self: ArrData<T>, start: number?, last: number?
 	const s, l = resolveRange(self.n, start, last)
 	const random = rng or math.random
 	for idx = l, s + 1, -1 do
-		const pick = random(s, idx)
+		-- rng 가 실수(`Random:NextNumber` 모양)나 범위 밖을 주면 구멍과 데이터
+		-- 유실이 조용히 생겼습니다(2026-09-30 리뷰). 0 쪽으로 자르고 가둡니다.
+		local pick = toIndex(random(s, idx))
+		if not (pick >= s) then
+			pick = s
+		elseif pick > idx then
+			pick = idx
+		end
 		self[idx], self[pick] = self[pick], self[idx]
 	end
 	return self :: any
@@ -1037,6 +1062,12 @@ end
 	⚠️ 원소가 숫자·문자열이고 기본 순서면 **비교자 없는 `Sort()` 가 이들보다
 	빠릅니다**(0.24x — VM 안에서 비교). 안정성이 필요 없으면 `Sort` 를 쓰세요.
 
+	⚠️ **비교자는 엄격해야 합니다**(`less(x, x) == false`, 즉 `<` 이지 `<=` 가
+	아님 — `table.sort` 와 같은 계약). 어기면 병합 계열은 안정성만 잃지만 선택
+	계열(`NthElement`/`PartialSortInplace`)은 `"invalid order function"` 에러로
+	멈춥니다. **NaN** 이 섞인 숫자는 어떤 순서와도 비교가 거짓이라 결과 순서가
+	의미 없고 `IsSorted` 도 참을 줄 수 있습니다(C++ 와 같음) — 먼저 걸러내세요.
+
 	정렬·선택 작업은 전부 **메타테이블 없는 날 버퍼**에서 합니다 — 원소를
 	여러 번 읽고 쓰므로 인덱싱 세금(1.59x)이 곱해지지 않게.
 ]]
@@ -1084,8 +1115,9 @@ const function insertionSortRange(a: { any }, lo: number, hi: number, less: (any
 	end
 end
 
--- 안정 병합 정렬(하향식). `tmp` 는 왼쪽 절반을 잠시 옮겨두는 버퍼 하나를
--- 재귀 전체가 같이 씁니다. 두 절반이 이미 순서면 병합을 건너뜁니다 — 거의
+-- 안정 병합 정렬(하향식). `tmp` 는 왼쪽 절반을 **원래 위치 그대로**
+-- 잠시 옮겨두는 버퍼 하나이고 재귀 전체가 같이 씁니다(그래서 결국 n 가까이
+-- 자랍니다 — 미리 잡는 크기는 힌트일 뿐). 두 절반이 이미 순서면 병합을 건너뜁니다 — 거의
 -- 정렬된 입력에서 `table.sort` 보다 10배 빠른 이유입니다.
 local function mergeSortRange(a: { any }, tmp: { any }, lo: number, hi: number, less: (any, any) -> boolean)
 	if hi - lo < INSERTION_CUTOFF then
@@ -1122,11 +1154,40 @@ const function stableSortBuffer(buffer: { any }, count: number, less: (any, any)
 	end
 end
 
--- 선택(quickselect, 호어 분할 + 중앙값 셋). 끝나면 `a[k]` 는 정렬했을 때의 그
--- 값이고, 왼쪽은 전부 `a[k]` 이하, 오른쪽은 이상입니다. 평균 O(n).
+const STRICT_ERROR = "Arr: invalid order function (less must be strict: less(x, x) == false)"
+
+-- 선택이 예산을 다 쓴 구간을 통째로 정렬합니다. `table.sort` 는 부분 구간을
+-- 못 받으므로 잠시 옮겨서.
+const function sortRangeFallback(a: { any }, lo: number, hi: number, less: (any, any) -> boolean)
+	const len = hi - lo + 1
+	const part = table.move(a, lo, hi, 1, table.create(len))
+	table.sort(part, less)
+	table.move(part, 1, len, lo, a)
+end
+
+-- 선택(introselect — 호어 분할 + 중앙값 셋, 예산을 넘으면 정렬로). 끝나면
+-- `a[k]` 는 정렬했을 때의 그 값이고, 왼쪽은 전부 `a[k]` 이하, 오른쪽은
+-- 이상입니다. 평균 O(n), **최악 O(n log n)**.
+--
+-- 예산이 있는 이유: 중앙값 셋은 "정렬된 배열 끝에 최솟값 하나" 같은 **흔한
+-- 모양**에서 한 번에 원소 하나씩만 줄여 O(n²) 였습니다(2026-09-30 리뷰,
+-- n=16000 에서 1.4초). 분할이 약 2·log₂n 번을 넘으면 남은 구간을 정렬합니다.
+--
+-- 안쪽 스캔에 경계를 둡니다 — 비교자가 엄격하지 않으면(`<=`) 스캔이 구간
+-- 밖으로 달려 사용자 비교자에 `nil` 이 가거나 **무한 루프**였습니다. 엄격한
+-- 비교자에서는 피벗 값이 구간 안에 있어 경계에 닿지 않습니다.
 const function selectRange(a: { any }, lo: number, hi: number, k: number, less: (any, any) -> boolean)
+	local budget = 2 * math.floor(math.log(hi - lo + 1, 2)) + 4
 	while hi > lo do
-		const x, y, z = a[lo], a[(lo + hi) // 2], a[hi]
+		if budget <= 0 then
+			sortRangeFallback(a, lo, hi, less)
+			return
+		end
+		budget -= 1
+		-- 후보를 끝점이 아니라 1/4·1/2·3/4 지점에서 — "정렬 + 끝에 하나" 모양은
+		-- 끝점이 극단값이라 중앙값 셋이 매번 나쁜 피벗을 골랐습니다.
+		const quarter = (hi - lo) // 4
+		const x, y, z = a[lo + quarter], a[(lo + hi) // 2], a[hi - quarter]
 		const pivot = if less(x, y)
 			then (if less(y, z) then y elseif less(x, z) then z else x)
 			else (if less(x, z) then x elseif less(y, z) then z else y)
@@ -1134,9 +1195,15 @@ const function selectRange(a: { any }, lo: number, hi: number, k: number, less: 
 		while i <= j do
 			while less(a[i], pivot) do
 				i += 1
+				if i > hi then
+					error(STRICT_ERROR, 0)
+				end
 			end
 			while less(pivot, a[j]) do
 				j -= 1
+				if j < lo then
+					error(STRICT_ERROR, 0)
+				end
 			end
 			if i <= j then
 				a[i], a[j] = a[j], a[i]
@@ -1211,7 +1278,7 @@ const function SortByInplace<T, K>(self: ArrData<T>, key: (element: T) -> K, les
 	return self :: any
 end
 
--- 정렬했을 때 `k` 번째에 올 **값**. 배열은 안 건드립니다. 평균 O(n).
+-- 정렬했을 때 `k` 번째에 올 **값**. 배열은 안 건드립니다. 평균 O(n), 최악 O(n log n).
 -- `k` 는 **구멍을 뺀 값들 사이의 순위**이고 음수는 뒤에서(`-1` = 최댓값)입니다.
 -- 범위 밖이면 `nil`. 중앙값은 `NthElement(a, (Len + 1) // 2)` 처럼.
 const function NthElement<T>(self: ArrData<T>, k: number, less: LessThan<T>?): T?
@@ -1246,7 +1313,9 @@ end
 -- `partial_sort` 와 같음). 가장 큰 k 개는 `less` 를 뒤집어 넘기세요.
 const function PartialSort<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
 	const lt: (any, any) -> boolean = less or defaultLess
-	const want = math.max(0, toIndex(k))
+	-- 값 개수보다 큰 k 는 전체 — k 로 버퍼를 잡으면 `math.huge` 에서 크래시,
+	-- 큰 k 에서 원소 수가 아니라 k 에 비례해 느렸습니다(2026-09-30 리뷰).
+	const want = math.min(math.max(0, toIndex(k)), self.n)
 	-- 최대 힙(꼭대기 = 지금까지 고른 k 개 중 가장 뒤에 올 것)
 	const heap = table.create(want)
 	local size = 0
@@ -1464,6 +1533,10 @@ end
 -- `nested:Flat<<number>>()` 가 권장이고 캐스트(`:: Arr<number>`)가 차선입니다.
 -- 선언 주석(`local flat: Arr<number> = …`)은 **안 됩니다**: Luau 는 기대
 -- 타입을 제네릭 호출 안으로 전파하지 않아 `T` 가 `unknown` 으로 남습니다.
+--
+-- ⚠️ 안쪽 배열의 **구멍은 그대로 옮겨집니다.** 결과 타입은 호출자가 알려주는
+-- 것이라 `Flat<<number>>` 라고 하면 구멍이 든 `Arr<number>` 가 나올 수 있습니다
+-- — 안쪽에 구멍이 있을 수 있으면 `Flat<<number?>>` 로 받으세요.
 const function Flat<T>(self: ArrData<any>, start: number?, last: number?, to: Arr<T>?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const out: Arr<T> = to or newSized(0)
@@ -1640,7 +1713,10 @@ const function FoldRight<T, U>(self: ArrData<T>, init: U, fn: Folder<T, U>): U
 end
 
 -- 초기값 없이 **첫 원소를 씨앗으로** 접습니다. 빈 배열이면 `nil`.
--- `arr:Reduce(math.max)` 같은 게 자연스러워집니다.
+-- 예: `arr:Reduce(function(a, b) return math.max(a, b) end)`.
+-- ⚠️ `arr:Reduce(math.max)` 는 **안 됩니다** — 콜백은 `(acc, v, index, arr)` 를
+-- 받으므로 `math.max` 가 위치와 배열까지 받아 틀린 값이나 에러가 납니다(타입
+-- 검사도 거부합니다). 예전 주석이 권하던 모양이라 적어둡니다(2026-09-30 리뷰).
 const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<any>) -> T): T?
 	const len = self.n
 	if len == 0 then
@@ -1839,7 +1915,8 @@ end
 -- ⚠️ `fill` 에 테이블을 주면 **모든 칸이 같은 테이블을 공유**합니다
 -- (`table.create` 의 동작). 칸마다 다른 것이 필요하면 `FromFunc` 를 쓰세요.
 const function Sized<T>(len: number, fill: T): Arr<T>
-	return wrap(table.create(len, fill) :: any, len)
+	const count = checkLength(len, "Sized")
+	return wrap(table.create(count, fill) :: any, count)
 end
 
 -- 평범한 Lua 배열을 **그대로 입양합니다**(복사 안 함). 넘긴 테이블을 뒤에서
@@ -1849,12 +1926,18 @@ end
 -- 곳**이나 돌려줄 수 있어(Lua 규격) 구멍 뒤의 값이 **조용히 잘릴 수**
 -- 있습니다 — `{ 1, nil, 3 }` 리터럴은 3 이지만 `t[1] = 1; t[3] = 3` 으로
 -- 채운 테이블은 1 입니다. 구멍이 있을 수 있는 데이터는 `Of(...)` 나
--- `table.pack` 결과처럼 **길이를 따로 아는 경로**로 만드세요. 타입은
--- 입력대로 `Arr<number?>` 가 됩니다.
+-- `table.pack` 결과처럼 **길이를 따로 아는 경로**로 만드세요.
+--
+-- ⚠️ 반대 방향도 있습니다: `#` 가 **구멍 뒤의 경계**를 고르면 구멍이 든 배열이
+-- 들어옵니다. 타입은 입력 선언을 따르는데, Luau 의 `{ number }` 는 구멍을
+-- 표현하지 못하므로(`table.create(4)` 에 1·4 만 채운 것도 `{ number }`)
+-- **`Arr<number>` 인데 구멍이 있을 수 있습니다**. 구멍 가능성이 있는 입력은
+-- `{ number? }` 로 선언해 넘기세요 — 그러면 `Arr<number?>` 가 됩니다.
 const function FromTable<T>(tbl: { T }): Arr<T>
 	return wrap(tbl :: any, #tbl)
 end
 
+-- `FromTable` 의 복사 판. **길이를 `#` 로 재는 것과 그 함정이 같습니다.**
 const function CloneFromTable<T>(tbl: { T }): Arr<T>
 	const len = #tbl
 	const result = newSized(len)
@@ -1892,8 +1975,9 @@ end
 
 -- 위치를 받아 값을 만드는 함수로 채웁니다. 칸마다 새 테이블이 필요할 때.
 const function FromFunc<T>(len: number, fn: (index: number) -> T): Arr<T>
-	const result = newSized(len)
-	for idx = 1, len do
+	const count = checkLength(len, "FromFunc")
+	const result = newSized(count)
+	for idx = 1, count do
 		result[idx] = fn(idx)
 	end
 	return result

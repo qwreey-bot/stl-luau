@@ -924,6 +924,161 @@ do
 end
 print("PASS")
 
+print("=== 18. 회귀 — 2026-09-30 리뷰 (M1·M2·구멍) ===")
+do
+	-- (1) quickselect 가 "정렬된 배열 끝에 최솟값" 같은 흔한 모양에서 O(n²) 였음.
+	--     시간 대신 비교 횟수로 잽니다(이차면 n=2000 에서 수십만 번).
+	local function countingLess(): ((number, number) -> boolean, () -> number)
+		local calls = 0
+		return function(a: number, b: number): boolean
+			calls += 1
+			return a < b
+		end, function(): number
+			return calls
+		end
+	end
+	const size = 2000
+	local function minBack(): Arr<number>
+		const a = Arr.Range(1, size - 1)
+		a:PushBack(0)
+		return a
+	end
+	local function maxFront(): Arr<number>
+		const a = Arr.Of(size)
+		a:PushBackArray(Arr.Range(1, size - 1))
+		return a
+	end
+	const makers: { () -> Arr<number> } = { minBack, maxFront }
+	for _, make in makers do
+		for _, run in
+			{
+				function(a: Arr<number>, lt: (number, number) -> boolean)
+					assert(a:NthElement(size // 2, lt) == size // 2 - (if a[1] == 1 then 1 else 0), "NthElement 값")
+				end,
+				function(a: Arr<number>, lt: (number, number) -> boolean)
+					a:NthElementInplace(size // 2, lt)
+				end,
+				function(a: Arr<number>, lt: (number, number) -> boolean)
+					a:PartialSortInplace(size // 2, lt)
+				end,
+			}
+		do
+			const lt, calls = countingLess()
+			run(make(), lt)
+			assert(calls() < 60 * size, `선택이 이차로 떨어짐: 비교 {calls()} 번`)
+		end
+	end
+
+	-- (1b) 흔한 모양은 피벗 후보를 1/4·1/2·3/4 로 옮겨 풀었지만, 어떤 피벗 규칙이든
+	--      이차로 끌어내리는 입력이 있습니다. McIlroy 의 적대적 비교자("A Killer
+	--      Adversary for Quicksort")로 **예산 폴백**을 강제로 태웁니다 — 폴백이 없으면
+	--      n=4000 에서 비교 300만 번(751n), 있으면 약 70n 이었습니다(실측).
+	do
+		const n = 4000
+		const gas = n + 1
+		const rank = table.create(n, gas) :: { number }
+		local solid, candidate, calls = 0, 0, 0
+		local function adversary(x: number, y: number): boolean
+			calls += 1
+			if rank[x] == gas and rank[y] == gas then
+				if x == candidate then
+					rank[x] = solid
+				else
+					rank[y] = solid
+				end
+				solid += 1
+			end
+			if rank[x] == gas then
+				candidate = x
+			elseif rank[y] == gas then
+				candidate = y
+			end
+			return rank[x] < rank[y]
+		end
+		const k = n // 2
+		const picked = Arr.Range(1, n):NthElement(k, adversary) :: number
+		assert(calls < 150 * n, `적대적 입력에서 선택이 이차로 떨어짐: 비교 {calls} 번`)
+		-- 적대자가 마지막에 정한 순서에서 정말 k 번째인가
+		local below, atOrBelow = 0, 0
+		for id = 1, n do
+			if rank[id] < rank[picked] then
+				below += 1
+			end
+			if rank[id] <= rank[picked] then
+				atOrBelow += 1
+			end
+		end
+		assert(below < k and atOrBelow >= k, `적대적 입력에서 k 번째가 아님({below}, {atOrBelow})`)
+	end
+
+	-- (2) PartialSort 가 k 로 버퍼를 할당해 math.huge 에서 크래시, 큰 k 에서 느렸음
+	same(Arr.Of(50, 30, 10, 40, 20):PartialSort(math.huge), { 10, 20, 30, 40, 50 }, "PartialSort(math.huge)")
+	same(Arr.Of(50, 30, 10):PartialSort(1e8), { 10, 30, 50 }, "PartialSort(1e8)")
+
+	-- (3) 엄격하지 않은 비교자(<=)에서 선택이 범위를 넘어 달렸음 — nil 을 받아도
+	--     에러가 안 나는 비교자면 무한 루프. 이제 분명한 에러로 멈춥니다.
+	local function nonStrict(a: number?, b: number?): boolean
+		return (a or 0) <= (b or 0)
+	end
+	for _, run in
+		{
+			function()
+				Arr.Of(30, 30, 30, 30, 30):PartialSortInplace(2, nonStrict)
+			end,
+			function()
+				Arr.Of(30, 30):NthElement(1, nonStrict)
+			end,
+		}
+	do
+		const ok, err = pcall(run :: () -> ())
+		assert(not ok and string.find(tostring(err), "strict", 1, true) ~= nil, `엄격하지 않은 비교자: {err}`)
+	end
+
+	-- (4) Shuffle 에 실수를 돌려주는 rng(Roblox Random:NextNumber 모양)를 주면
+	--     구멍과 데이터 유실이 조용히 생겼음
+	const shuffled = Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, function(lo: number, hi: number): number
+		return lo + (hi - lo) * 0.5
+	end)
+	assert(shuffled.n == 4 and shuffled:Sort():Join(",") == "10,20,30,40", "실수 rng 도 순열")
+	const outOfRange = Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, function(_lo: number, hi: number): number
+		return hi + 1
+	end)
+	assert(outOfRange.n == 4 and outOfRange:Sort():Join(",") == "10,20,30,40", "범위 밖 rng 도 순열")
+
+	-- (5) Sized/FromFunc 의 소수 길이가 안 잘려 n 이 3.5 가 되고 값이 사라졌음
+	const sized = Arr.Sized(2.5, 0)
+	sized:PushBack(7)
+	assert(sized.n == 3 and sized:Join(",") == "0,0,7", "Sized 소수 길이는 0 쪽으로")
+	assert(Arr.FromFunc(2.9, function(i: number): number
+		return i * 10
+	end).n == 2, "FromFunc 소수 길이")
+	assert(not pcall(Arr.Sized, -1, 0), "Sized 음수 길이는 에러")
+	assert(not pcall(Arr.FromFunc, -1, function(i: number): number
+		return i
+	end), "FromFunc 음수 길이는 에러")
+
+	-- (6) 구간 인자에 NaN — table.move 의 엉뚱한 에러나 조용한 무동작 대신 분명한 에러
+	for _, run in
+		{
+			function()
+				Arr.Of(10, 20):Slice(0 / 0)
+			end,
+			function()
+				Arr.Of(10, 20):Splice(1, 0 / 0, Arr.Of(30))
+			end,
+			function()
+				Arr.Of(10, 20):Some(function(v: number): boolean
+					return v > 0
+				end, 0 / 0)
+			end,
+		}
+	do
+		const ok, err = pcall(run :: () -> ())
+		assert(not ok and string.find(tostring(err), "NaN", 1, true) ~= nil, `NaN 구간: {err}`)
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 
