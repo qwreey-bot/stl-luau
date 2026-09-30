@@ -380,6 +380,9 @@ holed:Map(function(v: number) return v * 2 end)        -- 잡힘
   배열" 은 쓸모가 없어서, 비변형 판은 **답(값)** 을 주게 했습니다.
 - **`k` 는 구멍을 뺀 값들 사이의 순위**이고 음수는 뒤에서(`At` 과 같은 규약),
   범위 밖이면 `nil`(Inplace 는 구멍만 치움). `PartialSort` 의 `k ≤ 0` 은 빈 결과.
+- (리뷰 뒤) **`k` 가 NaN 이면 에러**(구간 NaN 과 같은 정책), 선택·부분 정렬은
+  진입 시 `less(x, x)` 를 한 번 봐서 `<=` 같은 **엄격하지 않은 비교자를 에러로**
+  알립니다. `Shuffle` 의 rng 가 정수 `[min, max]` 가 아니면 에러입니다.
 - **`PartialSort` 는 안정하지 않습니다**(C++ 와 같음, 힙을 씀). `StableSort`/
   `SortBy`/`MergeSorted` 는 안정입니다.
 - **`*Unchecked` 판은 두지 않았습니다.** 순수 Luau 정렬은 어차피 날 버퍼로

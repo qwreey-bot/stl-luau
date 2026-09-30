@@ -43,7 +43,9 @@ spike_n=0
 # 셋째 칸(선택)은 **에러가 난 줄 번호 목록**입니다(같은 줄 여러 건은 반복).
 # 건수만 세면 한 NEG 가 사라진 자리에 다른 줄의 에러가 새로 생겨 **상쇄**될
 # 수 있습니다 — 2026-09-30 리뷰가 실제로 21 → 21 상쇄를 재현했습니다.
-while IFS=$'\t' read -r want path lines; do
+# `|| [ -n "$want" ]`: 파일 끝에 개행이 없으면 `read` 가 마지막 줄에서 거짓을
+# 돌려 그 스파이크를 **조용히 건너뛰었습니다**(2026-09-30 2라운드 리뷰).
+while IFS=$'\t' read -r want path lines || [ -n "$want" ]; do
 	case "$want" in ''|\#*) continue ;; esac
 	if [ ! -f "$path" ]; then
 		echo "  MISSING  $path"
@@ -60,6 +62,10 @@ while IFS=$'\t' read -r want path lines; do
 		echo "  FAIL  $path"
 		echo "        기대 $want 건, 실측 $got 건 (줄: ${got_lines:-없음})"
 		spike_fail=1
+	elif [ "$want" != "0" ] && [ -z "$lines" ]; then
+		echo "  FAIL  $path"
+		echo "        에러 줄 칸이 비었습니다 — 건수만으로는 상쇄를 못 막습니다. 실측 줄: $got_lines"
+		spike_fail=1
 	elif [ -n "$lines" ] && [ "$lines" != "$got_lines" ]; then
 		echo "  FAIL  $path"
 		echo "        건수는 같지만 에러 줄이 다릅니다 — NEG 가 사라진 자리를 다른 에러가 메웠을 수 있음"
@@ -68,6 +74,12 @@ while IFS=$'\t' read -r want path lines; do
 		spike_fail=1
 	fi
 done < scripts/spike-expectations.tsv
+# 센 스파이크 수가 데이터 행 수와 같아야 합니다 — 읽기가 조용히 줄을 흘리는 걸 막는 마지막 그물.
+spike_rows=$(grep -cvE '^[[:space:]]*(#|$)' scripts/spike-expectations.tsv)
+if [ "$spike_n" != "$spike_rows" ]; then
+	echo "  FAIL  스파이크를 $spike_n 개 셌는데 데이터 행은 $spike_rows 개입니다"
+	spike_fail=1
+fi
 if [ "$spike_fail" = "0" ]; then
 	echo "  스파이크 $spike_n 개 전부 기대치와 일치"
 else

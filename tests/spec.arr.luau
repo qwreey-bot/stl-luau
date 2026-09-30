@@ -973,8 +973,11 @@ do
 	--      이차로 끌어내리는 입력이 있습니다. McIlroy 의 적대적 비교자("A Killer
 	--      Adversary for Quicksort")로 **예산 폴백**을 강제로 태웁니다 — 폴백이 없으면
 	--      n=4000 에서 비교 300만 번(751n), 있으면 약 70n 이었습니다(실측).
-	do
-		const n = 4000
+	--      끝난 뒤 적대자가 아직 정하지 않은 원소(gas)에 **서로 다른** 순위를 줘야
+	--      정확성까지 봅니다 — gas 끼리 동률로 두면 폴백이 아무것도 안 해도 통과했습니다
+	--      (2라운드 리뷰가 돌연변이로 재현). gas 는 어떤 solid 보다 크다고만 답했고 gas
+	--      끼리는 답한 적이 없으니, solid 뒤에 아무 순서로 붙여도 모든 대답과 맞습니다.
+	local function adversaryFor(n: number): ((number, number) -> boolean, () -> number, () -> { number })
 		const gas = n + 1
 		const rank = table.create(n, gas) :: { number }
 		local solid, candidate, calls = 0, 0, 0
@@ -995,20 +998,47 @@ do
 			end
 			return rank[x] < rank[y]
 		end
-		const k = n // 2
-		const picked = Arr.Range(1, n):NthElement(k, adversary) :: number
-		assert(calls < 150 * n, `적대적 입력에서 선택이 이차로 떨어짐: 비교 {calls} 번`)
-		-- 적대자가 마지막에 정한 순서에서 정말 k 번째인가
-		local below, atOrBelow = 0, 0
-		for id = 1, n do
-			if rank[id] < rank[picked] then
-				below += 1
+		local function settle(): { number }
+			for id = n, 1, -1 do
+				if rank[id] == gas then
+					rank[id] = solid
+					solid += 1
+				end
 			end
-			if rank[id] <= rank[picked] then
-				atOrBelow += 1
+			return rank
+		end
+		return adversary, function(): number
+			return calls
+		end, settle
+	end
+	do
+		const n = 4000
+		const k = n // 2
+		-- 값 판: 돌려준 값이 완성된 순서에서 정확히 k 번째(순위 k-1)
+		const adversary, calls, settle = adversaryFor(n)
+		const picked = Arr.Range(1, n):NthElement(k, adversary) :: number
+		assert(calls() < 150 * n, `적대적 입력에서 선택이 이차로 떨어짐: 비교 {calls()} 번`)
+		assert(settle()[picked] == k - 1, "적대적 입력에서 NthElement 가 k 번째가 아님")
+
+		-- 제자리 판: 순열 보존 + k 자리 + 분할 성질
+		const adversary2, calls2, settle2 = adversaryFor(n)
+		const arr = Arr.Range(1, n):NthElementInplace(k, adversary2)
+		assert(calls2() < 150 * n, `적대적 입력에서 NthElementInplace 가 이차: {calls2()}`)
+		const rank = settle2()
+		const seen = table.create(n, false)
+		for idx = 1, n do
+			const id = arr[idx]
+			assert(id ~= nil and not seen[id], "NthElementInplace 가 원소를 잃거나 겹침")
+			seen[id] = true
+		end
+		assert(arr.n == n and rank[arr[k]] == k - 1, "NthElementInplace 의 k 자리")
+		for idx = 1, n do
+			if idx < k then
+				assert(rank[arr[idx]] < rank[arr[k]], "NthElementInplace 왼쪽")
+			elseif idx > k then
+				assert(rank[arr[idx]] > rank[arr[k]], "NthElementInplace 오른쪽")
 			end
 		end
-		assert(below < k and atOrBelow >= k, `적대적 입력에서 k 번째가 아님({below}, {atOrBelow})`)
 	end
 
 	-- (2) PartialSort 가 k 로 버퍼를 할당해 math.huge 에서 크래시, 큰 k 에서 느렸음
@@ -1028,6 +1058,13 @@ do
 			function()
 				Arr.Of(30, 30):NthElement(1, nonStrict)
 			end,
+			-- 힙·table.sort 경로는 스캔이 없어 조용히 틀렸음(2라운드) — 진입 검사로 일관되게
+			function()
+				Arr.Of(60, 30, 20, 10, 40, 50):PartialSort(4, nonStrict)
+			end,
+			function()
+				Arr.Of(60, 30, 20, 10, 40, 50):PartialSortInplace(6, nonStrict)
+			end,
 		}
 	do
 		const ok, err = pcall(run :: () -> ())
@@ -1035,15 +1072,31 @@ do
 	end
 
 	-- (4) Shuffle 에 실수를 돌려주는 rng(Roblox Random:NextNumber 모양)를 주면
-	--     구멍과 데이터 유실이 조용히 생겼음
-	const shuffled = Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, function(lo: number, hi: number): number
-		return lo + (hi - lo) * 0.5
+	--     구멍과 데이터 유실이 조용히 생겼음. 1차에서 0 쪽으로 잘라 가뒀더니
+	--     이번엔 `idx` 가 영영 안 뽑혀 **사톨로 순열**(24개 중 6개만)로 치우쳤음
+	--     (2라운드 리뷰) — 조용히 치우치느니 계약 위반을 에러로 알립니다.
+	const badRngs: { (number, number) -> number } = {
+		function(lo: number, hi: number): number
+			return lo + (hi - lo) * 0.5
+		end,
+		function(_lo: number, hi: number): number
+			return hi + 1
+		end,
+		function(_lo: number, _hi: number): number
+			return 0 / 0
+		end,
+	}
+	for _, rng in badRngs do
+		const ok, err = pcall(function()
+			Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, rng)
+		end)
+		assert(not ok and string.find(tostring(err), "rng", 1, true) ~= nil, `rng 계약 위반: {err}`)
+	end
+	-- 정수 rng 는 그대로(Random:NextInteger 모양)
+	const fixed = Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, function(lo: number, _hi: number): number
+		return lo
 	end)
-	assert(shuffled.n == 4 and shuffled:Sort():Join(",") == "10,20,30,40", "실수 rng 도 순열")
-	const outOfRange = Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, function(_lo: number, hi: number): number
-		return hi + 1
-	end)
-	assert(outOfRange.n == 4 and outOfRange:Sort():Join(",") == "10,20,30,40", "범위 밖 rng 도 순열")
+	assert(fixed.n == 4 and fixed:Sort():Join(",") == "10,20,30,40", "정수 rng 는 순열")
 
 	-- (5) Sized/FromFunc 의 소수 길이가 안 잘려 n 이 3.5 가 되고 값이 사라졌음
 	const sized = Arr.Sized(2.5, 0)
@@ -1053,6 +1106,10 @@ do
 		return i * 10
 	end).n == 2, "FromFunc 소수 길이")
 	assert(not pcall(Arr.Sized, -1, 0), "Sized 음수 길이는 에러")
+	assert(
+		not pcall(Arr.Sized, math.huge, 0),
+		"Sized 무한 길이는 에러(table.create 의 엉뚱한 에러 대신)"
+	)
 	assert(not pcall(Arr.FromFunc, -1, function(i: number): number
 		return i
 	end), "FromFunc 음수 길이는 에러")
@@ -1075,6 +1132,44 @@ do
 	do
 		const ok, err = pcall(run :: () -> ())
 		assert(not ok and string.find(tostring(err), "NaN", 1, true) ~= nil, `NaN 구간: {err}`)
+	end
+
+	-- (7) 에러는 **사용자 호출 줄**을 가리켜야 합니다 — 새 배열판(Reverse/Rotate/
+	--     Shuffle)은 `XxxInplace(Clone(self))` 를 거쳐 한 프레임 깊어져 라이브러리
+	--     줄을 가리켰음(2라운드 리뷰). 그리고 k 의 NaN 도 구간 NaN 과 같은 정책으로.
+	const nanCalls: { () -> () } = {
+		function()
+			Arr.Of(10, 20):Reverse(0 / 0)
+		end,
+		function()
+			Arr.Of(10, 20):Rotate(1, 0 / 0)
+		end,
+		function()
+			Arr.Of(10, 20):Shuffle(0 / 0)
+		end,
+		function()
+			Arr.Reverse(Arr.Of(10, 20), 0 / 0)
+		end,
+		function()
+			Arr.Of(10, 20):Slice(0 / 0)
+		end,
+		function()
+			Arr.Of(10, 20):NthElement(0 / 0)
+		end,
+		function()
+			Arr.Of(10, 20):PartialSort(0 / 0)
+		end,
+		function()
+			Arr.Of(10, 20):NthElementInplace(0 / 0)
+		end,
+		function()
+			Arr.Of(10, 20):PartialSortInplace(0 / 0)
+		end,
+	}
+	for _, run in nanCalls do
+		const ok, err = pcall(run)
+		assert(not ok and string.find(tostring(err), "NaN", 1, true) ~= nil, `NaN 인자: {err}`)
+		assert(string.find(tostring(err), "spec.arr", 1, true) ~= nil, `에러가 사용자 줄이 아님: {err}`)
 	end
 end
 print("PASS")

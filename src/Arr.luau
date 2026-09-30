@@ -110,8 +110,9 @@ export type Folder<T, U> = (accumulator: U, element: T, index: number, arr: ArrV
 export type UntilFolder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<any>) -> (U, boolean?)
 -- 값을 여러 개 돌려줄 수 있는 변환 콜백. `Flatmap` 계열이 씁니다.
 export type Spreader<T, G> = (element: T, index: number, arr: ArrView<any>) -> ...G
--- `[min, max]` 의 **정수**를 기대합니다(`math.random` 모양). 실수나 범위 밖이
--- 오면 0 쪽으로 잘라 범위에 가둡니다 — 분포는 rng 책임입니다.
+-- `[min, max]` 의 **정수**를 돌려줘야 합니다(`math.random` 모양, Roblox 는
+-- `Random:NextInteger`). 실수(`NextNumber`)나 범위 밖이면 **에러**입니다 —
+-- 자르거나 가두면 분포가 조용히 치우칩니다. 균등성은 rng 책임입니다.
 export type Rng = (min: number, max: number) -> number
 
 -- 런타임 메소드 테이블. 아래에서 채웁니다.
@@ -178,8 +179,8 @@ end
 -- 2026-09-30 리뷰).
 const function checkLength(len: number, who: string): number
 	const count = toIndex(len)
-	if not (count >= 0) then
-		error(`Arr: {who} length must be a non-negative number (got {len})`, 3)
+	if not (count >= 0) or count == math.huge then
+		error(`Arr: {who} length must be a non-negative finite number (got {len})`, 3)
 	end
 	return count
 end
@@ -909,45 +910,79 @@ end
 -- 덮어쓰기냐" 가 갈려 실제로 데이터를 잃는 버그를 냈던 자리입니다.
 
 -- 구간을 뒤집습니다(제자리).
-const function ReverseInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
-	local s, l = resolveRange(self.n, start, last)
+-- 아래 세 쌍(Reverse/Rotate/Shuffle)은 **구간을 푼 뒤의 몸통**을 헬퍼로 두고
+-- 두 판이 각자 구간을 풉니다. 새 배열판이 `XxxInplace(Clone(self))` 를 부르면
+-- 한 프레임 깊어져 구간·인자 에러가 사용자 줄이 아니라 라이브러리 줄을
+-- 가리켰습니다(2026-09-30 2라운드 리뷰 — Luau 에는 꼬리 호출 최적화가 없음).
+const function reverseRange<T>(self: ArrData<T>, s: number, l: number)
 	while s < l do
 		self[s], self[l] = self[l], self[s]
 		s += 1
 		l -= 1
 	end
+end
+
+const function ReverseInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
+	const s, l = resolveRange(self.n, start, last)
+	reverseRange(self, s, l)
 	return self :: any
 end
 
 -- 구간을 뒤집은 **새 배열**(나머지는 그대로).
 const function Reverse<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
-	return ReverseInplace(Clone(self), start, last)
+	const s, l = resolveRange(self.n, start, last)
+	const copy = Clone(self)
+	reverseRange(copy, s, l)
+	return copy
+end
+
+-- `level` 은 에러가 가리킬 프레임 — 이 헬퍼를 부른 공개 함수의 호출자.
+const function rotateRange<T>(self: ArrData<T>, shift: number, s: number, l: number, level: number)
+	if l <= s then
+		return
+	end
+	if shift ~= shift or shift == math.huge or shift == -math.huge then
+		error("Arr: Rotate shift must be finite", level)
+	end
+	const span = l - s + 1
+	const k = toIndex(shift) % span
+	if k == 0 then
+		return
+	end
+	const buffer = table.create(k)
+	table.move(self :: any, s, s + k - 1, 1, buffer)
+	table.move(self :: any, s + k, l, s)
+	table.move(buffer, 1, k, l - k + 1, self :: any)
 end
 
 -- 구간을 회전합니다(제자리). **양수 shift 가 왼쪽 회전**입니다
 -- (`std::rotate` 방향). 구간 길이로 나눈 나머지만 의미가 있습니다.
 const function RotateInplace<T>(self: ArrData<T>, shift: number, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
-	if l <= s then
-		return self :: any
-	end
-	if shift ~= shift or shift == math.huge or shift == -math.huge then
-		error("Arr: Rotate shift must be finite", 2)
-	end
-	const span = l - s + 1
-	const k = toIndex(shift) % span
-	if k == 0 then
-		return self :: any
-	end
-	const buffer = table.create(k)
-	table.move(self :: any, s, s + k - 1, 1, buffer)
-	table.move(self :: any, s + k, l, s)
-	table.move(buffer, 1, k, l - k + 1, self :: any)
+	rotateRange(self, shift, s, l, 3)
 	return self :: any
 end
 
 const function Rotate<T>(self: ArrData<T>, shift: number, start: number?, last: number?): Arr<T>
-	return RotateInplace(Clone(self), shift, start, last)
+	const s, l = resolveRange(self.n, start, last)
+	const copy = Clone(self)
+	rotateRange(copy, shift, s, l, 3)
+	return copy
+end
+
+const function shuffleRange<T>(self: ArrData<T>, s: number, l: number, rng: Rng?, level: number)
+	const random = rng or math.random
+	for idx = l, s + 1, -1 do
+		const pick = random(s, idx)
+		-- 계약 위반은 **에러**입니다. 실수(`Random:NextNumber` 모양)나 범위 밖을
+		-- 그냥 쓰면 구멍과 데이터 유실이 났고(1차 리뷰), 0 쪽으로 잘라 가두면 `idx`
+		-- 가 영영 안 뽑혀 사톨로 순열(24개 중 6개만)로 **조용히 치우쳤습니다**
+		-- (2라운드 리뷰). NaN 도 여기서 걸립니다(`NaN ~= NaN`).
+		if pick ~= math.floor(pick) or pick < s or pick > idx then
+			error(`Arr: Shuffle rng must return an integer in [{s}, {idx}] (got {pick})`, level)
+		end
+		self[idx], self[pick] = self[pick], self[idx]
+	end
 end
 
 -- 구간을 섞습니다(제자리). Fisher-Yates.
@@ -955,23 +990,15 @@ end
 -- 이고, 테스트에서 결정적으로 만들려면 직접 넣으세요.
 const function ShuffleInplace<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
-	const random = rng or math.random
-	for idx = l, s + 1, -1 do
-		-- rng 가 실수(`Random:NextNumber` 모양)나 범위 밖을 주면 구멍과 데이터
-		-- 유실이 조용히 생겼습니다(2026-09-30 리뷰). 0 쪽으로 자르고 가둡니다.
-		local pick = toIndex(random(s, idx))
-		if not (pick >= s) then
-			pick = s
-		elseif pick > idx then
-			pick = idx
-		end
-		self[idx], self[pick] = self[pick], self[idx]
-	end
+	shuffleRange(self, s, l, rng, 3)
 	return self :: any
 end
 
 const function Shuffle<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
-	return ShuffleInplace(Clone(self), start, last, rng)
+	const s, l = resolveRange(self.n, start, last)
+	const copy = Clone(self)
+	shuffleRange(copy, s, l, rng, 3)
+	return copy
 end
 
 -- 1..n 중 **`nil` 이 아닌 것만** 조밀하게 모아 정렬합니다. `table.sort` 가
@@ -1156,6 +1183,20 @@ end
 
 const STRICT_ERROR = "Arr: invalid order function (less must be strict: less(x, x) == false)"
 
+-- 선택·부분 정렬의 진입 검사. 선택의 스캔은 경계에서 엄격성 위반을 잡지만,
+-- 힙과 `table.sort` 경로는 `<=` 를 받아도 **에러 없이 틀린 결과**를 냈습니다
+-- (Luau `table.sort` 는 `<=` 에서 조용히 오정렬 — 2라운드 리뷰, 1만 회 중 6601회).
+-- 원소 하나로 `less(x, x)` 를 한 번 봅니다. 모든 위반을 잡지는 못하지만
+-- `<=` 처럼 흔한 실수는 잡습니다. `k` 의 NaN 도 구간 NaN 과 같은 정책(에러).
+const function checkSelectArgs(sample: any, k: number, less: (any, any) -> boolean)
+	if k ~= k then
+		error("Arr: k is NaN", 3)
+	end
+	if sample ~= nil and less(sample, sample) then
+		error(STRICT_ERROR, 3)
+	end
+end
+
 -- 선택이 예산을 다 쓴 구간을 통째로 정렬합니다. `table.sort` 는 부분 구간을
 -- 못 받으므로 잠시 옮겨서.
 const function sortRangeFallback(a: { any }, lo: number, hi: number, less: (any, any) -> boolean)
@@ -1284,6 +1325,7 @@ end
 const function NthElement<T>(self: ArrData<T>, k: number, less: LessThan<T>?): T?
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
+	checkSelectArgs(buffer[1], k, less or defaultLess)
 	const i = toIndex(k)
 	const pos = if i < 0 then count + i + 1 else i
 	if pos < 1 or pos > count then
@@ -1299,6 +1341,7 @@ end
 const function NthElementInplace<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
+	checkSelectArgs(buffer[1], k, less or defaultLess)
 	const i = toIndex(k)
 	const pos = if i < 0 then count + i + 1 else i
 	if pos >= 1 and pos <= count then
@@ -1313,6 +1356,14 @@ end
 -- `partial_sort` 와 같음). 가장 큰 k 개는 `less` 를 뒤집어 넘기세요.
 const function PartialSort<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
 	const lt: (any, any) -> boolean = less or defaultLess
+	local sample: any = nil
+	for idx = 1, self.n do
+		if self[idx] ~= nil then
+			sample = self[idx]
+			break
+		end
+	end
+	checkSelectArgs(sample, k, lt)
 	-- 값 개수보다 큰 k 는 전체 — k 로 버퍼를 잡으면 `math.huge` 에서 크래시,
 	-- 큰 k 에서 원소 수가 아니라 k 에 비례해 느렸습니다(2026-09-30 리뷰).
 	const want = math.min(math.max(0, toIndex(k)), self.n)
@@ -1372,6 +1423,7 @@ const function PartialSortInplace<T>(self: ArrData<T>, k: number, less: LessThan
 	const lt: (any, any) -> boolean = less or defaultLess
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
+	checkSelectArgs(buffer[1], k, lt)
 	const want = math.min(math.max(0, toIndex(k)), count)
 	if want > 0 then
 		if want < count then
