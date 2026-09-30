@@ -14,14 +14,12 @@
 	- `Arr<T?>` 에서 집계가 막히고, 콜백이 `T?` 를 받아야 하는가
 	- 정리(`Compact`/`FillHoles`)가 `?` 를 떼는가, 제자리판은 안 떼는가
 
-	⚠️ **알려진 구멍 하나(`hole7`)**: 네임스페이스 호출에서 콜백 원소 파라미터를
-	**더 좁게**(`number` ⊂ `number?`) 적으면 통과합니다. 콜백 타입의 셋째 인자
-	(`arr: ArrView<T>`)가 `T` 를 언급하고 람다가 그 인자를 생략할 때의 체커
-	한계입니다 — `T?` 만의 문제가 아니라 `Arr<number | string>` 에서도 같고,
-	콜론 호출·명시적 타입 인자·셋째 인자에 `T` 가 없는 모양은 잡힙니다
-	(`base/typing-limits.md`). 막히면 건수가 1 늘어 배터리가 알려줍니다.
+	⭐ `neg7` 은 **구멍이던 자리**입니다: 콜백 타입의 셋째 인자가 `ArrView<T>`
+	이던 때는 네임스페이스 호출에서 원소 파라미터를 더 좁게(`number` ⊂
+	`number?`) 적어도 0건이었습니다. `ArrView<any>` 로 바꿔 닫았습니다(질문 V,
+	`base/typing-limits.md`). `neg10` 은 같은 구멍의 유니온 판입니다.
 
-	기대 진단: 9건 (NEG 8 + CANARY 1, hole7 은 지금 0건)
+	기대 진단: 11건 (NEG 10 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
@@ -49,14 +47,18 @@ local neg3 = Arr.Sized<<number>>(3, nil) -- 구멍을 number 자리에
 local neg4: Arr<number> = Arr.Sized<<number?>>(3, nil) -- ? 를 숨김
 local neg5: Arr<number> = Arr.Of(1, nil, 3)
 local neg6 = Arr.Sum(holed) -- 집계는 구멍 없는 타입만
-local hole7 = Arr.Map(holed, function(v: number): number -- ⚠️ 잡혀야 하는데 안 잡힘
+local neg7 = Arr.Map(holed, function(v: number): number -- ⭐ 구멍이던 자리
 	return v * 2
 end)
 local neg8: Arr<number> = Arr.FillHolesInplace(holed, 0) -- 제자리판은 ? 를 못 뗌
 local neg9: Arr<number> = Arr.FromTable({ 1, nil, 3 })
+local mixed = Arr.Of<<number | string>>(1, "a")
+local neg10 = Arr.Filter(mixed, function(v: number) -- 유니온에서도 같은 구멍이었음
+	return v > 0
+end)
 local canary: string = 42
 
 return {
 	filled, holed, fromOf, fromTable, seen, dense, fixed, total, count,
-	neg1, neg2, neg3, neg4, neg5, neg6, hole7, neg8, neg9, canary,
+	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, canary,
 }

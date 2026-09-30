@@ -92,8 +92,10 @@
   것**이 건전하고, **집계·정렬**(`Sum`/`Prod`/`Max`/`Min`/`Sort`/`Join`)이
   구멍을 건너뛰는 것은 타입이 거짓말할 때(캐스트, `a[i] = nil`)를 위한
   **런타임 그물**입니다. `?` 를 떼는 길은 `Compact`/`FillHoles`(새 배열).
-  ⚠️ 체커 한계 하나: 네임스페이스 호출에서 콜백 원소를 **더 좁게** 적으면
-  (`number?` 자리에 `v: number`) 안 잡힙니다(`base/typing-limits.md`).
+  ⚠️ 그래서 **콜백 타입의 다른 인자에 `T` 를 넣지 않습니다** — 셋째 인자가
+  `ArrView<T>` 이던 때는 네임스페이스 호출에서 콜백 원소를 더 좁게 적은 것
+  (`number?` 자리에 `v: number`)이 안 잡혔습니다. 지금은 `ArrView<any>`
+  (질문 V, `base/typing-limits.md`).
 
 - **맵/셋 표현**: `{ data, size }` 래퍼. 인스턴스에 길이 필드를 직접 두면
   `HashMap<string, …>` 에서 `Set("size", v)` 가 그걸 덮어씁니다.

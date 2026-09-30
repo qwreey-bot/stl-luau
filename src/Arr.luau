@@ -34,13 +34,18 @@
 	| 타입 | 무엇 | 어디에 |
 	|---|---|---|
 	| `ArrData<T>` | 데이터부만 | 읽기만 하는 메소드의 `self` |
-	| `ArrView<T>` | 조회 + 자기폐쇄 | **콜백이 받는 컨테이너 인자** |
+	| `ArrView<T>` | 조회 + 자기폐쇄 | **콜백이 받는 컨테이너 인자**(`ArrView<any>` 로) |
 	| `Arr<T>` | 전체형 | 사용자가 들고 다니는 것 |
 
 	⭐ **콜백의 컨테이너 인자는 절대 `Arr<T>` 를 언급하면 안 됩니다.** 언급하면
 	`Map` 같은 타입 변환 체이닝이 1단부터 죽습니다(진단 0건으로 조용히).
 	그래서 `ArrView<T>` 의 자기폐쇄 메소드는 `Arr<T>` 가 아니라 `ArrView<T>`
 	를 돌려줍니다.
+
+	⭐ **그리고 콜백 타입에서는 `T` 도 언급하지 않습니다(`ArrView<any>`).**
+	언급하면 네임스페이스 호출에서 콜백 원소를 더 좁게 적은 것
+	(`Arr<number?>` 에 `function(v: number)`)을 체커가 놓칩니다(질문 V,
+	`spikes/50`). 대가로 콜백 안 `arr[i]` 는 `any` 입니다.
 
 	⭐ **전체형은 교집합(`&`)입니다. `setmetatable<>` 이 아닙니다** — 메소드
 	30개에서 `pending-expansion` 1700여 건으로 무너집니다. 한도 플래그 6종
@@ -93,12 +98,18 @@ export type ArrView<T> = ArrData<T> & {
 -- 함수를 이미 서브타입으로 받아주므로 arity 별 오버로드가 필요 없습니다.
 -- 교집합(`&`)으로 늘어놓으면 "모든 arity 를 동시에 만족" 을 요구해서
 -- `function(x: number) return tostring(x) end` 같은 정상 콜백이 거부됩니다(실측).
-export type Mapper<T, G> = (element: T, index: number, arr: ArrView<T>) -> G
-export type Predicate<T> = (element: T, index: number, arr: ArrView<T>) -> boolean
-export type Folder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<T>) -> U
-export type UntilFolder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<T>) -> (U, boolean?)
+--
+-- ⭐ 셋째 인자는 **`ArrView<any>`** 입니다 — `ArrView<T>` 로 두면 네임스페이스
+-- 호출(`Arr.Map(a, fn)`)에서 람다가 그 인자를 생략할 때 원소 파라미터를 더
+-- 좁게 적은 것(`number?` 자리에 `v: number`)이 **진단 0건으로 통과**했습니다
+-- (2026-09-30 실측, 질문 V). 드물게 쓰는 셋째 인자의 원소 타입을 내주고
+-- 모든 콜백이 쓰는 첫 인자의 건전성을 삽니다.
+export type Mapper<T, G> = (element: T, index: number, arr: ArrView<any>) -> G
+export type Predicate<T> = (element: T, index: number, arr: ArrView<any>) -> boolean
+export type Folder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<any>) -> U
+export type UntilFolder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<any>) -> (U, boolean?)
 -- 값을 여러 개 돌려줄 수 있는 변환 콜백. `Flatmap` 계열이 씁니다.
-export type Spreader<T, G> = (element: T, index: number, arr: ArrView<T>) -> ...G
+export type Spreader<T, G> = (element: T, index: number, arr: ArrView<any>) -> ...G
 export type Rng = (min: number, max: number) -> number
 
 -- 런타임 메소드 테이블. 아래에서 채웁니다.
@@ -1230,7 +1241,7 @@ end
 
 -- 초기값 없이 **첫 원소를 씨앗으로** 접습니다. 빈 배열이면 `nil`.
 -- `arr:Reduce(math.max)` 같은 게 자연스러워집니다.
-const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<T>) -> T): T?
+const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<any>) -> T): T?
 	const len = self.n
 	if len == 0 then
 		return nil

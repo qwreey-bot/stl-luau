@@ -7,7 +7,7 @@
 
 | 무엇 | 어디 |
 |---|---|
-| **V. `Arr` 콜백 셋째 인자에서 `T` 를 뺄까** — 네임스페이스 호출에서 좁은 콜백 주석이 안 잡히는 체커 구멍. 추천 (b) | `question.md` V |
+| (없음) | |
 
 ## 📍 지금 여기 (2026-09-22)
 
@@ -64,7 +64,8 @@ local f = nested:Flat<<number>>()
    고치다 찾은 1개(TreeMap/TreeSet `Iter`)를 전부 고침. 남은 1개는 정책 질문 T.
 5. ~~**질문 T (b) 구현**~~ — **2026-09-30.** 구멍은 `Arr<T?>` 로 드러남,
    `Sized` 의 fill 필수, `FillHoles`(새 배열, `?` 를 뗌)/`FillHolesInplace`
-   쌍(`question.md` U), 음성 대조군 `spikes/50`. 하다가 나온 체커 구멍은 V.
+   쌍(`question.md` U), 음성 대조군 `spikes/50`. 하다가 나온 체커 구멍은
+   콜백 셋째 인자를 `ArrView<any>` 로 바꿔 닫음(V, 사용자 결정).
 6. **문서 사이트** — API 가 한 바퀴 안정된 뒤. `base/docs-plan.md`.
 
 ## 백로그 (당장 안 함)

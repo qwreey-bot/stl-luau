@@ -90,6 +90,11 @@ type ArrIfce = {
 빠집니다 — 넣으면 바깥 체이닝이 죽습니다. 콜백 안에서 `Map` 이 필요하면
 바깥 변수를 쓰면 됩니다.
 
+> **[2026-09-30 갱신]** 콜백 타입에서는 이제 **`ArrView<any>`** 를 넘깁니다 —
+> `ArrView<T>` 가 `T` 를 언급하면 네임스페이스 호출에서 좁은 콜백 주석이
+> 안 잡혔습니다(`question.md` V, `base/typing-limits.md`). 위 표의 결론
+> (`Arr<T>` 를 언급하지 말 것)은 그대로입니다.
+
 콜백 안에서 이게 전부 됩니다:
 ```lua
 a:Map(function(el, idx, arr: ArrView<number>)

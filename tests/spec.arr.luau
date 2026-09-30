@@ -273,7 +273,9 @@ same(
 	"Map 빈 것"
 )
 same(
-	Arr.Of(1, 2):Map(function(v)
+	-- 콜백 주석이 필요합니다 — 셋째 인자가 `ArrView<any>` 라 `to` 와 함께
+	-- 넘기면 `T` 를 붙잡을 단서가 없습니다(질문 V 의 대가).
+	Arr.Of(1, 2):Map(function(v: number)
 		return v
 	end, Arr.Of(0)),
 	{ 0, 1, 2 },
