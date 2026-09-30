@@ -1016,6 +1016,379 @@ end
 
 --#endregion
 
+--#region ----------- 정렬 가족 -----------
+--[[
+	`table.sort` 하나로는 안 되는 정렬들. 전부 **순수 Luau** 이고, 구멍은 `Sort`
+	와 같은 규약입니다 — 값만 모아 다루고 구멍은 꼬리로 보내며 `n` 은 그대로.
+
+	| 무엇 | 언제 | 실측(비교자 준 `table.sort` = 1.00, 원소 10만) |
+	|---|---|---|
+	| `StableSort` | 같은 순위끼리 **입력 순서를 지켜야** 할 때 | 무작위 1.44x, **이미 정렬된 입력 0.11x** |
+	| `SortBy(key)` | **키 계산이 비쌀 때** — 키를 원소당 한 번만 계산(안정) | 아래 ⚠️ |
+	| `NthElement(k)` | k 번째 값만 필요할 때(중앙값 등) | 0.17x |
+	| `PartialSort(k)` | 앞 k 개만 정렬해서 필요할 때(상위 k) | k=10: 0.07x, k=1000: 0.14x |
+	| `MergeSorted` | **이미 정렬된** 두 배열을 합칠 때 | 5만+5만: 0.07x |
+
+	⚠️ **`SortBy` 는 키가 쌀 때 오히려 느립니다.** 키·순서 표를 따로 만드는
+	비용이 있어서, 필드 하나(`r.age`)면 `StableSort(a, function(x, y) return
+	x.age < y.age end)` 가 낫습니다(1.35x 대 1.53x). 키가 비싸면(`string.lower`
+	등) 비교자 안에서 뽑는 것보다 **2배** 빠릅니다(1.97x 대 4.01x).
+
+	⚠️ 원소가 숫자·문자열이고 기본 순서면 **비교자 없는 `Sort()` 가 이들보다
+	빠릅니다**(0.24x — VM 안에서 비교). 안정성이 필요 없으면 `Sort` 를 쓰세요.
+
+	정렬·선택 작업은 전부 **메타테이블 없는 날 버퍼**에서 합니다 — 원소를
+	여러 번 읽고 쓰므로 인덱싱 세금(1.59x)이 곱해지지 않게.
+]]
+
+-- 비교자를 주지 않았을 때. 순수 Luau 정렬은 VM 의 기본 비교 경로가 없어서
+-- 함수 하나를 거칩니다.
+const function defaultLess(a: any, b: any): boolean
+	return a < b
+end
+
+-- 이 크기 이하 구간은 삽입 정렬로(병합 재귀의 바닥). 16~32 에서 평평했습니다.
+const INSERTION_CUTOFF = 24
+
+-- 값만 조밀하게 모읍니다. 구멍은 건너뜁니다.
+const function gatherValues<T>(self: ArrData<T>, buffer: { T }): number
+	local count = 0
+	for idx = 1, self.n do
+		const item = self[idx]
+		if item ~= nil then
+			count += 1
+			buffer[count] = item
+		end
+	end
+	return count
+end
+
+-- 조밀 버퍼를 제자리로 되쓰고 꼬리(구멍 자리)를 비웁니다.
+const function writeBack<T>(self: ArrData<T>, buffer: { T }, count: number)
+	table.move(buffer, 1, count, 1, self :: any)
+	for idx = count + 1, self.n do
+		self[idx] = nil :: any
+	end
+end
+
+-- 안정 삽입 정렬. `less(v, a[j])` 가 **엄격**해서 같은 값은 앞질러 가지 않습니다.
+const function insertionSortRange(a: { any }, lo: number, hi: number, less: (any, any) -> boolean)
+	for i = lo + 1, hi do
+		const v = a[i]
+		local j = i - 1
+		while j >= lo and less(v, a[j]) do
+			a[j + 1] = a[j]
+			j -= 1
+		end
+		a[j + 1] = v
+	end
+end
+
+-- 안정 병합 정렬(하향식). `tmp` 는 왼쪽 절반을 잠시 옮겨두는 버퍼 하나를
+-- 재귀 전체가 같이 씁니다. 두 절반이 이미 순서면 병합을 건너뜁니다 — 거의
+-- 정렬된 입력에서 `table.sort` 보다 10배 빠른 이유입니다.
+local function mergeSortRange(a: { any }, tmp: { any }, lo: number, hi: number, less: (any, any) -> boolean)
+	if hi - lo < INSERTION_CUTOFF then
+		insertionSortRange(a, lo, hi, less)
+		return
+	end
+	const mid = (lo + hi) // 2
+	mergeSortRange(a, tmp, lo, mid, less)
+	mergeSortRange(a, tmp, mid + 1, hi, less)
+	if not less(a[mid + 1], a[mid]) then
+		return
+	end
+	table.move(a, lo, mid, lo, tmp)
+	local i, j, k = lo, mid + 1, lo
+	while i <= mid and j <= hi do
+		-- 같으면 왼쪽(tmp)을 먼저 — 안정성
+		if less(a[j], tmp[i]) then
+			a[k] = a[j]
+			j += 1
+		else
+			a[k] = tmp[i]
+			i += 1
+		end
+		k += 1
+	end
+	if i <= mid then
+		table.move(tmp, i, mid, k, a)
+	end
+end
+
+const function stableSortBuffer(buffer: { any }, count: number, less: (any, any) -> boolean)
+	if count > 1 then
+		mergeSortRange(buffer, table.create(count // 2 + 1), 1, count, less)
+	end
+end
+
+-- 선택(quickselect, 호어 분할 + 중앙값 셋). 끝나면 `a[k]` 는 정렬했을 때의 그
+-- 값이고, 왼쪽은 전부 `a[k]` 이하, 오른쪽은 이상입니다. 평균 O(n).
+const function selectRange(a: { any }, lo: number, hi: number, k: number, less: (any, any) -> boolean)
+	while hi > lo do
+		const x, y, z = a[lo], a[(lo + hi) // 2], a[hi]
+		const pivot = if less(x, y)
+			then (if less(y, z) then y elseif less(x, z) then z else x)
+			else (if less(x, z) then x elseif less(y, z) then z else y)
+		local i, j = lo, hi
+		while i <= j do
+			while less(a[i], pivot) do
+				i += 1
+			end
+			while less(pivot, a[j]) do
+				j -= 1
+			end
+			if i <= j then
+				a[i], a[j] = a[j], a[i]
+				i += 1
+				j -= 1
+			end
+		end
+		if k <= j then
+			hi = j
+		elseif k >= i then
+			lo = i
+		else
+			return -- j < k < i: 가운데는 전부 피벗과 같음
+		end
+	end
+end
+
+-- 같은 순위끼리 **입력 순서를 지키는** 정렬의 새 배열. 구멍은 꼬리로.
+-- 비교자를 안 주면 `<` 입니다.
+const function StableSort<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
+	const len = self.n
+	const buffer = table.create(len)
+	const count = gatherValues(self, buffer)
+	stableSortBuffer(buffer, count, less or defaultLess)
+	-- 버퍼가 곧 결과입니다(꼬리는 이미 nil). 복사 한 번을 아낍니다.
+	return wrap(buffer, len)
+end
+
+-- `StableSort` 의 제자리 판.
+const function StableSortInplace<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
+	const buffer = table.create(self.n)
+	const count = gatherValues(self, buffer)
+	stableSortBuffer(buffer, count, less or defaultLess)
+	writeBack(self, buffer, count)
+	return self :: any
+end
+
+-- 키로 정렬한 새 배열. **키를 원소당 한 번만 계산**합니다 — 비교자 안에서
+-- 키를 뽑으면 n log n 번 부릅니다. **안정 정렬**입니다(같은 키는 입력 순서).
+-- `less` 는 키끼리의 비교이고, 안 주면 `<` 입니다. 구멍에는 `key` 를 부르지
+-- 않고 꼬리로 보냅니다.
+const function sortByInto<T, K>(self: ArrData<T>, key: (element: T) -> K, less: LessThan<K>?): ({ T }, number)
+	const len = self.n
+	const values = table.create(len)
+	const count = gatherValues(self, values)
+	const keys = table.create(count) :: { K }
+	const order = table.create(count) :: { number }
+	for idx = 1, count do
+		keys[idx] = key(values[idx])
+		order[idx] = idx
+	end
+	const keyLess: (any, any) -> boolean = less or defaultLess
+	stableSortBuffer(order, count, function(a: number, b: number): boolean
+		return keyLess(keys[a], keys[b])
+	end)
+	const sorted = table.create(len)
+	for idx = 1, count do
+		sorted[idx] = values[order[idx]]
+	end
+	return sorted, count
+end
+
+const function SortBy<T, K>(self: ArrData<T>, key: (element: T) -> K, less: LessThan<K>?): Arr<T>
+	const sorted = sortByInto(self, key, less)
+	return wrap(sorted, self.n)
+end
+
+-- `SortBy` 의 제자리 판.
+const function SortByInplace<T, K>(self: ArrData<T>, key: (element: T) -> K, less: LessThan<K>?): Arr<T>
+	const sorted, count = sortByInto(self, key, less)
+	writeBack(self, sorted, count)
+	return self :: any
+end
+
+-- 정렬했을 때 `k` 번째에 올 **값**. 배열은 안 건드립니다. 평균 O(n).
+-- `k` 는 **구멍을 뺀 값들 사이의 순위**이고 음수는 뒤에서(`-1` = 최댓값)입니다.
+-- 범위 밖이면 `nil`. 중앙값은 `NthElement(a, (Len + 1) // 2)` 처럼.
+const function NthElement<T>(self: ArrData<T>, k: number, less: LessThan<T>?): T?
+	const buffer = table.create(self.n)
+	const count = gatherValues(self, buffer)
+	const i = toIndex(k)
+	const pos = if i < 0 then count + i + 1 else i
+	if pos < 1 or pos > count then
+		return nil
+	end
+	selectRange(buffer, 1, count, pos, less or defaultLess)
+	return buffer[pos]
+end
+
+-- C++ `nth_element` 의 모양 그대로(제자리): `k` 번째 자리에 정렬했을 때의 값이
+-- 오고, 그 왼쪽은 전부 이하, 오른쪽은 이상입니다(양쪽 안의 순서는 정하지
+-- 않음). 구멍은 꼬리로. `k` 가 범위 밖이면 구멍만 치웁니다.
+const function NthElementInplace<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+	const buffer = table.create(self.n)
+	const count = gatherValues(self, buffer)
+	const i = toIndex(k)
+	const pos = if i < 0 then count + i + 1 else i
+	if pos >= 1 and pos <= count then
+		selectRange(buffer, 1, count, pos, less or defaultLess)
+	end
+	writeBack(self, buffer, count)
+	return self :: any
+end
+
+-- 가장 앞에 올 `k` 개를 **정렬해서** 담은 새 배열(길이 `min(k, 값 개수)`).
+-- 크기 k 힙으로 한 번 훑습니다 — O(n log k). **안정하지 않습니다**(C++
+-- `partial_sort` 와 같음). 가장 큰 k 개는 `less` 를 뒤집어 넘기세요.
+const function PartialSort<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+	const lt: (any, any) -> boolean = less or defaultLess
+	const want = math.max(0, toIndex(k))
+	-- 최대 힙(꼭대기 = 지금까지 고른 k 개 중 가장 뒤에 올 것)
+	const heap = table.create(want)
+	local size = 0
+	for idx = 1, self.n do
+		const item = self[idx]
+		if item == nil then
+			continue
+		end
+		if size < want then
+			size += 1
+			heap[size] = item
+			local child = size
+			while child > 1 do
+				const parent = child // 2
+				if lt(heap[parent], heap[child]) then
+					heap[parent], heap[child] = heap[child], heap[parent]
+					child = parent
+				else
+					break
+				end
+			end
+		elseif size > 0 and lt(item, heap[1]) then
+			heap[1] = item
+			local parent = 1
+			while true do
+				const left = parent * 2
+				if left > size then
+					break
+				end
+				local child = left
+				if left + 1 <= size and lt(heap[left], heap[left + 1]) then
+					child = left + 1
+				end
+				if lt(heap[parent], heap[child]) then
+					heap[parent], heap[child] = heap[child], heap[parent]
+					parent = child
+				else
+					break
+				end
+			end
+		end
+	end
+	if less then
+		table.sort(heap, less)
+	else
+		table.sort(heap)
+	end
+	return wrap(heap, size)
+end
+
+-- `PartialSort` 의 제자리 판(C++ `partial_sort` 모양): 앞 `k` 칸에 가장 앞에 올
+-- 값들이 정렬되어 오고, 나머지 값들은 그 뒤에 **순서 없이** 옵니다. 구멍은 꼬리로.
+const function PartialSortInplace<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+	const lt: (any, any) -> boolean = less or defaultLess
+	const buffer = table.create(self.n)
+	const count = gatherValues(self, buffer)
+	const want = math.min(math.max(0, toIndex(k)), count)
+	if want > 0 then
+		if want < count then
+			selectRange(buffer, 1, count, want, lt)
+		end
+		-- 앞 want 칸만 따로 정렬합니다(`table.sort` 는 부분 구간을 못 받음).
+		const head = table.move(buffer, 1, want, 1, table.create(want))
+		if less then
+			table.sort(head, less)
+		else
+			table.sort(head)
+		end
+		table.move(head, 1, want, 1, buffer)
+	end
+	writeBack(self, buffer, count)
+	return self :: any
+end
+
+-- **이미 정렬된** 두 배열을 정렬을 유지하며 합친 새 배열. O(n + m).
+-- 같은 순위면 `self` 쪽이 먼저입니다(안정). 구멍은 건너뜁니다. 정렬되지 않은
+-- 입력을 주면 결과도 정렬되지 않습니다(검사하지 않음 — `IsSorted` 로 확인).
+-- 그냥 이어붙이기는 `Concat` 입니다.
+const function MergeSorted<T>(self: ArrData<T>, other: ArrData<T>, less: LessThan<T>?): Arr<T>
+	const lt: (any, any) -> boolean = less or defaultLess
+	const leftLen, rightLen = self.n, other.n
+	const raw = table.create(leftLen + rightLen)
+	local i, j, count = 1, 1, 0
+	-- 구멍을 건너뛴 다음 값의 위치
+	while i <= leftLen and self[i] == nil do
+		i += 1
+	end
+	while j <= rightLen and other[j] == nil do
+		j += 1
+	end
+	while i <= leftLen and j <= rightLen do
+		const a, b = self[i], other[j]
+		count += 1
+		if lt(b, a) then
+			raw[count] = b
+			j += 1
+			while j <= rightLen and other[j] == nil do
+				j += 1
+			end
+		else
+			raw[count] = a
+			i += 1
+			while i <= leftLen and self[i] == nil do
+				i += 1
+			end
+		end
+	end
+	for idx = i, leftLen do
+		const item = self[idx]
+		if item ~= nil then
+			count += 1
+			raw[count] = item
+		end
+	end
+	for idx = j, rightLen do
+		const item = other[idx]
+		if item ~= nil then
+			count += 1
+			raw[count] = item
+		end
+	end
+	return wrap(raw, count)
+end
+
+-- 구멍을 건너뛰고 이웃한 값끼리 순서가 맞는가. 같은 값은 순서가 맞는 것으로 봅니다.
+const function IsSorted<T>(self: ArrData<T>, less: LessThan<T>?): boolean
+	const lt: (any, any) -> boolean = less or defaultLess
+	local prev: any = nil
+	for idx = 1, self.n do
+		const item = self[idx]
+		if item ~= nil then
+			if prev ~= nil and lt(item, prev) then
+				return false
+			end
+			prev = item
+		end
+	end
+	return true
+end
+
+--#endregion
+
 --#region ----------- 스트림 -----------
 
 -- 각 원소를 변환한 **새 배열**. `to` 를 주면 그 뒤에 이어붙입니다.
@@ -1370,6 +1743,17 @@ type ArrIfce = {
 	SortInplace: typeof(SortInplace),
 	SortUnchecked: typeof(SortUnchecked),
 	SortInplaceUnchecked: typeof(SortInplaceUnchecked),
+	-- 정렬 가족
+	StableSort: typeof(StableSort),
+	StableSortInplace: typeof(StableSortInplace),
+	SortBy: typeof(SortBy),
+	SortByInplace: typeof(SortByInplace),
+	NthElement: typeof(NthElement),
+	NthElementInplace: typeof(NthElementInplace),
+	PartialSort: typeof(PartialSort),
+	PartialSortInplace: typeof(PartialSortInplace),
+	MergeSorted: typeof(MergeSorted),
+	IsSorted: typeof(IsSorted),
 	-- 스트림
 	Map: typeof(Map),
 	MapInplace: typeof(MapInplace),
@@ -1416,6 +1800,11 @@ Ifce = {
 	Shuffle = Shuffle, ShuffleInplace = ShuffleInplace,
 	Sort = Sort, SortInplace = SortInplace,
 	SortUnchecked = SortUnchecked, SortInplaceUnchecked = SortInplaceUnchecked,
+	StableSort = StableSort, StableSortInplace = StableSortInplace,
+	SortBy = SortBy, SortByInplace = SortByInplace,
+	NthElement = NthElement, NthElementInplace = NthElementInplace,
+	PartialSort = PartialSort, PartialSortInplace = PartialSortInplace,
+	MergeSorted = MergeSorted, IsSorted = IsSorted,
 	Map = Map, MapInplace = MapInplace, Filter = Filter, Retain = Retain,
 	Flat = Flat, FlatInplace = FlatInplace,
 	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace,
@@ -1592,7 +1981,10 @@ return {
 	Splice = Splice, SpliceInplace = SpliceInplace, Reverse = Reverse,
 	ReverseInplace = ReverseInplace, Rotate = Rotate, RotateInplace = RotateInplace, Shuffle = Shuffle,
 	ShuffleInplace = ShuffleInplace, Sort = Sort, SortInplace = SortInplace,
-	SortUnchecked = SortUnchecked, SortInplaceUnchecked = SortInplaceUnchecked, Map = Map,
+	SortUnchecked = SortUnchecked, SortInplaceUnchecked = SortInplaceUnchecked,
+	StableSort = StableSort, StableSortInplace = StableSortInplace, SortBy = SortBy, SortByInplace = SortByInplace,
+	NthElement = NthElement, NthElementInplace = NthElementInplace, PartialSort = PartialSort,
+	PartialSortInplace = PartialSortInplace, MergeSorted = MergeSorted, IsSorted = IsSorted, Map = Map,
 	MapInplace = MapInplace, Filter = Filter, Retain = Retain, Flat = Flat, FlatInplace = FlatInplace,
 	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace, Drain = Drain, ConcatInplace = ConcatInplace,
 	Fold = Fold, FoldRight = FoldRight, Reduce = Reduce, FoldUntil = FoldUntil, Get = Get,

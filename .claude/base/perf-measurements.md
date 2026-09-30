@@ -359,3 +359,32 @@ top-k 는 크기 k 최대힙 후 정렬).
   아낄 수 있습니다.
 - 비교자 없는 `table.sort` 의 4배는 순수 Luau 정렬이 못 따라갑니다 — 원소가
   숫자·문자열이고 기본 순서면 여전히 `Sort()` 가 답입니다.
+
+### 15-2. 실제 구현(M2, 2026-09-30) — `src/Arr.luau` 정렬 가족
+
+같은 조건(원소 10만, `luau -O2`, 7회 최소, 기준 = `Arr.Sort(a, less)` 33.7ms).
+스크래치 숫자와 맞았습니다.
+
+| 무엇 | 배수 |
+|---|---|
+| `Arr.Sort(a)` 비교자 없음 | 0.27x |
+| `StableSort(a, less)` 무작위 / 비교자 없음 / `Inplace` | 1.44x / 1.44x / 1.44x |
+| `StableSort(a, less)` 이미 정렬 | 0.11x |
+| `NthElement(a, N/2)` | 0.17x |
+| `PartialSort(a, 10)` / `(a, 1000)` / `PartialSortInplace(a, 1000)` | 0.07x / 0.14x / 0.14x |
+| `MergeSorted`(정렬된 5만 + 5만) | 0.07x |
+
+**키 정렬** — 레코드 10만, 기준 = `Sort(a, function(x, y) return x.age < y.age end)`:
+
+| 무엇 | 배수 |
+|---|---|
+| `StableSort`, 비교자 안에서 `.age` | 1.35x |
+| `SortBy(.age)` | **1.53x (싼 키에선 손해)** |
+| `Sort`, 비교자 안에서 `string.lower(name)` | 4.01x |
+| `SortBy(string.lower(name))` | **1.97x (비싼 키에선 2배 이득)** |
+
+**교훈**: `SortBy` 는 키 표·순서 표를 따로 만드는 고정비가 있어 필드 하나를
+읽는 키에서는 비교자 안에서 뽑는 쪽보다 느립니다. 키가 함수 호출·문자열
+가공처럼 비쌀 때만 씁니다 — 주석에 그렇게 적었습니다.
+`StableSort` 는 비교자가 없어도 1.44x 로 같습니다(순수 Luau 에는 VM 기본 비교
+경로가 없어 `defaultLess` 함수 하나를 거침).

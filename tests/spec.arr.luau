@@ -650,6 +650,239 @@ do
 end
 print("PASS")
 
+print("=== 17. 정렬 가족 ===")
+do
+	type Rec = { k: number, id: number }
+	local function byK(a: Rec, b: Rec): boolean
+		return a.k < b.k
+	end
+	-- 대조 기준: 원래 위치를 타이브레이커로 쓴 table.sort = 안정 정렬의 정의
+	local function stableRef(list: { Rec }): { Rec }
+		const copy = table.clone(list)
+		table.sort(copy, function(a: Rec, b: Rec): boolean
+			if a.k ~= b.k then
+				return a.k < b.k
+			end
+			return a.id < b.id
+		end)
+		return copy
+	end
+	local function randomRecs(size: number, keyRange: number): Arr<Rec>
+		const out = Arr.Of<<Rec>>()
+		for id = 1, size do
+			out:PushBack({ k = math.random(1, keyRange), id = id * 10 })
+		end
+		return out
+	end
+	local function randomNums(size: number, range: number): Arr<number>
+		const out = Arr.Of<<number>>()
+		for _ = 1, size do
+			out:PushBack(math.random(1, range) * 10)
+		end
+		return out
+	end
+	local function sortedCopy(a: Arr<number>): { number }
+		const copy = table.move(a, 1, a.n, 1, {}) :: { number }
+		table.sort(copy)
+		return copy
+	end
+	-- 구멍을 꼬리로 보낸 결과는 `n` 이 값 개수보다 큽니다 — 앞부분만 봅니다.
+	local function samePrefix(actual: any, expected: { any }, label: string)
+		for idx = 1, #expected do
+			assert(actual[idx] == expected[idx], `{label}: [{idx}] 이 {tostring(actual[idx])}`)
+		end
+	end
+	local function sameList(actual: { number }, expected: { number }, label: string)
+		assert(#actual == #expected, `{label}: 길이`)
+		for idx = 1, #expected do
+			assert(actual[idx] == expected[idx], `{label}: [{idx}]`)
+		end
+	end
+	math.randomseed(20260930)
+
+	-- StableSort: 같은 k 끼리 입력 순서 — 삽입정렬 바닥(<24)과 병합 둘 다 지나게
+	const recs = Arr.Of<<Rec>>({ k = 2, id = 10 }, { k = 1, id = 20 }, { k = 2, id = 30 }, { k = 1, id = 40 })
+	const stable = recs:StableSort(byK)
+	assert(stable[1].id == 20 and stable[2].id == 40 and stable[3].id == 10 and stable[4].id == 30, "StableSort 안정")
+	assert(recs[1].id == 10, "StableSort 는 원본을 안 건드림")
+	for _ = 1, 300 do
+		const input = randomRecs(math.random(0, 120), math.random(1, 6))
+		const expected = stableRef(table.move(input, 1, input.n, 1, {}) :: { Rec })
+		const got = Arr.StableSort(input, byK)
+		assert(got.n == input.n, "StableSort 길이")
+		for idx = 1, input.n do
+			assert(got[idx] == expected[idx], "StableSort 무작위 대조")
+		end
+	end
+	same(Arr.Of(30, 10, 20):StableSort(), { 10, 20, 30 }, "StableSort 기본 비교자")
+	same(emptyNum():StableSort(), {}, "StableSort 빈 것")
+	-- 이미 정렬된 입력(병합 생략 경로)과 역순
+	const ascending = Arr.Range(1, 200)
+	same(ascending:StableSort(), table.move(ascending, 1, 200, 1, {}), "StableSort 이미 정렬")
+	same(Arr.Range(200, 1, -1):StableSort(), table.move(ascending, 1, 200, 1, {}), "StableSort 역순")
+	-- 구멍은 꼬리로, n 은 그대로
+	const holed = Arr.Of<<number?>>(30, nil, 10, nil, 20)
+	const holedSorted = holed:StableSort()
+	assert(holedSorted.n == 5 and holedSorted[1] == 10 and holedSorted[3] == 30, "StableSort 구멍")
+	assert(holedSorted[4] == nil and holedSorted[5] == nil, "StableSort 구멍은 꼬리로")
+	const inplace = Arr.Of(30, 10, 20)
+	assert(inplace:StableSortInplace() == inplace, "StableSortInplace 는 자기 자신")
+	same(inplace, { 10, 20, 30 }, "StableSortInplace")
+	const holedIn = Arr.Of<<number?>>(nil, 20, nil, 10)
+	holedIn:StableSortInplace()
+	assert(holedIn.n == 4 and holedIn[1] == 10 and holedIn[2] == 20 and holedIn[3] == nil, "StableSortInplace 구멍")
+
+	-- SortBy: 키는 값마다 한 번, 안정, 구멍엔 키를 안 부름
+	local calls = 0
+	const words = Arr.Of<<string?>>("ccc", "a", nil, "bb", "dd")
+	const byLen = words:SortBy(function(w: string?): number
+		calls += 1
+		return #(w :: string)
+	end)
+	assert(calls == 4, `SortBy 키는 값마다 한 번 ({calls})`)
+	samePrefix(byLen, { "a", "bb", "dd", "ccc" }, "SortBy 안정(bb 가 dd 앞)")
+	assert(byLen.n == 5 and byLen[5] == nil, "SortBy 구멍은 꼬리로")
+	same(
+		Arr.SortBy(Arr.Of(10, 30, 20), function(v: number): number
+			return v
+		end, function(a: number, b: number): boolean
+			return a > b
+		end),
+		{ 30, 20, 10 },
+		"SortBy 키 비교자(내림차순)"
+	)
+	for _ = 1, 100 do
+		const input = randomRecs(math.random(0, 80), math.random(1, 5))
+		const expected = stableRef(table.move(input, 1, input.n, 1, {}) :: { Rec })
+		const got = input:SortBy(function(r: Rec): number
+			return r.k
+		end)
+		for idx = 1, input.n do
+			assert(got[idx] == expected[idx], "SortBy 무작위 대조")
+		end
+	end
+	const byInplace = Arr.Of(30, 10, 20)
+	assert(byInplace:SortByInplace(function(v: number): number
+		return -v
+	end) == byInplace, "SortByInplace 는 자기 자신")
+	same(byInplace, { 30, 20, 10 }, "SortByInplace")
+
+	-- NthElement: 모든 k 를 정렬 결과와 대조, 음수, 범위 밖, 원본 불변
+	for _ = 1, 100 do
+		const input = randomNums(math.random(1, 60), math.random(1, 30))
+		const ref = sortedCopy(input)
+		const before = table.move(input, 1, input.n, 1, {}) :: { number }
+		for k = 1, input.n do
+			assert(input:NthElement(k) == ref[k], "NthElement 대조")
+			assert(input:NthElement(-k) == ref[input.n - k + 1], "NthElement 음수")
+		end
+		same(input, before, "NthElement 는 원본을 안 건드림")
+	end
+	const five = Arr.Of(50, 10, 40, 20, 30)
+	assert(
+		five:NthElement(0) == nil and five:NthElement(6) == nil and five:NthElement(-6) == nil,
+		"NthElement 범위 밖"
+	)
+	assert(emptyNum():NthElement(1) == nil, "NthElement 빈 것")
+	assert(Arr.Of<<number?>>(30, nil, 10, 20):NthElement(3) == 30, "NthElement 는 구멍을 뺀 순위")
+	assert(five:NthElement((five:Len() + 1) // 2) == 30, "NthElement 중앙값")
+
+	-- NthElementInplace: k 자리 값이 맞고 왼쪽 ≤, 오른쪽 ≥
+	for _ = 1, 100 do
+		const input = randomNums(math.random(1, 60), math.random(1, 30))
+		const ref = sortedCopy(input)
+		const k = math.random(1, input.n)
+		assert(input:NthElementInplace(k) == input, "NthElementInplace 는 자기 자신")
+		assert(input[k] == ref[k], "NthElementInplace k 자리")
+		for idx = 1, k - 1 do
+			assert(input[idx] <= input[k], "NthElementInplace 왼쪽 ≤")
+		end
+		for idx = k + 1, input.n do
+			assert(input[idx] >= input[k], "NthElementInplace 오른쪽 ≥")
+		end
+		sameList(sortedCopy(input), ref, "NthElementInplace 는 원소 구성을 안 바꿈")
+	end
+	const holedNth = Arr.Of<<number?>>(nil, 30, nil, 10, 20)
+	holedNth:NthElementInplace(2)
+	assert(
+		holedNth.n == 5 and holedNth[2] == 20 and holedNth[4] == nil and holedNth[5] == nil,
+		"NthElementInplace 구멍"
+	)
+
+	-- PartialSort: 정렬 결과의 앞 k 개와 같음
+	for _ = 1, 100 do
+		const input = randomNums(math.random(0, 80), math.random(1, 40))
+		const ref = sortedCopy(input)
+		const k = math.random(0, input.n + 3)
+		const got = input:PartialSort(k)
+		assert(got.n == math.min(k, input.n), "PartialSort 길이")
+		for idx = 1, got.n do
+			assert(got[idx] == ref[idx], "PartialSort 대조")
+		end
+	end
+	same(
+		Arr.Of(10, 50, 30, 40, 20):PartialSort(2, function(a: number, b: number): boolean
+			return a > b
+		end),
+		{ 50, 40 },
+		"PartialSort 뒤집은 비교자 = 가장 큰 k 개"
+	)
+	assert(Arr.Of(10, 20):PartialSort(0).n == 0 and Arr.Of(10, 20):PartialSort(-1).n == 0, "PartialSort k ≤ 0")
+	const partialHoles = Arr.Of<<number?>>(30, nil, 10, 20):PartialSort(2)
+	assert(partialHoles.n == 2, "PartialSort 는 값만 셈")
+	samePrefix(partialHoles, { 10, 20 }, "PartialSort 구멍은 건너뜀")
+
+	-- PartialSortInplace: 앞 k 칸이 정렬되어 맞고, 원소 구성은 그대로
+	for _ = 1, 100 do
+		const input = randomNums(math.random(0, 80), math.random(1, 40))
+		const ref = sortedCopy(input)
+		const k = math.random(0, input.n + 3)
+		assert(input:PartialSortInplace(k) == input, "PartialSortInplace 는 자기 자신")
+		for idx = 1, math.min(k, input.n) do
+			assert(input[idx] == ref[idx], "PartialSortInplace 앞 k 칸")
+		end
+		sameList(sortedCopy(input), ref, "PartialSortInplace 는 원소 구성을 안 바꿈")
+	end
+	const holedPartial = Arr.Of<<number?>>(40, nil, 10, 30, nil, 20)
+	holedPartial:PartialSortInplace(2)
+	assert(holedPartial.n == 6 and holedPartial[1] == 10 and holedPartial[2] == 20, "PartialSortInplace 구멍")
+	assert(holedPartial[5] == nil and holedPartial[6] == nil, "PartialSortInplace 구멍은 꼬리로")
+
+	-- MergeSorted: 이어붙여 정렬한 것과 같고, 같은 순위면 self 쪽이 먼저
+	for _ = 1, 100 do
+		const left = Arr.SortInplace(randomNums(math.random(0, 40), 20))
+		const right = Arr.SortInplace(randomNums(math.random(0, 40), 20))
+		const got = left:MergeSorted(right)
+		const ref = sortedCopy(Arr.Concat(left, right))
+		assert(got.n == #ref, "MergeSorted 길이")
+		samePrefix(got, ref, "MergeSorted 대조")
+	end
+	const leftRecs = Arr.Of<<Rec>>({ k = 1, id = 10 }, { k = 2, id = 20 })
+	const rightRecs = Arr.Of<<Rec>>({ k = 1, id = 30 }, { k = 2, id = 40 })
+	const mergedRecs = leftRecs:MergeSorted(rightRecs, byK)
+	assert(
+		mergedRecs[1].id == 10 and mergedRecs[2].id == 30 and mergedRecs[3].id == 20 and mergedRecs[4].id == 40,
+		"MergeSorted 안정(self 먼저)"
+	)
+	const mergedHoles = Arr.MergeSorted(Arr.Of<<number?>>(nil, 10, nil, 30), Arr.Of<<number?>>(20, nil))
+	assert(mergedHoles.n == 3, "MergeSorted 는 구멍을 건너뛰어 조밀함")
+	samePrefix(mergedHoles, { 10, 20, 30 }, "MergeSorted 구멍")
+	same(emptyNum():MergeSorted(emptyNum()), {}, "MergeSorted 빈 것")
+
+	-- IsSorted
+	assert(Arr.Of(10, 20, 20, 30):IsSorted(), "IsSorted 같은 값 허용")
+	assert(not Arr.Of(10, 30, 20):IsSorted(), "IsSorted 아님")
+	assert(Arr.Of<<number?>>(10, nil, 20):IsSorted(), "IsSorted 구멍 건너뜀")
+	assert(emptyNum():IsSorted() and Arr.Of(10):IsSorted(), "IsSorted 빈 것·하나")
+	assert(
+		Arr.Of(30, 20, 10):IsSorted(function(a: number, b: number): boolean
+			return a > b
+		end),
+		"IsSorted 비교자"
+	)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 

@@ -14,7 +14,7 @@ Roblox 엔진 언어 **Luau**용 표준 라이브러리 스타일 유틸리티 �
 
 | 모듈 | 무엇 |
 |---|---|
-| `Arr<T>` | 배열. 메소드 66개 — map/filter/sort/slice 등, 체이닝됨 |
+| `Arr<T>` | 배열. 메소드 76개 — map/filter/slice, 안정·부분·키 정렬과 선택 등, 체이닝됨 |
 | `HashMap<K, V>` | 해시 맵. Luau 테이블을 그대로 쓰되 크기를 따로 추적 |
 | `HashSet<T>` | `HashMap` 위에 얹은 셋 (`Add`/`Has`/`Remove`) |
 | `TreeMap<K, V>` | 정렬을 유지하는 맵. 정렬 배열 + 이분 탐색으로 구현 |

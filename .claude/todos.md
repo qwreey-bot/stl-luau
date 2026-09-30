@@ -11,7 +11,7 @@
 
 ## 📍 지금 여기 (2026-09-30)
 
-**M1(이름 정리) 끝, 다음은 M2(정렬 가족).** 전면 재작성(09-22) 이후 기반이 서 있습니다.
+**M1(이름 정리)·M2(정렬 가족) 끝, 다음은 M3(`Arr` 빈 조각).** 전면 재작성(09-22) 이후 기반이 서 있습니다.
 `./scripts/check.sh` 가 **exit 0** 이고 게이트 다섯이 전부 섭니다:
 
 | 게이트 | 상태 |
@@ -62,7 +62,7 @@ local f = nested:Flat<<number>>()
 | # | 마일스톤 | 왜 이 순서 |
 |---|---|---|
 | ~~M1~~ | **✅ 2026-09-30** 이름 정리 — `Arr.Merge`/`MergeInplace` → `Concat`/`ConcatInplace`, `Replace`/`ReplaceInplace` → `Splice`/`SpliceInplace`(+"JS 와 다름" 주석), `At(idx)`(음수) 신설 | 새 표면이 옛 이름 위에 쌓이기 전에. `Merge` 라는 이름을 비워 `HashMap.Merge` 에 줌 |
-| **M2** | **정렬 가족** — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
+| ~~M2~~ | **✅ 2026-09-30** 정렬 가족(`spikes/51`, perf 15-2) — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
 | **M3** | **`Arr` 빈 조각** — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | **M4** | **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
 | **M5** | **`Deque`**(링 버퍼) | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |

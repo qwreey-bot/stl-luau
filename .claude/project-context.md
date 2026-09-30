@@ -56,7 +56,7 @@ src/
   Common.luau      비교자 어댑터와 기본 3방향 비교자
   Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
-  Arr.luau         배열. 메소드 66(checked/unchecked, 구멍 다루기 포함) + 생성자 8
+  Arr.luau         배열. 메소드 76(checked/unchecked, 구멍 다루기 포함) + 생성자 8
   HashMap.luau     해시 맵. { data, size } 래퍼
   HashSet.luau     HashMap 위에 단방향으로 얹음
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
@@ -113,7 +113,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
 | `Types` / `Common` / `Algorithm` | 완성(작음) | — |
-| `Arr` | 메소드 66 + 생성자 8 | `spikes/40`, `46`, `49`, `50` |
+| `Arr` | 메소드 76 + 생성자 8 | `spikes/40`, `46`, `49`, `50`, `51` |
 | `HashMap` / `HashSet` | 완성 | `spikes/41` |
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
