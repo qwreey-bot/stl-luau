@@ -96,13 +96,13 @@ const function ToNil<T>(o: Optional<T>): T?
 end
 
 -- 이 값이 Optional 인가.
--- ⚠️ **모양으로 판별합니다**(메타테이블이 없으므로). `isPresent = true` 필드를
--- 가진 아무 테이블이나 통과합니다 — 식별이 아니라 계약 확인입니다.
+-- ⚠️ **모양으로 판별합니다**(메타테이블이 없으므로). `isPresent` 가 불리언인
+-- 아무 테이블이나 통과합니다 — 식별이 아니라 계약 확인입니다. `Absent` 도
+-- 싱글턴 식별이 아니라 모양으로 봅니다: 리터럴 `{ isPresent = false }` 는 타입상
+-- `Optional<T>` 이고 `UnwrapOr` 등도 그렇게 다루므로, 여기서만 거부하면
+-- 어긋납니다(2026-09-30 리뷰).
 const function isOptional(value: any): boolean
-	if value == Absent then
-		return true
-	end
-	return type(value) == "table" and rawget(value, "isPresent") == true
+	return type(value) == "table" and type(rawget(value, "isPresent")) == "boolean"
 end
 
 return {

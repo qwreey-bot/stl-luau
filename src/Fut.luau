@@ -89,8 +89,41 @@ export type FutData = {
 local Ifce: FutIfce
 
 -- 즉시 실행. 순수 luau 의 기본값.
+--
+-- ⭐ **재진입 가드가 있는 드레인 루프(트램펄린)입니다.** 처음 들어온 호출이
+-- 큐를 끝까지 비우고, 그 사이에 들어온 호출은 큐에 넣기만 합니다. 그래서
+-- 바깥에서 보면 여전히 동기적으로 끝나지만 **중첩이 쌓이지 않습니다.**
+-- 그냥 `job()` 으로 부르던 판은 사슬마다 코루틴 안에서 또 `resume` 을 불러
+-- **약 198단에서 "C stack overflow" 로 거짓 실패**했습니다(2026-09-30 리뷰).
+--
+-- 잡마다 `pcall` 로 격리합니다. 하나가 에러를 내도 나머지는 돌고, 다 비운
+-- 뒤 **첫 에러를 다시 던집니다** — 조용히 삼키지 않습니다.
+const queue: { () -> () } = {}
+local queueHead, queueTail = 1, 0
+local draining = false
+
 const function immediate(job: () -> ())
-	job()
+	queueTail += 1
+	queue[queueTail] = job
+	if draining then
+		return
+	end
+	draining = true
+	local failed, firstError = false, nil :: any
+	while queueHead <= queueTail do
+		const nextJob = queue[queueHead]
+		queue[queueHead] = nil :: any
+		queueHead += 1
+		const ok, err = pcall(nextJob)
+		if not ok and not failed then
+			failed, firstError = true, err
+		end
+	end
+	queueHead, queueTail = 1, 0
+	draining = false
+	if failed then
+		error(firstError, 0)
+	end
 end
 
 local scheduler: Scheduler = immediate
@@ -105,6 +138,18 @@ const function spawnOwned(body: () -> ())
 	const co = coroutine.create(body)
 	ownThreads[co] = true
 	coroutine.resume(co)
+end
+
+-- 본문 시작을 트램펄린에 태웁니다. 바깥(드레인 중이 아닐 때)에서 부르면 **지금**
+-- 돌고, 이미 도는 본문 안에서 부르면 그 본문이 기다리거나 끝난 뒤 이어서
+-- 돕니다. 그래야 `Async` 가 자기 자신을 재귀로 부를 때 코루틴 `resume` 이
+-- 한 겹씩 쌓이지 않습니다(깊이 약 198 에서 "C stack overflow" 였음).
+-- ⚠️ `New` 의 executor 는 **이걸 안 거치고 즉시** 돕니다 — 안에서 받은
+-- `resolve` 를 바로 쓰는 코드가 흔하기 때문입니다.
+const function spawnOwnedTrampolined(body: () -> ())
+	immediate(function()
+		spawnOwned(body)
+	end)
 end
 
 const function ownThreadOnly(): boolean
@@ -141,8 +186,18 @@ const function settle(fut: FutData, status: Status, values: Packed?, reason: any
 	fut.reason = reason
 	const listeners = fut.listeners
 	fut.listeners = {}
+	-- 리스너마다 격리합니다. 스케줄러(주입받은 것일 수 있음)가 에러를 내도
+	-- **나머지 리스너가 버려진 옛 테이블에 남아 영원히 대기하는 일**이 없게
+	-- 끝까지 돌리고, 첫 에러는 다 돌린 뒤 다시 던집니다(2026-09-30 리뷰).
+	local failed, firstError = false, nil :: any
 	for _, listener in listeners do
-		scheduler(listener)
+		const ok, err = pcall(scheduler, listener)
+		if not ok and not failed then
+			failed, firstError = true, err
+		end
+	end
+	if failed then
+		error(firstError, 0)
 	end
 end
 
@@ -159,7 +214,7 @@ end
 -- `Await` 할 수 있습니다. 끝나면 결과로 `target` 을 정합니다.
 const function runInto(target: FutData, fn: (...any) -> ...any, ...: any)
 	const args = table.pack(...)
-	spawnOwned(function()
+	spawnOwnedTrampolined(function()
 		const result = table.pack(pcall(fn, table.unpack(args, 1, args.n)))
 		if result[1] then
 			settle(target, "Resolved", table.pack(table.unpack(result, 2, result.n)), nil)
@@ -167,6 +222,10 @@ const function runInto(target: FutData, fn: (...any) -> ...any, ...: any)
 			settle(target, "Rejected", nil, result[2])
 		end
 	end)
+end
+
+const function isFutRaw(value: any): boolean
+	return type(value) == "table" and getmetatable(value) == Ifce
 end
 
 -- `source` 가 정해지면 그 결과를 `target` 에 그대로 옮깁니다.
@@ -202,7 +261,7 @@ const function Await<T...>(self: Fut<T...>): T...
 		coroutine.yield()
 	end
 	if data.status == "Rejected" then
-		error(data.reason, 2)
+		error(data.reason, 0) -- level 0: 문자열 이유에 위치를 덧붙이지 않음(홉마다 쌓였음)
 	end
 	const values = data.values :: Packed
 	return table.unpack(values, 1, values.n)
@@ -251,6 +310,11 @@ const function AndThen<T..., U...>(self: Fut<T...>, fn: (T...) -> U...): Fut<U..
 end
 
 -- 성공하면 **Fut 을 돌려주는** 콜백을 부르고 그 Fut 의 결과를 따릅니다(펼침).
+--
+-- 콜백은 `AndThen` 과 같이 **새 코루틴에서** 돕니다. 리스너가 도는 스레드에서
+-- 바로 부르던 판은 콜백 안의 `Await` 가 **resolve 를 부른 쪽의 코루틴을
+-- 가로채** 그 호출이 돌아오지 않았습니다(2026-09-30 리뷰).
+-- 콜백이 Fut 이 아닌 것을 돌려주면(비-strict 호출자) 실패로 정해집니다.
 const function Chain<T..., U...>(self: Fut<T...>, fn: (T...) -> Fut<U...>): Fut<U...>
 	const source = self :: FutData
 	const target = newPending()
@@ -260,12 +324,16 @@ const function Chain<T..., U...>(self: Fut<T...>, fn: (T...) -> Fut<U...>): Fut<
 			return
 		end
 		const values = source.values :: Packed
-		const ok, inner = pcall(fn :: any, table.unpack(values, 1, values.n))
-		if ok then
-			adopt(target, inner :: any)
-		else
-			settle(target, "Rejected", nil, inner)
-		end
+		spawnOwnedTrampolined(function()
+			const ok, inner = pcall(fn :: any, table.unpack(values, 1, values.n))
+			if not ok then
+				settle(target, "Rejected", nil, inner)
+			elseif not isFutRaw(inner) then
+				settle(target, "Rejected", nil, "Fut: Chain callback must return a Fut")
+			else
+				adopt(target, inner)
+			end
+		end)
 	end)
 	return target :: any
 end
@@ -362,6 +430,9 @@ end
 -- 하나라도 실패하면 **그 즉시** 그 이유로 실패합니다(나머지를 기다리지 않음).
 -- 빈 목록이면 빈 `Arr` 로 곧바로 성공합니다.
 --
+-- `Arr<Fut<T>>` 를 넘겨도 됩니다(`n` 을 봅니다). 목록에 Fut 이 아닌 것이나
+-- 구멍이 있으면 **곧바로 실패**합니다 — 영원히 기다리지 않습니다.
+--
 -- ⚠️ 각 Fut 은 **값 하나**여야 합니다 — 목록 타입이 `{ Fut<T> }` 라 다중 반환
 -- Fut 은 타입에서 걸립니다. 여럿을 모으고 싶으면 `AndThen` 으로 먼저 하나로
 -- 묶으세요.
@@ -369,16 +440,25 @@ end
 -- 결과가 `Arr` 인 게 이 모듈을 컨테이너 저장소 안에 두는 값어치입니다 —
 -- 받은 뒤 바로 `Arr.Map` / `Arr.Sum` 으로 이어집니다.
 const function All<T>(futs: { Fut<T> }): Fut<Arr<T>>
-	const count = #futs
+	-- `n` 을 먼저 봅니다 — `Arr` 를 넘기면 `for … in` 이 `n` 과 태그 키까지 돌아
+	-- 터졌습니다(타입 검사는 통과했음, 2026-09-30 리뷰). 그리고 숫자 루프로
+	-- 돕니다 — `#` 와 `for … in` 이 구멍에서 서로 다른 걸 셌습니다.
+	const count = (futs :: any).n or #futs
 	const target = newPending()
+	for idx = 1, count do
+		if not isFutRaw(futs[idx]) then
+			settle(target, "Rejected", nil, `Fut: All expects a Fut at index {idx}`)
+			return target :: any
+		end
+	end
 	const results = ArrModule.Sized<<T>>(count)
 	if count == 0 then
 		settle(target, "Resolved", table.pack(results), nil)
 		return target :: any
 	end
 	local remaining = count
-	for idx, fut in futs do
-		const source = (fut :: any) :: FutData
+	for idx = 1, count do
+		const source = (futs[idx] :: any) :: FutData
 		onSettle(source, function()
 			if target.status ~= "Pending" then
 				return -- 이미 다른 하나가 실패시켰음

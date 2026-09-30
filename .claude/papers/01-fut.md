@@ -22,6 +22,14 @@
   `Fut → Arr → Optional` 단방향 의존이 생겼습니다.
 - **[2026-09-30] provider 를 세 갈래로** — `schedule`/`canWait`/`resume`.
   Roblox 한 벌은 머리말에 예시로만(모듈은 환경에 중립).
+- **[2026-09-30] opus 리뷰가 재현한 버그 일곱을 고쳤습니다** — 리스너 하나의
+  에러가 나머지를 영원히 멈추게 하던 것, `Chain` 콜백의 `Await` 가 resolve 를
+  부른 쪽 코루틴을 가로채던 것, 사슬 약 198단에서의 거짓 "C stack overflow",
+  `Await` 가 이유 문자열에 위치를 덧붙이던 것, `All(Arr)` 가 런타임에 터지던
+  것, 구멍 있는 목록에서 영원히 대기하던 것, `isOptional` 이 리터럴 Absent 를
+  거부하던 것. 전부 `spec.fut` 11절 / `spec.optional` 에 회귀로 고정.
+  즉시 스케줄러는 이제 **트램펄린**이고 `Async`/`AndThen`/`Chain` 의 본문
+  시작도 거기 태웁니다(`New` 의 executor 만 즉시). 값은 `AndThen` 당 +0.35µs.
 - **아직 뺀 것**: `Race`, 재시도(`Retry`/`OnRetry`), `Finally`, 처리 안 된
   실패 경고. 부르는 곳이 생기면 얹습니다.
 - **가변 팩 명시적 타입 인자는 괄호**: `Fut.Rejected<<(number)>>(e)`.

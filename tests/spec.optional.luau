@@ -33,7 +33,8 @@ do
 	assert(not stl.isOptional({}), "빈 테이블은 아님")
 	assert(not stl.isOptional(nil), "nil 은 아님")
 	assert(not stl.isOptional(3), "숫자는 아님")
-	assert(not stl.isOptional({ isPresent = false }), "Absent 가 아닌 false 태그 테이블은 아님")
+	-- (7) 리터럴로 만든 Absent 도 타입상 Optional 이고 UnwrapOr 도 그렇게 다루므로 받는다
+	assert(stl.isOptional({ isPresent = false }), "리터럴 Absent 도 Optional")
 end
 print("PASS")
 
