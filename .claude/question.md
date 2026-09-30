@@ -390,6 +390,57 @@ holed:Map(function(v: number) return v * 2 end)        -- 잡힘
 
 ---
 
+## ❓ 2026-09-30 리뷰(M1·M2·구멍)에서 나온 설계 질문
+
+### Y. 타입을 바꾸는 제자리 판 — 원래 변수가 거짓말을 하게 됨
+
+리뷰가 재현: `MapInplace`/`FlatmapInplace`/`FlatInplace` 는 **같은 테이블**을
+다른 원소 타입으로 돌려주므로, 원래 변수가 `Arr<number>` 인 채로 문자열이나
+구멍이 들어갑니다(진단 0건, 런타임에 터짐). `CompactInplace`(`Arr<T?>` →
+`Arr<T>`)는 원래 변수(`T?`)로 `nil` 을 다시 쓰면 좁힌 쪽이 거짓이 됩니다.
+
+```lua
+local nums: Arr<number> = Arr.Of(10, 20, 30)
+Arr.MapInplace(nums, function(v: number): string return tostring(v) end)
+Arr.Map(nums, function(v: number) return v * 2 end)   -- 0건 → 런타임 에러
+```
+
+| | (a) 막기 | (b) "소비" 규약으로 문서화 |
+|---|---|---|
+| 어떻게 | `MapInplace`/`FlatmapInplace` 를 **같은 타입**(`T → T`)으로 제한. 타입을 바꾸려면 새 배열판(`Map`). `FlatInplace` 는 본질이 타입 변경이라 없앰 또는 (b) | 타입을 바꾸는 `*Inplace` 는 **입력을 소비**한다 — 결과만 쓰고 원래 변수는 다시 쓰지 않는다(Rust 의 move 와 같은 결). Luau 가 강제하지 못하니 주석·conventions 로 |
+| 잃는 것 | 타입을 바꾸는 제자리 변환(할당 한 번 아낌) | 건전성 — 규약을 어기면 타입이 거짓 |
+| 선례 | `FillHolesInplace` 를 불변으로 막은 것(질문 U) | — |
+
+**제 추천은 (b)** 입니다. `FillHolesInplace` 는 **아무 실수 없이** `T` 가
+조용히 넓어지는 구멍이라 막았지만, 이건 타입 변환이 호출에 **드러나 있고**
+돌려받은 값의 타입은 정확합니다 — 문제는 버린 변수를 다시 쓸 때뿐입니다.
+막으면 `FlatInplace` 가 통째로 사라집니다. 다만 "타입이 진실" 이라는 방향과는
+(a) 가 더 맞습니다.
+
+### Z. 콜백 셋째 인자 `ArrView<any>` 의 `any` 가 결과 타입으로 샘
+
+질문 V 에서 `ArrView<T>` → `ArrView<any>` 로 바꾼 대가를 "콜백 안 `arr[i]` 가
+`any`" 로 적었는데, 리뷰가 **그 `any` 가 `Map`/`Flatmap` 의 결과까지 나간다**는
+걸 재현했습니다:
+
+```lua
+local nums: Arr<number> = Arr.Of(1, 2)
+local s: Arr<string> = Arr.Map(nums, function(v, i, arr) return arr[i] end)   -- 0건 (V 전엔 에러)
+```
+
+셋째 인자를 틀린 원소 타입으로 적는 것(`arr: ArrView<string>`)도 이제 안
+잡힙니다. 리뷰어가 **`ArrView<unknown>`** 시안을 사본에서 재봤습니다:
+spikes/50 은 11건 그대로(V 의 구멍은 계속 닫힘), 위 누수 전부 잡힘, 테스트 통과.
+**대가**: 콜백에 `arr: ArrView<number>` 처럼 **구체 타입을 적으면 에러**가
+납니다(`unknown` 을 받는 자리에 좁은 타입 — 저장소 안에 두 곳). 적으려면
+`arr: ArrView<unknown>` 로 받고 원소를 캐스트해야 합니다.
+
+**제 추천은 `ArrView<unknown>`** 입니다. V 를 고른 이유("드물게 쓰는 셋째 인자의
+편의를 내주고 모든 콜백의 건전성을 산다")를 끝까지 밀면 여기로 옵니다 —
+`any` 는 편의를 반쯤 남기려다 건전성 구멍을 새로 낸 셈입니다.
+
+---
+
 ### G. mlua 바인딩 — **보류 확정**
 
 사용자: *"얹혀지는 구조여도 좋아 … 여기에 얽메일 필요는 없어."*

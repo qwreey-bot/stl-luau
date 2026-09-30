@@ -7,7 +7,8 @@
 
 | 무엇 | 어디 |
 |---|---|
-| (없음) | |
+| **Y. 타입을 바꾸는 `*Inplace`** — 막기 vs "소비" 규약. 추천 (b) | `question.md` Y |
+| **Z. `ArrView<any>` → `ArrView<unknown>`?** — `any` 가 결과로 샘. 추천 unknown | `question.md` Z |
 
 ## 📍 지금 여기 (2026-09-30)
 
