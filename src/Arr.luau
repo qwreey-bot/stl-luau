@@ -228,6 +228,11 @@ end
 
 --#region ----------- 조회 -----------
 
+-- ⚠️ 위 계약 함수들(`Get`/`FirstIndex`/`LastIndex`/`NextIndex`/`PrevIndex`)은
+-- **숫자 정책(NaN 에러, 소수 자르기) 밖**입니다 — `FirstIndex`/`NextIndex` 가
+-- 준 위치를 그대로 돌려받는 자리라 검사를 붙이지 않습니다(매 조회의 분기).
+-- 거기에 NaN·소수·무한을 넣으면 조용히 `nil` 이거나 순회가 끝나지 않습니다.
+
 -- 음수를 받는 단일 조회. `At(-1)` 은 마지막 원소입니다(JS `Array.prototype.at`).
 -- 소수는 구간 규약처럼 0 쪽으로 자릅니다. **범위 밖은 clamp 하지 않고 `nil`** —
 -- 구간은 "가능한 만큼" 이 자연스럽지만 단일 조회에서 가장 가까운 칸을 주면
@@ -960,7 +965,13 @@ const function rotateRange<T>(self: ArrData<T>, shift: number, s: number, l: num
 		return
 	end
 	const span = l - s + 1
-	const k = toIndex(shift) % span
+	-- `%` 가 아니라 `math.fmod`: Luau 의 `%` 는 `a - floor(a/b)*b` 라 |a| 가 2^53
+	-- 근처를 넘으면 반올림으로 틀린 나머지(범위 밖 포함)가 나와 0 이하 키에 쓰고
+	-- 뒤에 구멍을 냈습니다(2026-09-30 4라운드 리뷰, `Rotate(1e17)`). fmod 는 정확합니다.
+	local k = math.fmod(toIndex(shift), span)
+	if k < 0 then
+		k += span
+	end
 	if k == 0 then
 		return
 	end

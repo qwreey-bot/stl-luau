@@ -54,7 +54,7 @@ while IFS=$'\t' read -r want path lines || [ -n "$want" ]; do
 	# CRLF 의 \r 과 칸 끝 공백은 눈에 안 보이는 "줄이 다릅니다" 를 만들었습니다.
 	want=${want//[[:space:]]/}
 	path=${path%$'\r'}
-	path=${path%%[[:space:]]}
+	path=${path%"${path##*[![:space:]]}"}
 	lines=${lines//[[:space:]]/}
 	if [ ! -f "$path" ]; then
 		echo "  MISSING  $path"

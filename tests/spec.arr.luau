@@ -1230,6 +1230,27 @@ do
 	expectError("Range step 0", "Range", function()
 		Arr.Range(1, 5, 0)
 	end)
+	-- 두 검사를 구분합니다 — inf 는 "too long" 으로도 걸려 끝점 검사를 못 지켰음(4라운드)
+	expectError("Range to NaN", "bounds", function()
+		Arr.Range(1, 0 / 0)
+	end)
+	expectError("Range 너무 김", "too long", function()
+		Arr.Range(1, 1e300)
+	end)
+	-- 아주 큰 shift: Luau 의 `%` 는 a - floor(a/b)*b 라 |a| 가 2^53 근처를 넘으면
+	-- 틀린 나머지(범위 밖 포함)가 나와 0 이하 키에 쓰고 뒤에 구멍을 냈음(4라운드, 버그)
+	const bigShift = Arr.Range(1, 11)
+	bigShift:RotateInplace(1e17)
+	assert(bigShift.n == 11 and bigShift[0] == nil and bigShift[11] ~= nil, "큰 shift 가 배열을 망가뜨림")
+	same(bigShift, Arr.Range(1, 11):Rotate(math.fmod(1e17, 11)) :: any, "큰 shift 는 정확한 나머지만큼")
+	-- math.fmod 는 정확합니다: -2^53 = -9007199254740992 ≡ -2 ≡ 3 (mod 5)
+	same(Arr.Of(10, 20, 30, 40, 50):Rotate(-2 ^ 53), Arr.Of(10, 20, 30, 40, 50):Rotate(3) :: any, "-2^53 mod 5 = 3")
+	same(
+		Arr.Range(1, 11):Rotate(1e300),
+		Arr.Range(1, 11):Rotate(math.fmod(1e300, 11)) :: any,
+		"1e300 도 정확한 나머지"
+	)
+
 	-- 빈 구간이어도 shift 는 검사합니다(구간 NaN 이 빈 배열에서도 에러인 것과 같게)
 	expectError("빈 배열 Rotate NaN", "finite", function()
 		Arr.Of<<number>>():Rotate(0 / 0)
