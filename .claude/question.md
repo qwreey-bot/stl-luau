@@ -318,9 +318,21 @@ holed:Map(function(v: number) return v * 2 end)        -- 잡힘
 
 ---
 
-## ❓ 2026-09-30 빠진 표면 리서치에서 나온 질문 (`papers/04-surface-gaps.md`)
+## 2026-09-30 빠진 표면 리서치에서 나온 질문 (`papers/04-surface-gaps.md`)
 
-### W. 무엇을 어떤 순서로 더할까
+### W. 무엇을 어떤 순서로 더할까 — **[2026-09-30 사용자 결정]**
+
+| | 결정 |
+|---|---|
+| `Contains` vs `Has` | **`Arr.Contains` 유지.** 사용자: *"contains 는 value 를 가지냐고 has 는 key 를 가지냐 아닌가. 키를 '가지냐' 는 의미적으로 맞는데, 키를 '포함하냐' 는 애매하지 … array 에서 값을 '포함하냐' 는 또 맞아."* → **`Has` = 키, `Contains` = 값** 이 이 저장소의 어휘 |
+| `Splice` | 유지 + "JS `splice` 와 다름" 문서화 |
+| 맵 두 이름 | **(가) Luau 생태계 쪽**: `HashMap.Merge(other)`(덮어 합치기), 누적은 **`Accumulate(k, v, combine)`** — `Update` 는 Python `dict.update`(=덮어 합치기)와 겹쳐서 뺐습니다(제가 고름, 되돌리기 쉬움) |
+| `TopK` vs `PartialSort` | **`PartialSort`** — *"선례이고 더 명확한"* |
+| `Counter` vs `Multiset` | **`Multiset`** — *"파이썬 보다는 java 계보가 더 잘 쓰인것 같아"* |
+| 이견 없던 것 | 초안대로. *"검토자도 이견 없다면 택하면 될것 같음."* |
+| 순서·범위 | **제게 맡김.** *"시간이 많고 작업 방식일 뿐이라 너가 생각하기에 최적인 방법을 택하면 돼 … 지금은 작게 두고 나오는걸 잡아가다 나중에 넓혀도 좋고"* → 마일스톤은 `todos.md` |
+
+(아래는 물었던 원문)
 
 리서처 셋(C++ / Rust·Java / Luau 생태계)의 결과와 정렬 실측을 합쳐 **다섯
 파도**로 나눴습니다: ① `Arr` 빈 조각(`PopBack`/`PopFront`, `SwapRemove`,

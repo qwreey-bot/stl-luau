@@ -7,11 +7,11 @@
 
 | 무엇 | 어디 |
 |---|---|
-| **W. 빠진 표면 — 순서·이름·범위** (W1~W4) | `question.md` W, `papers/04-surface-gaps.md` |
+| (없음) | |
 
-## 📍 지금 여기 (2026-09-22)
+## 📍 지금 여기 (2026-09-30)
 
-**전면 재작성 완료. 사용자 결정 일곱 건 반영 완료.**
+**다음은 M1(이름 정리).** 전면 재작성(09-22) 이후 기반이 서 있습니다.
 `./scripts/check.sh` 가 **exit 0** 이고 게이트 다섯이 전부 섭니다:
 
 | 게이트 | 상태 |
@@ -51,28 +51,36 @@ local f = nested:Flat<<number>>()
 요구는 이걸로 안 없어집니다** — 원인이 다른 한계입니다.
 전량은 `base/typing-limits.md`.
 
-## 다음 할 일 (2026-09-26~)
+## 마일스톤 (2026-09-30~)
 
-1. ~~**`Optional`**~~ — **2026-09-26 구현 완료.** `src/Optional.luau` + `Arr` 의
-   구멍 다루기 넷. 그 과정에서 **원소가 유니온인 컨테이너가 전부 무너지던
-   문제**를 찾아 고쳤습니다(`spikes/46`).
-2. ~~**`Fut`**~~ — **2026-09-26 첫 판, 09-30 `All` 과 provider 세 갈래.**
-   아직 없는 것(`Race`/재시도/`Finally`)은 `papers/01-fut.md`.
-3. ~~**네임스페이스 함수 노출**~~ — **2026-09-30.** 절차적 호출이 정식 모양
-   (사용자 방향). 콜론보다 18% 빠름(`perf-measurements` 14절).
-4. ~~**전 모듈 리뷰**~~ — **2026-09-30.** opus 리뷰어 셋이 재현한 버그 18개 +
-   고치다 찾은 1개(TreeMap/TreeSet `Iter`)를 전부 고침. 남은 1개는 정책 질문 T.
-5. ~~**질문 T (b) 구현**~~ — **2026-09-30.** 구멍은 `Arr<T?>` 로 드러남,
-   `Sized` 의 fill 필수, `FillHoles`(새 배열, `?` 를 뗌)/`FillHolesInplace`
-   쌍(`question.md` U), 음성 대조군 `spikes/50`. 하다가 나온 체커 구멍은
-   콜백 셋째 인자를 `ArrView<any>` 로 바꿔 닫음(V, 사용자 결정).
-6. **⭐ 다음: 빠진 표면 리서치** (2026-09-30 사용자 요청) — *"stl 은 필요한
-   요소가 하나가 아니니까. 소트 알고리즘도 여럿 있고(일반 소트가 아닌것도)"*.
-   C++ STL / Rust·Java / Luau 생태계 대조로 무엇을 구현할지 고름.
-   **리서치 완료** → `papers/04-surface-gaps.md`(다섯 파도), 정렬 실측은
-   `perf-measurements` 15절. 사용자 답(W) 기다림.
-7. **문서 사이트는 맨 마지막 스테이지** (2026-09-30 사용자 결정) — *"다른거
-   다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md`.
+빠진 표면 리서치(`papers/04-surface-gaps.md`)와 사용자 결정(`question.md` W)을
+작업 순서로 옮긴 것입니다. **순서·범위는 제게 맡기셨습니다** — *"지금은 작게
+두고 나오는걸 잡아가다 나중에 넓혀도 좋고, 오늘 멈춘다 해서 프로젝트가 끝나진
+않아."* 각 마일스톤은 **구현 → 재현·경계 테스트 → 음성 대조군 → check.sh →
+관심사별 커밋**으로 닫습니다. 성능 주장은 `perf-measurements` 에 실측으로.
+
+| # | 마일스톤 | 왜 이 순서 |
+|---|---|---|
+| **M1** | **이름 정리** — `Arr.Merge`/`MergeInplace` → `Concat`/`ConcatInplace`, `Replace`/`ReplaceInplace` → `Splice`/`SpliceInplace`(+"JS 와 다름" 주석), `At(idx)`(음수) 신설 | 새 표면이 옛 이름 위에 쌓이기 전에. `Merge` 라는 이름을 비워 `HashMap.Merge` 에 줌 |
+| **M2** | **정렬 가족** — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
+| **M3** | **`Arr` 빈 조각** — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
+| **M4** | **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
+| **M5** | **`Deque`**(링 버퍼) | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
+| **M6** | `Multiset`, `OrderedMap` | M4 위에 얇게. 부르는 곳이 보이면 |
+| **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
+| 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |
+| **마지막** | **문서 사이트** — *"다른거 다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md` | 사용자 결정 |
+
+**이름 어휘 (W 결정)**: `Has` = 키를 가짐(맵·셋), `Contains` = 값을 포함함(배열).
+`Merge` = 맵 덮어 합치기, `MergeSorted` = 정렬 병합, `Concat` = 이어붙이기.
+문서로 못박을 것: `Splice`(JS 와 기본값이 반대), `Partition`(두 배열 반환,
+C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
+
+### 끝난 것 (2026-09-26~30)
+
+`Optional`, `Fut`(`All` + provider), 네임스페이스 함수 노출, 전 모듈 리뷰(버그
+19건), 질문 T (b) 구멍을 타입에 드러냄, 질문 V 콜백 셋째 인자 `ArrView<any>`,
+빠진 표면 리서치와 이름 검토(W).
 
 ## 백로그 (당장 안 함)
 
@@ -81,7 +89,6 @@ local f = nested:Flat<<number>>()
 - **구간 인자를 받는 스트림**: 옛 스크래치의 `rangefilter`/`rangefind`/
   `rangemap` 아이디어. `Flat(start?, last?)` 처럼 `Filter`/`Find`/`Map` 이
   구간을 받게 하면 별도 이름이 필요 없습니다. 부르는 곳이 생기면.
-- **`splice`** — 지금은 `Replace`/`ReplaceInplace` 가 그 자리입니다.
 - **pesde 0.7.4** — `const` 가 든 패키지를 0.7.3 은 게시 검증에서 거부합니다.
   게시할 때가 되면(`pesde self-upgrade`, 사용자 작업).
 

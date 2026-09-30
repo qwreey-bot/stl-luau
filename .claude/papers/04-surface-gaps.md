@@ -12,7 +12,10 @@ TableUtil, Dash, evaera Promise 의 API 표면 + Luau VM 의 `table`/`buffer`
 주장은 제가 소스로 다시 확인했습니다(아래 "확인한 사실"). 정렬 쪽은 직접
 실측했습니다(`base/perf-measurements.md` 15절).
 
-**이 문서는 결정이 아니라 판단 재료입니다.** 결정은 `question.md` W 에.
+**이 문서는 결정이 아니라 판단 재료입니다.** 결정은 `question.md` W 에
+(2026-09-30 결정됨 — 이름은 거기 표가 최종입니다. 아래 본문의 `Upsert`,
+`Extend`, `TopK`, `Counter` 는 각각 `Accumulate`, `Merge`, `PartialSort`,
+`Multiset` 으로 정해졌습니다).
 
 ---
 
