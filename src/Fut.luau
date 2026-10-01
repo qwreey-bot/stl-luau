@@ -234,9 +234,14 @@ const function isFutRaw(value: any): boolean
 	end
 	-- 위조 태그(`{ __fut__ = true }`)를 입양하면 상태가 셋 중 어느 것도 아닌 Fut 이
 	-- 생겨 "던지지 않는" `AwaitSafe` 가 던졌습니다(M0 리뷰). 모양까지 봅니다.
+	-- 이행된 것은 값 팩까지 — `{ status = "Resolved" }` 만 그럴듯하게 위조하면
+	-- 값을 읽다 던졌습니다(M0 2라운드). `Pending` 위조가 영원히 대기하는 것은
+	-- 막을 수 없는 한계입니다(태그는 라이브러리 예약어).
 	const status = rawget(value, "status")
-	return (status == "Pending" or status == "Resolved" or status == "Rejected")
-		and type(rawget(value, "listeners")) == "table"
+	if status == "Resolved" then
+		return type(rawget(value, "values")) == "table" and type(rawget(value, "listeners")) == "table"
+	end
+	return (status == "Pending" or status == "Rejected") and type(rawget(value, "listeners")) == "table"
 end
 
 -- `source` 가 정해지면 그 결과를 `target` 에 그대로 옮깁니다.
@@ -493,15 +498,9 @@ const function UseProvider(provider: Provider?): Provider
 	return previous
 end
 
+-- 내부 판별과 **같은 함수**입니다 — 두 벌로 두면 하나만 고치는 일이 생깁니다.
 const function isFut(value: any): boolean
-	if type(value) ~= "table" or rawget(value, TAG) ~= true then
-		return false
-	end
-	-- 위조 태그(`{ __fut__ = true }`)를 입양하면 상태가 셋 중 어느 것도 아닌 Fut 이
-	-- 생겨 "던지지 않는" `AwaitSafe` 가 던졌습니다(M0 리뷰). 모양까지 봅니다.
-	const status = rawget(value, "status")
-	return (status == "Pending" or status == "Resolved" or status == "Rejected")
-		and type(rawget(value, "listeners")) == "table"
+	return isFutRaw(value)
 end
 
 --#endregion

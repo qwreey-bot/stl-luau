@@ -11,7 +11,10 @@
 	   않아야 합니다. 데이터부에 `[any]` 같은 인덱서가 들어오면 무너질 자리입니다.
 	3. **모듈을 잘못 고른 호출** — 네임스페이스 모양에서 새로 생긴 실수 유형.
 
-	기대 진단: 16건 (NEG 15 + CANARY 1)
+	(2라운드) 리터럴 NEG 를 모든 컨테이너로 넓히고, `CompactInplace` 의 `ArrRead`
+	self 로 리터럴·`table.pack` 결과·콜백 뷰가 `Arr` 로 둔갑하던 우회로를 막는 NEG 를 더함.
+
+	기대 진단: 22건 (NEG 21 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, HashSet, TreeMap, TreeSet, Heap, Fut =
@@ -42,6 +45,16 @@ local neg3: stl.HashMap<string, number> = { data = { a = 1 }, size = 0 }
 local neg4: stl.Heap<number> = { items = {}, size = 0, less = function(a: number, b: number): boolean
 	return a < b
 end }
+local neg16: stl.HashSet<number> = { map = HashMap.New<<number, true>>() }
+local neg17: stl.TreeSet<number> = { map = TreeMap.New<<number, true>>(stl.Common.compareNumber) }
+local neg18 = TreeMap.Clone({ records = {}, size = 0, compare = stl.Common.compareString, probe = (nil :: any) })
+-- ArrRead self 우회로 — 리터럴·table.pack·읽기 전용 뷰가 Arr 로 둔갑하면 안 됨
+local neg19: Arr<number> = Arr.CompactInplace({ n = 2, 10, 20 })
+local neg20 = Arr.CompactInplace(table.pack(1, nil, 3))
+local neg21 = Arr.Count(nums, function(_v: number, _i: number, view)
+	Arr.CompactInplace(view)
+	return true
+end)
 
 --[[ NEG 2 — 인스턴스에 메소드가 없다(옛 콜론 코드) ]]
 local neg5 = nums:Len()
@@ -63,5 +76,5 @@ local canary: string = 42
 
 return {
 	okLen, okHas, okGet, okPacked,
-	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, neg13, neg14, neg15, canary,
+	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, neg13, neg14, neg15, neg16, neg17, neg18, neg19, neg20, neg21, canary,
 }

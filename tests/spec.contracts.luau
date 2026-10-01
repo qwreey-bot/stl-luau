@@ -361,6 +361,30 @@ do
 		{ name = "TreeSet 위조", value = { __treeset__ = true }, is = stl.isTreeSet },
 		{ name = "Heap 위조", value = { __heap__ = true }, is = stl.isHeap },
 		{ name = "Fut 위조", value = { __fut__ = true }, is = stl.isFut },
+		-- 모양 조건을 **하나씩만** 뺀 위조 — 조건 하나를 지운 돌연변이가 나머지
+		-- 조건 덕에 살아남지 않게(M0 2라운드)
+		{ name = "Arr 위조(n 없음)", value = { __arr__ = true }, is = stl.isArr },
+		{ name = "Arr 위조(n 이 문자열)", value = { __arr__ = true, n = "3" }, is = stl.isArr },
+		{ name = "HashMap 위조(data 없음)", value = { __hashmap__ = true, size = 0 }, is = stl.isHashMap },
+		{ name = "HashMap 위조(size 없음)", value = { __hashmap__ = true, data = {} }, is = stl.isHashMap },
+		{ name = "HashSet 위조(map 없음)", value = { __hashset__ = true, size = 0 }, is = stl.isHashSet },
+		{ name = "TreeMap 위조(records 없음)", value = { __treemap__ = true, size = 0 }, is = stl.isTreeMap },
+		{ name = "TreeMap 위조(size 없음)", value = { __treemap__ = true, records = {} }, is = stl.isTreeMap },
+		{ name = "TreeSet 위조(map 없음)", value = { __treeset__ = true, size = 0 }, is = stl.isTreeSet },
+		{ name = "Heap 위조(items 없음)", value = { __heap__ = true, size = 0 }, is = stl.isHeap },
+		{ name = "Heap 위조(size 없음)", value = { __heap__ = true, items = {} }, is = stl.isHeap },
+		{ name = "Fut 위조(status 없음)", value = { __fut__ = true, listeners = {} }, is = stl.isFut },
+		{
+			name = "Fut 위조(status 이상)",
+			value = { __fut__ = true, status = "Done", listeners = {} },
+			is = stl.isFut,
+		},
+		{ name = "Fut 위조(listeners 없음)", value = { __fut__ = true, status = "Pending" }, is = stl.isFut },
+		{
+			name = "Fut 위조(Resolved 인데 values 없음)",
+			value = { __fut__ = true, status = "Resolved", listeners = {} },
+			is = stl.isFut,
+		},
 	}
 	for _, case in lookalikes do
 		assert(not case.is(case.value), `{case.name} 을 진짜로 받아들임`)
@@ -371,6 +395,18 @@ do
 	end)
 	assert(stl.Fut.Status(forged) == "Rejected", "위조 Fut 은 Rejected")
 	assert(stl.Fut.AwaitSafe(forged) == false, "AwaitSafe 는 던지지 않음")
+	-- 조금 더 그럴듯한 위조(Resolved 인데 values 없음)도 — 그리고 All 은 던지지
+	-- 않고 Rejected 를 돌려줘야 합니다(문서대로 "곧바로 실패")
+	const forged2 = { __fut__ = true, status = "Resolved", listeners = {} }
+	const chained2 = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
+		return forged2
+	end)
+	assert(
+		stl.Fut.Status(chained2) == "Rejected" and stl.Fut.AwaitSafe(chained2) == false,
+		"그럴듯한 위조도 Rejected"
+	)
+	const okAll, allFut = pcall(stl.Fut.All, { forged2 } :: any)
+	assert(okAll and stl.Fut.Status(allFut) == "Rejected", "All 은 위조를 받으면 던지지 않고 Rejected")
 	-- Optional 도 교차표에 — 다른 술어가 Optional 을, Optional 술어가 컨테이너를 받으면 안 됨
 	const present = stl.Optional.Present(1)
 	const containerPredicates: { (any) -> boolean } =

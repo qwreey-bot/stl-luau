@@ -556,7 +556,10 @@ end
 -- 드러남)를 **둘 다** 받으면서 `T = number` 로 잡고, 결과에서 `?` 를 뺄 수
 -- 있습니다. 읽기·쓰기 인덱서는 불변이라 `Arr<number>` 가 `ArrData<number?>`
 -- 자리에 안 들어갑니다(실측).
-type ArrRead<T> = { read n: number, read [number]: T }
+-- 팬텀 태그(`read __arr__`)까지 요구합니다 — 없으면 리터럴이나 `table.pack`
+-- 결과, 콜백의 읽기 전용 뷰가 `CompactInplace` 를 거쳐 `Arr<T>` 로 둔갑했습니다
+-- (M0 2라운드 — 1라운드가 막은 "리터럴이 Arr 자리에" 의 우회로).
+type ArrRead<T> = { read n: number, read __arr__: true, read [number]: T }
 
 -- 구멍을 `value` 로 채운 **새 배열**. 길이는 그대로이고 원본은 안 건드립니다.
 -- `Arr<number?>` 를 받아 **`Arr<number>` 를 돌려줍니다** — 구멍을 타입에
@@ -1921,6 +1924,14 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	-- 전제가 이 경로만 비켜 갔습니다(M0 리뷰). 입양 대신 복사를 안내합니다.
 	if getmetatable(tbl :: any) ~= nil then
 		error("Arr: FromTable adopts plain tables only (this one has a metatable) — use CloneFromTable", 2)
+	end
+	-- 이미 Arr 면 `#` 로 `n` 을 덮어써 구멍 뒤가 사라졌습니다(M0 2라운드, 예전부터).
+	if rawget(tbl :: any, TAG) ~= nil then
+		error("Arr: FromTable got a table that is already an Arr — use it as is, or Clone", 2)
+	end
+	-- 동결된 테이블엔 길이·태그를 못 씁니다 — 라이브러리 줄의 "readonly table" 대신.
+	if table.isfrozen(tbl :: any) then
+		error("Arr: FromTable cannot adopt a frozen table — use CloneFromTable", 2)
 	end
 	return wrap(tbl :: any, #tbl)
 end

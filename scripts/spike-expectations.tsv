@@ -55,4 +55,4 @@
 13	.claude/audit/arr-type-redesign/spikes/50-holes-in-types.luau	49,50,51,52,53,54,55,58,59,61,65,68,71
 11	.claude/audit/arr-type-redesign/spikes/51-sort-family.luau	48,49,50,53,58,61,62,63,64,67,68
 4	.claude/audit/arr-type-redesign/spikes/52-solver-omitted-param-bug.luau	29,30,31,32
-16	.claude/audit/arr-type-redesign/spikes/53-entity-service.luau	39,40,41,42,47,48,51,52,55,56,57,58,59,60,61,62
+22	.claude/audit/arr-type-redesign/spikes/53-entity-service.luau	42,43,44,45,48,49,50,52,53,55,60,61,64,65,68,69,70,71,72,73,74,75

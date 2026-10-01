@@ -950,6 +950,22 @@ do
 	-- 복사판은 됩니다(복사본은 평범한 테이블)
 	const copied = Arr.CloneFromTable(withMeta)
 	assert(getmetatable(copied) == nil and copied.n == 2 and copied[1] == 10, "CloneFromTable 은 평범한 테이블")
+
+	-- 이미 Arr 인 것을 다시 입양하면 `#` 로 원본의 `n` 을 덮어써 구멍 뒤가 사라졌음
+	-- (M0 2라운드 — M0 이전부터). 거부하고 원본은 그대로.
+	const already = Arr.Of<<number?>>(10, nil, 30)
+	const ok2, err2 = pcall(function()
+		Arr.FromTable(already :: any)
+	end)
+	assert(not ok2 and string.find(tostring(err2), "already", 1, true) ~= nil, `FromTable 이미 Arr: {err2}`)
+	assert(already.n == 3, "원본의 n 은 그대로")
+	-- 동결된 테이블은 입양할 수 없습니다(태그·n 을 못 씀) — 라이브러리 줄의
+	-- "readonly table" 대신 사용자 줄에서 안내
+	const ok3, err3 = pcall(function()
+		Arr.FromTable(table.freeze({ 10, 20 }))
+	end)
+	assert(not ok3 and string.find(tostring(err3), "CloneFromTable", 1, true) ~= nil, `FromTable 동결: {err3}`)
+	assert(string.find(tostring(err3), "spec.arr", 1, true) ~= nil, "동결 에러는 사용자 줄")
 end
 print("PASS")
 
