@@ -9,11 +9,13 @@
 	들어오면 그 문제가 안 생깁니다.
 	근거: .claude/audit/container-contracts/REPORT.md 3절, quad §8.21 계열.
 
-	⭐ **계약이 주는 멤버를 구현 쪽 인터페이스에서 다시 선언하지 마세요.**
-	`ArrIfce.Get` 의 self 는 `Arr<T>` 이고 `ListCore.Get` 의 self 는
-	`ListCore<T, number>` 라 교집합이 충돌하고, 그러면 메소드 타입이 통째로
-	죽습니다(`a:NoSuchMethod()` 조차 안 잡히는데 진단은 0건). 런타임 테이블에는
-	당연히 들어가고, **타입 선언에서만** 뺍니다.
+	⭐ **계약은 "함수 묶음" 입니다**(2026-10-01, 질문 AB). 컨테이너에 메소드가
+	없으니(메타테이블 없는 평범한 테이블) 디스패치는 **구현 함수 묶음을 컨테이너와
+	같이 넘기는** 모양입니다 — Rust 트레이트의 vtable 과 같은 결이고, **모듈
+	테이블이 그대로 구현체**입니다: `Algorithm.IndexOf(Arr, a, x)`.
+	필드를 **`read`(읽기 전용)** 로 두는 게 핵심입니다 — 읽기·쓰기 필드는 불변이라
+	제네릭 함수(`<T>(ArrData<T>, number) -> T?`)가 단형 필드에 안 들어가고, 읽기
+	전용이면 "제네릭 함수는 자기 인스턴스의 서브타입" 규칙이 먹습니다(실측).
 ]]
 
 --[[ 전략 주입 — 컨테이너가 키/원소 타입을 모른 채 일하게 해줍니다. ]]
@@ -44,42 +46,40 @@ export type Hasher<T> = (value: T, maxHash: number) -> number
 -- 리터럴에서 제네릭을 못 뽑고 `FromRecords(m:Records())` 왕복까지 막혀 접었습니다.
 export type Record<K, V> = { key: K, value: V }
 
---[[ 컨테이너 계약 ]]
+--[[ 컨테이너 계약 — 함수 묶음 ]]
 
--- 위치 타입을 파라미터로 뺀 순차 컨테이너.
+-- 위치 타입을 파라미터로 뺀 순차 컨테이너. `C` 는 컨테이너 자신의 타입.
 -- 배열 기반은 I = number, 연결 기반은 I = 노드. 그래서 "연결 리스트에서
--- 정수 인덱스로 접근" 이 애초에 **표현 불가능**해집니다 — 마커나 태그 같은
--- 별도 장치가 필요 없습니다.
+-- 정수 인덱스로 접근" 이 애초에 **표현 불가능**해집니다.
 --
--- ⚠️ 이 계약을 **경유해서** 순회하면 간접 호출 비용이 붙습니다. C++ 템플릿은
--- 위치 타입마다 코드를 따로 뽑아줘서 공짜였지만 Luau 제네릭은 지워집니다.
--- 그래서 각 컨테이너 자신의 뜨거운 메소드는 이 계약을 거치지 말고 직접
--- 구현하세요(`for i = 1, self.n`). 이 계약은 **구현을 모르는 공용 알고리즘**
--- (Algorithm.luau)을 위한 것입니다.
+-- ⚠️ 이 계약을 **경유해서** 순회하면 간접 호출 비용이 붙습니다. Luau 제네릭은
+-- 지워지므로 C++ 템플릿처럼 공짜가 아닙니다. 각 컨테이너 자신의 뜨거운 함수는
+-- 이 계약을 거치지 말고 직접 구현하세요(`for i = 1, self.n`). 이 계약은
+-- **구현을 모르는 공용 알고리즘**(Algorithm.luau)을 위한 것입니다.
 -- 근거: .claude/base/container-design-notes.md 2절.
-export type ListCore<E, I> = {
-	Get: (self: ListCore<E, I>, idx: I) -> E?,
-	FirstIndex: (self: ListCore<E, I>) -> I?,
-	LastIndex: (self: ListCore<E, I>) -> I?,
-	NextIndex: (self: ListCore<E, I>, idx: I) -> I?,
-	PrevIndex: (self: ListCore<E, I>, idx: I) -> I?,
+export type ListOps<C, E, I> = {
+	read Get: (list: C, idx: I) -> E?,
+	read FirstIndex: (list: C) -> I?,
+	read LastIndex: (list: C) -> I?,
+	read NextIndex: (list: C, idx: I) -> I?,
+	read PrevIndex: (list: C, idx: I) -> I?,
 }
 
 -- 키로 값을 찾는 컨테이너. HashMap/TreeMap 이 만족합니다.
-export type MapCore<K, V> = {
-	Get: (self: MapCore<K, V>, key: K) -> V?,
-	Set: (self: MapCore<K, V>, key: K, value: V) -> (),
-	Records: (self: MapCore<K, V>) -> { Record<K, V> },
+export type MapOps<C, K, V> = {
+	read Get: (map: C, key: K) -> V?,
+	read Set: (map: C, key: K, value: V) -> (),
+	read Records: (map: C) -> { Record<K, V> },
 }
 
 -- 원소의 존재만 다루는 컨테이너. HashSet/TreeSet 이 만족합니다.
 -- **이름을 맵과 일부러 가릅니다**: 셋은 Add/Has/Remove, 맵은 Set/Get.
 -- 셋이 맵 위에 얹혀 있어도 바깥 어휘는 완전히 분리합니다.
-export type SetCore<T> = {
-	Add: (self: SetCore<T>, item: T) -> boolean,
-	Has: (self: SetCore<T>, item: T) -> boolean,
-	Remove: (self: SetCore<T>, item: T) -> boolean,
-	Items: (self: SetCore<T>) -> { T },
+export type SetOps<C, T> = {
+	read Add: (set: C, item: T) -> boolean,
+	read Has: (set: C, item: T) -> boolean,
+	read Remove: (set: C, item: T) -> boolean,
+	read Items: (set: C) -> { T },
 }
 
 return {}

@@ -53,7 +53,7 @@ do
 	assert(roundTrip(1, 2) == true and roundTrip(2, 2) == false, "왕복")
 	-- 그리고 정렬된 구조에 실제로 꽂혀야 합니다
 	const tree = stl.TreeSet.FromList({ 3, 1, 2 }, Common.compareFrom(less))
-	assert(table.concat(tree:Items(), ",") == "1,2,3", "compareFrom 으로 TreeSet")
+	assert(table.concat(stl.TreeSet.Items(tree), ",") == "1,2,3", "compareFrom 으로 TreeSet")
 end
 print("PASS")
 
@@ -62,16 +62,16 @@ do
 	-- 복사하지 않고 크기도 검사하지 않습니다. 호출자 책임입니다.
 	const raw: { [string]: number } = { a = 1, b = 2 }
 	const adopted = HashMap.Adopt(raw, 2)
-	assert(adopted:Len() == 2 and adopted:Get("a") == 1, "Adopt 기본")
+	assert(stl.HashMap.Len(adopted) == 2 and stl.HashMap.Get(adopted, "a") == 1, "Adopt 기본")
 	-- 복사하지 않는다는 계약: 원본을 건드리면 같이 보여야 합니다
 	raw.c = 3
-	assert(adopted:Get("c") == 3, "Adopt 는 복사하지 않습니다")
+	assert(stl.HashMap.Get(adopted, "c") == 3, "Adopt 는 복사하지 않습니다")
 	-- 그래서 size 가 틀어질 수 있습니다 — 그게 호출자 책임이라는 뜻입니다
-	assert(adopted:Len() == 2, "size 는 밖에서 넣은 원소를 모릅니다 (호출자 책임)")
+	assert(stl.HashMap.Len(adopted) == 2, "size 는 밖에서 넣은 원소를 모릅니다 (호출자 책임)")
 	-- FromTable 은 반대로 복사합니다
 	const copied = HashMap.FromTable(raw)
 	raw.d = 4
-	assert(copied:Get("d") == nil and copied:Len() == 3, "FromTable 은 복사")
+	assert(stl.HashMap.Get(copied, "d") == nil and stl.HashMap.Len(copied) == 3, "FromTable 은 복사")
 end
 print("PASS")
 

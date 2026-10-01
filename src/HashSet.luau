@@ -32,17 +32,24 @@
 	남는 진짜 비용은 **원소마다 더미 값 `true` 한 칸**뿐입니다.
 	수치는 `.claude/base/perf-measurements.md`.
 ]]
-local Types = require("./Types")
 local HashMap = require("./HashMap")
 
 type HashMapType<K, V> = HashMap.HashMap<K, V>
 
 export type HashSetData<T> = { map: HashMapType<T, true> }
 
-local Ifce: HashSetIfce & Types.SetCore<any>
+-- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
+-- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
+const TAG = "__hashset__"
 
---#region ----------- 계약 구현 (Types.SetCore) -----------
--- ⚠️ 이 넷은 `HashSetIfce` 에 **다시 쓰지 않습니다.** 계약이 이미 줍니다.
+-- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
+const function tagged(raw: any): any
+	raw[TAG] = true
+	return raw
+end
+
+--#region ----------- 계약 구현 (Types.SetOps) -----------
+-- 이 모듈 테이블이 그대로 `Types.SetOps` 구현체입니다(질문 AB).
 
 -- 원소를 넣습니다. **새로 들어갔으면 `true`**, 이미 있었으면 `false`.
 const function Add<T>(self: HashSetData<T>, item: T): boolean
@@ -72,7 +79,7 @@ end
 
 -- 원소를 모은 평범한 Lua 배열. **순서는 보장하지 않습니다.**
 const function Items<T>(self: HashSetData<T>): { T }
-	return self.map:Keys()
+	return HashMap.Keys(self.map)
 end
 
 --#endregion
@@ -107,11 +114,11 @@ end
 --#region ----------- 변형 -----------
 
 const function Clear<T>(self: HashSetData<T>): ()
-	self.map:Clear()
+	HashMap.Clear(self.map)
 end
 
 const function Clone<T>(self: HashSetData<T>): HashSet<T>
-	return setmetatable({ map = self.map:Clone() } :: any, Ifce :: any) :: any
+	return tagged({ map = HashMap.Clone(self.map) })
 end
 
 --#endregion
@@ -122,7 +129,7 @@ end
 
 const function newFrom<T>(data: { [T]: true }, size: number): HashSet<T>
 	const map: HashMapType<T, true> = HashMap.Adopt(data, size)
-	return setmetatable({ map = map } :: any, Ifce :: any) :: any
+	return tagged({ map = map })
 end
 
 -- 합집합. 양쪽에 있는 것 전부.
@@ -237,38 +244,9 @@ end
 
 --#endregion
 
---#region ----------- 타입 조립 -----------
--- ⭐ `Add`/`Has`/`Remove`/`Items` 는 **여기 없습니다.** `Types.SetCore` 가 줍니다.
-
-type HashSetIfce = {
-	Len: typeof(Len),
-	Empty: typeof(Empty),
-	Iter: typeof(Iter),
-	Clear: typeof(Clear),
-	Clone: typeof(Clone),
-	Union: typeof(Union),
-	Intersect: typeof(Intersect),
-	Difference: typeof(Difference),
-	SymmetricDifference: typeof(SymmetricDifference),
-	IsSubsetOf: typeof(IsSubsetOf),
-	IsDisjointFrom: typeof(IsDisjointFrom),
-	Equal: typeof(Equal),
-}
-
-export type HashSet<T> = HashSetData<T> & HashSetIfce & Types.SetCore<T>
-
--- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
--- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
--- stylua: ignore
-Ifce = {
-	Len = Len, Empty = Empty, Iter = Iter, Clear = Clear, Clone = Clone,
-	Union = Union, Intersect = Intersect, Difference = Difference,
-	SymmetricDifference = SymmetricDifference,
-	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal,
-	-- 계약이 주는 것들.
-	Add = Add, Has = Has, Remove = Remove, Items = Items,
-} :: any
-(Ifce :: any).__index = Ifce
+--#region ----------- 타입 -----------
+-- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
+export type HashSet<T> = HashSetData<T>
 
 --#endregion
 
@@ -305,7 +283,7 @@ const function FromList<T>(list: { T }): HashSet<T>
 end
 
 const function isHashSet(value: any): boolean
-	return type(value) == "table" and getmetatable(value) == Ifce
+	return type(value) == "table" and rawget(value, TAG) == true
 end
 
 --#endregion
@@ -317,10 +295,8 @@ return {
 	FromList = FromList,
 	isHashSet = isHashSet,
 
-	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
-	-- 라이브러리의 정식 모양입니다(`HashSet.X(v, …)`). 콜론 호출과 같은 함수이고,
-	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
-	-- (`.claude/base/perf-measurements.md` 14절).
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`HashSet.X(v, …)`) — 콜론 호출은
+	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Len = Len, Empty = Empty, Iter = Iter, Clear = Clear, Clone = Clone, Union = Union,
 	Intersect = Intersect, Difference = Difference, SymmetricDifference = SymmetricDifference,
 	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal, Add = Add, Has = Has,

@@ -38,7 +38,15 @@ type LessThan<T> = Types.LessThan<T>
 
 export type HeapData<T> = { items: { T }, size: number, less: LessThan<T> }
 
-local Ifce: HeapIfce
+-- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
+-- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
+const TAG = "__heap__"
+
+-- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
+const function tagged(raw: any): any
+	raw[TAG] = true
+	return raw
+end
 
 --#region ----------- 내부: 위아래로 밀어넣기 -----------
 
@@ -198,48 +206,21 @@ end
 const function Clone<T>(self: HeapData<T>): Heap<T>
 	const items = table.create(self.size) :: { T }
 	table.move(self.items, 1, self.size, 1, items)
-	return setmetatable({ items = items, size = self.size, less = self.less } :: any, Ifce :: any) :: any
+	return tagged({ items = items, size = self.size, less = self.less })
 end
 
 --#endregion
 
---#region ----------- 타입 조립 -----------
--- 힙은 `Types` 의 계약 중 어느 것도 만족하지 않습니다. 순차도 맵도 셋도
--- 아니고, "가장 앞서는 것 하나" 만 의미가 있는 구조라 억지로 끼우면 계약이
--- 거짓말을 하게 됩니다.
-
-type HeapIfce = {
-	Len: typeof(Len),
-	Empty: typeof(Empty),
-	Peek: typeof(Peek),
-	Items: typeof(Items),
-	Sorted: typeof(Sorted),
-	Push: typeof(Push),
-	Pop: typeof(Pop),
-	PushPop: typeof(PushPop),
-	Replace: typeof(Replace),
-	Clear: typeof(Clear),
-	Clone: typeof(Clone),
-}
-
-export type Heap<T> = HeapData<T> & HeapIfce
-
--- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
--- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
--- stylua: ignore
-Ifce = {
-	Len = Len, Empty = Empty, Peek = Peek, Items = Items, Sorted = Sorted,
-	Push = Push, Pop = Pop, PushPop = PushPop, Replace = Replace,
-	Clear = Clear, Clone = Clone,
-} :: any
-(Ifce :: any).__index = Ifce
+--#region ----------- 타입 -----------
+-- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
+export type Heap<T> = HeapData<T>
 
 --#endregion
 
 --#region ----------- 생성자 -----------
 
 const function New<T>(less: LessThan<T>): Heap<T>
-	return setmetatable({ items = {} :: { T }, size = 0, less = less } :: any, Ifce :: any) :: any
+	return tagged({ items = {} :: { T }, size = 0, less = less })
 end
 
 -- 배열에서 만듭니다. **한 번에 힙으로 만듭니다** — 뒤쪽 절반은 이미 잎이라
@@ -260,11 +241,11 @@ const function FromList<T>(list: { T }, less: LessThan<T>): Heap<T>
 	for idx = size // 2, 1, -1 do
 		siftDown(items, size, less, idx)
 	end
-	return setmetatable({ items = items, size = size, less = less } :: any, Ifce :: any) :: any
+	return tagged({ items = items, size = size, less = less })
 end
 
 const function isHeap(value: any): boolean
-	return type(value) == "table" and getmetatable(value) == Ifce
+	return type(value) == "table" and rawget(value, TAG) == true
 end
 
 --#endregion
@@ -275,10 +256,8 @@ return {
 	FromList = FromList,
 	isHeap = isHeap,
 
-	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
-	-- 라이브러리의 정식 모양입니다(`Heap.X(v, …)`). 콜론 호출과 같은 함수이고,
-	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
-	-- (`.claude/base/perf-measurements.md` 14절).
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`Heap.X(v, …)`) — 콜론 호출은
+	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Len = Len, Empty = Empty, Peek = Peek, Items = Items, Sorted = Sorted, Push = Push, Pop = Pop,
 	PushPop = PushPop, Replace = Replace, Clear = Clear, Clone = Clone,
 }

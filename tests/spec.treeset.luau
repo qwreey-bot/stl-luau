@@ -13,7 +13,7 @@ local Common = stl.Common
 type TreeSet<T> = stl.TreeSet<T>
 
 const function itemsOf(s: TreeSet<number>): string
-	return table.concat(s:Items(), ",")
+	return table.concat(TreeSet.Items(s), ",")
 end
 const function setOf(...: number): TreeSet<number>
 	return TreeSet.FromList({ ... }, Common.compareNumber)
@@ -22,61 +22,61 @@ end
 print("=== 1. 정렬 순서와 기본 ===")
 do
 	const s = TreeSet.New(Common.compareNumber) :: TreeSet<number>
-	assert(s:Empty() and s:Len() == 0, "New")
+	assert(TreeSet.Empty(s) and TreeSet.Len(s) == 0, "New")
 	assert(stl.isTreeSet(s), "isTreeSet")
 	assert(not stl.isTreeSet({}), "평범한 테이블은 isTreeSet 이 아님")
 
-	assert(s:Add(3) == true, "새로 넣으면 true")
-	assert(s:Add(3) == false, "이미 있으면 false")
-	s:Add(1)
-	s:Add(2)
+	assert(TreeSet.Add(s, 3) == true, "새로 넣으면 true")
+	assert(TreeSet.Add(s, 3) == false, "이미 있으면 false")
+	TreeSet.Add(s, 1)
+	TreeSet.Add(s, 2)
 	assert(itemsOf(s) == "1,2,3", `정렬 순서가 아님: {itemsOf(s)}`)
-	assert(s:Len() == 3, "크기")
-	assert(s:Has(2) and not s:Has(9), "Has")
-	assert(s:Remove(2) == true and itemsOf(s) == "1,3", "Remove 후 순서 유지")
-	assert(s:Remove(2) == false, "없는 걸 Remove")
+	assert(TreeSet.Len(s) == 3, "크기")
+	assert(TreeSet.Has(s, 2) and not TreeSet.Has(s, 9), "Has")
+	assert(TreeSet.Remove(s, 2) == true and itemsOf(s) == "1,3", "Remove 후 순서 유지")
+	assert(TreeSet.Remove(s, 2) == false, "없는 걸 Remove")
 end
 assert(itemsOf(setOf(3, 1, 2, 1, 3)) == "1,2,3", "FromList 는 정렬하고 중복을 접음")
-assert(setOf():Empty(), "FromList 빈 것")
+assert(TreeSet.Empty(setOf()), "FromList 빈 것")
 print("PASS")
 
 print("=== 2. Iter / Clear / Clone ===")
 do
 	const s = setOf(3, 1, 2)
 	local seen = ""
-	for _, item in s:Iter() do
+	for _, item in TreeSet.Iter(s) do
 		seen ..= tostring(item)
 	end
 	assert(seen == "123", `Iter 가 정렬 순서가 아님: {seen}`)
 	local emptyCount = 0
-	for _, _item in (TreeSet.New(Common.compareNumber) :: TreeSet<number>):Iter() do
+	for _, _item in TreeSet.Iter(TreeSet.New(Common.compareNumber) :: TreeSet<number>) do
 		emptyCount += 1
 	end
 	assert(emptyCount == 0, "빈 셋의 Iter")
 
-	const cloned = s:Clone()
-	cloned:Add(4)
-	assert(s:Len() == 3 and cloned:Len() == 4, "Clone 은 독립적")
-	s:Clear()
-	assert(s:Empty() and not s:Has(1), "Clear")
-	s:Add(9)
-	assert(s:Len() == 1, "Clear 후 다시 쓸 수 있어야 합니다")
+	const cloned = TreeSet.Clone(s)
+	TreeSet.Add(cloned, 4)
+	assert(TreeSet.Len(s) == 3 and TreeSet.Len(cloned) == 4, "Clone 은 독립적")
+	TreeSet.Clear(s)
+	assert(TreeSet.Empty(s) and not TreeSet.Has(s, 1), "Clear")
+	TreeSet.Add(s, 9)
+	assert(TreeSet.Len(s) == 1, "Clear 후 다시 쓸 수 있어야 합니다")
 end
 print("PASS")
 
 print("=== 3. 정렬이 있어야만 되는 것들 ===")
 do
 	const s = setOf(10, 20, 30)
-	assert(s:First() == 10 and s:Last() == 30, "First/Last")
-	assert(s:FloorItem(25) == 20 and s:FloorItem(20) == 20, "FloorItem")
-	assert(s:FloorItem(5) == nil, "FloorItem 전부보다 작음")
-	assert(s:CeilingItem(15) == 20 and s:CeilingItem(20) == 20, "CeilingItem")
-	assert(s:CeilingItem(99) == nil, "CeilingItem 전부보다 큼")
-	assert(table.concat(s:RangeItems(10, 20), ",") == "10,20", "RangeItems 양끝 포함")
-	assert(#s:RangeItems(25, 15) == 0, "RangeItems 뒤집히면 빈 것")
+	assert(TreeSet.First(s) == 10 and TreeSet.Last(s) == 30, "First/Last")
+	assert(TreeSet.FloorItem(s, 25) == 20 and TreeSet.FloorItem(s, 20) == 20, "FloorItem")
+	assert(TreeSet.FloorItem(s, 5) == nil, "FloorItem 전부보다 작음")
+	assert(TreeSet.CeilingItem(s, 15) == 20 and TreeSet.CeilingItem(s, 20) == 20, "CeilingItem")
+	assert(TreeSet.CeilingItem(s, 99) == nil, "CeilingItem 전부보다 큼")
+	assert(table.concat(TreeSet.RangeItems(s, 10, 20), ",") == "10,20", "RangeItems 양끝 포함")
+	assert(#TreeSet.RangeItems(s, 25, 15) == 0, "RangeItems 뒤집히면 빈 것")
 
 	const empty = TreeSet.New(Common.compareNumber) :: TreeSet<number>
-	assert(empty:First() == nil and empty:Last() == nil, "빈 셋의 First/Last")
+	assert(TreeSet.First(empty) == nil and TreeSet.Last(empty) == nil, "빈 셋의 First/Last")
 end
 print("PASS")
 
@@ -86,33 +86,33 @@ do
 	const b = setOf(3, 4)
 	const empty = TreeSet.New(Common.compareNumber) :: TreeSet<number>
 
-	assert(itemsOf(a:Union(b)) == "1,2,3,4", "Union")
-	assert(itemsOf(a:Union(empty)) == "1,2,3", "Union 빈 것")
-	assert(itemsOf(empty:Union(a)) == "1,2,3", "Union 빈 것이 앞")
-	assert(itemsOf(a:Intersect(b)) == "3", "Intersect")
-	assert(a:Intersect(empty):Empty(), "Intersect 빈 것")
-	assert(itemsOf(a:Difference(b)) == "1,2", "Difference")
-	assert(itemsOf(b:Difference(a)) == "4", "Difference 는 방향이 있습니다")
-	assert(itemsOf(a:SymmetricDifference(b)) == "1,2,4", "SymmetricDifference")
-	assert(a:SymmetricDifference(a):Empty(), "자기 자신과의 대칭차")
+	assert(itemsOf(TreeSet.Union(a, b)) == "1,2,3,4", "Union")
+	assert(itemsOf(TreeSet.Union(a, empty)) == "1,2,3", "Union 빈 것")
+	assert(itemsOf(TreeSet.Union(empty, a)) == "1,2,3", "Union 빈 것이 앞")
+	assert(itemsOf(TreeSet.Intersect(a, b)) == "3", "Intersect")
+	assert(TreeSet.Empty(TreeSet.Intersect(a, empty)), "Intersect 빈 것")
+	assert(itemsOf(TreeSet.Difference(a, b)) == "1,2", "Difference")
+	assert(itemsOf(TreeSet.Difference(b, a)) == "4", "Difference 는 방향이 있습니다")
+	assert(itemsOf(TreeSet.SymmetricDifference(a, b)) == "1,2,4", "SymmetricDifference")
+	assert(TreeSet.Empty(TreeSet.SymmetricDifference(a, a)), "자기 자신과의 대칭차")
 	-- 결과도 정렬돼 있어야 합니다
-	assert(itemsOf(setOf(5, 1):Union(setOf(3))) == "1,3,5", "Union 결과가 정렬돼야 합니다")
+	assert(itemsOf(TreeSet.Union(setOf(5, 1), setOf(3))) == "1,3,5", "Union 결과가 정렬돼야 합니다")
 	-- 원본 불변
-	assert(a:Len() == 3 and b:Len() == 2, "집합 연산은 원본을 안 건드림")
+	assert(TreeSet.Len(a) == 3 and TreeSet.Len(b) == 2, "집합 연산은 원본을 안 건드림")
 
-	assert(setOf(1, 2):IsSubsetOf(a), "IsSubsetOf")
-	assert(a:IsSubsetOf(a) and empty:IsSubsetOf(a), "자기 자신 / 빈 것")
-	assert(not a:IsSubsetOf(b), "IsSubsetOf 아님")
-	assert(not setOf(9):IsSubsetOf(a), "크기만 작다고 부분집합은 아님")
+	assert(TreeSet.IsSubsetOf(setOf(1, 2), a), "IsSubsetOf")
+	assert(TreeSet.IsSubsetOf(a, a) and TreeSet.IsSubsetOf(empty, a), "자기 자신 / 빈 것")
+	assert(not TreeSet.IsSubsetOf(a, b), "IsSubsetOf 아님")
+	assert(not TreeSet.IsSubsetOf(setOf(9), a), "크기만 작다고 부분집합은 아님")
 	-- 병합 루프가 b 를 다 써버리는 경계
-	assert(not setOf(1, 9):IsSubsetOf(setOf(1, 2)), "b 가 먼저 끝나는 경우")
+	assert(not TreeSet.IsSubsetOf(setOf(1, 9), setOf(1, 2)), "b 가 먼저 끝나는 경우")
 
-	assert(setOf(1):IsDisjointFrom(setOf(2)), "IsDisjointFrom")
-	assert(not a:IsDisjointFrom(b), "겹치면 아님")
-	assert(a:IsDisjointFrom(empty), "빈 것과는 서로소")
+	assert(TreeSet.IsDisjointFrom(setOf(1), setOf(2)), "IsDisjointFrom")
+	assert(not TreeSet.IsDisjointFrom(a, b), "겹치면 아님")
+	assert(TreeSet.IsDisjointFrom(a, empty), "빈 것과는 서로소")
 
-	assert(a:Equal(setOf(3, 2, 1)), "Equal 은 순서 무관")
-	assert(not a:Equal(b) and not a:Equal(setOf(1, 2)), "Equal 아님")
+	assert(TreeSet.Equal(a, setOf(3, 2, 1)), "Equal 은 순서 무관")
+	assert(not TreeSet.Equal(a, b) and not TreeSet.Equal(a, setOf(1, 2)), "Equal 아님")
 end
 print("PASS")
 
@@ -147,17 +147,27 @@ do
 		const ha = stl.HashSet.FromList(listA)
 		const hb = stl.HashSet.FromList(listB)
 
-		assert(itemsOf(ta) == sorted(ha:Items()), "원소 집합이 같아야 합니다")
-		assert(itemsOf(ta:Union(tb)) == sorted(ha:Union(hb):Items()), "Union 불일치")
-		assert(itemsOf(ta:Intersect(tb)) == sorted(ha:Intersect(hb):Items()), "Intersect 불일치")
-		assert(itemsOf(ta:Difference(tb)) == sorted(ha:Difference(hb):Items()), "Difference 불일치")
+		assert(itemsOf(ta) == sorted(stl.HashSet.Items(ha)), "원소 집합이 같아야 합니다")
 		assert(
-			itemsOf(ta:SymmetricDifference(tb)) == sorted(ha:SymmetricDifference(hb):Items()),
+			itemsOf(TreeSet.Union(ta, tb)) == sorted(stl.HashSet.Items(stl.HashSet.Union(ha, hb))),
+			"Union 불일치"
+		)
+		assert(
+			itemsOf(TreeSet.Intersect(ta, tb)) == sorted(stl.HashSet.Items(stl.HashSet.Intersect(ha, hb))),
+			"Intersect 불일치"
+		)
+		assert(
+			itemsOf(TreeSet.Difference(ta, tb)) == sorted(stl.HashSet.Items(stl.HashSet.Difference(ha, hb))),
+			"Difference 불일치"
+		)
+		assert(
+			itemsOf(TreeSet.SymmetricDifference(ta, tb))
+				== sorted(stl.HashSet.Items(stl.HashSet.SymmetricDifference(ha, hb))),
 			"SymmetricDifference 불일치"
 		)
-		assert(ta:IsSubsetOf(tb) == ha:IsSubsetOf(hb), "IsSubsetOf 불일치")
-		assert(ta:IsDisjointFrom(tb) == ha:IsDisjointFrom(hb), "IsDisjointFrom 불일치")
-		assert(ta:Equal(tb) == ha:Equal(hb), "Equal 불일치")
+		assert(TreeSet.IsSubsetOf(ta, tb) == stl.HashSet.IsSubsetOf(ha, hb), "IsSubsetOf 불일치")
+		assert(TreeSet.IsDisjointFrom(ta, tb) == stl.HashSet.IsDisjointFrom(ha, hb), "IsDisjointFrom 불일치")
+		assert(TreeSet.Equal(ta, tb) == stl.HashSet.Equal(ha, hb), "Equal 불일치")
 	end
 end
 print("PASS")
@@ -169,9 +179,9 @@ do
 	assert((s :: any).Get == nil, "셋에 Get 이 있으면 안 됩니다")
 	assert((s :: any).Keys == nil, "셋에 Keys 가 있으면 안 됩니다")
 	-- 안쪽 맵과 크기가 어긋나지 않아야 합니다
-	assert(s:Len() == s.map:Len(), "셋의 크기와 안쪽 맵의 크기")
-	s:Add(2)
-	assert(s:Len() == s.map:Len() and #s:Items() == s:Len(), "Add 후")
+	assert(TreeSet.Len(s) == stl.TreeMap.Len(s.map), "셋의 크기와 안쪽 맵의 크기")
+	TreeSet.Add(s, 2)
+	assert(TreeSet.Len(s) == stl.TreeMap.Len(s.map) and #TreeSet.Items(s) == TreeSet.Len(s), "Add 후")
 end
 print("PASS")
 
@@ -180,12 +190,12 @@ do
 	-- (5) for item in 이 인덱스가 아니라 원소를 돌려줘야 함 — HashSet 과 바꿔 끼울 수 있게
 	const s = setOf(10, 20, 30)
 	local one = ""
-	for item in s:Iter() do
+	for item in TreeSet.Iter(s) do
 		one ..= tostring(item) .. ","
 	end
 	assert(one == "10,20,30,", `for item in: {one}`)
 	local two = ""
-	for _, item in s:Iter() do
+	for _, item in TreeSet.Iter(s) do
 		two ..= tostring(item) .. ","
 	end
 	assert(two == "10,20,30,", `for _, item in: {two}`)
@@ -195,7 +205,7 @@ do
 		TreeSet.FromList({ 3, 0 / 0, 1 }, Common.compareNumber)
 	end), "FromList 가 NaN 을 거절")
 	assert(not pcall(function()
-		setOf(1):Add(0 / 0)
+		TreeSet.Add(setOf(1), 0 / 0)
 	end), "Add 가 NaN 을 거절")
 
 	-- 비교자가 다른 두 셋을 섞으면 곧바로 에러 — 불변식이 깨진 셋이 퍼지지 않게
@@ -203,10 +213,10 @@ do
 		return b - a
 	end)
 	assert(not pcall(function()
-		return setOf(10, 20):Union(desc)
+		return TreeSet.Union(setOf(10, 20), desc)
 	end), "비교자가 다르면 Union 은 에러")
 	assert(not pcall(function()
-		return setOf(10, 20):IsSubsetOf(desc)
+		return TreeSet.IsSubsetOf(setOf(10, 20), desc)
 	end), "비교자가 다르면 IsSubsetOf 도 에러")
 end
 print("PASS")

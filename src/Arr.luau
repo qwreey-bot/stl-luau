@@ -29,37 +29,33 @@
 	  것은 캐스트나 직접 대입(`a[5] = nil`)으로 타입이 거짓말할 때를 위한
 	  **런타임 그물**입니다 — 그 그물을 걷은 게 `*Unchecked` 입니다.
 
-	## 타입 3층 (전부 실측 근거 있음 — .claude/audit/arr-type-redesign/)
+	## ⭐ 데이터는 엔티티, 함수는 서비스 (2026-10-01, 질문 AB)
 
-	| 타입 | 무엇 | 어디에 |
-	|---|---|---|
-	| `ArrData<T>` | 데이터부만 | 읽기만 하는 메소드의 `self` |
-	| `ArrView<T>` | 조회 + 자기폐쇄 | **콜백이 받는 컨테이너 인자**(`ArrView<unknown>` 으로) |
-	| `Arr<T>` | 전체형 | 사용자가 들고 다니는 것 |
+	배열은 **메타테이블 없는 평범한 테이블**이고, 모든 연산은 이 모듈의
+	**네임스페이스 함수**입니다(`Arr.Map(a, fn)`). 콜론 호출(`a:Map(fn)`)은
+	없습니다 — Luau 표준 라이브러리(`table`/`buffer`/`coroutine`)와 같은 모양.
 
-	⭐ **콜백의 컨테이너 인자는 절대 `Arr<T>` 를 언급하면 안 됩니다.** 언급하면
-	`Map` 같은 타입 변환 체이닝이 1단부터 죽습니다(진단 0건으로 조용히).
-	그래서 `ArrView<T>` 의 자기폐쇄 메소드는 `Arr<T>` 가 아니라 `ArrView<T>`
-	를 돌려줍니다.
+	- **속도**: 메타테이블이 붙은 테이블은 `t[i]` 가 1.59배 느렸습니다. 떼고 나니
+	  사용자 루프 0.58~0.63x, `Sum` 0.69x(perf 16절). 호출도 18~36% 빠릅니다.
+	- **타입**: 함수가 타입 **바깥**에 있으니 `Arr<T>` 는 데이터부 그 자체입니다.
+	  메소드 교집합·재귀 별칭 우회·"계약 멤버 재선언 금지" 같은 규칙이 필요 없습니다.
+	- **확장**: `Arr<T>` 를 받는 함수는 누구나 같은 모양으로 더할 수 있습니다 —
+	  라이브러리에 묶이지 않습니다.
 
-	⭐ **그리고 콜백 타입에서는 `T` 도 언급하지 않습니다(`ArrView<unknown>`).**
-	언급하면 네임스페이스 호출에서 콜백 원소를 더 좁게 적은 것
-	(`Arr<number?>` 에 `function(v: number)`)을 체커가 놓칩니다(질문 V,
-	`spikes/50`). 대가로 콜백 안 `arr[i]` 는 `any` 입니다.
+	| 타입 | 무엇 |
+	|---|---|
+	| `Arr<T>` = `ArrData<T>` | `{ n: number, [number]: T }` — 사용자가 들고 다니는 것 |
+	| `ArrView<T>` | 읽기 전용 `{ read n, read [number]: T }` — **콜백이 받는 셋째 인자** |
 
-	⭐ **전체형은 교집합(`&`)입니다. `setmetatable<>` 이 아닙니다** — 메소드
-	30개에서 `pending-expansion` 1700여 건으로 무너집니다. 한도 플래그 6종
-	전부 무효.
-
-	⭐ **계약(`Types.ListCore`)이 주는 멤버는 `ArrIfce` 에 다시 쓰지 않습니다.**
-	self 타입이 달라 교집합이 충돌하고, 그러면 메소드 타입이 통째로 죽습니다.
-	런타임 테이블에는 당연히 들어갑니다.
+	⭐ **콜백 타입에서는 `T` 를 언급하지 않습니다(`ArrView<unknown>`).** 언급하면
+	콜백 원소를 더 좁게 적은 것(`Arr<number?>` 에 `function(v: number)`)을 체커가
+	놓칩니다 — Luau 새 솔버의 결함입니다(질문 V·Z·AA, `spikes/50`·`52`).
 
 	## 성능 (.claude/base/perf-measurements.md)
 
-	- 메타테이블이 붙어 있어 `self[i]` 인덱싱은 세금이 1.59배입니다. 대신
-	  **`table.move`/`table.create` 는 그 세금을 안 냅니다** — 벌크로 할 수
-	  있는 일을 원소 루프로 쓰지 마세요(손 루프 대비 14.3배).
+	- 메타테이블이 없으니 `self[i]` 에 세금이 없습니다. 그래도 **`table.move`/
+	  `table.create` 가 원소 루프보다 빠릅니다** — 벌크로 할 수 있는 일을 원소
+	  루프로 쓰지 마세요.
 	- 가변인자 다수 처리는 `table.pack` 이 아니라 `select` 루프입니다(1.6~2.3배).
 	- 편의가 기본 경로를 느리게 만들지 않습니다. `PushBack(v)` 는 고정 인자고
 	  가변인자 편의는 `PushBackMany(...)` 로 옆에 있습니다.
@@ -81,18 +77,9 @@ type Optional<T> = Optional.Optional<T>
 
 export type ArrData<T> = { n: number, [number]: T }
 
--- 콜백이 받는 뷰. **`Arr<T>` 를 언급하지 않습니다.** 자기폐쇄 메소드는
--- `ArrView<T>` 를 돌려줍니다 — `Arr<T>` 를 돌려주게 하면 바깥 체이닝이 죽습니다.
--- 조회 계열만 담습니다. 타입을 바꾸는 `Map`/`Flatmap` 과 변형 계열은 일부러
--- 뺐습니다(뷰는 읽기 관점입니다). 콜백 안에서 그게 필요하면 바깥 변수를 쓰세요.
-export type ArrView<T> = ArrData<T> & {
-	Len: (self: ArrView<T>) -> number,
-	Empty: (self: ArrView<T>) -> boolean,
-	Join: (self: ArrView<T>, delimiter: string?) -> string,
-	Unpack: (self: ArrView<T>) -> ...T,
-	Clone: (self: ArrView<T>) -> ArrView<T>,
-	Slice: (self: ArrView<T>, start: number?, last: number?) -> ArrView<T>,
-}
+-- 콜백이 셋째 인자로 받는 뷰 — **읽기 전용**입니다. 콜백 안에서 배열을 바꾸면
+-- 순회가 망가지니 타입이 막습니다. 원소 타입은 `unknown` 으로 씁니다(아래).
+export type ArrView<T> = { read n: number, read [number]: T }
 
 -- 콜백 타입은 **가장 넓은 시그니처 하나**로 씁니다. Luau 는 인자를 덜 받는
 -- 함수를 이미 서브타입으로 받아주므로 arity 별 오버로드가 필요 없습니다.
@@ -119,9 +106,6 @@ export type Spreader<T, G> = (element: T, index: number, arr: ArrView<unknown>) 
 -- `Random:NextInteger`). 실수(`NextNumber`)나 범위 밖이면 **에러**입니다 —
 -- 자르거나 가두면 분포가 조용히 치우칩니다. 균등성은 rng 책임입니다.
 export type Rng = (min: number, max: number) -> number
-
--- 런타임 메소드 테이블. 아래에서 채웁니다.
-local Ifce: ArrIfce & Types.ListCore<any, number>
 
 const TAG = "__arr__"
 
@@ -176,12 +160,13 @@ const function resolveInsertPos(len: number, at: number): number
 	return pos
 end
 
--- 메타테이블만 씌운 빈 배열. 생성자들이 공유합니다.
+-- 날 테이블에 길이와 태그를 붙여 배열로 만듭니다. 생성자들이 공유합니다.
+-- **메타테이블은 없습니다**(질문 AB) — 태그는 `isArr` 의 판별용입니다.
 const function wrap<T>(raw: { [number]: T }, len: number): Arr<T>
 	const result = raw :: any
 	result.n = len
 	result[TAG] = true
-	return setmetatable(result, Ifce :: any) :: any
+	return result
 end
 
 -- `table.create` 가 받는 최대 크기(실측: 2^26 은 되고 그 위는 "table overflow").
@@ -210,8 +195,8 @@ end
 
 --#endregion
 
---#region ----------- 계약 구현 (Types.ListCore) -----------
--- ⚠️ 이 다섯은 `ArrIfce` 에 **다시 쓰지 않습니다.** 계약이 이미 줍니다.
+--#region ----------- 계약 구현 (Types.ListOps) -----------
+-- 이 모듈 테이블이 그대로 `Types.ListOps` 구현체입니다 — `Algorithm.IndexOf(Arr, a, x)`.
 
 const function Get<T>(self: ArrData<T>, idx: number): T?
 	return self[idx]
@@ -243,7 +228,7 @@ end
 -- 구간은 "가능한 만큼" 이 자연스럽지만 단일 조회에서 가장 가까운 칸을 주면
 -- 거짓말이 됩니다.
 --
--- `Get` 은 계약(`Types.ListCore`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
+-- `Get` 은 계약(`Types.ListOps`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
 -- `FirstIndex`/`NextIndex` 로 얻은 위치를 그대로 넣는 자리이고, 거기에 음수
 -- 변환을 끼우면 매 조회에 분기가 붙습니다.
 const function At<T>(self: ArrData<T>, idx: number): T?
@@ -1874,148 +1859,13 @@ end
 
 --#endregion
 
---#region ----------- 타입 조립 -----------
+--#region ----------- 타입 -----------
 
--- ⭐ 메소드는 이름 붙은 top-level 함수로 쓰고 여기서 `typeof` 로 나열합니다.
--- 인라인 제네릭으로 쓰면 `Map` 의 반환이 `Unifiable<Error>` 로 샙니다(실측).
--- `ArrIfce` 자체는 **제네릭이 아닙니다** — 제네릭성은 함수 쪽에 있고,
--- 이게 재귀 파라미터 충돌을 없앱니다.
---
--- ⭐ `Get`/`FirstIndex`/`LastIndex`/`NextIndex`/`PrevIndex` 는 **여기 없습니다.**
--- `Types.ListCore` 가 줍니다. 여기 다시 쓰면 self 타입이 달라 교집합이
--- 충돌하고 메소드 타입이 통째로 죽습니다(진단 0건으로).
-type ArrIfce = {
-	-- 조회
-	At: typeof(At),
-	Len: typeof(Len),
-	Empty: typeof(Empty),
-	Iter: typeof(Iter),
-	Unpack: typeof(Unpack),
-	Join: typeof(Join),
-	Equal: typeof(Equal),
-	Count: typeof(Count),
-	Find: typeof(Find),
-	Some: typeof(Some),
-	Every: typeof(Every),
-	Max: typeof(Max),
-	Min: typeof(Min),
-	Sum: typeof(Sum),
-	Prod: typeof(Prod),
-	-- ⚠️ unchecked 계열 — 구멍이 없다는 것을 호출자가 보증할 때만
-	SumUnchecked: typeof(SumUnchecked),
-	ProdUnchecked: typeof(ProdUnchecked),
-	MaxUnchecked: typeof(MaxUnchecked),
-	MinUnchecked: typeof(MinUnchecked),
-	-- 구멍 다루기
-	FillHoles: typeof(FillHoles),
-	FillHolesInplace: typeof(FillHolesInplace),
-	Compact: typeof(Compact),
-	CompactInplace: typeof(CompactInplace),
-	ToOptionals: typeof(ToOptionals),
-	-- 추가
-	PushBack: typeof(PushBack),
-	PushBackMany: typeof(PushBackMany),
-	PushBackArray: typeof(PushBackArray),
-	PushFront: typeof(PushFront),
-	PushFrontMany: typeof(PushFrontMany),
-	PushFrontArray: typeof(PushFrontArray),
-	Insert: typeof(Insert),
-	InsertMany: typeof(InsertMany),
-	InsertArray: typeof(InsertArray),
-	-- 복제·비우기·채우기
-	Clone: typeof(Clone),
-	Clear: typeof(Clear),
-	Fill: typeof(Fill),
-	-- 구간
-	Slice: typeof(Slice),
-	SliceInplace: typeof(SliceInplace),
-	Erase: typeof(Erase),
-	EraseInplace: typeof(EraseInplace),
-	Splice: typeof(Splice),
-	SpliceInplace: typeof(SpliceInplace),
-	-- 순서
-	Reverse: typeof(Reverse),
-	ReverseInplace: typeof(ReverseInplace),
-	Rotate: typeof(Rotate),
-	RotateInplace: typeof(RotateInplace),
-	Shuffle: typeof(Shuffle),
-	ShuffleInplace: typeof(ShuffleInplace),
-	Sort: typeof(Sort),
-	SortInplace: typeof(SortInplace),
-	SortUnchecked: typeof(SortUnchecked),
-	SortInplaceUnchecked: typeof(SortInplaceUnchecked),
-	-- 정렬 가족
-	StableSort: typeof(StableSort),
-	StableSortInplace: typeof(StableSortInplace),
-	SortBy: typeof(SortBy),
-	SortByInplace: typeof(SortByInplace),
-	NthElement: typeof(NthElement),
-	NthElementInplace: typeof(NthElementInplace),
-	PartialSort: typeof(PartialSort),
-	PartialSortInplace: typeof(PartialSortInplace),
-	MergeSorted: typeof(MergeSorted),
-	IsSorted: typeof(IsSorted),
-	-- 스트림
-	Map: typeof(Map),
-	MapInplace: typeof(MapInplace),
-	Filter: typeof(Filter),
-	Retain: typeof(Retain),
-	Flat: typeof(Flat),
-	FlatInplace: typeof(FlatInplace),
-	Flatmap: typeof(Flatmap),
-	FlatmapInplace: typeof(FlatmapInplace),
-	Drain: typeof(Drain),
-	ConcatInplace: typeof(ConcatInplace),
-	-- 접기
-	Fold: typeof(Fold),
-	FoldRight: typeof(FoldRight),
-	Reduce: typeof(Reduce),
-	FoldUntil: typeof(FoldUntil),
-}
-
--- 전체형 = 데이터부 & 고유 메소드부 & 공유 계약.
--- **교집합입니다.** `setmetatable<>` 은 메소드 30개에서 무너집니다.
-export type Arr<T> = ArrData<T> & ArrIfce & Types.ListCore<T, number>
-
--- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
--- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
--- stylua: ignore
-Ifce = {
-	At = At, Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join,
-	Equal = Equal, Count = Count, Find = Find, Some = Some, Every = Every,
-	Max = Max, Min = Min, Sum = Sum, Prod = Prod,
-	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked,
-	MaxUnchecked = MaxUnchecked, MinUnchecked = MinUnchecked,
-	FillHoles = FillHoles, FillHolesInplace = FillHolesInplace,
-	Compact = Compact, CompactInplace = CompactInplace,
-	ToOptionals = ToOptionals,
-	PushBack = PushBack, PushBackMany = PushBackMany, PushBackArray = PushBackArray,
-	PushFront = PushFront, PushFrontMany = PushFrontMany, PushFrontArray = PushFrontArray,
-	Insert = Insert, InsertMany = InsertMany, InsertArray = InsertArray,
-	Clone = Clone, Clear = Clear, Fill = Fill,
-	Slice = Slice, SliceInplace = SliceInplace,
-	Erase = Erase, EraseInplace = EraseInplace,
-	Splice = Splice, SpliceInplace = SpliceInplace,
-	Reverse = Reverse, ReverseInplace = ReverseInplace,
-	Rotate = Rotate, RotateInplace = RotateInplace,
-	Shuffle = Shuffle, ShuffleInplace = ShuffleInplace,
-	Sort = Sort, SortInplace = SortInplace,
-	SortUnchecked = SortUnchecked, SortInplaceUnchecked = SortInplaceUnchecked,
-	StableSort = StableSort, StableSortInplace = StableSortInplace,
-	SortBy = SortBy, SortByInplace = SortByInplace,
-	NthElement = NthElement, NthElementInplace = NthElementInplace,
-	PartialSort = PartialSort, PartialSortInplace = PartialSortInplace,
-	MergeSorted = MergeSorted, IsSorted = IsSorted,
-	Map = Map, MapInplace = MapInplace, Filter = Filter, Retain = Retain,
-	Flat = Flat, FlatInplace = FlatInplace,
-	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace,
-	Drain = Drain, ConcatInplace = ConcatInplace,
-	Fold = Fold, FoldRight = FoldRight, Reduce = Reduce, FoldUntil = FoldUntil,
-	-- 계약이 주는 것들. 타입 선언엔 없지만 런타임 테이블엔 당연히 있어야 합니다.
-	Get = Get, FirstIndex = FirstIndex, LastIndex = LastIndex,
-	NextIndex = NextIndex, PrevIndex = PrevIndex,
-} :: any
-(Ifce :: any).__index = Ifce
+-- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다.
+-- 예전엔 `ArrData<T> & ArrIfce & ListCore<T, number>` 교집합이었고, 그 때문에
+-- 메소드 `self` 를 데이터부로 받기·재귀 별칭 우회(`typeof` 나열)·계약 멤버
+-- 재선언 금지 같은 규칙이 필요했습니다(질문 AB 로 전부 사라짐).
+export type Arr<T> = ArrData<T>
 
 --#endregion
 
@@ -2027,7 +1877,7 @@ Ifce = {
 const function Of<T>(...: T): Arr<T>
 	const raw: any = table.pack(...)
 	raw[TAG] = true
-	return setmetatable(raw, Ifce :: any) :: any
+	return raw
 end
 
 -- 길이가 정해진 배열을 `fill` 로 채웁니다.
@@ -2182,10 +2032,9 @@ return {
 	Range = Range,
 	isArr = isArr,
 
-	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
-	-- 라이브러리의 정식 모양입니다(`Arr.X(v, …)`). 콜론 호출과 같은 함수이고,
-	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
-	-- (`.claude/base/perf-measurements.md` 14절).
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`Arr.X(v, …)`) — 콜론 호출은
+	-- 없습니다(질문 AB). `local Map = Arr.Map` 처럼 받아 부르면 더 빠릅니다
+	-- (`.claude/base/perf-measurements.md` 14·16절).
 	At = At, Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join, Equal = Equal, Count = Count,
 	Find = Find, Some = Some, Every = Every, Max = Max, Min = Min, Sum = Sum, Prod = Prod,
 	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked, MaxUnchecked = MaxUnchecked,

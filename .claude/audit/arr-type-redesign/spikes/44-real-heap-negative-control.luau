@@ -9,6 +9,7 @@
 	기대 진단: 9건 (NEG 8 + CANARY 1)
 ]]
 local stl = require("../../../../src")
+local Heap = stl.Heap
 
 type Heap<T> = stl.Heap<T>
 
@@ -19,26 +20,26 @@ end
 local nums = stl.Heap.FromList({ 3, 1, 2 }, lessNum)
 
 --[[ POS ]]
-local okPeek: number? = nums:Peek()
-local okPop: number? = nums:Pop()
-local okLen: number = nums:Len()
-local okEmpty: boolean = nums:Empty()
-local okItems: { number } = nums:Items()
-local okSorted: { number } = nums:Sorted()
-local okPushed: Heap<number> = nums:Push(4)
-local okPushPop: number = nums:PushPop(5)
-local okReplaced: number? = nums:Replace(6)
-local okClone: Heap<number> = nums:Clone()
+local okPeek: number? = Heap.Peek(nums)
+local okPop: number? = Heap.Pop(nums)
+local okLen: number = Heap.Len(nums)
+local okEmpty: boolean = Heap.Empty(nums)
+local okItems: { number } = Heap.Items(nums)
+local okSorted: { number } = Heap.Sorted(nums)
+local okPushed: Heap<number> = Heap.Push(nums, 4)
+local okPushPop: number = Heap.PushPop(nums, 5)
+local okReplaced: number? = Heap.Replace(nums, 6)
+local okClone: Heap<number> = Heap.Clone(nums)
 -- 3방향 비교자를 어댑터로 감싸기
 local okAdapted = stl.Heap.New(stl.Common.lessFrom(stl.Common.compareNumber)) :: Heap<number>
 
 --[[ NEG ]]
-local neg1: string = nums:Peek() -- 원소는 number
-local neg2 = nums:Push("문자열") -- 원소 타입이 다름
-local neg3 = nums:NoSuchMethod()
+local neg1: string = Heap.Peek(nums) -- 원소는 number
+local neg2 = Heap.Push(nums, "문자열") -- 원소 타입이 다름
+local neg3 = Heap.NoSuchMethod(nums)
 local neg4 = stl.Heap.Nope -- 네임스페이스 오타
-local neg5: { string } = nums:Sorted() -- 원소는 number
-local neg6 = nums:PushPop("문자열") -- 원소 타입이 다름
+local neg5: { string } = Heap.Sorted(nums) -- 원소는 number
+local neg6 = Heap.PushPop(nums, "문자열") -- 원소 타입이 다름
 local neg7 = stl.Heap.FromList({ 1, 2 }, function(a: string, b: string): boolean
 	return a < b -- 비교자의 원소 타입이 배열과 다름
 end)

@@ -15,40 +15,38 @@ type Fut<T...> = stl.Fut<T...>
 local pair: Fut<number, string> = Fut.Resolved(1, "a")
 
 --[[ POS ]]
-local okN: number, okS: string = pair:Await()
-local okChain: Fut<string> = pair
-	:AndThen(function(n: number, s: string): (number, string)
+local okN: number, okS: string = Fut.Await(pair)
+local okChain: Fut<string> = Fut.AndThen(Fut.AndThen(pair, function(n: number, s: string): (number, string)
 		return n + 1, s
-	end)
-	:AndThen(function(n: number, s: string): string
+	end), function(n: number, s: string): string
 		return s .. n
 	end)
-local okFlat: Fut<number> = pair:Chain(function(n: number, _s: string): Fut<number>
+local okFlat: Fut<number> = Fut.Chain(pair, function(n: number, _s: string): Fut<number>
 	return Fut.Resolved(n)
 end)
-local okCatch: Fut<number, string> = pair:Catch(function(_reason: any): (number, string)
+local okCatch: Fut<number, string> = Fut.Catch(pair, function(_reason: any): (number, string)
 	return 0, ""
 end)
 local okAsync: (number) -> Fut<string> = Fut.Async(function(x: number): string
 	return tostring(x)
 end)
 local okRejected: Fut<number> = Fut.Rejected<<(number)>>("이유")
-local okSafe: boolean = pair:AwaitSafe()
-local okStatus: stl.FutStatus = pair:Status()
+local okSafe: boolean = Fut.AwaitSafe(pair)
+local okStatus: stl.FutStatus = Fut.Status(pair)
 local okAll: Fut<stl.Arr<number>> = Fut.All({ Fut.Resolved(1), Fut.Resolved(2) })
 
 --[[ NEG ]]
-local neg1: string = pair:Await() -- 첫 결과는 number
-local _, neg2: number = pair:Await() -- 둘째는 string
-local neg3 = pair:AndThen(function(s: string) -- 콜백 인자 순서가 틀림
+local neg1: string = Fut.Await(pair) -- 첫 결과는 number
+local _, neg2: number = Fut.Await(pair) -- 둘째는 string
+local neg3 = Fut.AndThen(pair, function(s: string) -- 콜백 인자 순서가 틀림
 	return s
 end)
 local neg4: Fut<number> = okChain -- 체인 결과는 Fut<string>
-local neg5: number = okChain:Await() -- 체인 결과는 string
+local neg5: number = Fut.Await(okChain) -- 체인 결과는 string
 local neg6: Fut<string> = okFlat -- 펼친 결과는 Fut<number>
-local neg7 = pair:NoSuch()
+local neg7 = Fut.NoSuch(pair)
 local neg8 = Fut.Nope
-local neg9: number = okAsync(1):Await() -- Async 결과는 string
+local neg9: number = Fut.Await(okAsync(1)) -- Async 결과는 string
 local neg10: Fut<stl.Arr<string>> = Fut.All({ Fut.Resolved(1) }) -- 결과는 Arr<number>
 local neg11 = Fut.All({ pair }) -- 다중 반환 Fut 은 All 에 못 넣음
 local canary: string = 42

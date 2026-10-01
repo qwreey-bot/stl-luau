@@ -2,159 +2,150 @@
 --[[
 	계약 테스트 — **구현을 모르는 코드가 정말 돌아가는가.**
 
-	`Types` 의 계약 셋(`ListCore` / `MapCore` / `SetCore`)이 존재하는 이유는
-	"구현을 바꿔 끼울 수 있게" 하기 위함입니다. 그게 정말 되는지는 계약만
-	아는 함수를 써서 **같은 함수에 서로 다른 구현을 넣어보는 것**으로만
-	확인됩니다. 이 파일이 그 일을 합니다.
+	`Types` 의 계약 셋(`ListOps` / `MapOps` / `SetOps`)은 **함수 묶음**입니다
+	(2026-10-01, 질문 AB). 컨테이너는 메타테이블 없는 평범한 테이블이라 메소드가
+	없고, 디스패치는 **구현 함수 묶음을 컨테이너와 같이 넘기는** 모양입니다 —
+	모듈 테이블이 그대로 구현체입니다(`exerciseMap(stl.HashMap, m, …)`).
 
 	⭐ 여기서 가장 중요한 것은 **런타임이 아니라 타입**입니다. 이 파일이
 	`--!strict` 로 진단 0건이라는 사실 자체가 "계약이 정말 섰다" 는 증거입니다.
-	`HashSet` 을 받는 자리에 `TreeSet` 을 넣었을 때 타입 에러가 나면 계약이
+	같은 함수에 `HashMap` 과 `TreeMap` 을 넣었을 때 타입 에러가 나면 계약이
 	선 게 아닙니다.
 ]]
 local stl = require("../src")
 local Types = require("../src/Types")
 local Common = stl.Common
 
-type ListCore<E, I> = Types.ListCore<E, I>
-type MapCore<K, V> = Types.MapCore<K, V>
-type SetCore<T> = Types.SetCore<T>
+type ListOps<C, E, I> = Types.ListOps<C, E, I>
+type MapOps<C, K, V> = Types.MapOps<C, K, V>
+type SetOps<C, T> = Types.SetOps<C, T>
 
 --[[ 계약만 아는 함수들. 어떤 구현이 오는지 전혀 모릅니다. ]]
 
 -- 순차 컨테이너: 위치 타입 `I` 가 무엇인지도 모른 채 순회합니다.
-local function sumThroughContract<I>(list: ListCore<number, I>): number
+local function sumThroughContract<C, I>(ops: ListOps<C, number, I>, list: C): number
 	local total = 0
-	local idx = list:FirstIndex()
+	local idx = ops.FirstIndex(list)
 	while idx ~= nil do
-		total += list:Get(idx) :: number
-		idx = list:NextIndex(idx)
+		total += ops.Get(list, idx) :: number
+		idx = ops.NextIndex(list, idx)
 	end
 	return total
 end
 
 -- 맵: 넣고 빼고 세어봅니다.
-local function fillAndCount<V>(map: MapCore<string, V>, value: V): number
-	map:Set("하나", value)
-	map:Set("둘", value)
-	map:Set("하나", value) -- 덮어쓰기
-	return #map:Records()
+local function fillAndCount<C, V>(ops: MapOps<C, string, V>, map: C, value: V): number
+	ops.Set(map, "하나", value)
+	ops.Set(map, "둘", value)
+	ops.Set(map, "하나", value) -- 덮어쓰기
+	return #ops.Records(map)
 end
 
 -- 셋: 넣고 확인하고 뺍니다.
-local function exerciseSet<T>(set: SetCore<T>, a: T, b: T): string
-	local added = set:Add(a)
-	local again = set:Add(a)
-	set:Add(b)
-	local hasA = set:Has(a)
-	local removed = set:Remove(a)
-	local hasAfter = set:Has(a)
-	return `{added},{again},{hasA},{removed},{hasAfter},{#set:Items()}`
+local function exerciseSet<C, T>(ops: SetOps<C, T>, set: C, a: T, b: T): string
+	local added = ops.Add(set, a)
+	local again = ops.Add(set, a)
+	ops.Add(set, b)
+	local hasA = ops.Has(set, a)
+	local removed = ops.Remove(set, a)
+	local hasAfter = ops.Has(set, a)
+	return `{added},{again},{hasA},{removed},{hasAfter},{#ops.Items(set)}`
 end
 
-print("=== 1. ListCore — Arr 가 만족하는가 ===")
+print("=== 1. ListOps — Arr 가 만족하는가 ===")
 do
-	const a = stl.Arr.Of(1, 2, 3)
-	assert(sumThroughContract(a) == 6, "계약을 통한 합")
-	assert(sumThroughContract(stl.Arr.Of() :: stl.Arr<number>) == 0, "빈 것")
+	const a = stl.Arr.Of(10, 20, 30)
+	assert(sumThroughContract(stl.Arr, a) == 60, "계약을 통한 합")
+	assert(sumThroughContract(stl.Arr, stl.Arr.Of<<number>>()) == 0, "빈 것")
 	-- 공용 알고리즘도 계약만 압니다
-	assert(stl.Algorithm.IndexOf(a, 2) == 2, "Algorithm.IndexOf")
-	assert(stl.Algorithm.Count(a) == 3, "Algorithm.Count")
+	assert(stl.Algorithm.IndexOf(stl.Arr, a, 20) == 2, "Algorithm.IndexOf")
+	assert(stl.Algorithm.Count(stl.Arr, a) == 3, "Algorithm.Count")
 end
 print("PASS")
 
-print("=== 2. ⭐ MapCore — HashMap 과 TreeMap 을 바꿔 끼울 수 있는가 ===")
+print("=== 2. ⭐ MapOps — HashMap 과 TreeMap 을 바꿔 끼울 수 있는가 ===")
 do
 	-- **같은 함수**에 두 구현을 넣습니다. 타입이 갈리면 여기서 진단이 납니다.
-	const hash = stl.HashMap.New() :: stl.HashMap<string, number>
-	const tree = stl.TreeMap.New(Common.compareString) :: stl.TreeMap<string, number>
+	type H = stl.HashMap<string, number>
+	type T = stl.TreeMap<string, number>
+	const hash = stl.HashMap.New<<string, number>>()
+	const tree = stl.TreeMap.New<<string, number>>(Common.compareString)
 
-	assert(fillAndCount(hash, 1) == 2, "HashMap 을 계약으로")
-	assert(fillAndCount(tree, 1) == 2, "TreeMap 을 계약으로")
-	assert(hash:Len() == tree:Len(), "둘의 크기가 같아야 합니다")
+	-- ⚠️ 계약을 받는 함수는 **타입 인자를 알려줍니다** — 원소 타입을 함수 묶음
+	-- (제네릭 함수들)에서도 끌어오며 `unknown` 이 섞입니다(typing-limits).
+	assert(fillAndCount<<H, number>>(stl.HashMap, hash, 1) == 2, "HashMap 을 계약으로")
+	assert(fillAndCount<<T, number>>(stl.TreeMap, tree, 1) == 2, "TreeMap 을 계약으로")
+	assert(stl.HashMap.Len(hash) == stl.TreeMap.Len(tree), "둘의 크기가 같아야 합니다")
 
 	-- 공용 알고리즘도 양쪽에서 같아야 합니다
-	assert(#stl.Algorithm.Keys(hash) == #stl.Algorithm.Keys(tree), "Algorithm.Keys")
-	assert(#stl.Algorithm.Values(hash) == #stl.Algorithm.Values(tree), "Algorithm.Values")
+	assert(
+		#stl.Algorithm.Keys<<H, string, number>>(stl.HashMap, hash)
+			== #stl.Algorithm.Keys<<T, string, number>>(stl.TreeMap, tree),
+		"Algorithm.Keys"
+	)
+	assert(
+		#stl.Algorithm.Values<<H, string, number>>(stl.HashMap, hash)
+			== #stl.Algorithm.Values<<T, string, number>>(stl.TreeMap, tree),
+		"Algorithm.Values"
+	)
 
-	-- 계약 자리에 담아 두고 나중에 쓰는 것도 돼야 합니다
-	const both: { MapCore<string, number> } = { hash, tree }
-	for _, map in both do
-		assert(map:Get("하나") == 1, "계약 자리에 담긴 뒤에도 동작")
-	end
+	-- 계약 자리에 모듈을 담아 두고 나중에 쓰는 것도 돼야 합니다
+	const hashOps: MapOps<H, string, number> = stl.HashMap
+	const treeOps: MapOps<T, string, number> = stl.TreeMap
+	assert(
+		hashOps.Get(hash, "하나") == 1 and treeOps.Get(tree, "하나") == 1,
+		"계약 자리에 담긴 뒤에도 동작"
+	)
 end
 print("PASS")
 
-print("=== 3. ⭐ SetCore — HashSet 과 TreeSet 을 바꿔 끼울 수 있는가 ===")
+print("=== 3. ⭐ SetOps — HashSet 과 TreeSet 을 바꿔 끼울 수 있는가 ===")
 do
-	const hash = stl.HashSet.New() :: stl.HashSet<number>
-	const tree = stl.TreeSet.New(Common.compareNumber) :: stl.TreeSet<number>
+	const hash = stl.HashSet.New<<number>>()
+	const tree = stl.TreeSet.New<<number>>(Common.compareNumber)
 
-	const hashResult = exerciseSet(hash, 10, 20)
-	const treeResult = exerciseSet(tree, 10, 20)
+	const hashResult = exerciseSet<<stl.HashSet<number>, number>>(stl.HashSet, hash, 10, 20)
+	const treeResult = exerciseSet<<stl.TreeSet<number>, number>>(stl.TreeSet, tree, 10, 20)
 	assert(hashResult == "true,false,true,true,false,1", `HashSet 결과: {hashResult}`)
 	-- **두 구현이 글자 하나까지 같은 답을 내야 합니다**
 	assert(hashResult == treeResult, `구현마다 답이 다릅니다: {hashResult} vs {treeResult}`)
-
-	const both: { SetCore<number> } = { hash, tree }
-	for _, set in both do
-		assert(set:Has(20), "계약 자리에 담긴 뒤에도 동작")
-		assert(#set:Items() == 1, "Items")
-	end
 end
 print("PASS")
 
-print("=== 4. 계약이 주는 것과 구현 고유의 것이 섞이지 않는가 ===")
+print("=== 4. ⭐ 메타테이블이 없다 — 데이터는 엔티티, 함수는 서비스 ===")
 do
-	-- 계약을 통해 보면 구현 고유 메소드는 안 보여야 합니다. 런타임 테이블엔
-	-- 있지만 타입 선언에서는 계약이 주는 것만 보이는 게 맞습니다.
-	const set: SetCore<number> = stl.TreeSet.New(Common.compareNumber)
-	assert((set :: any).Union ~= nil, "런타임 테이블에는 고유 메소드가 있습니다")
-	-- 타입으로는 안 보입니다 — 아래를 주석 해제하면 진단이 나야 합니다:
-	--   local _ = set:Union(set)
-	-- 이 "안 보여야 함" 을 실제로 고정하는 것은 음성 대조군 스파이크의 몫입니다.
-
-	-- 반대로 구현 타입으로 보면 계약이 주는 것도 다 보여야 합니다
-	const concrete = stl.TreeSet.New(Common.compareNumber) :: stl.TreeSet<number>
-	concrete:Add(1)
-	assert(concrete:Has(1) and #concrete:Items() == 1, "구현 타입에서 계약 메소드")
-	assert(concrete:Union(concrete):Len() == 1, "구현 타입에서 고유 메소드")
-end
-print("PASS")
-
-print("=== 5. 네임스페이스 함수와 메소드는 같은 함수 ===")
-do
-	-- 절차적 호출(`Arr.Map(a, fn)`)이 정식 모양이고 콜론은 같은 함수의 설탕입니다.
-	-- 모든 컨테이너에서 메타테이블의 메소드와 네임스페이스의 함수가 **같은 값**
-	-- 이어야 합니다 — 하나만 고치고 하나를 잊는 일이 없게.
-	const samples: { { name: string, ns: any, instance: any } } = {
-		{ name = "Arr", ns = stl.Arr, instance = stl.Arr.Of(1) },
-		{ name = "HashMap", ns = stl.HashMap, instance = stl.HashMap.New() },
-		{ name = "HashSet", ns = stl.HashSet, instance = stl.HashSet.New() },
-		{ name = "TreeMap", ns = stl.TreeMap, instance = stl.TreeMap.New(Common.compareNumber) },
-		{ name = "TreeSet", ns = stl.TreeSet, instance = stl.TreeSet.New(Common.compareNumber) },
-		{ name = "Heap", ns = stl.Heap, instance = stl.Heap.New(function(a: number, b: number)
-			return a < b
-		end) },
-		{ name = "Fut", ns = stl.Fut, instance = stl.Fut.Resolved() },
+	-- 모든 인스턴스가 평범한 테이블이어야 합니다(질문 AB). 메타테이블이 붙으면
+	-- 원소 인덱싱에 1.59배 세금이 붙습니다(perf 16절).
+	const samples: { { name: string, instance: any, is: (any) -> boolean } } = {
+		{ name = "Arr", instance = stl.Arr.Of(1), is = stl.isArr },
+		{ name = "HashMap", instance = stl.HashMap.New(), is = stl.isHashMap },
+		{ name = "HashSet", instance = stl.HashSet.New(), is = stl.isHashSet },
+		{ name = "TreeMap", instance = stl.TreeMap.New(Common.compareNumber), is = stl.isTreeMap },
+		{ name = "TreeSet", instance = stl.TreeSet.New(Common.compareNumber), is = stl.isTreeSet },
+		{
+			name = "Heap",
+			instance = stl.Heap.New(function(a: number, b: number)
+				return a < b
+			end),
+			is = stl.isHeap,
+		},
+		{ name = "Fut", instance = stl.Fut.Resolved(), is = stl.isFut },
 	}
 	for _, sample in samples do
-		const methods = getmetatable(sample.instance)
-		local count = 0
-		for key, value in methods do
-			if key ~= "__index" then
-				count += 1
-				assert(
-					sample.ns[key] == value,
-					`{sample.name}.{key} 가 네임스페이스에 없거나 다른 함수입니다`
-				)
-			end
+		assert(getmetatable(sample.instance) == nil, `{sample.name} 에 메타테이블이 붙어 있습니다`)
+		-- 판별은 태그 필드로 — 그리고 서로 헷갈리지 않아야 합니다
+		for _, other in samples do
+			assert(
+				other.is(sample.instance) == (other == sample),
+				`{other.name} 술어가 {sample.name} 를 잘못 판별`
+			)
 		end
-		assert(count > 0, `{sample.name} 의 메소드를 하나도 못 찾았습니다`)
+		assert(not sample.is({}), `{sample.name} 술어가 빈 테이블을 받아들임`)
 	end
-	-- 호출 결과도 같아야 합니다
-	const a = stl.Arr.Of(3, 1, 2)
-	assert(stl.Arr.Sort(a):Join(",") == a:Sort():Join(","), "Arr.Sort(a) == a:Sort()")
+	-- 맵 키로 태그 이름을 써도 태그가 덮이지 않습니다(키·값은 `data` 안에 삽니다)
+	const m = stl.HashMap.New<<string, number>>()
+	stl.HashMap.Set(m, "__hashmap__", 1)
+	assert(stl.isHashMap(m) and stl.HashMap.Len(m) == 1, "태그 이름을 키로 써도 안전")
 end
 print("PASS")
 

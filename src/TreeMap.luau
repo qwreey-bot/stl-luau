@@ -50,10 +50,18 @@ export type TreeMapData<K, V> = {
 	probe: KeyProbe<K, V>,
 }
 
-local Ifce: TreeMapIfce & Types.MapCore<any, any>
+-- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
+-- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
+const TAG = "__treemap__"
 
---#region ----------- 계약 구현 (Types.MapCore) -----------
--- ⚠️ 이 셋은 `TreeMapIfce` 에 **다시 쓰지 않습니다.** 계약이 이미 줍니다.
+-- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
+const function tagged(raw: any): any
+	raw[TAG] = true
+	return raw
+end
+
+--#region ----------- 계약 구현 (Types.MapOps) -----------
+-- 이 모듈 테이블이 그대로 `Types.MapOps` 구현체입니다(질문 AB).
 
 -- ⭐ **NaN 키는 받지 않습니다.** NaN 은 자기 자신과도 같지 않아 어떤 3방향
 -- 비교자로도 순서가 서지 않고, 조용히 넣으면 **다른 키까지** 못 찾게 되고
@@ -298,55 +306,19 @@ const function Clone<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
 		const rec = source[idx]
 		records[idx] = { key = rec.key, value = rec.value }
 	end
-	return setmetatable(
-		{
-			records = records,
-			size = self.size,
-			compare = self.compare,
-			probe = self.probe,
-		} :: any,
-		Ifce :: any
-	) :: any
+	return tagged({
+		records = records,
+		size = self.size,
+		compare = self.compare,
+		probe = self.probe,
+	})
 end
 
 --#endregion
 
---#region ----------- 타입 조립 -----------
--- ⭐ `Get`/`Set`/`Records` 는 **여기 없습니다.** `Types.MapCore` 가 줍니다.
-
-type TreeMapIfce = {
-	Has: typeof(Has),
-	GetOr: typeof(GetOr),
-	Len: typeof(Len),
-	Empty: typeof(Empty),
-	Keys: typeof(Keys),
-	Values: typeof(Values),
-	Iter: typeof(Iter),
-	First: typeof(First),
-	Last: typeof(Last),
-	FloorKey: typeof(FloorKey),
-	CeilingKey: typeof(CeilingKey),
-	RangeRecords: typeof(RangeRecords),
-	Remove: typeof(Remove),
-	Clear: typeof(Clear),
-	Clone: typeof(Clone),
-}
-
-export type TreeMap<K, V> = TreeMapData<K, V> & TreeMapIfce & Types.MapCore<K, V>
-
--- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
--- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
--- stylua: ignore
-Ifce = {
-	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty,
-	Keys = Keys, Values = Values, Iter = Iter,
-	First = First, Last = Last, FloorKey = FloorKey, CeilingKey = CeilingKey,
-	RangeRecords = RangeRecords,
-	Remove = Remove, Clear = Clear, Clone = Clone,
-	-- 계약이 주는 것들.
-	Get = Get, Set = Set, Records = Records,
-} :: any
-(Ifce :: any).__index = Ifce
+--#region ----------- 타입 -----------
+-- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
+export type TreeMap<K, V> = TreeMapData<K, V>
 
 --#endregion
 
@@ -359,15 +331,12 @@ const function makeProbe<K, V>(compare: Comparator<K>): KeyProbe<K, V>
 end
 
 const function adopt<K, V>(records: { Record<K, V> }, size: number, compare: Comparator<K>): TreeMap<K, V>
-	return setmetatable(
-		{
-			records = records,
-			size = size,
-			compare = compare,
-			probe = makeProbe(compare),
-		} :: any,
-		Ifce :: any
-	) :: any
+	return tagged({
+		records = records,
+		size = size,
+		compare = compare,
+		probe = makeProbe(compare),
+	})
 end
 
 -- ⚠️ **값 타입을 직접 알려줘야 합니다.** 비교자에서 `K` 는 뽑히지만 `V` 는
@@ -434,7 +403,7 @@ const function FromRecords<K, V>(records: { Record<K, V> }, compare: Comparator<
 end
 
 const function isTreeMap(value: any): boolean
-	return type(value) == "table" and getmetatable(value) == Ifce
+	return type(value) == "table" and rawget(value, TAG) == true
 end
 
 --#endregion
@@ -446,10 +415,8 @@ return {
 	Adopt = adopt,
 	isTreeMap = isTreeMap,
 
-	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
-	-- 라이브러리의 정식 모양입니다(`TreeMap.X(v, …)`). 콜론 호출과 같은 함수이고,
-	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
-	-- (`.claude/base/perf-measurements.md` 14절).
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`TreeMap.X(v, …)`) — 콜론 호출은
+	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
 	First = First, Last = Last, FloorKey = FloorKey, CeilingKey = CeilingKey,
 	RangeRecords = RangeRecords, Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set,

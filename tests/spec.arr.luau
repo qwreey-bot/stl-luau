@@ -85,17 +85,17 @@ assert(stl.isArr(Arr.Of(1)), "isArr")
 assert(not stl.isArr({ 1, 2 }), "평범한 테이블은 isArr 가 아님")
 assert(not stl.isArr(nil), "nil 은 isArr 가 아님")
 assert(not stl.isArr(42), "숫자는 isArr 가 아님")
-assert(Arr.Of(1, 2):Len() == 2, "Len")
-assert(emptyNum():Empty(), "Empty")
-assert(not Arr.Of(1):Empty(), "Empty 아님")
-assert(Arr.Of(1, 2, 3):Join("-") == "1-2-3", "Join")
-assert(emptyNum():Join("-") == "", "Join 빈 것")
-assert(Arr.Of(1):Join("-") == "1", "Join 한 개")
-assert(Arr.Of(1, 2, 3):Equal(Arr.Of(1, 2, 3)), "Equal")
-assert(not Arr.Of(1, 2):Equal(Arr.Of(1, 2, 3)), "Equal 길이 다름")
-assert(not Arr.Of(1, 2):Equal(Arr.Of(1, 9)), "Equal 내용 다름")
+assert(Arr.Len(Arr.Of(1, 2)) == 2, "Len")
+assert(Arr.Empty(emptyNum()), "Empty")
+assert(not Arr.Empty(Arr.Of(1)), "Empty 아님")
+assert(Arr.Join(Arr.Of(1, 2, 3), "-") == "1-2-3", "Join")
+assert(Arr.Join(emptyNum(), "-") == "", "Join 빈 것")
+assert(Arr.Join(Arr.Of(1), "-") == "1", "Join 한 개")
+assert(Arr.Equal(Arr.Of(1, 2, 3), Arr.Of(1, 2, 3)), "Equal")
+assert(not Arr.Equal(Arr.Of(1, 2), Arr.Of(1, 2, 3)), "Equal 길이 다름")
+assert(not Arr.Equal(Arr.Of(1, 2), Arr.Of(1, 9)), "Equal 내용 다름")
 do
-	local a, b, c = Arr.Of(1, 2, 3):Unpack()
+	local a, b, c = Arr.Unpack(Arr.Of(1, 2, 3))
 	assert(a == 1 and b == 2 and c == 3, "Unpack")
 end
 print("PASS")
@@ -103,170 +103,170 @@ print("PASS")
 print("=== 3. 계약 (ListCore) 과 Iter ===")
 do
 	local a = Arr.Of(10, 20, 30)
-	assert(a:FirstIndex() == 1 and a:LastIndex() == 3, "First/LastIndex")
-	assert(a:NextIndex(1) == 2 and a:NextIndex(3) == nil, "NextIndex")
-	assert(a:PrevIndex(3) == 2 and a:PrevIndex(1) == nil, "PrevIndex")
-	assert(a:Get(2) == 20 and a:Get(9) == nil, "Get")
-	assert(emptyNum():FirstIndex() == nil, "빈 것의 FirstIndex 는 nil")
+	assert(Arr.FirstIndex(a) == 1 and Arr.LastIndex(a) == 3, "First/LastIndex")
+	assert(Arr.NextIndex(a, 1) == 2 and Arr.NextIndex(a, 3) == nil, "NextIndex")
+	assert(Arr.PrevIndex(a, 3) == 2 and Arr.PrevIndex(a, 1) == nil, "PrevIndex")
+	assert(Arr.Get(a, 2) == 20 and Arr.Get(a, 9) == nil, "Get")
+	assert(Arr.FirstIndex(emptyNum()) == nil, "빈 것의 FirstIndex 는 nil")
 
 	local seenIdx, seenSum = 0, 0
-	for i, v in a:Iter() do
+	for i, v in Arr.Iter(a) do
 		seenIdx += i
 		seenSum += v
 	end
 	assert(seenIdx == 6 and seenSum == 60, "Iter 가 전부 돌아야 합니다")
 	local emptyCount = 0
-	for _i, _v in emptyNum():Iter() do
+	for _i, _v in Arr.Iter(emptyNum()) do
 		emptyCount += 1
 	end
 	assert(emptyCount == 0, "빈 것의 Iter 는 한 번도 안 돌아야 합니다")
 
 	-- 공용 알고리즘이 구현을 모른 채 계약만으로 동작하는지
-	assert(stl.Algorithm.IndexOf(a, 20) == 2, "Algorithm.IndexOf")
-	assert(stl.Algorithm.IndexOf(a, 99) == nil, "Algorithm.IndexOf 없음")
-	assert(stl.Algorithm.Count(a) == 3, "Algorithm.Count")
+	assert(stl.Algorithm.IndexOf(Arr, a, 20) == 2, "Algorithm.IndexOf")
+	assert(stl.Algorithm.IndexOf(Arr, a, 99) == nil, "Algorithm.IndexOf 없음")
+	assert(stl.Algorithm.Count(Arr, a) == 3, "Algorithm.Count")
 end
 print("PASS")
 
 print("=== 4. 추가 (PushBack / PushFront / Insert) ===")
-same(Arr.Of(1):PushBack(2), { 1, 2 }, "PushBack")
-same(Arr.Of(1):PushBackMany(2, 3), { 1, 2, 3 }, "PushBackMany")
-same(Arr.Of(1):PushBackMany(), { 1 }, "PushBackMany 인자 없음")
-same(Arr.Of(1):PushBackArray(Arr.Of(2, 3)), { 1, 2, 3 }, "PushBackArray")
-same(Arr.Of(1):PushBackArray(emptyNum()), { 1 }, "PushBackArray 빈 것")
-same(Arr.Of(2):PushFront(1), { 1, 2 }, "PushFront")
-same(Arr.Of(3):PushFrontMany(1, 2), { 1, 2, 3 }, "PushFrontMany 는 인자 순서를 보존")
-same(Arr.Of(3):PushFrontArray(Arr.Of(1, 2)), { 1, 2, 3 }, "PushFrontArray")
-same(emptyNum():PushFront(1), { 1 }, "빈 것에 PushFront")
+same(Arr.PushBack(Arr.Of(1), 2), { 1, 2 }, "PushBack")
+same(Arr.PushBackMany(Arr.Of(1), 2, 3), { 1, 2, 3 }, "PushBackMany")
+same(Arr.PushBackMany(Arr.Of(1)), { 1 }, "PushBackMany 인자 없음")
+same(Arr.PushBackArray(Arr.Of(1), Arr.Of(2, 3)), { 1, 2, 3 }, "PushBackArray")
+same(Arr.PushBackArray(Arr.Of(1), emptyNum()), { 1 }, "PushBackArray 빈 것")
+same(Arr.PushFront(Arr.Of(2), 1), { 1, 2 }, "PushFront")
+same(Arr.PushFrontMany(Arr.Of(3), 1, 2), { 1, 2, 3 }, "PushFrontMany 는 인자 순서를 보존")
+same(Arr.PushFrontArray(Arr.Of(3), Arr.Of(1, 2)), { 1, 2, 3 }, "PushFrontArray")
+same(Arr.PushFront(emptyNum(), 1), { 1 }, "빈 것에 PushFront")
 -- ⭐ 삽입 위치의 유효 범위는 1 .. n+1 — 맨 뒤 삽입이 표현 가능해야 합니다
-same(Arr.Of(1, 3):Insert(2, 2), { 1, 2, 3 }, "Insert 중간")
-same(Arr.Of(1, 2):Insert(3, 3), { 1, 2, 3 }, "Insert 맨 뒤 (n+1)")
-same(Arr.Of(1, 2):Insert(99, 3), { 1, 2, 3 }, "Insert 범위 초과는 맨 뒤로 clamp")
-same(Arr.Of(2, 3):Insert(1, 1), { 1, 2, 3 }, "Insert 맨 앞")
-same(Arr.Of(2, 3):Insert(-99, 1), { 1, 2, 3 }, "Insert 음수 초과는 맨 앞으로 clamp")
-same(Arr.Of(1, 3):Insert(-1, 2), { 1, 2, 3 }, "Insert 음수는 끝에서부터")
-same(emptyNum():Insert(1, 1), { 1 }, "빈 것에 Insert")
-same(Arr.Of(1, 4):InsertMany(2, 2, 3), { 1, 2, 3, 4 }, "InsertMany")
-same(Arr.Of(1, 4):InsertArray(2, Arr.Of(2, 3)), { 1, 2, 3, 4 }, "InsertArray")
-same(Arr.Of(1):InsertMany(1), { 1 }, "InsertMany 인자 없음")
+same(Arr.Insert(Arr.Of(1, 3), 2, 2), { 1, 2, 3 }, "Insert 중간")
+same(Arr.Insert(Arr.Of(1, 2), 3, 3), { 1, 2, 3 }, "Insert 맨 뒤 (n+1)")
+same(Arr.Insert(Arr.Of(1, 2), 99, 3), { 1, 2, 3 }, "Insert 범위 초과는 맨 뒤로 clamp")
+same(Arr.Insert(Arr.Of(2, 3), 1, 1), { 1, 2, 3 }, "Insert 맨 앞")
+same(Arr.Insert(Arr.Of(2, 3), -99, 1), { 1, 2, 3 }, "Insert 음수 초과는 맨 앞으로 clamp")
+same(Arr.Insert(Arr.Of(1, 3), -1, 2), { 1, 2, 3 }, "Insert 음수는 끝에서부터")
+same(Arr.Insert(emptyNum(), 1, 1), { 1 }, "빈 것에 Insert")
+same(Arr.InsertMany(Arr.Of(1, 4), 2, 2, 3), { 1, 2, 3, 4 }, "InsertMany")
+same(Arr.InsertArray(Arr.Of(1, 4), 2, Arr.Of(2, 3)), { 1, 2, 3, 4 }, "InsertArray")
+same(Arr.InsertMany(Arr.Of(1), 1), { 1 }, "InsertMany 인자 없음")
 print("PASS")
 
 print("=== 5. 복제 / 비우기 / 채우기 ===")
 do
 	local a = Arr.Of(1, 2, 3)
-	local b = a:Clone()
+	local b = Arr.Clone(a)
 	b[1] = 99
 	assert(a[1] == 1, "Clone 은 독립적이어야 합니다")
 	same(b, { 99, 2, 3 }, "Clone 내용")
 
-	local c = Arr.Of(1, 2, 3):Clear()
+	local c = Arr.Clear(Arr.Of(1, 2, 3))
 	assert(c.n == 0, "Clear 는 n 을 0 으로")
 	assert(c[1] == nil, "Clear 는 내용을 지움")
 	-- ⭐ table.clear 로 지우면 태그까지 날아가 isArr 를 통과 못 하던 버그
 	assert(stl.isArr(c), "Clear 후에도 isArr 여야 합니다")
-	same(c:PushBack(7), { 7 }, "Clear 후 다시 쓸 수 있어야 합니다")
+	same(Arr.PushBack(c, 7), { 7 }, "Clear 후 다시 쓸 수 있어야 합니다")
 end
-same(Arr.Sized(3, 0):Fill(9), { 9, 9, 9 }, "Fill 전체")
-same(Arr.Of(1, 2, 3):Fill(9, 2), { 1, 9, 9 }, "Fill start 부터")
-same(Arr.Of(1, 2, 3):Fill(9, 2, 2), { 1, 9, 3 }, "Fill 한 칸")
-same(Arr.Of(1, 2, 3):Fill(9, 3, 1), { 1, 2, 3 }, "Fill 뒤집힌 구간은 아무것도 안 함")
-same(Arr.Of(1, 2, 3):Fill(9, -1), { 1, 2, 9 }, "Fill 음수 start")
-same(Arr.Of(1, 2, 3):Fill(9, 1, 99), { 9, 9, 9 }, "Fill 범위 초과는 clamp")
+same(Arr.Fill(Arr.Sized(3, 0), 9), { 9, 9, 9 }, "Fill 전체")
+same(Arr.Fill(Arr.Of(1, 2, 3), 9, 2), { 1, 9, 9 }, "Fill start 부터")
+same(Arr.Fill(Arr.Of(1, 2, 3), 9, 2, 2), { 1, 9, 3 }, "Fill 한 칸")
+same(Arr.Fill(Arr.Of(1, 2, 3), 9, 3, 1), { 1, 2, 3 }, "Fill 뒤집힌 구간은 아무것도 안 함")
+same(Arr.Fill(Arr.Of(1, 2, 3), 9, -1), { 1, 2, 9 }, "Fill 음수 start")
+same(Arr.Fill(Arr.Of(1, 2, 3), 9, 1, 99), { 9, 9, 9 }, "Fill 범위 초과는 clamp")
 print("PASS")
 
 print("=== 5b. At — 음수를 받는 단일 조회 ===")
 do
 	const a = Arr.Of(10, 20, 30)
-	assert(a:At(1) == 10 and a:At(3) == 30, "At 양수")
+	assert(Arr.At(a, 1) == 10 and Arr.At(a, 3) == 30, "At 양수")
 	assert(Arr.At(a, -1) == 30 and Arr.At(a, -3) == 10, "At 음수는 뒤에서")
 	-- 범위 밖은 clamp 하지 않고 nil — 단일 조회라 "가장 가까운 것" 은 거짓말입니다
-	assert(a:At(0) == nil and a:At(4) == nil and a:At(-4) == nil, "At 범위 밖은 nil")
+	assert(Arr.At(a, 0) == nil and Arr.At(a, 4) == nil and Arr.At(a, -4) == nil, "At 범위 밖은 nil")
 	-- 소수는 구간 규약처럼 0 쪽으로 자릅니다
-	assert(a:At(2.7) == 20 and a:At(-1.5) == 30, "At 소수는 0 쪽으로")
-	assert(emptyNum():At(1) == nil and emptyNum():At(-1) == nil, "빈 것의 At")
+	assert(Arr.At(a, 2.7) == 20 and Arr.At(a, -1.5) == 30, "At 소수는 0 쪽으로")
+	assert(Arr.At(emptyNum(), 1) == nil and Arr.At(emptyNum(), -1) == nil, "빈 것의 At")
 	-- 구멍은 nil 로 — 타입이 T? 라 정직합니다
-	assert(Arr.Of<<number?>>(10, nil, 30):At(-2) == nil, "At 구멍")
+	assert(Arr.At(Arr.Of<<number?>>(10, nil, 30), -2) == nil, "At 구멍")
 end
 print("PASS")
 
 print("=== 6. 구간 — Slice / Erase / Splice ===")
-same(Arr.Of(1, 2, 3, 4):Slice(2, 3), { 2, 3 }, "Slice 닫힌 구간")
-same(Arr.Of(1, 2, 3, 4):Slice(), { 1, 2, 3, 4 }, "Slice 인자 없으면 전체")
-same(Arr.Of(1, 2, 3, 4):Slice(-2), { 3, 4 }, "Slice 음수 start")
-same(Arr.Of(1, 2, 3, 4):Slice(2, -1), { 2, 3, 4 }, "Slice 음수 last")
-same(Arr.Of(1, 2, 3, 4):Slice(3, 2), {}, "Slice 뒤집힌 구간은 빈 결과")
-same(Arr.Of(1, 2, 3, 4):Slice(0, 99), { 1, 2, 3, 4 }, "Slice 범위 초과는 clamp")
-same(emptyNum():Slice(1, 3), {}, "빈 것의 Slice")
+same(Arr.Slice(Arr.Of(1, 2, 3, 4), 2, 3), { 2, 3 }, "Slice 닫힌 구간")
+same(Arr.Slice(Arr.Of(1, 2, 3, 4)), { 1, 2, 3, 4 }, "Slice 인자 없으면 전체")
+same(Arr.Slice(Arr.Of(1, 2, 3, 4), -2), { 3, 4 }, "Slice 음수 start")
+same(Arr.Slice(Arr.Of(1, 2, 3, 4), 2, -1), { 2, 3, 4 }, "Slice 음수 last")
+same(Arr.Slice(Arr.Of(1, 2, 3, 4), 3, 2), {}, "Slice 뒤집힌 구간은 빈 결과")
+same(Arr.Slice(Arr.Of(1, 2, 3, 4), 0, 99), { 1, 2, 3, 4 }, "Slice 범위 초과는 clamp")
+same(Arr.Slice(emptyNum(), 1, 3), {}, "빈 것의 Slice")
 -- to 는 "목적지 뒤에 이어붙이기" 입니다
-same(Arr.Of(3, 4):Slice(1, 2, Arr.Of(1, 2)), { 1, 2, 3, 4 }, "Slice to 는 뒤에 이어붙임")
-same(Arr.Of(1, 2, 3, 4):SliceInplace(2, 3), { 2, 3 }, "SliceInplace")
-same(Arr.Of(1, 2, 3):SliceInplace(3, 1), {}, "SliceInplace 뒤집힌 구간은 비움")
+same(Arr.Slice(Arr.Of(3, 4), 1, 2, Arr.Of(1, 2)), { 1, 2, 3, 4 }, "Slice to 는 뒤에 이어붙임")
+same(Arr.SliceInplace(Arr.Of(1, 2, 3, 4), 2, 3), { 2, 3 }, "SliceInplace")
+same(Arr.SliceInplace(Arr.Of(1, 2, 3), 3, 1), {}, "SliceInplace 뒤집힌 구간은 비움")
 
-same(Arr.Of(1, 2, 3, 4):Erase(2, 3), { 1, 4 }, "Erase")
-same(Arr.Of(1, 2, 3):Erase(3, 1), { 1, 2, 3 }, "Erase 뒤집힌 구간은 그대로")
-same(Arr.Of(1, 2, 3):Erase(), {}, "Erase 인자 없으면 전부")
-same(Arr.Of(1, 2, 3, 4):EraseInplace(2, 3), { 1, 4 }, "EraseInplace")
+same(Arr.Erase(Arr.Of(1, 2, 3, 4), 2, 3), { 1, 4 }, "Erase")
+same(Arr.Erase(Arr.Of(1, 2, 3), 3, 1), { 1, 2, 3 }, "Erase 뒤집힌 구간은 그대로")
+same(Arr.Erase(Arr.Of(1, 2, 3)), {}, "Erase 인자 없으면 전부")
+same(Arr.EraseInplace(Arr.Of(1, 2, 3, 4), 2, 3), { 1, 4 }, "EraseInplace")
 -- ⭐ 가드가 없으면 배열이 오히려 늘어나던 버그
 do
-	local a = Arr.Of(1, 2, 3):EraseInplace(3, 1)
+	local a = Arr.EraseInplace(Arr.Of(1, 2, 3), 3, 1)
 	assert(a.n == 3, `EraseInplace 뒤집힌 구간에서 n 이 {a.n} 으로 늘어났습니다`)
 end
-same(Arr.Of(1, 2, 3):EraseInplace(), {}, "EraseInplace 전부")
-same(Arr.Of(1, 2, 3):EraseInplace(-1), { 1, 2 }, "EraseInplace 음수")
+same(Arr.EraseInplace(Arr.Of(1, 2, 3)), {}, "EraseInplace 전부")
+same(Arr.EraseInplace(Arr.Of(1, 2, 3), -1), { 1, 2 }, "EraseInplace 음수")
 
-same(Arr.Of(1, 2, 3, 4):Splice(2, 3, Arr.Of(9)), { 1, 9, 4 }, "Splice 줄어듦")
-same(Arr.Of(1, 2, 4):Splice(2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "Splice 늘어남")
-same(Arr.Of(1, 2, 3):Splice(2, 2, emptyNum()), { 1, 3 }, "Splice 빈 것으로 = 삭제")
-same(Arr.Of(1, 2, 3, 4):SpliceInplace(2, 3, Arr.Of(9)), { 1, 9, 4 }, "SpliceInplace 줄어듦")
-same(Arr.Of(1, 2, 4):SpliceInplace(2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "SpliceInplace 늘어남")
+same(Arr.Splice(Arr.Of(1, 2, 3, 4), 2, 3, Arr.Of(9)), { 1, 9, 4 }, "Splice 줄어듦")
+same(Arr.Splice(Arr.Of(1, 2, 4), 2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "Splice 늘어남")
+same(Arr.Splice(Arr.Of(1, 2, 3), 2, 2, emptyNum()), { 1, 3 }, "Splice 빈 것으로 = 삭제")
+same(Arr.SpliceInplace(Arr.Of(1, 2, 3, 4), 2, 3, Arr.Of(9)), { 1, 9, 4 }, "SpliceInplace 줄어듦")
+same(Arr.SpliceInplace(Arr.Of(1, 2, 4), 2, 2, Arr.Of(8, 9)), { 1, 8, 9, 4 }, "SpliceInplace 늘어남")
 print("PASS")
 
 print("=== 7. 순서 — Reverse / Rotate / Shuffle / Sort ===")
-same(Arr.Of(1, 2, 3):Reverse(), { 3, 2, 1 }, "Reverse")
-same(Arr.Of(1, 2, 3, 4):Reverse(2, 3), { 1, 3, 2, 4 }, "Reverse 구간")
-same(Arr.Of(1):Reverse(), { 1 }, "Reverse 한 개")
-same(emptyNum():Reverse(), {}, "Reverse 빈 것")
+same(Arr.Reverse(Arr.Of(1, 2, 3)), { 3, 2, 1 }, "Reverse")
+same(Arr.Reverse(Arr.Of(1, 2, 3, 4), 2, 3), { 1, 3, 2, 4 }, "Reverse 구간")
+same(Arr.Reverse(Arr.Of(1)), { 1 }, "Reverse 한 개")
+same(Arr.Reverse(emptyNum()), {}, "Reverse 빈 것")
 do
 	local a = Arr.Of(1, 2, 3)
-	local b = a:Reverse()
+	local b = Arr.Reverse(a)
 	assert(a[1] == 1, "Reverse 는 원본을 건드리지 않아야 합니다")
 	same(b, { 3, 2, 1 }, "Reverse 결과")
 end
-same(Arr.Of(1, 2, 3):ReverseInplace(), { 3, 2, 1 }, "ReverseInplace")
+same(Arr.ReverseInplace(Arr.Of(1, 2, 3)), { 3, 2, 1 }, "ReverseInplace")
 -- 양수 shift 가 왼쪽 회전 (std::rotate 방향)
-same(Arr.Of(1, 2, 3, 4):Rotate(1), { 2, 3, 4, 1 }, "Rotate 왼쪽")
-same(Arr.Of(1, 2, 3, 4):Rotate(-1), { 4, 1, 2, 3 }, "Rotate 음수는 오른쪽")
-same(Arr.Of(1, 2, 3, 4):Rotate(4), { 1, 2, 3, 4 }, "Rotate 한 바퀴")
-same(Arr.Of(1, 2, 3, 4):Rotate(5), { 2, 3, 4, 1 }, "Rotate 는 나머지만 의미")
-same(Arr.Of(1, 2, 3, 4):Rotate(1, 2, 3), { 1, 3, 2, 4 }, "Rotate 구간")
-same(Arr.Of(1):Rotate(1), { 1 }, "Rotate 한 개")
-same(emptyNum():Rotate(1), {}, "Rotate 빈 것")
+same(Arr.Rotate(Arr.Of(1, 2, 3, 4), 1), { 2, 3, 4, 1 }, "Rotate 왼쪽")
+same(Arr.Rotate(Arr.Of(1, 2, 3, 4), -1), { 4, 1, 2, 3 }, "Rotate 음수는 오른쪽")
+same(Arr.Rotate(Arr.Of(1, 2, 3, 4), 4), { 1, 2, 3, 4 }, "Rotate 한 바퀴")
+same(Arr.Rotate(Arr.Of(1, 2, 3, 4), 5), { 2, 3, 4, 1 }, "Rotate 는 나머지만 의미")
+same(Arr.Rotate(Arr.Of(1, 2, 3, 4), 1, 2, 3), { 1, 3, 2, 4 }, "Rotate 구간")
+same(Arr.Rotate(Arr.Of(1), 1), { 1 }, "Rotate 한 개")
+same(Arr.Rotate(emptyNum(), 1), {}, "Rotate 빈 것")
 do
 	-- rng 를 주입해 결정적으로 만듭니다
 	local a = Arr.Of(1, 2, 3, 4, 5)
-	local b = a:Shuffle(nil, nil, function(min: number, _max: number)
+	local b = Arr.Shuffle(a, nil, nil, function(min: number, _max: number)
 		return min
 	end)
 	assert(b.n == 5, "Shuffle 은 길이를 보존")
-	assert(a:Sort():Equal(b:Sort()), "Shuffle 은 원소 집합을 보존")
+	assert(Arr.Equal(Arr.Sort(a), Arr.Sort(b)), "Shuffle 은 원소 집합을 보존")
 	assert(a[1] == 1, "Shuffle 은 원본을 건드리지 않아야 합니다")
 end
-same(Arr.Of(3, 1, 2):Sort(), { 1, 2, 3 }, "Sort 기본")
+same(Arr.Sort(Arr.Of(3, 1, 2)), { 1, 2, 3 }, "Sort 기본")
 same(
-	Arr.Of(3, 1, 2):Sort(function(a: number, b: number)
+	Arr.Sort(Arr.Of(3, 1, 2), function(a: number, b: number)
 		return a > b
 	end),
 	{ 3, 2, 1 },
 	"Sort 불리언 비교자"
 )
-same(Arr.Of(3, 1, 2):Sort(Common.lessFrom(Common.compareNumber)), { 1, 2, 3 }, "Sort 3방향 어댑터")
-same(emptyNum():Sort(), {}, "Sort 빈 것")
-same(Arr.Of(1):Sort(), { 1 }, "Sort 한 개")
-same(Arr.Of(3, 1, 2):SortInplace(), { 1, 2, 3 }, "SortInplace")
+same(Arr.Sort(Arr.Of(3, 1, 2), Common.lessFrom(Common.compareNumber)), { 1, 2, 3 }, "Sort 3방향 어댑터")
+same(Arr.Sort(emptyNum()), {}, "Sort 빈 것")
+same(Arr.Sort(Arr.Of(1)), { 1 }, "Sort 한 개")
+same(Arr.SortInplace(Arr.Of(3, 1, 2)), { 1, 2, 3 }, "SortInplace")
 -- ⭐ 구멍은 정렬 대상에서 빠지고 뒤로 몰리며 n 은 보존됩니다
 do
 	local holey: Arr<number> = Arr.Of(3, nil :: any, 1)
-	local sorted = holey:Sort()
+	local sorted = Arr.Sort(holey)
 	assert(sorted.n == 3, "Sort 는 n 을 보존")
 	assert(sorted[1] == 1 and sorted[2] == 3 and sorted[3] == nil, "Sort 는 구멍을 뒤로 몰아야 합니다")
 end
@@ -274,14 +274,14 @@ print("PASS")
 
 print("=== 8. 스트림 — Map / Filter / Flat / Drain ===")
 same(
-	Arr.Of(1, 2, 3):Map(function(v: number)
+	Arr.Map(Arr.Of(1, 2, 3), function(v: number)
 		return v * 2
 	end),
 	{ 2, 4, 6 },
 	"Map"
 )
 same(
-	emptyNum():Map(function(v: number)
+	Arr.Map(emptyNum(), function(v: number)
 		return v
 	end),
 	{},
@@ -290,7 +290,7 @@ same(
 same(
 	-- 콜백 주석이 필요합니다 — 셋째 인자가 `ArrView<unknown>` 이라 `to` 와 함께
 	-- 넘기면 `T` 를 붙잡을 단서가 없습니다(질문 V 의 대가).
-	Arr.Of(1, 2):Map(function(v: number)
+	Arr.Map(Arr.Of(1, 2), function(v: number)
 		return v
 	end, Arr.Of(0)),
 	{ 0, 1, 2 },
@@ -298,35 +298,35 @@ same(
 )
 -- Map 은 콜백에 (원소, 위치, 뷰) 를 줍니다
 same(
-	Arr.Of(10, 20):Map(function(v: number, idx: number, arr: ArrView<unknown>)
+	Arr.Map(Arr.Of(10, 20), function(v: number, idx: number, arr: ArrView<unknown>)
 		return v + idx + arr.n
 	end),
 	{ 13, 24 },
 	"Map 콜백 인자"
 )
 same(
-	Arr.Of(1, 2, 3):MapInplace(function(v: number)
+	Arr.MapInplace(Arr.Of(1, 2, 3), function(v: number)
 		return v * 10
 	end),
 	{ 10, 20, 30 },
 	"MapInplace"
 )
 same(
-	Arr.Of(1, 2, 3, 4):Filter(function(v: number)
+	Arr.Filter(Arr.Of(1, 2, 3, 4), function(v: number)
 		return v % 2 == 0
 	end),
 	{ 2, 4 },
 	"Filter"
 )
 same(
-	Arr.Of(1, 2, 3, 4):Retain(function(v: number)
+	Arr.Retain(Arr.Of(1, 2, 3, 4), function(v: number)
 		return v % 2 == 0
 	end),
 	{ 2, 4 },
 	"Retain"
 )
 same(
-	Arr.Of(1, 2, 3):Retain(function()
+	Arr.Retain(Arr.Of(1, 2, 3), function()
 		return false
 	end),
 	{},
@@ -334,33 +334,33 @@ same(
 )
 do
 	local nested = Arr.Of(1, Arr.Of(2, 3) :: any, 4)
-	const flat = nested:Flat() :: Arr<number>
+	const flat = Arr.Flat(nested) :: Arr<number>
 	same(flat, { 1, 2, 3, 4 }, "Flat")
 end
 do
 	local nested = Arr.Of(emptyNum() :: any, 1, Arr.Of(2) :: any)
-	const flat = nested:Flat() :: Arr<number>
+	const flat = Arr.Flat(nested) :: Arr<number>
 	same(flat, { 1, 2 }, "Flat 빈 중첩")
 end
 do
 	local nested = Arr.Of(1, Arr.Of(2, 3) :: any, 4)
-	const flat = nested:FlatInplace() :: Arr<number>
+	const flat = Arr.FlatInplace(nested) :: Arr<number>
 	same(flat, { 1, 2, 3, 4 }, "FlatInplace")
 end
 do
 	local nested = Arr.Of(emptyNum() :: any, 1)
-	const flat = nested:FlatInplace() :: Arr<number>
+	const flat = Arr.FlatInplace(nested) :: Arr<number>
 	same(flat, { 1 }, "FlatInplace 빈 중첩")
 end
 same(
-	Arr.Of(1, 2):Flatmap(function(v: number)
+	Arr.Flatmap(Arr.Of(1, 2), function(v: number)
 		return v, v * 10
 	end),
 	{ 1, 10, 2, 20 },
 	"Flatmap"
 )
 same(
-	Arr.Of(1, 2):FlatmapInplace(function(v: number)
+	Arr.FlatmapInplace(Arr.Of(1, 2), function(v: number)
 		return v, v * 10
 	end),
 	{ 1, 10, 2, 20 },
@@ -369,145 +369,144 @@ same(
 do
 	local a = Arr.Of(1, 2, 3)
 	local seen = 0
-	a:Drain(function(v: number)
+	Arr.Drain(a, function(v: number)
 		seen += v
 		return nil
 	end)
 	assert(seen == 6, "Drain 은 전부 순회")
 	assert(a.n == 0 and a[1] == nil, "Drain 은 비워야 합니다")
 end
-same(Arr.Of(1):ConcatInplace(Arr.Of(2), Arr.Of(3, 4)), { 1, 2, 3, 4 }, "ConcatInplace")
-same(Arr.Of(1):ConcatInplace(), { 1 }, "ConcatInplace 인자 없음")
+same(Arr.ConcatInplace(Arr.Of(1), Arr.Of(2), Arr.Of(3, 4)), { 1, 2, 3, 4 }, "ConcatInplace")
+same(Arr.ConcatInplace(Arr.Of(1)), { 1 }, "ConcatInplace 인자 없음")
 print("PASS")
 
 print("=== 9. 조건 조회 — Count / Find / Some / Every ===")
-assert(Arr.Of(1, 2, 3, 4):Count(function(v: number)
+assert(Arr.Count(Arr.Of(1, 2, 3, 4), function(v: number)
 	return v % 2 == 0
 end) == 2, "Count")
 do
-	local item, idx = Arr.Of(1, 2, 3):Find(function(v)
+	local item, idx = Arr.Find(Arr.Of(1, 2, 3), function(v)
 		return v > 1
 	end)
 	assert(item == 2 and idx == 2, "Find")
-	local none, noneIdx = Arr.Of(1):Find(function()
+	local none, noneIdx = Arr.Find(Arr.Of(1), function()
 		return false
 	end)
 	assert(none == nil and noneIdx == nil, "Find 없음")
 end
 assert(
-	Arr.Of(1, 2):Some(function(v)
+	Arr.Some(Arr.Of(1, 2), function(v)
 		return v == 2
 	end),
 	"Some"
 )
-assert(not Arr.Of(1, 2):Some(function(v)
+assert(not Arr.Some(Arr.Of(1, 2), function(v)
 	return v == 9
 end), "Some 없음")
 assert(
-	Arr.Of(2, 4):Every(function(v: number)
+	Arr.Every(Arr.Of(2, 4), function(v: number)
 		return v % 2 == 0
 	end),
 	"Every"
 )
-assert(not Arr.Of(2, 3):Every(function(v: number)
+assert(not Arr.Every(Arr.Of(2, 3), function(v: number)
 	return v % 2 == 0
 end), "Every 아님")
 assert(
-	emptyNum():Every(function(v: number)
+	Arr.Every(emptyNum(), function(v: number)
 		return false
 	end),
 	"빈 것의 Every 는 공허 참"
 )
-assert(not Arr.Of(1, 2, 3):Some(function(v)
+assert(not Arr.Some(Arr.Of(1, 2, 3), function(v)
 	return v == 1
 end, 2), "Some 구간 — start 앞의 원소는 안 봐야 합니다")
 assert(
-	Arr.Of(1, 2, 3):Some(function(v)
+	Arr.Some(Arr.Of(1, 2, 3), function(v)
 		return v == 3
 	end, 2),
 	"Some 구간 — start 뒤의 원소는 봐야 합니다"
 )
-assert(not Arr.Of(1, 2, 3):Every(function(v)
+assert(not Arr.Every(Arr.Of(1, 2, 3), function(v)
 	return v == 1
 end, 2), "Every 구간")
 print("PASS")
 
 print("=== 10. 집계 — Max / Min / Sum / Prod ===")
-assert(Arr.Of(3, 1, 2):Max() == 3, "Max")
-assert(Arr.Of(3, 1, 2):Min() == 1, "Min")
-assert(emptyNum():Max() == nil, "빈 것의 Max 는 nil")
-assert(emptyNum():Min() == nil, "빈 것의 Min 은 nil")
-assert(Arr.Of(1):Max() == 1, "Max 한 개")
-assert(Arr.Of("b", "a"):Max() == "b", "Max 는 문자열에도 동작")
-assert(Arr.Of(3, 1, 2):Max(function(a: number, b: number)
+assert(Arr.Max(Arr.Of(3, 1, 2)) == 3, "Max")
+assert(Arr.Min(Arr.Of(3, 1, 2)) == 1, "Min")
+assert(Arr.Max(emptyNum()) == nil, "빈 것의 Max 는 nil")
+assert(Arr.Min(emptyNum()) == nil, "빈 것의 Min 은 nil")
+assert(Arr.Max(Arr.Of(1)) == 1, "Max 한 개")
+assert(Arr.Max(Arr.Of("b", "a")) == "b", "Max 는 문자열에도 동작")
+assert(Arr.Max(Arr.Of(3, 1, 2), function(a: number, b: number)
 	return a > b
 end) == 1, "Max 비교자를 뒤집으면 최소가 나옴")
-assert(Arr.Of(1, 2, 3):Sum() == 6, "Sum")
-assert(emptyNum():Sum() == 0, "빈 것의 Sum 은 0")
-assert(Arr.Of(1, 2):Sum(10) == 13, "Sum 씨앗")
-assert(Arr.Of(2, 3):Prod() == 6, "Prod")
-assert(emptyNum():Prod() == 1, "빈 것의 Prod 는 1")
+assert(Arr.Sum(Arr.Of(1, 2, 3)) == 6, "Sum")
+assert(Arr.Sum(emptyNum()) == 0, "빈 것의 Sum 은 0")
+assert(Arr.Sum(Arr.Of(1, 2), 10) == 13, "Sum 씨앗")
+assert(Arr.Prod(Arr.Of(2, 3)) == 6, "Prod")
+assert(Arr.Prod(emptyNum()) == 1, "빈 것의 Prod 는 1")
 -- ⭐ 구멍에서 터지지 않아야 합니다
 do
 	local holey: Arr<number> = Arr.Of(1, nil :: any, 3)
-	assert(holey:Sum() == 4, "Sum 은 구멍을 건너뜀")
-	assert(holey:Prod() == 3, "Prod 는 구멍을 건너뜀")
-	assert(holey:Max() == 3, "Max 는 구멍을 건너뜀")
-	assert(holey:Min() == 1, "Min 은 구멍을 건너뜀")
-	assert(holey:Join("-") == "1-3", "Join 은 구멍을 건너뜀")
+	assert(Arr.Sum(holey) == 4, "Sum 은 구멍을 건너뜀")
+	assert(Arr.Prod(holey) == 3, "Prod 는 구멍을 건너뜀")
+	assert(Arr.Max(holey) == 3, "Max 는 구멍을 건너뜀")
+	assert(Arr.Min(holey) == 1, "Min 은 구멍을 건너뜀")
+	assert(Arr.Join(holey, "-") == "1-3", "Join 은 구멍을 건너뜀")
 end
 print("PASS")
 
 print("=== 11. 접기 — Fold / FoldRight / Reduce / FoldUntil ===")
-assert(Arr.Of(1, 2, 3):Fold(0, function(acc, v)
+assert(Arr.Fold(Arr.Of(1, 2, 3), 0, function(acc, v)
 	return acc + v
 end) == 6, "Fold")
-assert(emptyNum():Fold(7, function(acc: number, v: number)
+assert(Arr.Fold(emptyNum(), 7, function(acc: number, v: number)
 	return acc + v
 end) == 7, "빈 것의 Fold 는 초기값")
-assert(Arr.Of("a", "b", "c"):FoldRight("", function(acc, v)
+assert(Arr.FoldRight(Arr.Of("a", "b", "c"), "", function(acc, v)
 	return acc .. v
 end) == "cba", "FoldRight 는 오른쪽부터")
-assert(Arr.Of(1, 2, 3):Reduce(function(a, b)
+assert(Arr.Reduce(Arr.Of(1, 2, 3), function(a, b)
 	return a + b
 end) == 6, "Reduce")
-assert(Arr.Of(5):Reduce(function(a, b)
+assert(Arr.Reduce(Arr.Of(5), function(a, b)
 	return a + b
 end) == 5, "Reduce 한 개는 그 원소")
-assert(emptyNum():Reduce(function(a: number, b: number)
+assert(Arr.Reduce(emptyNum(), function(a: number, b: number)
 	return a + b
 end) == nil, "빈 것의 Reduce 는 nil")
 do
-	local acc, stopped = Arr.Of(1, 2, 3, 4):FoldUntil(0, function(a: number, v: number)
+	local acc, stopped = Arr.FoldUntil(Arr.Of(1, 2, 3, 4), 0, function(a: number, v: number)
 		return a + v, v >= 3
 	end)
 	assert(acc == 6 and stopped == 3, `FoldUntil: acc={acc} stopped={tostring(stopped)}`)
-	local full, notStopped = Arr.Of(1, 2):FoldUntil(0, function(a, v)
+	local full, notStopped = Arr.FoldUntil(Arr.Of(1, 2), 0, function(a, v)
 		return a + v, false
 	end)
 	assert(full == 3 and notStopped == nil, "완주하면 둘째가 nil")
 end
 print("PASS")
 
-print("=== 12. 체이닝과 뷰 ===")
+print("=== 12. 문장으로 이어 쓰기와 뷰 ===")
 do
-	-- 3단 타입 변환 체이닝
-	local result = Arr.Of(1, 2, 3)
-		:Map(function(v)
-			return tostring(v)
-		end)
-		:Map(function(s: string)
-			return #s
-		end)
-		:Filter(function(n)
-			return n == 1
-		end)
-	same(result, { 1, 1, 1 }, "3단 체이닝")
-	-- 콜백 안에서 뷰 메소드
-	local viewed = Arr.Of(1, 2):Map(function(v: number, idx: number, arr: ArrView<unknown>)
-		return v + arr:Len() + arr:Slice(1, idx):Len()
+	-- 3단 타입 변환을 문장으로 이어 씁니다(질문 AB — 체이닝 대신 정식 모양)
+	const texts = Arr.Map(Arr.Of(1, 2, 3), function(v: number): string
+		return tostring(v)
 	end)
-	same(viewed, { 4, 6 }, "콜백 안에서 뷰 메소드")
+	const lengths = Arr.Map(texts, function(s: string): number
+		return #s
+	end)
+	const result = Arr.Filter(lengths, function(n: number): boolean
+		return n == 1
+	end)
+	same(result, { 1, 1, 1 }, "3단 변환")
+	-- 콜백의 셋째 인자는 읽기 전용 평범한 테이블입니다(메소드 없음)
+	local viewed = Arr.Map(Arr.Of(1, 2), function(v: number, idx: number, arr: ArrView<unknown>)
+		return v + arr.n + idx
+	end)
+	same(viewed, { 4, 6 }, "콜백의 셋째 인자")
 end
 print("PASS")
 
@@ -524,24 +523,24 @@ end
 do
 	-- 제자리 판은 자기 자신을 돌려주고 원본이 바뀌어야 합니다.
 	const a: Arr<number> = Arr.Of(1, 2, 3, 4)
-	const rotated = a:RotateInplace(1)
+	const rotated = Arr.RotateInplace(a, 1)
 	assert(rotated == a, "RotateInplace 는 자기 자신을 돌려줍니다")
 	same(a, { 2, 3, 4, 1 }, "RotateInplace 왼쪽")
-	a:RotateInplace(-1)
+	Arr.RotateInplace(a, -1)
 	same(a, { 1, 2, 3, 4 }, "RotateInplace 음수는 오른쪽")
-	a:RotateInplace(1, 2, 3)
+	Arr.RotateInplace(a, 1, 2, 3)
 	same(a, { 1, 3, 2, 4 }, "RotateInplace 구간")
-	same(Arr.Of(1):RotateInplace(1), { 1 }, "RotateInplace 한 개")
-	same(emptyNum():RotateInplace(1), {}, "RotateInplace 빈 것")
+	same(Arr.RotateInplace(Arr.Of(1), 1), { 1 }, "RotateInplace 한 개")
+	same(Arr.RotateInplace(emptyNum(), 1), {}, "RotateInplace 빈 것")
 
 	const b: Arr<number> = Arr.Of(1, 2, 3, 4, 5)
-	const shuffled = b:ShuffleInplace(nil, nil, function(min: number, _max: number)
+	const shuffled = Arr.ShuffleInplace(b, nil, nil, function(min: number, _max: number)
 		return min
 	end)
 	assert(shuffled == b, "ShuffleInplace 는 자기 자신을 돌려줍니다")
 	assert(b.n == 5, "ShuffleInplace 는 길이를 보존")
-	same(b:Sort(), { 1, 2, 3, 4, 5 }, "ShuffleInplace 는 원소 집합을 보존")
-	same(emptyNum():ShuffleInplace(), {}, "ShuffleInplace 빈 것")
+	same(Arr.Sort(b), { 1, 2, 3, 4, 5 }, "ShuffleInplace 는 원소 집합을 보존")
+	same(Arr.ShuffleInplace(emptyNum()), {}, "ShuffleInplace 빈 것")
 end
 print("PASS")
 
@@ -549,33 +548,33 @@ print("=== 14. ⚠️ unchecked 계열 ===")
 do
 	-- 구멍이 없으면 checked 와 **같은 답**이 나와야 합니다.
 	const dense: Arr<number> = Arr.Of(3, 1, 2)
-	assert(dense:SumUnchecked() == dense:Sum(), "SumUnchecked 는 같은 답")
-	assert(dense:ProdUnchecked() == dense:Prod(), "ProdUnchecked 는 같은 답")
-	assert(dense:MaxUnchecked() == dense:Max(), "MaxUnchecked 는 같은 답")
-	assert(dense:MinUnchecked() == dense:Min(), "MinUnchecked 는 같은 답")
-	assert(dense:SortUnchecked():Equal(dense:Sort()), "SortUnchecked 는 같은 답")
-	assert(dense:SumUnchecked(10) == 16, "SumUnchecked 씨앗")
-	assert(dense:ProdUnchecked(2) == 12, "ProdUnchecked 씨앗")
+	assert(Arr.SumUnchecked(dense) == Arr.Sum(dense), "SumUnchecked 는 같은 답")
+	assert(Arr.ProdUnchecked(dense) == Arr.Prod(dense), "ProdUnchecked 는 같은 답")
+	assert(Arr.MaxUnchecked(dense) == Arr.Max(dense), "MaxUnchecked 는 같은 답")
+	assert(Arr.MinUnchecked(dense) == Arr.Min(dense), "MinUnchecked 는 같은 답")
+	assert(Arr.Equal(Arr.SortUnchecked(dense), Arr.Sort(dense)), "SortUnchecked 는 같은 답")
+	assert(Arr.SumUnchecked(dense, 10) == 16, "SumUnchecked 씨앗")
+	assert(Arr.ProdUnchecked(dense, 2) == 12, "ProdUnchecked 씨앗")
 
 	-- 비교자를 준 경로도 같아야 합니다
 	const desc = function(a: number, b: number): boolean
 		return a > b
 	end
-	assert(dense:MaxUnchecked(desc) == dense:Max(desc), "MaxUnchecked 비교자")
-	assert(dense:MinUnchecked(desc) == dense:Min(desc), "MinUnchecked 비교자")
-	same(dense:SortUnchecked(desc), { 3, 2, 1 }, "SortUnchecked 비교자")
+	assert(Arr.MaxUnchecked(dense, desc) == Arr.Max(dense, desc), "MaxUnchecked 비교자")
+	assert(Arr.MinUnchecked(dense, desc) == Arr.Min(dense, desc), "MinUnchecked 비교자")
+	same(Arr.SortUnchecked(dense, desc), { 3, 2, 1 }, "SortUnchecked 비교자")
 
 	-- 빈 것과 한 개
-	assert(emptyNum():MaxUnchecked() == nil, "빈 것의 MaxUnchecked")
-	assert(emptyNum():MinUnchecked() == nil, "빈 것의 MinUnchecked")
-	assert(emptyNum():SumUnchecked() == 0, "빈 것의 SumUnchecked")
-	assert(emptyNum():ProdUnchecked() == 1, "빈 것의 ProdUnchecked")
-	assert(Arr.Of(5):MaxUnchecked() == 5, "한 개의 MaxUnchecked")
-	same(emptyNum():SortUnchecked(), {}, "빈 것의 SortUnchecked")
+	assert(Arr.MaxUnchecked(emptyNum()) == nil, "빈 것의 MaxUnchecked")
+	assert(Arr.MinUnchecked(emptyNum()) == nil, "빈 것의 MinUnchecked")
+	assert(Arr.SumUnchecked(emptyNum()) == 0, "빈 것의 SumUnchecked")
+	assert(Arr.ProdUnchecked(emptyNum()) == 1, "빈 것의 ProdUnchecked")
+	assert(Arr.MaxUnchecked(Arr.Of(5)) == 5, "한 개의 MaxUnchecked")
+	same(Arr.SortUnchecked(emptyNum()), {}, "빈 것의 SortUnchecked")
 
 	-- 제자리 판은 자기 자신을 돌려줍니다
 	const target: Arr<number> = Arr.Of(3, 1, 2)
-	assert(target:SortInplaceUnchecked() == target, "SortInplaceUnchecked 는 자기 자신")
+	assert(Arr.SortInplaceUnchecked(target) == target, "SortInplaceUnchecked 는 자기 자신")
 	same(target, { 1, 2, 3 }, "SortInplaceUnchecked 결과")
 
 	-- ⚠️ **구멍이 있을 때 문서대로 망가지는지**를 고정합니다. 이걸 고정해두지
@@ -583,19 +582,19 @@ do
 	const holed = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
 	holed[1], holed[3] = 1, 3
 	assert(not pcall(function()
-		return holed:SumUnchecked()
+		return Arr.SumUnchecked(holed)
 	end), "SumUnchecked 는 구멍에서 터져야 합니다")
 	assert(not pcall(function()
-		return holed:MaxUnchecked()
+		return Arr.MaxUnchecked(holed)
 	end), "MaxUnchecked 는 구멍에서 터져야 합니다")
 	-- 반면 checked 는 멀쩡해야 합니다
-	assert(holed:Sum() == 4 and holed:Max() == 3, "checked 는 구멍에서 멀쩡")
+	assert(Arr.Sum(holed) == 4 and Arr.Max(holed) == 3, "checked 는 구멍에서 멀쩡")
 	-- 정렬만은 터지지 않고 **조용히** 다르게 동작합니다 — 그게 가장 위험한 점
 	const holedSorted = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
 	holedSorted[1], holedSorted[3] = 1, 3
 	assert(
 		pcall(function()
-			return holedSorted:SortInplaceUnchecked()
+			return Arr.SortInplaceUnchecked(holedSorted)
 		end),
 		"SortInplaceUnchecked 는 구멍에서도 터지지 않습니다 (조용히 다름)"
 	)
@@ -607,15 +606,15 @@ do
 	-- ⭐ self 를 전체형으로 받던 시절엔 이 절 전체가 타입 에러였습니다(spikes/46).
 	local maybe = Arr.Of<<number?>>(1, nil, 3)
 	assert(maybe.n == 3, "n 은 구멍을 포함")
-	const kept = maybe:Filter(function(v: number?)
+	const kept = Arr.Filter(maybe, function(v: number?)
 		return v ~= nil
 	end)
 	assert(kept.n == 2, "Filter 가 구멍을 거름")
-	const filled = maybe:Map(function(v: number?): number
+	const filled = Arr.Map(maybe, function(v: number?): number
 		return v or 0
 	end)
 	same(filled, { 1, 0, 3 }, "Map 으로 구멍을 메움")
-	assert(maybe:Count(function(v: number?)
+	assert(Arr.Count(maybe, function(v: number?)
 		return v == nil
 	end) == 1, "Count")
 end
@@ -624,23 +623,23 @@ print("PASS")
 print("=== 16. 회귀 — 2026-09-30 리뷰 ===")
 do
 	-- (1) Splice 의 시작점이 n+1 을 넘으면 n 바깥에 쓰던 것 — 삽입 위치처럼 1..n+1 로
-	same(Arr.Of(1, 2, 3):Splice(10, 12, Arr.Of(9)), { 1, 2, 3, 9 }, "Splice 시작점이 n+1 초과")
+	same(Arr.Splice(Arr.Of(1, 2, 3), 10, 12, Arr.Of(9)), { 1, 2, 3, 9 }, "Splice 시작점이 n+1 초과")
 	do
 		const a: Arr<number> = Arr.Of(1, 2, 3)
-		a:SpliceInplace(5, 4, Arr.Of(9))
+		Arr.SpliceInplace(a, 5, 4, Arr.Of(9))
 		same(a, { 1, 2, 3, 9 }, "SpliceInplace 시작점이 n+1 초과")
 		assert(a[5] == nil, "n 밖에 남은 값이 없어야 함")
 	end
-	same(Arr.Of(1, 2, 3):Splice(4, 3, Arr.Of(9)), { 1, 2, 3, 9 }, "Splice 시작점이 정확히 n+1")
+	same(Arr.Splice(Arr.Of(1, 2, 3), 4, 3, Arr.Of(9)), { 1, 2, 3, 9 }, "Splice 시작점이 정확히 n+1")
 
 	-- (3) 정수가 아닌 인덱스는 Luau 처럼 0 쪽으로 자른다 (string.sub("abc", 1.5) == "abc")
-	same(Arr.Of(1, 2, 3, 4):Rotate(1.5), { 2, 3, 4, 1 }, "Rotate 1.5 는 1")
-	same(Arr.Of(1, 2, 3, 4, 5):Rotate(2.5), { 3, 4, 5, 1, 2 }, "Rotate 2.5 는 2")
-	same(Arr.Of(1, 2, 3, 4):Slice(1.5, 3.9), { 1, 2, 3 }, "Slice 소수 구간")
-	same(Arr.Of(1, 2, 3, 4):Slice(-1.5), { 4 }, "Slice 음수 소수는 0 쪽으로(-1)")
-	same(Arr.Of(1, 3):Insert(1.9, 0), { 0, 1, 3 }, "Insert 소수 위치")
+	same(Arr.Rotate(Arr.Of(1, 2, 3, 4), 1.5), { 2, 3, 4, 1 }, "Rotate 1.5 는 1")
+	same(Arr.Rotate(Arr.Of(1, 2, 3, 4, 5), 2.5), { 3, 4, 5, 1, 2 }, "Rotate 2.5 는 2")
+	same(Arr.Slice(Arr.Of(1, 2, 3, 4), 1.5, 3.9), { 1, 2, 3 }, "Slice 소수 구간")
+	same(Arr.Slice(Arr.Of(1, 2, 3, 4), -1.5), { 4 }, "Slice 음수 소수는 0 쪽으로(-1)")
+	same(Arr.Insert(Arr.Of(1, 3), 1.9, 0), { 0, 1, 3 }, "Insert 소수 위치")
 	assert(not pcall(function()
-		return Arr.Of(1, 2):Rotate(math.huge)
+		return Arr.Rotate(Arr.Of(1, 2), math.huge)
 	end), "Rotate 무한대는 에러")
 
 	-- (4) Range 는 Lua 의 for 와 같게 — 소수 step 에서 끝점이 빠질 수 있음(문서화)
@@ -670,14 +669,14 @@ do
 	local function randomRecs(size: number, keyRange: number): Arr<Rec>
 		const out = Arr.Of<<Rec>>()
 		for id = 1, size do
-			out:PushBack({ k = math.random(1, keyRange), id = id * 10 })
+			Arr.PushBack(out, { k = math.random(1, keyRange), id = id * 10 })
 		end
 		return out
 	end
 	local function randomNums(size: number, range: number): Arr<number>
 		const out = Arr.Of<<number>>()
 		for _ = 1, size do
-			out:PushBack(math.random(1, range) * 10)
+			Arr.PushBack(out, math.random(1, range) * 10)
 		end
 		return out
 	end
@@ -702,7 +701,7 @@ do
 
 	-- StableSort: 같은 k 끼리 입력 순서 — 삽입정렬 바닥(<24)과 병합 둘 다 지나게
 	const recs = Arr.Of<<Rec>>({ k = 2, id = 10 }, { k = 1, id = 20 }, { k = 2, id = 30 }, { k = 1, id = 40 })
-	const stable = recs:StableSort(byK)
+	const stable = Arr.StableSort(recs, byK)
 	assert(stable[1].id == 20 and stable[2].id == 40 and stable[3].id == 10 and stable[4].id == 30, "StableSort 안정")
 	assert(recs[1].id == 10, "StableSort 는 원본을 안 건드림")
 	for _ = 1, 300 do
@@ -714,22 +713,22 @@ do
 			assert(got[idx] == expected[idx], "StableSort 무작위 대조")
 		end
 	end
-	same(Arr.Of(30, 10, 20):StableSort(), { 10, 20, 30 }, "StableSort 기본 비교자")
-	same(emptyNum():StableSort(), {}, "StableSort 빈 것")
+	same(Arr.StableSort(Arr.Of(30, 10, 20)), { 10, 20, 30 }, "StableSort 기본 비교자")
+	same(Arr.StableSort(emptyNum()), {}, "StableSort 빈 것")
 	-- 이미 정렬된 입력(병합 생략 경로)과 역순
 	const ascending = Arr.Range(1, 200)
-	same(ascending:StableSort(), table.move(ascending, 1, 200, 1, {}), "StableSort 이미 정렬")
-	same(Arr.Range(200, 1, -1):StableSort(), table.move(ascending, 1, 200, 1, {}), "StableSort 역순")
+	same(Arr.StableSort(ascending), table.move(ascending, 1, 200, 1, {}), "StableSort 이미 정렬")
+	same(Arr.StableSort(Arr.Range(200, 1, -1)), table.move(ascending, 1, 200, 1, {}), "StableSort 역순")
 	-- 구멍은 꼬리로, n 은 그대로
 	const holed = Arr.Of<<number?>>(30, nil, 10, nil, 20)
-	const holedSorted = holed:StableSort()
+	const holedSorted = Arr.StableSort(holed)
 	assert(holedSorted.n == 5 and holedSorted[1] == 10 and holedSorted[3] == 30, "StableSort 구멍")
 	assert(holedSorted[4] == nil and holedSorted[5] == nil, "StableSort 구멍은 꼬리로")
 	const inplace = Arr.Of(30, 10, 20)
-	assert(inplace:StableSortInplace() == inplace, "StableSortInplace 는 자기 자신")
+	assert(Arr.StableSortInplace(inplace) == inplace, "StableSortInplace 는 자기 자신")
 	same(inplace, { 10, 20, 30 }, "StableSortInplace")
 	const holedIn = Arr.Of<<number?>>(nil, 20, nil, 10)
-	holedIn:StableSortInplace()
+	Arr.StableSortInplace(holedIn)
 	assert(holedIn.n == 4 and holedIn[1] == 10 and holedIn[2] == 20 and holedIn[3] == nil, "StableSortInplace 구멍")
 	-- [4] 는 입력에서 값(10)이던 칸 — 꼬리를 정말 비웠는지는 여기서만 보입니다
 	assert(holedIn[4] == nil, "StableSortInplace 는 꼬리를 비움")
@@ -744,7 +743,7 @@ do
 	-- SortBy: 키는 값마다 한 번, 안정, 구멍엔 키를 안 부름
 	local calls = 0
 	const words = Arr.Of<<string?>>("ccc", "a", nil, "bb", "dd")
-	const byLen = words:SortBy(function(w: string?): number
+	const byLen = Arr.SortBy(words, function(w: string?): number
 		calls += 1
 		return #(w :: string)
 	end)
@@ -752,7 +751,7 @@ do
 	samePrefix(byLen, { "a", "bb", "dd", "ccc" }, "SortBy 키 순서")
 	-- 안정성은 입력 순서가 사전순과 **반대**일 때만 보입니다
 	samePrefix(
-		Arr.Of("dd", "bb", "a"):SortBy(function(w: string): number
+		Arr.SortBy(Arr.Of("dd", "bb", "a"), function(w: string): number
 			return #w
 		end),
 		{ "a", "dd", "bb" },
@@ -771,7 +770,7 @@ do
 	for _ = 1, 100 do
 		const input = randomRecs(math.random(0, 80), math.random(1, 5))
 		const expected = stableRef(table.move(input, 1, input.n, 1, {}) :: { Rec })
-		const got = input:SortBy(function(r: Rec): number
+		const got = Arr.SortBy(input, function(r: Rec): number
 			return r.k
 		end)
 		for idx = 1, input.n do
@@ -779,12 +778,12 @@ do
 		end
 	end
 	const byInplace = Arr.Of(30, 10, 20)
-	assert(byInplace:SortByInplace(function(v: number): number
+	assert(Arr.SortByInplace(byInplace, function(v: number): number
 		return -v
 	end) == byInplace, "SortByInplace 는 자기 자신")
 	same(byInplace, { 30, 20, 10 }, "SortByInplace")
 	const byHoled = Arr.Of<<number?>>(30, nil, 10)
-	byHoled:SortByInplace(function(v: number?): number
+	Arr.SortByInplace(byHoled, function(v: number?): number
 		return v :: number
 	end)
 	assert(
@@ -798,29 +797,32 @@ do
 		const ref = sortedCopy(input)
 		const before = table.move(input, 1, input.n, 1, {}) :: { number }
 		for k = 1, input.n do
-			assert(input:NthElement(k) == ref[k], "NthElement 대조")
-			assert(input:NthElement(-k) == ref[input.n - k + 1], "NthElement 음수")
+			assert(Arr.NthElement(input, k) == ref[k], "NthElement 대조")
+			assert(Arr.NthElement(input, -k) == ref[input.n - k + 1], "NthElement 음수")
 		end
 		same(input, before, "NthElement 는 원본을 안 건드림")
 	end
 	const five = Arr.Of(50, 10, 40, 20, 30)
 	assert(
-		five:NthElement(0) == nil and five:NthElement(6) == nil and five:NthElement(-6) == nil,
+		Arr.NthElement(five, 0) == nil and Arr.NthElement(five, 6) == nil and Arr.NthElement(five, -6) == nil,
 		"NthElement 범위 밖"
 	)
-	assert(emptyNum():NthElement(1) == nil, "NthElement 빈 것")
-	assert(Arr.Of<<number?>>(30, nil, 10, 20):NthElement(3) == 30, "NthElement 는 구멍을 뺀 순위")
+	assert(Arr.NthElement(emptyNum(), 1) == nil, "NthElement 빈 것")
+	assert(Arr.NthElement(Arr.Of<<number?>>(30, nil, 10, 20), 3) == 30, "NthElement 는 구멍을 뺀 순위")
 	-- 음수도 구멍을 뺀 개수 기준 — n 기준이면 -1 이 한 칸 어긋납니다
-	assert(Arr.Of<<number?>>(30, nil, 10, 20):NthElement(-1) == 30, "NthElement 음수는 구멍을 뺀 개수 기준")
-	assert(Arr.Of<<number?>>(30, nil, 10, 20):NthElement(-3) == 10, "NthElement 음수 끝")
-	assert(five:NthElement((five:Len() + 1) // 2) == 30, "NthElement 중앙값")
+	assert(
+		Arr.NthElement(Arr.Of<<number?>>(30, nil, 10, 20), -1) == 30,
+		"NthElement 음수는 구멍을 뺀 개수 기준"
+	)
+	assert(Arr.NthElement(Arr.Of<<number?>>(30, nil, 10, 20), -3) == 10, "NthElement 음수 끝")
+	assert(Arr.NthElement(five, (Arr.Len(five) + 1) // 2) == 30, "NthElement 중앙값")
 
 	-- NthElementInplace: k 자리 값이 맞고 왼쪽 ≤, 오른쪽 ≥
 	for _ = 1, 100 do
 		const input = randomNums(math.random(1, 60), math.random(1, 30))
 		const ref = sortedCopy(input)
 		const k = math.random(1, input.n)
-		assert(input:NthElementInplace(k) == input, "NthElementInplace 는 자기 자신")
+		assert(Arr.NthElementInplace(input, k) == input, "NthElementInplace 는 자기 자신")
 		assert(input[k] == ref[k], "NthElementInplace k 자리")
 		for idx = 1, k - 1 do
 			assert(input[idx] <= input[k], "NthElementInplace 왼쪽 ≤")
@@ -831,17 +833,17 @@ do
 		sameList(sortedCopy(input), ref, "NthElementInplace 는 원소 구성을 안 바꿈")
 	end
 	const holedNth = Arr.Of<<number?>>(nil, 30, nil, 10, 20)
-	holedNth:NthElementInplace(2)
+	Arr.NthElementInplace(holedNth, 2)
 	assert(
 		holedNth.n == 5 and holedNth[2] == 20 and holedNth[4] == nil and holedNth[5] == nil,
 		"NthElementInplace 구멍"
 	)
 	const holedNthNeg = Arr.Of<<number?>>(nil, 30, nil, 10, 20)
-	holedNthNeg:NthElementInplace(-1)
+	Arr.NthElementInplace(holedNthNeg, -1)
 	assert(holedNthNeg[3] == 30, "NthElementInplace 음수는 구멍을 뺀 개수 기준")
 	-- 범위 밖 k 는 구멍만 치웁니다(문서화된 동작)
 	const holedNthOut = Arr.Of<<number?>>(nil, 20, nil, 10)
-	holedNthOut:NthElementInplace(99)
+	Arr.NthElementInplace(holedNthOut, 99)
 	assert(holedNthOut[1] ~= nil and holedNthOut[2] ~= nil, "NthElementInplace 범위 밖: 값은 앞으로")
 	assert(
 		holedNthOut[3] == nil and holedNthOut[4] == nil and holedNthOut.n == 4,
@@ -853,21 +855,24 @@ do
 		const input = randomNums(math.random(0, 80), math.random(1, 40))
 		const ref = sortedCopy(input)
 		const k = math.random(0, input.n + 3)
-		const got = input:PartialSort(k)
+		const got = Arr.PartialSort(input, k)
 		assert(got.n == math.min(k, input.n), "PartialSort 길이")
 		for idx = 1, got.n do
 			assert(got[idx] == ref[idx], "PartialSort 대조")
 		end
 	end
 	same(
-		Arr.Of(10, 50, 30, 40, 20):PartialSort(2, function(a: number, b: number): boolean
+		Arr.PartialSort(Arr.Of(10, 50, 30, 40, 20), 2, function(a: number, b: number): boolean
 			return a > b
 		end),
 		{ 50, 40 },
 		"PartialSort 뒤집은 비교자 = 가장 큰 k 개"
 	)
-	assert(Arr.Of(10, 20):PartialSort(0).n == 0 and Arr.Of(10, 20):PartialSort(-1).n == 0, "PartialSort k ≤ 0")
-	const partialHoles = Arr.Of<<number?>>(30, nil, 10, 20):PartialSort(2)
+	assert(
+		Arr.PartialSort(Arr.Of(10, 20), 0).n == 0 and Arr.PartialSort(Arr.Of(10, 20), -1).n == 0,
+		"PartialSort k ≤ 0"
+	)
+	const partialHoles = Arr.PartialSort(Arr.Of<<number?>>(30, nil, 10, 20), 2)
 	assert(partialHoles.n == 2, "PartialSort 는 값만 셈")
 	samePrefix(partialHoles, { 10, 20 }, "PartialSort 구멍은 건너뜀")
 
@@ -876,14 +881,14 @@ do
 		const input = randomNums(math.random(0, 80), math.random(1, 40))
 		const ref = sortedCopy(input)
 		const k = math.random(0, input.n + 3)
-		assert(input:PartialSortInplace(k) == input, "PartialSortInplace 는 자기 자신")
+		assert(Arr.PartialSortInplace(input, k) == input, "PartialSortInplace 는 자기 자신")
 		for idx = 1, math.min(k, input.n) do
 			assert(input[idx] == ref[idx], "PartialSortInplace 앞 k 칸")
 		end
 		sameList(sortedCopy(input), ref, "PartialSortInplace 는 원소 구성을 안 바꿈")
 	end
 	const holedPartial = Arr.Of<<number?>>(40, nil, 10, 30, nil, 20)
-	holedPartial:PartialSortInplace(2)
+	Arr.PartialSortInplace(holedPartial, 2)
 	assert(holedPartial.n == 6 and holedPartial[1] == 10 and holedPartial[2] == 20, "PartialSortInplace 구멍")
 	assert(holedPartial[5] == nil and holedPartial[6] == nil, "PartialSortInplace 구멍은 꼬리로")
 
@@ -891,14 +896,14 @@ do
 	for _ = 1, 100 do
 		const left = Arr.SortInplace(randomNums(math.random(0, 40), 20))
 		const right = Arr.SortInplace(randomNums(math.random(0, 40), 20))
-		const got = left:MergeSorted(right)
+		const got = Arr.MergeSorted(left, right)
 		const ref = sortedCopy(Arr.Concat(left, right))
 		assert(got.n == #ref, "MergeSorted 길이")
 		samePrefix(got, ref, "MergeSorted 대조")
 	end
 	const leftRecs = Arr.Of<<Rec>>({ k = 1, id = 10 }, { k = 2, id = 20 })
 	const rightRecs = Arr.Of<<Rec>>({ k = 1, id = 30 }, { k = 2, id = 40 })
-	const mergedRecs = leftRecs:MergeSorted(rightRecs, byK)
+	const mergedRecs = Arr.MergeSorted(leftRecs, rightRecs, byK)
 	assert(
 		mergedRecs[1].id == 10 and mergedRecs[2].id == 30 and mergedRecs[3].id == 20 and mergedRecs[4].id == 40,
 		"MergeSorted 안정(self 먼저)"
@@ -906,17 +911,17 @@ do
 	const mergedHoles = Arr.MergeSorted(Arr.Of<<number?>>(nil, 10, nil, 30), Arr.Of<<number?>>(20, nil))
 	assert(mergedHoles.n == 3, "MergeSorted 는 구멍을 건너뛰어 조밀함")
 	samePrefix(mergedHoles, { 10, 20, 30 }, "MergeSorted 구멍")
-	same(emptyNum():MergeSorted(emptyNum()), {}, "MergeSorted 빈 것")
+	same(Arr.MergeSorted(emptyNum(), emptyNum()), {}, "MergeSorted 빈 것")
 
 	-- IsSorted
-	assert(Arr.Of(10, 20, 20, 30):IsSorted(), "IsSorted 같은 값 허용")
-	assert(not Arr.Of(10, 30, 20):IsSorted(), "IsSorted 아님")
-	assert(Arr.Of<<number?>>(10, nil, 20):IsSorted(), "IsSorted 구멍 건너뜀")
+	assert(Arr.IsSorted(Arr.Of(10, 20, 20, 30)), "IsSorted 같은 값 허용")
+	assert(not Arr.IsSorted(Arr.Of(10, 30, 20)), "IsSorted 아님")
+	assert(Arr.IsSorted(Arr.Of<<number?>>(10, nil, 20)), "IsSorted 구멍 건너뜀")
 	-- 구멍에서 비교를 끊으면(prev 리셋) 이게 통과해 버립니다
-	assert(not Arr.Of<<number?>>(20, nil, 10):IsSorted(), "IsSorted 는 구멍 너머로 비교")
-	assert(emptyNum():IsSorted() and Arr.Of(10):IsSorted(), "IsSorted 빈 것·하나")
+	assert(not Arr.IsSorted(Arr.Of<<number?>>(20, nil, 10)), "IsSorted 는 구멍 너머로 비교")
+	assert(Arr.IsSorted(emptyNum()) and Arr.IsSorted(Arr.Of(10)), "IsSorted 빈 것·하나")
 	assert(
-		Arr.Of(30, 20, 10):IsSorted(function(a: number, b: number): boolean
+		Arr.IsSorted(Arr.Of(30, 20, 10), function(a: number, b: number): boolean
 			return a > b
 		end),
 		"IsSorted 비교자"
@@ -940,12 +945,12 @@ do
 	const size = 2000
 	local function minBack(): Arr<number>
 		const a = Arr.Range(1, size - 1)
-		a:PushBack(0)
+		Arr.PushBack(a, 0)
 		return a
 	end
 	local function maxFront(): Arr<number>
 		const a = Arr.Of(size)
-		a:PushBackArray(Arr.Range(1, size - 1))
+		Arr.PushBackArray(a, Arr.Range(1, size - 1))
 		return a
 	end
 	const makers: { () -> Arr<number> } = { minBack, maxFront }
@@ -953,13 +958,16 @@ do
 		for _, run in
 			{
 				function(a: Arr<number>, lt: (number, number) -> boolean)
-					assert(a:NthElement(size // 2, lt) == size // 2 - (if a[1] == 1 then 1 else 0), "NthElement 값")
+					assert(
+						Arr.NthElement(a, size // 2, lt) == size // 2 - (if a[1] == 1 then 1 else 0),
+						"NthElement 값"
+					)
 				end,
 				function(a: Arr<number>, lt: (number, number) -> boolean)
-					a:NthElementInplace(size // 2, lt)
+					Arr.NthElementInplace(a, size // 2, lt)
 				end,
 				function(a: Arr<number>, lt: (number, number) -> boolean)
-					a:PartialSortInplace(size // 2, lt)
+					Arr.PartialSortInplace(a, size // 2, lt)
 				end,
 			}
 		do
@@ -1016,13 +1024,13 @@ do
 		const k = n // 2
 		-- 값 판: 돌려준 값이 완성된 순서에서 정확히 k 번째(순위 k-1)
 		const adversary, calls, settle = adversaryFor(n)
-		const picked = Arr.Range(1, n):NthElement(k, adversary) :: number
+		const picked = Arr.NthElement(Arr.Range(1, n), k, adversary) :: number
 		assert(calls() < 150 * n, `적대적 입력에서 선택이 이차로 떨어짐: 비교 {calls()} 번`)
 		assert(settle()[picked] == k - 1, "적대적 입력에서 NthElement 가 k 번째가 아님")
 
 		-- 제자리 판: 순열 보존 + k 자리 + 분할 성질
 		const adversary2, calls2, settle2 = adversaryFor(n)
-		const arr = Arr.Range(1, n):NthElementInplace(k, adversary2)
+		const arr = Arr.NthElementInplace(Arr.Range(1, n), k, adversary2)
 		assert(calls2() < 150 * n, `적대적 입력에서 NthElementInplace 가 이차: {calls2()}`)
 		const rank = settle2()
 		const seen = table.create(n, false)
@@ -1042,8 +1050,8 @@ do
 	end
 
 	-- (2) PartialSort 가 k 로 버퍼를 할당해 math.huge 에서 크래시, 큰 k 에서 느렸음
-	same(Arr.Of(50, 30, 10, 40, 20):PartialSort(math.huge), { 10, 20, 30, 40, 50 }, "PartialSort(math.huge)")
-	same(Arr.Of(50, 30, 10):PartialSort(1e8), { 10, 30, 50 }, "PartialSort(1e8)")
+	same(Arr.PartialSort(Arr.Of(50, 30, 10, 40, 20), math.huge), { 10, 20, 30, 40, 50 }, "PartialSort(math.huge)")
+	same(Arr.PartialSort(Arr.Of(50, 30, 10), 1e8), { 10, 30, 50 }, "PartialSort(1e8)")
 
 	-- (3) 엄격하지 않은 비교자(<=)에서 선택이 범위를 넘어 달렸음 — nil 을 받아도
 	--     에러가 안 나는 비교자면 무한 루프. 이제 분명한 에러로 멈춥니다.
@@ -1053,17 +1061,17 @@ do
 	for _, run in
 		{
 			function()
-				Arr.Of(30, 30, 30, 30, 30):PartialSortInplace(2, nonStrict)
+				Arr.PartialSortInplace(Arr.Of(30, 30, 30, 30, 30), 2, nonStrict)
 			end,
 			function()
-				Arr.Of(30, 30):NthElement(1, nonStrict)
+				Arr.NthElement(Arr.Of(30, 30), 1, nonStrict)
 			end,
 			-- 힙·table.sort 경로는 스캔이 없어 조용히 틀렸음(2라운드) — 진입 검사로 일관되게
 			function()
-				Arr.Of(60, 30, 20, 10, 40, 50):PartialSort(4, nonStrict)
+				Arr.PartialSort(Arr.Of(60, 30, 20, 10, 40, 50), 4, nonStrict)
 			end,
 			function()
-				Arr.Of(60, 30, 20, 10, 40, 50):PartialSortInplace(6, nonStrict)
+				Arr.PartialSortInplace(Arr.Of(60, 30, 20, 10, 40, 50), 6, nonStrict)
 			end,
 		}
 	do
@@ -1088,20 +1096,20 @@ do
 	}
 	for _, rng in badRngs do
 		const ok, err = pcall(function()
-			Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, rng)
+			Arr.Shuffle(Arr.Of(10, 20, 30, 40), nil, nil, rng)
 		end)
 		assert(not ok and string.find(tostring(err), "rng", 1, true) ~= nil, `rng 계약 위반: {err}`)
 	end
 	-- 정수 rng 는 그대로(Random:NextInteger 모양)
-	const fixed = Arr.Of(10, 20, 30, 40):Shuffle(nil, nil, function(lo: number, _hi: number): number
+	const fixed = Arr.Shuffle(Arr.Of(10, 20, 30, 40), nil, nil, function(lo: number, _hi: number): number
 		return lo
 	end)
-	assert(fixed.n == 4 and fixed:Sort():Join(",") == "10,20,30,40", "정수 rng 는 순열")
+	assert(fixed.n == 4 and Arr.Join(Arr.Sort(fixed), ",") == "10,20,30,40", "정수 rng 는 순열")
 
 	-- (5) Sized/FromFunc 의 소수 길이가 안 잘려 n 이 3.5 가 되고 값이 사라졌음
 	const sized = Arr.Sized(2.5, 0)
-	sized:PushBack(7)
-	assert(sized.n == 3 and sized:Join(",") == "0,0,7", "Sized 소수 길이는 0 쪽으로")
+	Arr.PushBack(sized, 7)
+	assert(sized.n == 3 and Arr.Join(sized, ",") == "0,0,7", "Sized 소수 길이는 0 쪽으로")
 	assert(Arr.FromFunc(2.9, function(i: number): number
 		return i * 10
 	end).n == 2, "FromFunc 소수 길이")
@@ -1118,13 +1126,13 @@ do
 	for _, run in
 		{
 			function()
-				Arr.Of(10, 20):Slice(0 / 0)
+				Arr.Slice(Arr.Of(10, 20), 0 / 0)
 			end,
 			function()
-				Arr.Of(10, 20):Splice(1, 0 / 0, Arr.Of(30))
+				Arr.Splice(Arr.Of(10, 20), 1, 0 / 0, Arr.Of(30))
 			end,
 			function()
-				Arr.Of(10, 20):Some(function(v: number): boolean
+				Arr.Some(Arr.Of(10, 20), function(v: number): boolean
 					return v > 0
 				end, 0 / 0)
 			end,
@@ -1139,31 +1147,31 @@ do
 	--     줄을 가리켰음(2라운드 리뷰). 그리고 k 의 NaN 도 구간 NaN 과 같은 정책으로.
 	const nanCalls: { () -> () } = {
 		function()
-			Arr.Of(10, 20):Reverse(0 / 0)
+			Arr.Reverse(Arr.Of(10, 20), 0 / 0)
 		end,
 		function()
-			Arr.Of(10, 20):Rotate(1, 0 / 0)
+			Arr.Rotate(Arr.Of(10, 20), 1, 0 / 0)
 		end,
 		function()
-			Arr.Of(10, 20):Shuffle(0 / 0)
+			Arr.Shuffle(Arr.Of(10, 20), 0 / 0)
 		end,
 		function()
 			Arr.Reverse(Arr.Of(10, 20), 0 / 0)
 		end,
 		function()
-			Arr.Of(10, 20):Slice(0 / 0)
+			Arr.Slice(Arr.Of(10, 20), 0 / 0)
 		end,
 		function()
-			Arr.Of(10, 20):NthElement(0 / 0)
+			Arr.NthElement(Arr.Of(10, 20), 0 / 0)
 		end,
 		function()
-			Arr.Of(10, 20):PartialSort(0 / 0)
+			Arr.PartialSort(Arr.Of(10, 20), 0 / 0)
 		end,
 		function()
-			Arr.Of(10, 20):NthElementInplace(0 / 0)
+			Arr.NthElementInplace(Arr.Of(10, 20), 0 / 0)
 		end,
 		function()
-			Arr.Of(10, 20):PartialSortInplace(0 / 0)
+			Arr.PartialSortInplace(Arr.Of(10, 20), 0 / 0)
 		end,
 	}
 	for _, run in nanCalls do
@@ -1184,28 +1192,28 @@ do
 	-- 삽입 위치의 NaN: InsertArray 는 값이 음수 키로 조용히 사라졌고(버그), Insert/
 	-- InsertMany 는 라이브러리 줄의 "table index is NaN" 이었음
 	expectError("Insert NaN", "NaN", function()
-		Arr.Of(10, 20, 30):Insert(0 / 0, 99)
+		Arr.Insert(Arr.Of(10, 20, 30), 0 / 0, 99)
 	end)
 	expectError("InsertMany NaN", "NaN", function()
-		Arr.Of(10, 20, 30):InsertMany(0 / 0, 98, 99)
+		Arr.InsertMany(Arr.Of(10, 20, 30), 0 / 0, 98, 99)
 	end)
 	expectError("InsertArray NaN", "NaN", function()
-		Arr.Of(10, 20, 30):InsertArray(0 / 0, Arr.Of(98, 99))
+		Arr.InsertArray(Arr.Of(10, 20, 30), 0 / 0, Arr.Of(98, 99))
 	end)
 	-- 에러 수준을 지키는 줄들(돌연변이로 level 을 바꿔도 통과하던 것)
 	expectError("Rotate shift", "finite", function()
-		Arr.Of(10, 20, 30):Rotate(math.huge)
+		Arr.Rotate(Arr.Of(10, 20, 30), math.huge)
 	end)
 	expectError("RotateInplace shift", "finite", function()
-		Arr.Of(10, 20, 30):RotateInplace(0 / 0)
+		Arr.RotateInplace(Arr.Of(10, 20, 30), 0 / 0)
 	end)
 	expectError("Shuffle rng", "rng", function()
-		Arr.Of(10, 20, 30):Shuffle(nil, nil, function(lo: number, _hi: number): number
+		Arr.Shuffle(Arr.Of(10, 20, 30), nil, nil, function(lo: number, _hi: number): number
 			return lo + 0.5
 		end)
 	end)
 	expectError("엄격성", "strict", function()
-		Arr.Of(30, 10, 20):NthElement(2, function(a: number, b: number): boolean
+		Arr.NthElement(Arr.Of(30, 10, 20), 2, function(a: number, b: number): boolean
 			return a <= b
 		end)
 	end)
@@ -1240,33 +1248,37 @@ do
 	-- 아주 큰 shift: Luau 의 `%` 는 a - floor(a/b)*b 라 |a| 가 2^53 근처를 넘으면
 	-- 틀린 나머지(범위 밖 포함)가 나와 0 이하 키에 쓰고 뒤에 구멍을 냈음(4라운드, 버그)
 	const bigShift = Arr.Range(1, 11)
-	bigShift:RotateInplace(1e17)
+	Arr.RotateInplace(bigShift, 1e17)
 	assert(bigShift.n == 11 and bigShift[0] == nil and bigShift[11] ~= nil, "큰 shift 가 배열을 망가뜨림")
 	-- 기대 나머지는 구현(math.fmod)과 **독립적으로** 정수 산술로 계산한 상수입니다
 	-- (5라운드 리뷰가 Python 으로 확인): 1e17 mod 11 = 10, 1e300 mod 11 = 7,
 	-- -2^53 = -9007199254740992 ≡ -2 ≡ 3 (mod 5).
-	same(bigShift, Arr.Range(1, 11):Rotate(10) :: any, "큰 shift 는 정확한 나머지만큼")
-	same(Arr.Of(10, 20, 30, 40, 50):Rotate(-2 ^ 53), Arr.Of(10, 20, 30, 40, 50):Rotate(3) :: any, "-2^53 mod 5 = 3")
-	same(Arr.Range(1, 11):Rotate(1e300), Arr.Range(1, 11):Rotate(7) :: any, "1e300 도 정확한 나머지")
+	same(bigShift, Arr.Rotate(Arr.Range(1, 11), 10) :: any, "큰 shift 는 정확한 나머지만큼")
+	same(
+		Arr.Rotate(Arr.Of(10, 20, 30, 40, 50), -2 ^ 53),
+		Arr.Rotate(Arr.Of(10, 20, 30, 40, 50), 3) :: any,
+		"-2^53 mod 5 = 3"
+	)
+	same(Arr.Rotate(Arr.Range(1, 11), 1e300), Arr.Rotate(Arr.Range(1, 11), 7) :: any, "1e300 도 정확한 나머지")
 
 	-- 빈 구간이어도 shift 는 검사합니다(구간 NaN 이 빈 배열에서도 에러인 것과 같게)
 	expectError("빈 배열 Rotate NaN", "finite", function()
-		Arr.Of<<number>>():Rotate(0 / 0)
+		Arr.Rotate(Arr.Of<<number>>(), 0 / 0)
 	end)
 	-- At 의 NaN 도 같은 정책(조용한 nil 대신 에러)
 	expectError("At NaN", "NaN", function()
-		Arr.Of(10, 20):At(0 / 0)
+		Arr.At(Arr.Of(10, 20), 0 / 0)
 	end)
 
 	-- 진입 검사가 **비교가 필요 없는 호출**까지 깨뜨리던 회귀(3라운드): 비교할 수
 	-- 없는 원소라도 비교가 안 일어나면 전처럼 동작해야 합니다(`Sort` 와 같게).
 	const lonely = {}
-	assert(Arr.Of(lonely):NthElement(1) == lonely, "원소 하나의 NthElement 는 비교 없음")
-	assert(Arr.Of({}, {}):NthElement(5) == nil, "범위 밖 k 는 비교 없음")
-	assert(Arr.Of({}, {}):PartialSort(0).n == 0, "PartialSort(0) 은 비교 없음")
-	assert(Arr.Of(true):PartialSort(1).n == 1, "원소 하나의 PartialSort 는 비교 없음")
-	assert(Arr.Of(lonely):NthElementInplace(1)[1] == lonely, "원소 하나의 NthElementInplace")
-	assert(Arr.Of(lonely):PartialSortInplace(1)[1] == lonely, "원소 하나의 PartialSortInplace")
+	assert(Arr.NthElement(Arr.Of(lonely), 1) == lonely, "원소 하나의 NthElement 는 비교 없음")
+	assert(Arr.NthElement(Arr.Of({}, {}), 5) == nil, "범위 밖 k 는 비교 없음")
+	assert(Arr.PartialSort(Arr.Of({}, {}), 0).n == 0, "PartialSort(0) 은 비교 없음")
+	assert(Arr.PartialSort(Arr.Of(true), 1).n == 1, "원소 하나의 PartialSort 는 비교 없음")
+	assert(Arr.NthElementInplace(Arr.Of(lonely), 1)[1] == lonely, "원소 하나의 NthElementInplace")
+	assert(Arr.PartialSortInplace(Arr.Of(lonely), 1)[1] == lonely, "원소 하나의 PartialSortInplace")
 
 	-- n 이 -0 이 되던 것(`Sized(-0.5)` → `tostring(n) == "-0"`)
 	assert(tostring(Arr.Sized(-0.5, 1).n) == "0", "길이는 +0")

@@ -55,35 +55,43 @@ type TreeMapType<K, V> = TreeMap.TreeMap<K, V>
 
 export type TreeSetData<T> = { map: TreeMapType<T, true> }
 
-local Ifce: TreeSetIfce & Types.SetCore<any>
+-- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
+-- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
+const TAG = "__treeset__"
+
+-- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
+const function tagged(raw: any): any
+	raw[TAG] = true
+	return raw
+end
 
 const function adopt<T>(records: { Record<T, true> }, size: number, compare: Comparator<T>): TreeSet<T>
 	const map: TreeMapType<T, true> = TreeMap.Adopt(records, size, compare)
-	return setmetatable({ map = map } :: any, Ifce :: any) :: any
+	return tagged({ map = map })
 end
 
---#region ----------- 계약 구현 (Types.SetCore) -----------
--- ⚠️ 이 넷은 `TreeSetIfce` 에 **다시 쓰지 않습니다.** 계약이 이미 줍니다.
+--#region ----------- 계약 구현 (Types.SetOps) -----------
+-- 이 모듈 테이블이 그대로 `Types.SetOps` 구현체입니다(질문 AB).
 
 -- 원소를 넣습니다. **새로 들어갔으면 `true`**, 이미 있었으면 `false`.
 const function Add<T>(self: TreeSetData<T>, item: T): boolean
 	const map = self.map
 	const before = map.size
-	map:Set(item, true)
+	TreeMap.Set(map, item, true :: true)
 	return map.size > before
 end
 
 const function Has<T>(self: TreeSetData<T>, item: T): boolean
-	return self.map:Has(item)
+	return TreeMap.Has(self.map, item)
 end
 
 const function Remove<T>(self: TreeSetData<T>, item: T): boolean
-	return self.map:Remove(item) ~= nil
+	return TreeMap.Remove(self.map, item) ~= nil
 end
 
 -- 원소를 모은 배열. **정렬 순서입니다.**
 const function Items<T>(self: TreeSetData<T>): { T }
-	return self.map:Keys()
+	return TreeMap.Keys(self.map)
 end
 
 --#endregion
@@ -122,7 +130,7 @@ end
 --#region ----------- 정렬이 있어야만 되는 것들 -----------
 
 const function First<T>(self: TreeSetData<T>): T?
-	const rec = self.map:First()
+	const rec = TreeMap.First(self.map)
 	if rec == nil then
 		return nil
 	end
@@ -130,7 +138,7 @@ const function First<T>(self: TreeSetData<T>): T?
 end
 
 const function Last<T>(self: TreeSetData<T>): T?
-	const rec = self.map:Last()
+	const rec = TreeMap.Last(self.map)
 	if rec == nil then
 		return nil
 	end
@@ -139,17 +147,17 @@ end
 
 -- `item` **이하**인 원소 중 가장 큰 것.
 const function FloorItem<T>(self: TreeSetData<T>, item: T): T?
-	return self.map:FloorKey(item)
+	return TreeMap.FloorKey(self.map, item)
 end
 
 -- `item` **이상**인 원소 중 가장 작은 것.
 const function CeilingItem<T>(self: TreeSetData<T>, item: T): T?
-	return self.map:CeilingKey(item)
+	return TreeMap.CeilingKey(self.map, item)
 end
 
 -- 구간 `[from, to]` 의 원소들. **양끝 포함**, 정렬 순서. 뒤집히면 빈 목록.
 const function RangeItems<T>(self: TreeSetData<T>, from: T, to: T): { T }
-	const recs = self.map:RangeRecords(from, to)
+	const recs = TreeMap.RangeRecords(self.map, from, to)
 	const out = table.create(#recs) :: { T }
 	for idx, rec in recs do
 		out[idx] = rec.key
@@ -162,11 +170,11 @@ end
 --#region ----------- 변형 -----------
 
 const function Clear<T>(self: TreeSetData<T>): ()
-	self.map:Clear()
+	TreeMap.Clear(self.map)
 end
 
 const function Clone<T>(self: TreeSetData<T>): TreeSet<T>
-	return setmetatable({ map = self.map:Clone() } :: any, Ifce :: any) :: any
+	return tagged({ map = TreeMap.Clone(self.map) })
 end
 
 --#endregion
@@ -373,45 +381,9 @@ end
 
 --#endregion
 
---#region ----------- 타입 조립 -----------
--- ⭐ `Add`/`Has`/`Remove`/`Items` 는 **여기 없습니다.** `Types.SetCore` 가 줍니다.
-
-type TreeSetIfce = {
-	Len: typeof(Len),
-	Empty: typeof(Empty),
-	Iter: typeof(Iter),
-	First: typeof(First),
-	Last: typeof(Last),
-	FloorItem: typeof(FloorItem),
-	CeilingItem: typeof(CeilingItem),
-	RangeItems: typeof(RangeItems),
-	Clear: typeof(Clear),
-	Clone: typeof(Clone),
-	Union: typeof(Union),
-	Intersect: typeof(Intersect),
-	Difference: typeof(Difference),
-	SymmetricDifference: typeof(SymmetricDifference),
-	IsSubsetOf: typeof(IsSubsetOf),
-	IsDisjointFrom: typeof(IsDisjointFrom),
-	Equal: typeof(Equal),
-}
-
-export type TreeSet<T> = TreeSetData<T> & TreeSetIfce & Types.SetCore<T>
-
--- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
--- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
--- stylua: ignore
-Ifce = {
-	Len = Len, Empty = Empty, Iter = Iter,
-	First = First, Last = Last, FloorItem = FloorItem, CeilingItem = CeilingItem,
-	RangeItems = RangeItems, Clear = Clear, Clone = Clone,
-	Union = Union, Intersect = Intersect, Difference = Difference,
-	SymmetricDifference = SymmetricDifference,
-	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal,
-	-- 계약이 주는 것들.
-	Add = Add, Has = Has, Remove = Remove, Items = Items,
-} :: any
-(Ifce :: any).__index = Ifce
+--#region ----------- 타입 -----------
+-- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
+export type TreeSet<T> = TreeSetData<T>
 
 --#endregion
 
@@ -454,7 +426,7 @@ const function FromList<T>(list: { T }, compare: Comparator<T>): TreeSet<T>
 end
 
 const function isTreeSet(value: any): boolean
-	return type(value) == "table" and getmetatable(value) == Ifce
+	return type(value) == "table" and rawget(value, TAG) == true
 end
 
 --#endregion
@@ -465,10 +437,8 @@ return {
 	FromList = FromList,
 	isTreeSet = isTreeSet,
 
-	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
-	-- 라이브러리의 정식 모양입니다(`TreeSet.X(v, …)`). 콜론 호출과 같은 함수이고,
-	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
-	-- (`.claude/base/perf-measurements.md` 14절).
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`TreeSet.X(v, …)`) — 콜론 호출은
+	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Len = Len, Empty = Empty, Iter = Iter, First = First, Last = Last, FloorItem = FloorItem,
 	CeilingItem = CeilingItem, RangeItems = RangeItems, Clear = Clear, Clone = Clone, Union = Union,
 	Intersect = Intersect, Difference = Difference, SymmetricDifference = SymmetricDifference,

@@ -82,15 +82,15 @@ do
 	holed[1], holed[3], holed[5] = 10, 30, 50
 
 	-- Compact: 새 배열, 순서 유지, 원본 불변
-	const compact = holed:Compact()
+	const compact = Arr.Compact(holed)
 	assert(compact.n == 3 and compact[1] == 10 and compact[2] == 30 and compact[3] == 50, "Compact")
 	assert(holed.n == 5 and holed[2] == nil, "Compact 는 원본을 안 건드림")
-	assert(Arr.Of<<number>>():Compact().n == 0, "빈 것의 Compact")
+	assert(Arr.Compact(Arr.Of<<number>>()).n == 0, "빈 것의 Compact")
 
 	-- CompactInplace: 제자리, 꼬리를 비움
 	const inplace = Arr.Sized<<number?>>(4, nil)
 	inplace[2], inplace[4] = 2, 4
-	const same = inplace:CompactInplace()
+	const same = Arr.CompactInplace(inplace)
 	assert(same == inplace, "CompactInplace 는 자기 자신")
 	assert(inplace.n == 2 and inplace[1] == 2 and inplace[2] == 4, "CompactInplace 결과")
 	assert(inplace[3] == nil and inplace[4] == nil, "CompactInplace 는 꼬리를 비움")
@@ -98,20 +98,20 @@ do
 	-- FillHoles: 새 배열, 길이 불변, 원본 불변. 결과 타입에서 `?` 가 빠집니다.
 	const fillSource = Arr.Sized<<number?>>(3, nil)
 	fillSource[2] = 7
-	const filled: Arr<number> = fillSource:FillHoles(0)
+	const filled: Arr<number> = Arr.FillHoles(fillSource, 0)
 	assert(filled ~= fillSource, "FillHoles 는 새 배열")
 	assert(filled.n == 3 and filled[1] == 0 and filled[2] == 7 and filled[3] == 0, "FillHoles")
 	assert(fillSource[1] == nil and fillSource[3] == nil, "FillHoles 는 원본을 안 건드림")
-	assert(Arr.Of<<number?>>():FillHoles(0).n == 0, "빈 것의 FillHoles")
+	assert(Arr.FillHoles(Arr.Of<<number?>>(), 0).n == 0, "빈 것의 FillHoles")
 
 	-- FillHolesInplace: 제자리, 길이 불변
 	const fill = Arr.Sized<<number?>>(3, nil)
 	fill[2] = 7
-	assert(fill:FillHolesInplace(0) == fill, "FillHolesInplace 는 자기 자신")
+	assert(Arr.FillHolesInplace(fill, 0) == fill, "FillHolesInplace 는 자기 자신")
 	assert(fill.n == 3 and fill[1] == 0 and fill[2] == 7 and fill[3] == 0, "FillHolesInplace")
 
 	-- ToOptionals: 길이 불변, 구멍은 Absent 싱글턴
-	const opts = holed:ToOptionals()
+	const opts = Arr.ToOptionals(holed)
 	assert(opts.n == 5, "ToOptionals 는 길이 유지")
 	assert(opts[2] == Optional.Absent and opts[4] == Optional.Absent, "구멍은 Absent")
 	assert(Optional.Unwrap(opts[1]) == 10 and Optional.Unwrap(opts[5]) == 50, "값은 Present")
@@ -126,24 +126,24 @@ do
 	holed[1], holed[3], holed[5] = 3, 1, 2
 	-- 정리 전: SumUnchecked 는 터지고 SortInplaceUnchecked 는 조용히 틀린다
 	assert(not pcall(function()
-		return holed:SumUnchecked()
+		return Arr.SumUnchecked(holed)
 	end), "정리 전 SumUnchecked 는 터짐")
 
 	-- FillHoles 뒤: checked 와 같은 답
-	const filled = holed:FillHoles(0)
-	assert(filled:SumUnchecked() == holed:Sum(), "FillHoles 뒤 SumUnchecked == Sum")
-	assert(filled:MaxUnchecked() == holed:Max(), "FillHoles 뒤 MaxUnchecked == Max")
+	const filled = Arr.FillHoles(holed, 0)
+	assert(Arr.SumUnchecked(filled) == Arr.Sum(holed), "FillHoles 뒤 SumUnchecked == Sum")
+	assert(Arr.MaxUnchecked(filled) == Arr.Max(holed), "FillHoles 뒤 MaxUnchecked == Max")
 
 	-- Compact 뒤: 정렬까지 checked 와 같은 원소 순서
-	const compacted = holed:Compact()
-	const viaUnchecked = compacted:SortUnchecked()
-	const viaChecked = holed:Sort()
+	const compacted = Arr.Compact(holed)
+	const viaUnchecked = Arr.SortUnchecked(compacted)
+	const viaChecked = Arr.Sort(holed)
 	for idx = 1, viaUnchecked.n do
 		assert(viaUnchecked[idx] == viaChecked[idx], `Compact 뒤 SortUnchecked 가 [{idx}] 에서 다름`)
 	end
 
 	-- ToOptionals 뒤: 모든 칸이 차 있으므로 # 와 n 이 맞음
-	const opts = holed:ToOptionals()
+	const opts = Arr.ToOptionals(holed)
 	assert(#opts == opts.n, "ToOptionals 뒤 # 와 n 이 같음")
 end
 print("PASS")

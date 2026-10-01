@@ -14,6 +14,7 @@
 	기대 진단: 12건 (NEG 11 + CANARY 1)
 ]]
 local stl = require("../../../../src")
+local Arr = stl.Arr
 local Optional = stl.Optional
 type Optional<T> = stl.Optional<T>
 type Arr<T> = stl.Arr<T>
@@ -37,12 +38,12 @@ local okIs: boolean = stl.isOptional(p)
 
 local maybe = stl.Arr.Of<<number?>>(1, nil, 3)
 local plain = stl.Arr.Of(1, 2, 3)
-local okCompact: Arr<number> = maybe:Compact() -- ? 가 빠짐
-local okCompactIn: Arr<number> = maybe:CompactInplace()
-local okOpts: Arr<Optional<number>> = maybe:ToOptionals()
-local okOptsPlain: Arr<Optional<number>> = plain:ToOptionals()
-local okFillSum: number = plain:FillHolesInplace(0):SumUnchecked()
-local okFillNew: Arr<number> = maybe:FillHoles(0) -- ? 가 빠짐
+local okCompact: Arr<number> = Arr.Compact(maybe) -- ? 가 빠짐
+local okCompactIn: Arr<number> = Arr.CompactInplace(maybe)
+local okOpts: Arr<Optional<number>> = Arr.ToOptionals(maybe)
+local okOptsPlain: Arr<Optional<number>> = Arr.ToOptionals(plain)
+local okFillSum: number = Arr.SumUnchecked(Arr.FillHolesInplace(plain, 0))
+local okFillNew: Arr<number> = Arr.FillHoles(maybe, 0) -- ? 가 빠짐
 
 --[[ NEG ]]
 if p.isPresent then
@@ -55,11 +56,11 @@ local neg4: Optional<number> = Optional.Map(p, function(v: number): string
 	return tostring(v)
 end)
 local neg5: Optional<number> = s -- Optional<string> 을 Optional<number> 에
-local neg6: Arr<string> = maybe:Compact()
-local neg7: Arr<Optional<string>> = maybe:ToOptionals()
-local neg8 = maybe:FillHolesInplace("문자열") -- ⭐ 건전성 구멍이던 자리
-local neg9 = plain:FillHolesInplace("문자열")
-local neg11: Arr<number> = maybe:FillHoles("문자열") -- 넓어진 결과
+local neg6: Arr<string> = Arr.Compact(maybe)
+local neg7: Arr<Optional<string>> = Arr.ToOptionals(maybe)
+local neg8 = Arr.FillHolesInplace(maybe, "문자열") -- ⭐ 건전성 구멍이던 자리
+local neg9 = Arr.FillHolesInplace(plain, "문자열")
+local neg11: Arr<number> = Arr.FillHoles(maybe, "문자열") -- 넓어진 결과
 local neg10 = Optional.Nope
 local canary: string = 42
 

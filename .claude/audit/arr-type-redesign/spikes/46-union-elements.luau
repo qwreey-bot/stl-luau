@@ -13,73 +13,79 @@
 
 	이 스파이크는 모든 컨테이너가 유니온 원소를 받아내는지를 고정한다.
 
+	(2026-10-01, 질문 AB) 메타테이블·메소드를 걷어내 전체형이 데이터부 그 자체가
+	되면서 위 원인(전체형에 섞인 계약 조각)은 **구조적으로 사라졌다.** 그래도
+	유니온 원소가 네임스페이스 함수에서 무너지지 않는지는 계속 지킨다.
+
 	기대 진단: 10건 (NEG 9 + CANARY 1)
 ]]
 local stl = require("../../../../src")
+local Arr = stl.Arr
+local Heap = stl.Heap
+local HashSet = stl.HashSet
+local HashMap = stl.HashMap
+local TreeMap = stl.TreeMap
 type Arr<T> = stl.Arr<T>
 type ArrView<T> = stl.ArrView<T>
 
 --[[ Arr<number?> — 가장 흔한 유니온 ]]
 local maybe = stl.Arr.Of<<number?>>(1, nil, 3)
-local okF = maybe:Filter(function(v: number?)
+local okF = Arr.Filter(maybe, function(v: number?)
 	return v ~= nil
 end)
-local okM: Arr<number> = maybe:Map(function(v: number?): number
+local okM: Arr<number> = Arr.Map(maybe, function(v: number?): number
 	return v or 0
 end)
-local okC: number = maybe:Count(function(v: number?)
+local okC: number = Arr.Count(maybe, function(v: number?)
 	return v == nil
 end)
-local okS = maybe:Sort()
-local okP = maybe:PushBack(nil)
-local okCl: Arr<number?> = maybe:Clone()
-local okG: number? = maybe:Get(1)
-local okFold: number = maybe:Fold(0, function(acc: number, v: number?)
+local okS = Arr.Sort(maybe)
+local okP = Arr.PushBack(maybe, nil)
+local okCl: Arr<number?> = Arr.Clone(maybe)
+local okG: number? = Arr.Get(maybe, 1)
+local okFold: number = Arr.Fold(maybe, 0, function(acc: number, v: number?)
 	return acc + (v or 0)
 end)
 -- 3단 타입 변환 체이닝이 유니온을 지나서도 산다
-local okChain: Arr<string> = maybe
-	:Map(function(v: number?): number
+local okChain: Arr<string> = Arr.Filter(Arr.Map(Arr.Map(maybe, function(v: number?): number
 		return v or 0
-	end)
-	:Map(function(v: number): string
+	end), function(v: number): string
 		return tostring(v)
-	end)
-	:Filter(function(s: string)
+	end), function(s: string)
 		return #s > 0
 	end)
 
 --[[ Arr<number | string> ]]
 local mixed = stl.Arr.Of<<number | string>>(1, "a")
-local okMixed = mixed:Filter(function(v: number | string)
+local okMixed = Arr.Filter(mixed, function(v: number | string)
 	return type(v) == "number"
 end)
 
 --[[ 다른 컨테이너들 ]]
 local hs = stl.HashSet.Of<<number | string>>(1, "a")
-local okHs: boolean = hs:Has("a")
-local okHsU = hs:Union(hs)
+local okHs: boolean = HashSet.Has(hs, "a")
+local okHsU = HashSet.Union(hs, hs)
 local hm = stl.HashMap.New<<string, number?>>()
-hm:Set("a", nil :: any)
-local okHm: number? = hm:GetOr("a", 0)
+HashMap.Set(hm, "a", nil :: any)
+local okHm: number? = HashMap.GetOr(hm, "a", 0)
 local tm = stl.TreeMap.New<<number, string | boolean>>(stl.Common.compareNumber)
-tm:Set(1, true)
-local okTm = tm:Get(1)
+TreeMap.Set(tm, 1, true)
+local okTm = TreeMap.Get(tm, 1)
 local hp = stl.Heap.New<<number | string>>(function(a: number | string, b: number | string)
 	return tostring(a) < tostring(b)
 end)
-local okHp = hp:Push(1):Push("b")
+local okHp = Heap.Push(Heap.Push(hp, 1), "b")
 
 --[[ NEG ]]
 local neg1: string = okM[1]                      -- Map 결과는 number
 local neg2: number = maybe[1]                    -- 원소는 number?
-local neg3 = maybe:PushBack("문자열")            -- 원소 타입이 다름
-local neg4 = maybe:NoSuch()
+local neg3 = Arr.PushBack(maybe, "문자열")            -- 원소 타입이 다름
+local neg4 = Arr.NoSuch(maybe)
 local neg5: Arr<number> = okChain                -- 체인 결과는 Arr<string>
-local neg6 = mixed:PushBack(true)                -- number | string 에 boolean
-local neg7 = hs:Add(true)
-local neg8: number = tm:GetOr(1, false)          -- 값은 string | boolean
-local neg9 = hp:Push(true)
+local neg6 = Arr.PushBack(mixed, true)                -- number | string 에 boolean
+local neg7 = HashSet.Add(hs, true)
+local neg8: number = TreeMap.GetOr(tm, 1, false)          -- 값은 string | boolean
+local neg9 = Heap.Push(hp, true)
 local canary: string = 42
 
 return {

@@ -4,11 +4,15 @@
 
 	```lua
 	local fetch = Fut.Async(function(id: number): (string, number)
-		local body = http:Get(id):Await()    -- 코루틴 안이라 기다릴 수 있음
+		local body = Fut.Await(httpGet(id))   -- 코루틴 안이라 기다릴 수 있음
 		return body, #body
 	end)
-	fetch(1):AndThen(function(body: string, size: number) … end)
+	Fut.AndThen(fetch(1), function(body: string, size: number) … end)
 	```
+
+	⭐ **모든 연산은 네임스페이스 함수입니다**(`Fut.AndThen(f, fn)`) — 메소드도
+	메타테이블도 없습니다(질문 AB). 모체인 `coroutine.resume(co)` 과 같은
+	모양입니다(사용자: *"Fut 의 모체인 코루틴도 바깥함수야"*).
 
 	## ⭐ 스케줄러를 주입받습니다 (사용자 결정 2026-09-22)
 
@@ -86,7 +90,8 @@ export type FutData = {
 	listeners: { () -> () },
 }
 
-local Ifce: FutIfce
+-- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB).
+const TAG = "__fut__"
 
 -- 즉시 실행. 순수 luau 의 기본값.
 --
@@ -165,15 +170,14 @@ local resumeThread: (co: thread) -> () = plainResume
 --#region ----------- 내부 -----------
 
 const function newPending(): FutData
-	return setmetatable(
-		{
-			status = "Pending",
-			values = nil,
-			reason = nil,
-			listeners = {},
-		} :: any,
-		Ifce :: any
-	) :: any
+	const fut: any = {
+		status = "Pending",
+		values = nil,
+		reason = nil,
+		listeners = {},
+	}
+	fut[TAG] = true
+	return fut
 end
 
 -- 한 번만 정해집니다. 이미 정해졌으면 아무것도 안 합니다(두 번째 resolve 무시).
@@ -225,7 +229,7 @@ const function runInto(target: FutData, fn: (...any) -> ...any, ...: any)
 end
 
 const function isFutRaw(value: any): boolean
-	return type(value) == "table" and getmetatable(value) == Ifce
+	return type(value) == "table" and rawget(value, TAG) == true
 end
 
 -- `source` 가 정해지면 그 결과를 `target` 에 그대로 옮깁니다.
@@ -354,28 +358,13 @@ end
 
 --#endregion
 
---#region ----------- 타입 조립 -----------
-
-type FutIfce = {
-	Status: typeof(Status),
-	Await: typeof(Await),
-	AwaitSafe: typeof(AwaitSafe),
-	AndThen: typeof(AndThen),
-	Chain: typeof(Chain),
-	Catch: typeof(Catch),
-}
+--#region ----------- 타입 -----------
 
 -- ⭐ `_pack` 은 **팬텀 필드**입니다. 런타임엔 없고, 타입 팩 `T...` 를 들고
 -- 다니기 위해서만 있습니다. 이게 없으면 모든 `Fut<…>` 가 구조적으로 같아져
--- 결과 타입이 사라집니다. 읽지 마세요.
-export type Fut<T...> = FutData & { _pack: (T...) -> () } & FutIfce
-
--- stylua: ignore
-Ifce = {
-	Status = Status, Await = Await, AwaitSafe = AwaitSafe,
-	AndThen = AndThen, Chain = Chain, Catch = Catch,
-} :: any
-(Ifce :: any).__index = Ifce
+-- 결과 타입이 사라집니다. 읽지 마세요. 함수는 타입 바깥(네임스페이스)에
+-- 있으니 메소드 교집합은 없습니다(질문 AB).
+export type Fut<T...> = FutData & { _pack: (T...) -> () }
 
 --#endregion
 
@@ -498,7 +487,7 @@ const function UseProvider(provider: Provider?): Provider
 end
 
 const function isFut(value: any): boolean
-	return type(value) == "table" and getmetatable(value) == Ifce
+	return type(value) == "table" and rawget(value, TAG) == true
 end
 
 --#endregion
@@ -513,10 +502,8 @@ return {
 	UseProvider = UseProvider,
 	isFut = isFut,
 
-	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
-	-- 라이브러리의 정식 모양입니다(`Fut.X(v, …)`). 콜론 호출과 같은 함수이고,
-	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
-	-- (`.claude/base/perf-measurements.md` 14절).
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`Fut.X(f, …)`) — 콜론 호출은
+	-- 없습니다(질문 AB).
 	Status = Status, Await = Await, AwaitSafe = AwaitSafe, AndThen = AndThen, Chain = Chain,
 	Catch = Catch,
 }

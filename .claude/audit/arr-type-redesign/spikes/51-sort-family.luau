@@ -23,21 +23,21 @@ local holed = Arr.Of<<number?>>(30, nil, 10)
 
 --[[ POS ]]
 local okStable: Arr<number> = Arr.StableSort(nums)
-local okStableIn: Arr<number> = nums:StableSortInplace(function(a: number, b: number): boolean
+local okStableIn: Arr<number> = Arr.StableSortInplace(nums, function(a: number, b: number): boolean
 	return a > b
 end)
 local okBy: Arr<Rec> = Arr.SortBy(recs, function(r: Rec): number
 	return r.age
 end)
-local okByName: Arr<Rec> = recs:SortBy(function(r: Rec): string
+local okByName: Arr<Rec> = Arr.SortBy(recs, function(r: Rec): string
 	return r.name
 end, function(a: string, b: string): boolean
 	return a > b
 end)
 local okNth: number? = Arr.NthElement(nums, 2)
-local okNthIn: Arr<number> = nums:NthElementInplace(-1)
+local okNthIn: Arr<number> = Arr.NthElementInplace(nums, -1)
 local okPartial: Arr<number> = Arr.PartialSort(nums, 2)
-local okPartialIn: Arr<number> = nums:PartialSortInplace(1)
+local okPartialIn: Arr<number> = Arr.PartialSortInplace(nums, 1)
 local okMerged: Arr<number> = Arr.MergeSorted(nums, nums)
 local okSorted: boolean = Arr.IsSorted(nums)
 local okHoledBy: Arr<number?> = Arr.SortBy(holed, function(v: number?): number

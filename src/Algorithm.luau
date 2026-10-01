@@ -16,38 +16,47 @@
 ]]
 local Types = require("./Types")
 
-type ListCore<E, I> = Types.ListCore<E, I>
-type MapCore<K, V> = Types.MapCore<K, V>
+type ListOps<C, E, I> = Types.ListOps<C, E, I>
+type MapOps<C, K, V> = Types.MapOps<C, K, V>
 type Record<K, V> = Types.Record<K, V>
+
+-- ⭐ 첫 인자는 **구현 함수 묶음**, 둘째가 컨테이너입니다(질문 AB). 모듈 테이블이
+-- 그대로 구현체라 `Algorithm.IndexOf(Arr, a, x)`, `Algorithm.Keys(TreeMap, m)`.
 
 local exports = {}
 
 -- 같은 원소가 처음 나오는 위치. 없으면 nil.
 -- 비교는 `==` 입니다 — 값 동등성이 필요하면 호출자가 다른 걸 써야 합니다.
-function exports.IndexOf<E, I>(list: ListCore<E, I>, item: E): I?
-	local idx = list:FirstIndex()
+function exports.IndexOf<C, E, I>(ops: ListOps<C, E, I>, list: C, item: E): I?
+	local idx = ops.FirstIndex(list)
 	while idx ~= nil do
-		if list:Get(idx) == item then
+		if ops.Get(list, idx) == item then
 			return idx
 		end
-		idx = list:NextIndex(idx)
+		idx = ops.NextIndex(list, idx)
 	end
 	return nil
 end
 
 -- 원소 개수. 배열처럼 길이를 들고 있는 구현은 자기 것을 쓰세요 — 이건
 -- 길이를 모르는 구현(연결 리스트 등)을 위한 O(n) 판입니다.
-function exports.Count<E, I>(list: ListCore<E, I>): number
-	local total, idx = 0, list:FirstIndex()
+function exports.Count<C, E, I>(ops: ListOps<C, E, I>, list: C): number
+	local total, idx = 0, ops.FirstIndex(list)
 	while idx ~= nil do
 		total += 1
-		idx = list:NextIndex(idx)
+		idx = ops.NextIndex(list, idx)
 	end
 	return total
 end
 
-function exports.Keys<K, V>(map: MapCore<K, V>): { K }
-	local records: { Record<K, V> } = map:Records()
+-- ⚠️ 맵 계약을 거치는 둘은 **타입 인자를 셋 다 알려줘야** 합니다:
+--     Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m)
+-- `K`/`V` 를 끌어낼 재료가 함수 묶음(제네릭 함수들)뿐이고 컨테이너 `C` 는 그걸
+-- 드러내지 않아 추론이 `unknown` 으로 샙니다. `K`/`V` 만 주고 `C` 를 추론에
+-- 맡기는 순서(`<K, V, C>`)도 재봤는데 솔버 내부 오류("invalid path")였습니다
+-- (2026-10-01 실측). 순차 계약(`IndexOf`/`Count`)은 추론으로 됩니다.
+function exports.Keys<C, K, V>(ops: MapOps<C, K, V>, map: C): { K }
+	local records: { Record<K, V> } = ops.Records(map)
 	local out: { K } = table.create(#records)
 	for i, rec in records do
 		out[i] = rec.key
@@ -55,8 +64,8 @@ function exports.Keys<K, V>(map: MapCore<K, V>): { K }
 	return out
 end
 
-function exports.Values<K, V>(map: MapCore<K, V>): { V }
-	local records: { Record<K, V> } = map:Records()
+function exports.Values<C, K, V>(ops: MapOps<C, K, V>, map: C): { V }
+	local records: { Record<K, V> } = ops.Records(map)
 	local out: { V } = table.create(#records)
 	for i, rec in records do
 		out[i] = rec.value

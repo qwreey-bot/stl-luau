@@ -36,13 +36,13 @@ end
 local okUnwrap: number = UnwrapOr(a, 0)
 -- 유니온 원소 배열은 명시적 타입 인자로
 local list = stl.Arr.Of<<Opt<number>>>(Present(1), { isPresent = false, value = nil }, Present(3))
-local okChain: stl.Arr<number> = list
-	:Filter(function(o: Opt<number>)
-		return o.isPresent
-	end)
-	:Map(function(o: Opt<number>): number
-		return UnwrapOr(o, 0)
-	end)
+local present = stl.Arr.Filter(list, function(o: Opt<number>)
+	return o.isPresent
+end)
+local okChain: stl.Arr<number> = stl.Arr.Map(present, function(o: Opt<number>): number
+	return UnwrapOr(o, 0)
+end)
+-- (문장으로 나눠 씀 — 질문 AB. 줄 수를 맞춰 아래 에러 줄 번호를 유지)
 
 -- NEG 1: 좁힌 뒤 타입이 틀리면 잡혀야 한다
 if a.isPresent then
@@ -57,7 +57,7 @@ local neg3: string = okChain[1]
 local c: Opt<number> = Present(1)
 local neg4: number = c.value
 -- NEG 5: 콜백 안에서 좁히지 않고 value 를 number 로 돌려줌
-local neg5 = list:Map(function(o: Opt<number>): number
+local neg5 = stl.Arr.Map(list, function(o: Opt<number>): number
 	return o.value
 end)
 

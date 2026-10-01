@@ -10,7 +10,7 @@
 
 	**Luau 테이블 자체가 이미 해시맵입니다.** 그래서 버킷·체인·해시 함수 주입·
 	리해싱 같은 계층이 통째로 필요 없습니다. 이 모듈이 실제로 더하는 것은
-	**크기 추적**과 **계약(`Types.MapCore`) 만족** 둘뿐입니다.
+	**크기 추적**과 **계약(`Types.MapOps`) 만족** 둘뿐입니다.
 
 	⭐ **키와 값을 `self` 에 바로 넣지 않고 `data` 안에 넣습니다.** 인스턴스에
 	길이 필드를 두면 `HashMap<string, …>` 에서 `Set("size", v)` 가 길이를
@@ -41,11 +41,18 @@ type Record<K, V> = Types.Record<K, V>
 
 export type HashMapData<K, V> = { data: { [K]: V }, size: number }
 
--- 런타임 메소드 테이블. 아래에서 채웁니다.
-local Ifce: HashMapIfce & Types.MapCore<any, any>
+-- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
+-- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
+const TAG = "__hashmap__"
 
---#region ----------- 계약 구현 (Types.MapCore) -----------
--- ⚠️ 이 셋은 `HashMapIfce` 에 **다시 쓰지 않습니다.** 계약이 이미 줍니다.
+-- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
+const function tagged(raw: any): any
+	raw[TAG] = true
+	return raw
+end
+
+--#region ----------- 계약 구현 (Types.MapOps) -----------
+-- 이 모듈 테이블이 그대로 `Types.MapOps` 구현체입니다(질문 AB).
 
 const function Get<K, V>(self: HashMapData<K, V>, key: K): V?
 	return self.data[key]
@@ -174,42 +181,14 @@ const function Clone<K, V>(self: HashMapData<K, V>): HashMap<K, V>
 	for key, value in self.data do
 		copy[key] = value
 	end
-	return setmetatable({ data = copy, size = self.size } :: any, Ifce :: any) :: any
+	return tagged({ data = copy, size = self.size })
 end
 
 --#endregion
 
---#region ----------- 타입 조립 -----------
--- ⭐ `Get`/`Set`/`Records` 는 **여기 없습니다.** `Types.MapCore` 가 줍니다.
--- 여기 다시 쓰면 self 타입이 달라 교집합이 충돌하고 메소드 타입이 통째로
--- 죽습니다(진단 0건으로).
-
-type HashMapIfce = {
-	Has: typeof(Has),
-	GetOr: typeof(GetOr),
-	Len: typeof(Len),
-	Empty: typeof(Empty),
-	Keys: typeof(Keys),
-	Values: typeof(Values),
-	Iter: typeof(Iter),
-	Remove: typeof(Remove),
-	Clear: typeof(Clear),
-	Clone: typeof(Clone),
-}
-
-export type HashMap<K, V> = HashMapData<K, V> & HashMapIfce & Types.MapCore<K, V>
-
--- 범주별로 묶어 두는 편이 읽기 좋은 디스패치 테이블입니다. 한 줄에 하나씩
--- 펼치면 배로 길어지고 그룹 주석과의 대응이 흩어집니다.
--- stylua: ignore
-Ifce = {
-	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty,
-	Keys = Keys, Values = Values, Iter = Iter,
-	Remove = Remove, Clear = Clear, Clone = Clone,
-	-- 계약이 주는 것들. 타입 선언엔 없지만 런타임 테이블엔 있어야 합니다.
-	Get = Get, Set = Set, Records = Records,
-} :: any
-(Ifce :: any).__index = Ifce
+--#region ----------- 타입 -----------
+-- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
+export type HashMap<K, V> = HashMapData<K, V>
 
 --#endregion
 
@@ -224,7 +203,7 @@ Ifce = {
 --
 -- `Arr.Of()` 로 빈 배열을 만들 때와 같은 한계입니다.
 const function New<K, V>(): HashMap<K, V>
-	return setmetatable({ data = {} :: { [K]: V }, size = 0 } :: any, Ifce :: any) :: any
+	return tagged({ data = {} :: { [K]: V }, size = 0 })
 end
 
 -- 평범한 Lua 테이블에서 만듭니다. **복사합니다** — 넘긴 테이블을 나중에
@@ -246,7 +225,7 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 		copy[key] = value
 		count += 1
 	end
-	return setmetatable({ data = copy, size = count } :: any, Ifce :: any) :: any
+	return tagged({ data = copy, size = count })
 end
 
 -- 키-값 쌍 목록에서 만듭니다. `Records()` 의 역연산입니다.
@@ -265,7 +244,7 @@ const function FromRecords<K, V>(records: { Record<K, V> }): HashMap<K, V>
 			count += 1
 		end
 	end
-	return setmetatable({ data = copy, size = count } :: any, Ifce :: any) :: any
+	return tagged({ data = copy, size = count })
 end
 
 -- ⚠️ **입양**: 이미 만들어 둔 테이블과 크기를 그대로 감쌉니다. 복사하지
@@ -273,11 +252,11 @@ end
 -- `HashSet` 처럼 이 모듈 위에 얹히는 구현이 중간 테이블을 한 번 더 만들지
 -- 않게 하려고 둔 문입니다. 일반 사용자는 `FromTable` 을 쓰세요.
 const function Adopt<K, V>(data: { [K]: V }, size: number): HashMap<K, V>
-	return setmetatable({ data = data, size = size } :: any, Ifce :: any) :: any
+	return tagged({ data = data, size = size })
 end
 
 const function isHashMap(value: any): boolean
-	return type(value) == "table" and getmetatable(value) == Ifce
+	return type(value) == "table" and rawget(value, TAG) == true
 end
 
 --#endregion
@@ -290,10 +269,8 @@ return {
 	Adopt = Adopt,
 	isHashMap = isHashMap,
 
-	-- ⭐ 메소드를 **네임스페이스 함수로도** 노출합니다 — 절차적 호출이 이
-	-- 라이브러리의 정식 모양입니다(`HashMap.X(v, …)`). 콜론 호출과 같은 함수이고,
-	-- 메타테이블을 안 거쳐 18% 빠르며 `local` 로 받아 부르면 36% 빠릅니다
-	-- (`.claude/base/perf-measurements.md` 14절).
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`HashMap.X(v, …)`) — 콜론 호출은
+	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
 	Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set, Records = Records,
 }
