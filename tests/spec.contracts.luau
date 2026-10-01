@@ -519,6 +519,27 @@ do
 	assert(table.concat(keys, ",") == "a,b", "Algorithm.Keys 내용")
 	assert(values[1] == 10 and values[2] == 20, "Algorithm.Values 내용")
 
+	-- 사용자 MapOps 의 Records 가 Arr·table.pack 결과를 돌려줘도(M0 7라운드) — 예전엔
+	-- `n`·태그 키를 레코드로 읽어 라이브러리 줄에서 터졌음. 구멍은 건너뜁니다.
+	type MyMap = { recs: stl.Arr<stl.Record<string, number>?> }
+	const myOps: MapOps<MyMap, string, number> = {
+		Get = function(_m: MyMap, _k: string): number?
+			return nil
+		end,
+		Set = function(_m: MyMap, _k: string, _v: number) end,
+		Records = function(m: MyMap): { stl.Record<string, number> }
+			return stl.Arr.Clone(m.recs) :: any
+		end,
+	}
+	const mine: MyMap =
+		{ recs = stl.Arr.Of<<stl.Record<string, number>?>>({ key = "x", value = 1 }, nil, { key = "y", value = 2 }) }
+	assert(
+		table.concat(stl.Algorithm.Keys<<MyMap, string, number>>(myOps, mine), ",") == "x,y",
+		"Keys(Records 가 Arr)"
+	)
+	const myValues = stl.Algorithm.Values<<MyMap, string, number>>(myOps, mine)
+	assert(#myValues == 2 and myValues[1] == 1 and myValues[2] == 2, "Values(Records 가 Arr)")
+
 	-- SetOps 자리에 모듈을 담아 두고 쓰기
 	const hs = stl.HashSet.Of(1, 2)
 	const setOps: SetOps<stl.HashSet<number>, number> = stl.HashSet
