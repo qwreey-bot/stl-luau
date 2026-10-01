@@ -171,6 +171,22 @@ do
 			Arr.NthElement(Arr.Of(2, 4, 1, 3, 0), 3, flaky)
 		end)
 	)
+	-- 7b. 같은 에러의 j 스캔 쪽(3라운드 리뷰: 7번은 i 스캔만 닿아 j 쪽을 되돌려도 통과)
+	atUserLine(
+		"선택 j 스캔의 엄격성",
+		expectLine("선택 j 스캔의 엄격성", "less must be strict", function()
+			local calls = 0
+			const flaky = function(a: number, b: number): boolean
+				if a == b then
+					return false
+				end
+				calls += 1
+				return calls % 6 ~= 5
+			end
+			where = debug.info(1, "l") + 1
+			Arr.NthElement(Arr.Of(2, 4, 1, 3, 0), 3, flaky)
+		end)
+	)
 	-- 8. C 함수가 바로 부르면 가리킬 사용자 줄이 없음 — 메시지는 그대로, 위치 접두는 없음
 	const ok, err = pcall(Arr.At, Arr.Of(1), 0 / 0)
 	assert(not ok and tostring(err) == "Arr: At index is NaN", `C 프레임이 바로 부름: {err}`)

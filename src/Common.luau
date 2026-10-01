@@ -157,4 +157,12 @@ function exports.raise(message: string): never
 	error(message, level)
 end
 
+-- 받은 에러 값을 **그대로** 다시 던집니다(위치를 덧붙이지 않음 — 문자열이면 홉마다
+-- 쌓이고, 테이블이면 원래 값이 바뀌면 안 됨). 라이브러리 밖의 `error(` 는 이것과
+-- `raise` 둘로만 갑니다 — 새 에러를 `error(msg, 0)` 으로 내면 위치가 안 붙는데 되던지기와
+-- 겉모양이 같아 게이트가 못 가렸습니다(3라운드 리뷰). 그래서 둘을 이름으로 가릅니다.
+function exports.rethrow(value: any): never
+	error(value, 0)
+end
+
 return exports

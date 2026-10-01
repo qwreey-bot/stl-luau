@@ -129,43 +129,51 @@ done < <(find src -name "*.luau" | sort)
 if [ "$req_fail" = "0" ]; then echo "  모든 모듈 require OK"; else fail=1; fi
 
 # 에러는 `Common.raise` 로만 — 손으로 센 level(`error(msg, 2)`)은 -O2 인라인에서
-# 틀립니다. 되던지기(`error(x, 0)`)만 허용합니다. 그리고 raise 가 걷다 멈추지
+# 틀립니다. 되던지기는 `Common.rethrow`. 그리고 raise 가 걷다 멈추지
 # 않도록 **모든 모듈이 자기 파일을 등록**해야 합니다(빠지면 그 모듈의 줄을 가리킴).
 echo
 echo "=== 에러 규약 (Common.raise + 모듈 등록)"
 err_fail=0
-# 파일 전체를 한 번 훑어 **문자열 내용은 자리표시자로, 주석은 지운 뒤**(왼쪽부터 한 번에
-# — 문자열 안의 `(`·`--`·`--[[` 에 속지 않게, 2라운드 리뷰) 봅니다:
-#   - `error(…)` 는 짝 괄호까지 맞춰 **마지막 인자가 정확히 0** 이고, **첫 인자가 변수**
-#     (되던지기)여야 합니다 — 문자열·대문자 상수로 새로 내는 level 0 은 위치가 안 붙습니다
-#     (`error(STRICT_ERROR, 0)` 이 그랬음, 2라운드).
-#   - `error`/`assert` 는 **호출 이름으로만** — 값으로 쓰면(`local e = error`,
-#     `(error)(…)`, `{ error }`) 금지. `x.error`·`x:error` 는 다른 이름이라 제외.
-#   - 등록은 주석·문자열을 걷은 뒤 줄 머리에서 찾습니다(블록 주석 안의 등록은 안 셈).
-#   - `Common.luau` 도 봅니다 — `raise` 의 `error(message, level)` 한 곳만 허용.
+# 파일 전체를 한 번 훑어 왼쪽부터 **주석을 지우고**(문자열 안의 `--`·`--[[` 에 속지 않게),
+# 그 텍스트에서 등록 줄을 찾은 뒤(형식 문자 `"s"` 까지 — 3라운드), **문자열 내용을
+# 자리표시자로** 바꿔(문자열 안의 `(`·`assert(` 에 속지 않게) 봅니다:
+#   - `error(` 는 **`Common.luau` 의 `raise`/`rethrow` 안에서만**. 새 에러는 `Common.raise`,
+#     되던지기는 `Common.rethrow` — `error(msg, 0)` 은 둘의 겉모양이 같아 가릴 수 없었습니다
+#     (`error(STRICT_ERROR, 0)` 이 위치 없는 새 에러였음 — 2·3라운드).
+#   - `assert(` 금지. `error`/`assert` 를 값으로 쓰기 금지(`local e = error`, `(error)(…)`)
+#     — 필드 이름(`x.error`, `x:error`, `{ error = … }`, 타입의 `error: T`)은 제외.
 # 경계(제가 정함): 실수로 들어온 위반을 잡는 덫이지 **일부러 피해 가는 코드**(`_G.error`,
 # `rawget(_G, "error")`, `getfenv`)를 막는 장치가 아닙니다 — 그건 리뷰의 몫입니다.
 if ! bad=$(find src -name "*.luau" -print0 | xargs -0 perl -0777 -ne '
 	my $f = $ARGV;
-	s{ ( "(?:\\.|[^"\\\n])*" | \x27(?:\\.|[^\x27\\\n])*\x27 | `(?:\\.|[^`\\])*` )
-	 | ( --\[(=*)\[.*?\]\3\] | --[^\n]* )
-	 | ( \[(=*)\[.*?\]\5\] ) }
-	 { defined $1 ? "\"S\"" : defined $2 ? "" : "\"S\"" }gsex;
 	my $isCommon = $f =~ m{(^|/)Common\.luau\z};
-	my $allowed = 0;
-	while (/(?<![.:\w])error\s*(\((?:[^()]++|(?1))*\))/g) {
-		my $call = $1;
-		if ($isCommon && $call =~ /\A\(\s*message\s*,\s*level\s*\)\z/ && !$allowed++) { next }
-		if ($call =~ /,\s*0\s*\)\z/ && $call =~ /\A\(\s*[a-z_][\w.]*\s*,/) { next }
-		print "$f: error$call\n";
-	}
-	print "$f: assert( 금지 — Common.raise 를 쓸 것\n" while /(?<![.:\w])assert\s*\(/g;
-	print "$f: error/assert 를 값으로 씀\n" while /(?<![.:\w])(?:error|assert)\b(?!\s*\()/g;
+	# 문자열 문법: 이스케이프(\z 뒤 공백·개행 포함), 보간 안의 {…} 는 안쪽 문자열까지 재귀
+	my $esc = qr/\\z\s*|\\./s;
+	my $dq = qr/"(?:$esc|[^"\\\n])*"/;
+	my $sq = qr/\x27(?:$esc|[^\x27\\\n])*\x27/;
+	my $bt; $bt = qr/`(?:$esc|[^`\\{]|\{(?:$dq|$sq|(??{$bt})|[^{}"\x27`]|\{[^{}]*\})*\})*`/s;
+	my $long = qr/\[(=*)\[.*?\]\g{-1}\]/s;
+	# 1) 주석 제거(문자열은 그대로)
+	s{ ($dq|$sq|$bt) | --(?:\[(=*)\[.*?\]\2\]|[^\n]*) | ($long) }
+	 { defined $1 ? $1 : defined $3 ? $3 : "" }gsex;
 	print "$f: registerSource 를 안 부름\n"
 		unless $isCommon || $f =~ m{(^|/)(Types|init)\.luau\z}
-		|| /^Common\.registerSource\(debug\.info\(1, "S"\)\)$/m;
+		|| /^Common\.registerSource\(debug\.info\(1, "s"\)\)$/m;
+	# 2) 문자열 내용을 자리표시자로
+	s{ ($dq|$sq|$bt) | ($long) }{"S"}gsx;
+	my @calls;
+	push @calls, $1 while /(?<![.:\w])error\s*(\((?:[^()]++|(?1))*\))/g;
+	if ($isCommon) {
+		my %ok = ("(message, level)" => 1, "(message, 0)" => 1, "(value, 0)" => 1);
+		print "$f: error$_ — raise/rethrow 밖\n" for grep { !$ok{$_}-- } @calls;
+	} else {
+		print "$f: error$_ — Common.raise/rethrow 를 쓸 것\n" for @calls;
+	}
+	print "$f: assert( 금지\n" while /(?<![.:\w])assert\s*\(/g;
+	print "$f: error/assert 를 값으로 씀\n"
+		while /(?<![.:\w])(?:error|assert)\b(?!\s*\()(?!\s*=(?!=))(?!\s*:(?!:))/g;
 ' 2>&1) || [ -n "$bad" ]; then
-	echo "  FAIL  에러 규약 위반 — Common.raise 를 쓸 것"
+	echo "  FAIL  에러 규약 위반"
 	printf '        %s\n' "$bad"
 	err_fail=1
 fi

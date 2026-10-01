@@ -132,7 +132,7 @@ const function immediate(job: () -> ())
 	queueHead, queueTail = 1, 0
 	draining = false
 	if failed then
-		error(firstError, 0)
+		Common.rethrow(firstError)
 	end
 end
 
@@ -206,7 +206,7 @@ const function settle(fut: FutData, status: Status, values: Packed?, reason: any
 		end
 	end
 	if failed then
-		error(firstError, 0)
+		Common.rethrow(firstError)
 	end
 end
 
@@ -293,7 +293,8 @@ const function Await<T...>(self: Fut<T...>): T...
 		coroutine.yield()
 	end
 	if data.status == "Rejected" then
-		error(data.reason, 0) -- level 0: 문자열 이유에 위치를 덧붙이지 않음(홉마다 쌓였음)
+		-- 위치를 덧붙이지 않음 — 문자열 이유에 홉마다 쌓였음
+		Common.rethrow(data.reason)
 	end
 	const values = data.values :: Packed
 	return table.unpack(values, 1, values.n)
