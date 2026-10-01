@@ -91,8 +91,10 @@
   `Arr.Of<<number>>()`, `HashMap.New<<string, number>>()`,
   `nested:Flat<<number>>()`. 캐스트(`:: Arr<number>`)는 차선입니다.
   캐스트는 "내 말을 믿어라" 이고 이건 "답을 알려준다" 입니다.
-  ⚠️ 다만 **콜백 파라미터 주석은 이걸로 안 없어집니다** — 그건 다른 한계이고
-  지금도 주석을 답니다. 자세한 것은 `base/typing-limits.md`.
+  ⭐ **콜백 파라미터 주석도 이걸로 없어집니다**(2026-10-02 정정, `spikes/54`):
+  `Arr.Map<<number>>(a, function(v) return v * 2 end)`. 타입 인자 없이 맨 람다를
+  넘기면 아직 에러라, 콜백을 넘길 땐 `<<T>>` 와 콜백 주석 중 하나가 필요합니다.
+  자세한 것은 `base/typing-limits.md`.
 
 - **`const` 바인딩**: 재대입 없는 바인딩은 `const`. ⚠️ **`const` 는 `local`
   을 대체하는 키워드입니다**(`const x = 1`). `local const x = 1` 이라고 쓰면

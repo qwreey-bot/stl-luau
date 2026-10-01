@@ -10,7 +10,7 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 교집합(`ArrIfce`)·`setmetatable<>` 붕괴·계약 멤버 재선언 금지·재귀 별칭 우회
 > (`typeof` 나열)·체이닝 깊이** 에 관한 것은 **역사**입니다 — 전체형이 데이터부
 > 그 자체(`Arr<T> = ArrData<T>`)라 그 문제들이 생길 자리가 없어졌습니다. 지금도
-> 유효한 것: 명시적 타입 인자 `f<<T>>(…)`, 콜백 파라미터 주석, 유니온 원소
+> 유효한 것: 명시적 타입 인자 `f<<T>>(…)`(**콜백 주석도 없앰** — `spikes/54`), 유니온 원소
 > (`spikes/46`), 구멍 규약(`T?`), 새 솔버의 생략 인자 결함(`spikes/52`, 셋째
 > 인자 `ArrView<unknown>`), 함수 묶음 계약의 추론(`read` 필드, 맵 계약은 타입
 > 인자 명시 — `conventions.md`).
@@ -370,22 +370,41 @@ local flat = nested:Flat<<number>>()         -- ✅ 이게 낫습니다
 local flat = nested:Flat() :: Arr<number>    -- ✅ 차선(캐스트)
 ```
 
-### ⚠️ 명시적 타입 인자가 **풀어주지 않는 것** — 콜백 파라미터 주석
+### ⭐ 명시적 타입 인자는 **콜백 파라미터 주석도 없앱니다** (2026-10-02 정정)
 
-이건 별개 문제이고 그대로 남습니다(실측):
+예전 이 절은 반대("풀어주지 않는다")였습니다 — **콜론 시절**
+(`nums:Map<<number>>(function(v) …)`)의 실측이었고, M0 뒤 네임스페이스 호출에서
+다시 재니 **풀립니다**(quad 탐사 B, `spikes/54`):
 
 ```lua
-nums:Map<<number>>(function(v)      -- ❌ "Consider placing the following
-    return v * 2                    --     annotations on the arguments: v: number"
-end)
-nums:Map(function(v: number)        -- ✅ 지금은 이렇게 씁니다
-    return v * 2
-end)
+Arr.Map<<number>>(nums, function(v) return v * 2 end)        -- ✅ v: number, 결과 Arr<number>
+Arr.Fold<<number, number>>(nums, 0, function(acc, v) return acc + v end)  -- ✅
+Arr.Map(nums, function(v) return v * 2 end)                  -- ❌ "Consider placing the
+                                                              --    following annotations"
+Arr.Map(nums, function(v: number) return v * 2 end)          -- ✅ 주석으로도 됨
 ```
 
-원인이 다릅니다 — *"제네릭이 관여하는 함수 호출의 인자로 넘긴 함수 리터럴엔
-Luau 가 컨텍스트 타입을 전파하지 않는다"* 는 더 일반적인 한계입니다
-(RFC·이슈 없음, quad 이 20개 formulation 으로 재시도했으나 못 뚫음).
+- 람다의 `v` 가 정말 `number` 를 받습니다(`v.foo` 가 잡힘). 구멍 든 배열에
+  `<<number?>>` 를 주면 `v` 가 `number?` 라 `v * 2` 가 잡힙니다 — 구멍 규약과 맞습니다.
+- `spikes/52` 의 솔버 구멍(좁은 주석이 안 잡힘)도 `<<T>>` 면 잡힙니다.
+- 타입 인자 없는 맨 람다는 여전히 에러입니다 — *"제네릭 호출 인자의 함수 리터럴엔
+  컨텍스트 타입이 전파되지 않는다"*(quad 의 표현). 업스트림 `luau-lang/luau#2168`
+  (열림)이 같은 증상이고, 원인 분석이 든 커뮤니티 PR(#2894 등)은 머지되지 않았습니다
+  (2026-10-02 확인 — 탐사 B).
+
+**그래서 콜백을 넘길 땐 `<<T>>` 가 가장 싼 처방**입니다. 콜백 주석과 둘 중 하나면
+됩니다.
+
+### 분기마다 다른 반환이면 첫 `return` 이 결과 타입을 굳힘 (2026-10-02)
+
+```lua
+Arr.Map(nums, function(v: number) if v > 4 then return nil end return v end)
+-- ❌ "Expected this to be 'nil', but got 'number'" — 순서를 바꾸면 반대로
+Arr.Map<<number, number?>>(nums, function(v) … end)          -- ✅
+Arr.Map(nums, function(v: number): number? … end)             -- ✅ 반환 주석
+```
+
+구멍(`T?`)을 만드는 매퍼에서 흔히 만납니다. `spikes/54` 가 LIMIT 으로 고정합니다.
 
 ### 어떻게 지키는가
 
