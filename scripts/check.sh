@@ -201,6 +201,11 @@ if ! bad=$(find src -name "*.luau" -print0 | xargs -0 perl -0777 -ne '
 	} else {
 		print "$f: error$_ — Common.raise/rethrow 를 쓸 것\n" for @calls;
 	}
+	# 되던지기는 받은 에러를 다시 던지는 자리에만 — 이름이 맞게 쓰였는지 볼 수 없어(새 에러를
+	# `Common.rethrow("X: …")` 로 내면 위치가 안 붙음, 6라운드) **허용 파일**로 가둡니다.
+	# 지금은 Fut 뿐입니다. 새 되던지기 자리가 생기면 이 목록에 더하고 리뷰를 받으세요.
+	print "$f: Common.rethrow 는 허용 파일(Fut)에서만 — 새 에러는 Common.raise\n"
+		if $f !~ m{\Asrc/Fut\.luau\z} && /(?<![.:\w])Common\.rethrow\s*\(/;
 	print "$f: assert( 금지\n" while /(?<![.:\w])assert\s*\(/g;
 	print "$f: error/assert 를 값으로 씀\n"
 		while /(?<![.:\w])(?:error|assert)\b(?!\s*\()(?!\s*=(?!=))(?!\s*:(?!:))/g;

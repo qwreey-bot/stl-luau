@@ -187,6 +187,60 @@ do
 			Arr.NthElement(Arr.Of(2, 4, 1, 3, 0), 3, flaky)
 		end)
 	)
+	-- 9. 나머지 raise 자리 — 테스트가 "에러가 난다" 만 보고 줄은 안 봐, `raise` 를 위치 없는
+	--    `rethrow` 로 바꿔도 통과하던 다섯(6라운드 리뷰가 23자리 전수 돌연변이로 찾음).
+	--    이제 **raise 자리 전부**가 어딘가에서 줄로 단언됩니다 — 새 자리를 더하면 여기에도.
+	const desc = function(a: number, b: number): number
+		return b - a
+	end
+	atUserLine(
+		"TreeSet 비교자 불일치",
+		expectLine("TreeSet 비교자 불일치", "different comparators", function()
+			const a = stl.TreeSet.FromList({ 1 }, Common.compareNumber)
+			const b = stl.TreeSet.FromList({ 2 }, desc)
+			where = debug.info(1, "l") + 1
+			stl.TreeSet.Union(a, b)
+		end)
+	)
+	atUserLine(
+		"TreeSet.FromList NaN",
+		expectLine("TreeSet.FromList NaN", "NaN item", function()
+			where = debug.info(1, "l") + 1
+			stl.TreeSet.FromList({ 3, 0 / 0 }, Common.compareNumber)
+		end)
+	)
+	atUserLine(
+		"TreeMap.FromRecords NaN",
+		expectLine("TreeMap.FromRecords NaN", "NaN key", function()
+			where = debug.info(1, "l") + 1
+			stl.TreeMap.FromRecords({ { key = 0 / 0, value = 1 } }, Common.compareNumber)
+		end)
+	)
+	atUserLine(
+		"Arr.FromTable 이미 Arr",
+		expectLine("Arr.FromTable 이미 Arr", "already an Arr", function()
+			const already = Arr.Of(1, 2)
+			where = debug.info(1, "l") + 1
+			Arr.FromTable(already :: any)
+		end)
+	)
+	atUserLine(
+		"Arr.Range 무한 step",
+		expectLine("Arr.Range 무한 step", "step must be finite", function()
+			where = debug.info(1, "l") + 1
+			Arr.Range(1, 5, math.huge)
+		end)
+	)
+	-- 10. 스택이 끝까지 라이브러리면(라이브러리 함수를 스레드 본문으로 바로 넘김 — Roblox 의
+	--     `task.spawn(Arr.At, …)`) 가리킬 사용자 줄이 없어 위치를 안 붙임. `error(message)` 로
+	--     바꾸면 `Common.luau` 줄이 붙었는데 테스트가 없었음(6라운드).
+	do
+		const resumed, threadErr = coroutine.resume(coroutine.create(Arr.At), Arr.Of(1), 0 / 0)
+		assert(
+			not resumed and threadErr == "Arr: At index is NaN",
+			`스택 끝까지 라이브러리: {tostring(threadErr)}`
+		)
+	end
 	-- 8. C 함수가 바로 부르면 가리킬 사용자 줄이 없음 — 메시지는 그대로, 위치 접두는 없음
 	const ok, err = pcall(Arr.At, Arr.Of(1), 0 / 0)
 	assert(not ok and tostring(err) == "Arr: At index is NaN", `C 프레임이 바로 부름: {err}`)
