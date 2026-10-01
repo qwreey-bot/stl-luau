@@ -41,6 +41,8 @@
 	`spikes/45`). `.value` 를 직접 읽기보다 `UnwrapOr`/`Unwrap` 을 쓰거나,
 	좁힐 땐 새 지역 별칭(`local p = o`)을 쓰세요.
 ]]
+local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 
 export type Optional<T> = { isPresent: true, value: T } | { isPresent: false, value: nil }
 
@@ -68,7 +70,8 @@ const function Unwrap<T>(o: Optional<T>): T
 	if o.isPresent then
 		return o.value
 	end
-	error("Optional: Unwrap called on Absent", 2)
+	-- `return` 은 타입용입니다 — Luau 는 `never` 를 돌려주는 호출 뒤를 끝으로 보지 않습니다.
+	return Common.raise("Optional: Unwrap called on Absent")
 end
 
 -- 값, 없으면 `fallback`.

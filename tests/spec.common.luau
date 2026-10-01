@@ -75,6 +75,80 @@ do
 end
 print("PASS")
 
+print("=== 에러는 사용자 줄을 가리킨다 — 최적화 수준과 무관하게 (2026-10-02) ===")
+do
+	-- 손으로 센 level 은 -O2 인라인에서 틀렸습니다(`NthElement` 의 NaN 이 라이브러리 줄).
+	-- `Common.raise` 는 라이브러리가 아닌 첫 프레임을 찾아 걷습니다. **정확한 줄**을
+	-- 단언합니다 — 파일 이름만 보면 같은 파일의 다른 줄이어도 통과합니다.
+	-- check.sh 가 이 파일을 -O2 로도 돌립니다.
+	const Arr = stl.Arr
+	local function expectLine(label: string, needle: string, run: () -> ()): string
+		const ok, err = pcall(run)
+		const text = tostring(err)
+		assert(not ok, `{label}: 에러가 안 남`)
+		assert(string.find(text, needle, 1, true) ~= nil, `{label}: 메시지: {text}`)
+		return text
+	end
+	-- `where = debug.info(1, "l") + 1` 로 바로 다음 줄을 "던져야 할 사용자 줄" 로 적어
+	-- 둡니다. 헬퍼 함수로 빼면 -O2 에서 그 헬퍼가 인라인돼 `debug.info(2)` 가 엉뚱한
+	-- 프레임을 봤습니다 — 이 테스트가 막으려는 바로 그 함정입니다.
+	local where = 0
+	const function atUserLine(label: string, text: string)
+		assert(string.find(text, `spec.common.luau:{where}:`, 1, true) ~= nil, `{label}: {where} 줄이 아님: {text}`)
+	end
+
+	-- 1. 공개 함수가 로컬 헬퍼를 거쳐 던짐(-O2 에서 인라인되던 자리)
+	atUserLine(
+		"NthElement",
+		expectLine("NthElement", "k is NaN", function()
+			where = debug.info(1, "l") + 1
+			Arr.NthElement(Arr.Of(10, 20), 0 / 0)
+		end)
+	)
+	-- 2. 다른 모듈을 거쳐 던짐(TreeSet → TreeMap). 예전엔 TreeMap 의 줄이었습니다(백로그)
+	atUserLine(
+		"TreeSet.Add",
+		expectLine("TreeSet.Add", "NaN", function()
+			const s = stl.TreeSet.New(Common.compareNumber) :: stl.TreeSet<number>
+			where = debug.info(1, "l") + 1
+			stl.TreeSet.Add(s, 0 / 0)
+		end)
+	)
+	-- 3. 콜백 안의 라이브러리 호출은 **콜백 줄**을 가리킴
+	atUserLine(
+		"콜백 안",
+		expectLine("콜백 안", "At index is NaN", function()
+			Arr.Map(Arr.Of(10, 20), function(_v: number, _i: number, _a): number
+				where = debug.info(1, "l") + 1
+				return Arr.At(Arr.Of(1), 0 / 0) or 0
+			end)
+		end)
+	)
+	-- 4. C 함수(table.sort) 너머의 비교자 안
+	atUserLine(
+		"비교자 안",
+		expectLine("비교자 안", "At index is NaN", function()
+			Arr.Sort(Arr.Of(3, 1, 2), function(a: number, b: number): boolean
+				where = debug.info(1, "l") + 1
+				Arr.At(Arr.Of(1), 0 / 0)
+				return a < b
+			end)
+		end)
+	)
+	-- 5. Optional 은 Common 을 새로 require 함 — 등록이 빠지면 여기서 걸림
+	atUserLine(
+		"Unwrap",
+		expectLine("Unwrap", "Unwrap called on Absent", function()
+			where = debug.info(1, "l") + 1
+			stl.Optional.Unwrap(stl.Optional.Of(nil :: number?))
+		end)
+	)
+	-- 6. C 함수가 바로 부르면 가리킬 사용자 줄이 없음 — 메시지는 그대로, 위치 접두는 없음
+	const ok, err = pcall(Arr.At, Arr.Of(1), 0 / 0)
+	assert(not ok and tostring(err) == "Arr: At index is NaN", `C 프레임이 바로 부름: {err}`)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Common) ===")
 

@@ -34,6 +34,7 @@
 ]]
 local Types = require("./Types")
 local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 
 type LessThan<T> = Types.LessThan<T>
 

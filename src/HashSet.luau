@@ -34,6 +34,7 @@
 ]]
 local HashMap = require("./HashMap")
 local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 
 type HashMapType<K, V> = HashMap.HashMap<K, V>
 

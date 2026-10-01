@@ -30,6 +30,8 @@
 	입니다. 원소 위치(`1 .. count`)보다 하나 넓다는 데 주의하세요. 그 자리에
 	넣으면 정렬이 유지됩니다.
 ]]
+local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 
 export type Probe<E, K> = (element: E, target: K) -> number
 

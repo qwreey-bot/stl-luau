@@ -49,6 +49,7 @@
 local Types = require("./Types")
 local TreeMap = require("./TreeMap")
 local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
 type Comparator<T> = Types.Comparator<T>
@@ -195,7 +196,7 @@ end
 -- 함수를 나눠 쓰세요.
 const function sameOrder<T>(a: TreeSetData<T>, b: TreeSetData<T>)
 	if a.map.compare ~= b.map.compare then
-		error("TreeSet: sets use different comparators", 3)
+		Common.raise("TreeSet: sets use different comparators")
 	end
 end
 
@@ -407,7 +408,7 @@ const function FromList<T>(source: { T }, compare: Comparator<T>): TreeSet<T>
 	for idx = 1, count do
 		const item = list[idx]
 		if item ~= item then
-			error("TreeSet: NaN item", 2)
+			Common.raise("TreeSet: NaN item")
 		end
 	end
 	const sorted = table.create(count) :: { T }

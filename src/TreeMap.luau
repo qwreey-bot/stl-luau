@@ -37,6 +37,7 @@
 local Types = require("./Types")
 local BSearch = require("./BSearch")
 local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
 type Comparator<K> = Types.Comparator<K>
@@ -106,7 +107,7 @@ end
 -- 인데 두 맵의 뜻이 달랐습니다(2026-09-30 리뷰).
 const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
 	if isNaN(key) then
-		error("TreeMap: NaN key", 2)
+		Common.raise("TreeMap: NaN key")
 	end
 	const records = self.records
 	const size = self.size
@@ -374,7 +375,7 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 	const order = table.create(count) :: { number }
 	for idx = 1, count do
 		if isNaN(records[idx].key) then
-			error("TreeMap: NaN key", 2)
+			Common.raise("TreeMap: NaN key")
 		end
 		order[idx] = idx
 	end

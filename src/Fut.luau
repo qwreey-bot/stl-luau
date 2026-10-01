@@ -62,6 +62,7 @@
 
 const ArrModule = require("./Arr")
 const Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 type Arr<T> = ArrModule.Arr<T>
 
 export type Status = "Pending" | "Resolved" | "Rejected"
@@ -283,7 +284,7 @@ const function Await<T...>(self: Fut<T...>): T...
 	const data = self :: FutData
 	if data.status == "Pending" then
 		if not canWait() then
-			error("Fut: Await on a pending Fut outside a Fut coroutine (wrap it in Fut.Async)", 2)
+			Common.raise("Fut: Await on a pending Fut outside a Fut coroutine (wrap it in Fut.Async)")
 		end
 		const co = coroutine.running()
 		onSettle(data, function()

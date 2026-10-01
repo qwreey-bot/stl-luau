@@ -17,6 +17,7 @@
 ]]
 local Types = require("./Types")
 local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 
 type ListOps<C, E, I> = Types.ListOps<C, E, I>
 type MapOps<C, K, V> = Types.MapOps<C, K, V>

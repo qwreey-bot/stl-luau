@@ -128,6 +128,26 @@ while IFS= read -r m; do
 done < <(find src -name "*.luau" | sort)
 if [ "$req_fail" = "0" ]; then echo "  모든 모듈 require OK"; else fail=1; fi
 
+# 에러는 `Common.raise` 로만 — 손으로 센 level(`error(msg, 2)`)은 -O2 인라인에서
+# 틀립니다. 되던지기(`error(x, 0)`)만 허용합니다. 그리고 raise 가 걷다 멈추지
+# 않도록 **모든 모듈이 자기 파일을 등록**해야 합니다(빠지면 그 모듈의 줄을 가리킴).
+echo
+echo "=== 에러 규약 (Common.raise + 모듈 등록)"
+err_fail=0
+if bad=$(grep -nE '\berror\(' src/*.luau | grep -v 'src/Common.luau' | grep -vE ',[[:space:]]*0\)'); then
+	echo "  FAIL  손으로 센 level — Common.raise 를 쓸 것"
+	printf '        %s\n' "$bad"
+	err_fail=1
+fi
+for m in src/*.luau; do
+	case "$m" in src/Types.luau | src/init.luau | src/Common.luau) continue ;; esac
+	if ! grep -qF 'Common.registerSource(debug.info(1, "s"))' "$m"; then
+		echo "  FAIL  $m 가 registerSource 를 안 부름"
+		err_fail=1
+	fi
+done
+if [ "$err_fail" = "0" ]; then echo "  에러 규약 OK"; else fail=1; fi
+
 echo
 echo "=== 포맷 (stylua)"
 if command -v stylua >/dev/null 2>&1; then
@@ -145,5 +165,12 @@ fi
 echo
 echo "=== luau tests/run.luau"
 luau tests/run.luau || fail=1
+
+# -O2 는 로컬 함수를 인라인해 프레임 수가 바뀝니다 — 에러가 "사용자 줄" 을
+# 가리키는지가 최적화 수준에 따라 갈렸습니다(2026-10-02, quad 탐사 C). 라이브
+# Roblox 는 -O2 가 기본이라 같은 테스트를 그 수준으로도 돌립니다.
+echo
+echo "=== luau -O2 tests/run.luau"
+luau -O2 tests/run.luau >/dev/null || fail=1
 
 exit "$fail"

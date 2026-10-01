@@ -72,6 +72,7 @@
 ]]
 local Types = require("./Types")
 local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))
 local Optional = require("./Optional")
 
 type LessThan<T> = Types.LessThan<T>
@@ -133,7 +134,7 @@ const function resolveRange(len: number, start: number?, last: number?): (number
 	-- NaN 은 clamp 할 방향이 없습니다. 그냥 두면 `table.move` 의 엉뚱한 에러나
 	-- (`Some`/`Every` 에서) 조용한 무동작이 됐습니다(2026-09-30 리뷰).
 	if st ~= st or la ~= la then
-		error("Arr: range bound is NaN", 3)
+		Common.raise("Arr: range bound is NaN")
 	end
 	local s = if st == nil then 1 elseif st < 0 then len + st + 1 else st
 	local l = if la == nil then len elseif la < 0 then len + la + 1 else la
@@ -153,7 +154,7 @@ const function resolveInsertPos(len: number, at: number): number
 	-- NaN 은 가둘 방향이 없습니다. `InsertArray` 는 값이 음수 키로 조용히
 	-- 사라졌습니다(2026-09-30 3라운드 리뷰). 구간 NaN 과 같은 정책.
 	if at ~= at then
-		error("Arr: insert position is NaN", 3)
+		Common.raise("Arr: insert position is NaN")
 	end
 	const whole = toIndex(at)
 	local pos = if whole < 0 then len + whole + 1 else whole
@@ -184,7 +185,7 @@ const MAX_LENGTH = 2 ^ 26
 const function checkLength(len: number, who: string): number
 	const count = toIndex(len)
 	if not (count >= 0) or count > MAX_LENGTH then
-		error(`Arr: {who} length must be in [0, {MAX_LENGTH}] (got {len})`, 3)
+		Common.raise(`Arr: {who} length must be in [0, {MAX_LENGTH}] (got {len})`)
 	end
 	-- `-0 + 0 = +0` — `Sized(-0.5)` 가 `n = -0` 을 만들었습니다(`tostring` 이 "-0").
 	return count + 0
@@ -245,7 +246,7 @@ end
 const function At<T>(self: ArrData<T>, idx: number): T?
 	-- NaN 은 "범위 밖" 이 아니라 인자 오류입니다(구간·k 의 NaN 과 같은 정책).
 	if idx ~= idx then
-		error("Arr: At index is NaN", 2)
+		Common.raise("Arr: At index is NaN")
 	end
 	const len = self.n
 	const i = toIndex(idx)
@@ -943,9 +944,9 @@ end
 
 -- 구간을 뒤집습니다(제자리).
 -- 아래 세 쌍(Reverse/Rotate/Shuffle)은 **구간을 푼 뒤의 몸통**을 헬퍼로 두고
--- 두 판이 각자 구간을 풉니다. 새 배열판이 `XxxInplace(Clone(self))` 를 부르면
--- 한 프레임 깊어져 구간·인자 에러가 사용자 줄이 아니라 라이브러리 줄을
--- 가리켰습니다(2026-09-30 2라운드 리뷰 — Luau 에는 꼬리 호출 최적화가 없음).
+-- 두 판이 각자 구간을 풉니다. (처음엔 에러 줄 때문이었습니다 — 손으로 센 level 은
+-- 새 배열판이 `XxxInplace(Clone(self))` 로 부르면 한 프레임 어긋났습니다. 지금은
+-- `Common.raise` 가 스택을 걸어 깊이와 무관하지만, 구조는 그대로 둡니다.)
 const function reverseRange<T>(self: ArrData<T>, s: number, l: number)
 	while s < l do
 		self[s], self[l] = self[l], self[s]
@@ -968,11 +969,10 @@ const function Reverse<T>(self: ArrData<T>, start: number?, last: number?): Arr<
 	return copy
 end
 
--- `level` 은 에러가 가리킬 프레임 — 이 헬퍼를 부른 공개 함수의 호출자.
-const function rotateRange<T>(self: ArrData<T>, shift: number, s: number, l: number, level: number)
+const function rotateRange<T>(self: ArrData<T>, shift: number, s: number, l: number)
 	-- 빈 구간이어도 shift 를 먼저 봅니다 — 구간 NaN 이 빈 배열에서도 에러인 것과 같게.
 	if shift ~= shift or shift == math.huge or shift == -math.huge then
-		error("Arr: Rotate shift must be finite", level)
+		Common.raise("Arr: Rotate shift must be finite")
 	end
 	if l <= s then
 		return
@@ -998,18 +998,18 @@ end
 -- (`std::rotate` 방향). 구간 길이로 나눈 나머지만 의미가 있습니다.
 const function RotateInplace<T>(self: ArrData<T>, shift: number, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
-	rotateRange(self, shift, s, l, 3)
+	rotateRange(self, shift, s, l)
 	return self :: any
 end
 
 const function Rotate<T>(self: ArrData<T>, shift: number, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const copy = Clone(self)
-	rotateRange(copy, shift, s, l, 3)
+	rotateRange(copy, shift, s, l)
 	return copy
 end
 
-const function shuffleRange<T>(self: ArrData<T>, s: number, l: number, rng: Rng?, level: number)
+const function shuffleRange<T>(self: ArrData<T>, s: number, l: number, rng: Rng?)
 	const random = rng or math.random
 	for idx = l, s + 1, -1 do
 		const pick = random(s, idx)
@@ -1018,7 +1018,7 @@ const function shuffleRange<T>(self: ArrData<T>, s: number, l: number, rng: Rng?
 		-- 가 영영 안 뽑혀 사톨로 순열(24개 중 6개만)로 **조용히 치우쳤습니다**
 		-- (2라운드 리뷰). NaN 도 여기서 걸립니다(`NaN ~= NaN`).
 		if pick ~= math.floor(pick) or pick < s or pick > idx then
-			error(`Arr: Shuffle rng must return an integer in [{s}, {idx}] (got {pick})`, level)
+			Common.raise(`Arr: Shuffle rng must return an integer in [{s}, {idx}] (got {pick})`)
 		end
 		self[idx], self[pick] = self[pick], self[idx]
 	end
@@ -1029,14 +1029,14 @@ end
 -- 이고, 테스트에서 결정적으로 만들려면 직접 넣으세요.
 const function ShuffleInplace<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
-	shuffleRange(self, s, l, rng, 3)
+	shuffleRange(self, s, l, rng)
 	return self :: any
 end
 
 const function Shuffle<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const copy = Clone(self)
-	shuffleRange(copy, s, l, rng, 3)
+	shuffleRange(copy, s, l, rng)
 	return copy
 end
 
@@ -1249,10 +1249,10 @@ const STRICT_ERROR = "Arr: invalid order function (less must be strict: less(x, 
 -- `Sort` 처럼 통과해야 합니다(3라운드 리뷰가 진입 검사의 회귀로 재현).
 const function checkSelectArgs(sample: any, k: number, less: (any, any) -> boolean, willCompare: boolean)
 	if k ~= k then
-		error("Arr: k is NaN", 3)
+		Common.raise("Arr: k is NaN")
 	end
 	if willCompare and less(sample, sample) then
-		error(STRICT_ERROR, 3)
+		Common.raise(STRICT_ERROR)
 	end
 end
 
@@ -1942,15 +1942,15 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	-- 를 타며 1.59배 인덱싱 세금도 다시 붙습니다 — "인스턴스는 평범한 테이블"
 	-- 전제가 이 경로만 비켜 갔습니다(M0 리뷰). 입양 대신 복사를 안내합니다.
 	if getmetatable(tbl :: any) ~= nil then
-		error("Arr: FromTable adopts plain tables only (this one has a metatable) — use CloneFromTable", 2)
+		Common.raise("Arr: FromTable adopts plain tables only (this one has a metatable) — use CloneFromTable")
 	end
 	-- 이미 Arr 면 `#` 로 `n` 을 덮어써 구멍 뒤가 사라졌습니다(M0 2라운드, 예전부터).
 	if rawget(tbl :: any, TAG) ~= nil then
-		error("Arr: FromTable got a table that is already an Arr — use it as is, or Clone", 2)
+		Common.raise("Arr: FromTable got a table that is already an Arr — use it as is, or Clone")
 	end
 	-- 동결된 테이블엔 길이·태그를 못 씁니다 — 라이브러리 줄의 "readonly table" 대신.
 	if table.isfrozen(tbl :: any) then
-		error("Arr: FromTable cannot adopt a frozen table — use CloneFromTable", 2)
+		Common.raise("Arr: FromTable cannot adopt a frozen table — use CloneFromTable")
 	end
 	-- 길이는 `Common.listLength` 규약 — `table.pack` 이 준 `n`(꼬리 구멍 포함)을
 	-- `#` 로 덮어쓰던 것(M0 4라운드).
@@ -2054,22 +2054,22 @@ end
 const function Range(from: number, to: number, step: number?): Arr<number>
 	const by = step or 1
 	if by == 0 then
-		error("Arr: Range step must not be zero", 2)
+		Common.raise("Arr: Range step must not be zero")
 	end
 	-- 끝점·step 의 NaN·무한은 `table.create` 의 엉뚱한 에러(라이브러리 줄)였습니다
 	-- (3라운드 리뷰). `x - x ~= 0` 은 NaN 과 ±inf 를 한 번에 가립니다.
 	if by - by ~= 0 then
-		error("Arr: Range step must be finite", 2)
+		Common.raise("Arr: Range step must be finite")
 	end
 	if from - from ~= 0 or to - to ~= 0 then
-		error("Arr: Range bounds must be finite", 2)
+		Common.raise("Arr: Range bounds must be finite")
 	end
 	const span = math.floor((to - from) / by)
 	if span < 0 then
 		return newSized(0) :: Arr<number>
 	end
 	if span + 1 > MAX_LENGTH then
-		error(`Arr: Range is too long ({span + 1} > {MAX_LENGTH})`, 2)
+		Common.raise(`Arr: Range is too long ({span + 1} > {MAX_LENGTH})`)
 	end
 	const result = newSized(span + 1) :: Arr<number>
 	for idx = 0, span do

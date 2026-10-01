@@ -113,4 +113,44 @@ function exports.compareFrom<T>(less: LessThan<T>): Comparator<T>
 	end
 end
 
+--[[ 에러는 사용자 줄을 가리킵니다 (2026-10-02, quad 탐사 C) ]]
+
+-- `error(msg, 2|3)` 처럼 프레임을 손으로 세면 **-O2 에서 틀립니다** — 로컬 헬퍼가
+-- 인라인되면 프레임이 사라지는데, 어느 것이 인라인될지는 컴파일러 휴리스틱입니다
+-- (`NthElement` 의 `k` NaN 은 라이브러리 줄을, 같은 level 3 인 `Slice` 는 사용자 줄을
+-- 가리켰음). 라이브 Roblox 는 -O2 가 기본입니다. 그래서 세지 않고 **걷습니다**:
+-- 스택을 위로 올라가며 **라이브러리 파일이 아닌 첫 프레임**에서 에러를 냅니다.
+-- 인라인돼도 사라진 프레임은 어차피 라이브러리 것이라 답이 같습니다.
+--
+-- - 콜백 안에서 부른 라이브러리 함수의 에러는 그 콜백 줄을 가리킵니다(콜백이
+--   사용자 파일이므로) — 손으로 센 level 과 같은 뜻입니다.
+-- - C 함수가 바로 부르면(`pcall(Arr.At, a, 0/0)`) 첫 비라이브러리 프레임이 C 라
+--   위치 접두가 빠집니다. 메시지는 그대로입니다.
+-- - 걷는 비용은 에러 경로에만 듭니다. 핫패스는 그대로입니다.
+--
+-- 모듈은 로드할 때 `registerSource(debug.info(1, "s"))` 로 자기 파일을 알립니다.
+-- 경로 접두사로 맞추지 않는 것은 require 경로에 따라 청크 이름이 달라질 수 있어서입니다.
+const librarySources: { [string]: true } = {}
+
+function exports.registerSource(source: string)
+	librarySources[source] = true
+end
+exports.registerSource(debug.info(1, "s"))
+
+function exports.raise(message: string): never
+	local level = 2
+	while true do
+		const source = debug.info(level, "s")
+		if source == nil then
+			-- 스택 끝까지 라이브러리 — 가리킬 사용자 줄이 없습니다.
+			error(message, 0)
+		end
+		if not librarySources[source] then
+			break
+		end
+		level += 1
+	end
+	error(message, level)
+end
+
 return exports
