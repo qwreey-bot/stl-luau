@@ -11,7 +11,7 @@
 
 ## 📍 지금 여기 (2026-09-30)
 
-**M0(호출 모양을 네임스페이스 하나로, 질문 AB) 적용 — 리뷰 소진을 돌리는 중. 그 다음 M3.** 전면 재작성(09-22) 이후 기반이 서 있습니다.
+**M0(호출 모양을 네임스페이스 하나로, 질문 AB) 끝 — 리뷰 소진(여덟 라운드, 2026-10-01). 다음은 M3(`Arr` 빈 조각).** 전면 재작성(09-22) 이후 기반이 서 있습니다.
 `./scripts/check.sh` 가 **exit 0** 이고 게이트 다섯이 전부 섭니다:
 
 | 게이트 | 상태 |
@@ -61,7 +61,7 @@ local f = nested:Flat<<number>>()
 
 | # | 마일스톤 | 왜 이 순서 |
 |---|---|---|
-| **M0** | **⭐ 지금: 호출 모양을 네임스페이스 하나로**(질문 AB, 2026-10-01 결정) — 모든 모듈의 메타테이블·콜론 메소드 제거(데이터는 평범한 테이블 = 엔티티, 함수는 서비스), 타입 단순화(`ArrIfce` 교집합 제거), 계약은 함수 묶음을 넘기는 모양으로, 술어는 태그 필드로, 테스트·스파이크 변환, 인덱싱 이득 재측정, 리뷰 소진 | M3 가 함수를 스무 개 넘게 더하기 전에 |
+| ~~M0~~ | **✅ 2026-10-01** 호출 모양을 네임스페이스 하나로(질문 AB) — 리뷰 여덟 라운드(다수 → 6 → 4 → 10 → 4 → 1 → 1 → 없음) — 모든 모듈의 메타테이블·콜론 메소드 제거(데이터는 평범한 테이블 = 엔티티, 함수는 서비스), 타입 단순화(`ArrIfce` 교집합 제거), 계약은 함수 묶음을 넘기는 모양으로, 술어는 태그 필드로, 테스트·스파이크 변환, 인덱싱 이득 재측정, 리뷰 소진 | M3 가 함수를 스무 개 넘게 더하기 전에 |
 | ~~M1~~ | **✅ 2026-09-30** 이름 정리 — `Arr.Merge`/`MergeInplace` → `Concat`/`ConcatInplace`, `Replace`/`ReplaceInplace` → `Splice`/`SpliceInplace`(+"JS 와 다름" 주석), `At(idx)`(음수) 신설 | 새 표면이 옛 이름 위에 쌓이기 전에. `Merge` 라는 이름을 비워 `HashMap.Merge` 에 줌 |
 | ~~M2~~ | **✅ 2026-09-30** 정렬 가족(`spikes/51`, perf 15-2) — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
 | **M3** | **`Arr` 빈 조각** — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
