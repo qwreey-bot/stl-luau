@@ -288,7 +288,7 @@ same(
 	"Map 빈 것"
 )
 same(
-	-- 콜백 주석이 필요합니다 — 셋째 인자가 `ArrView<any>` 라 `to` 와 함께
+	-- 콜백 주석이 필요합니다 — 셋째 인자가 `ArrView<unknown>` 이라 `to` 와 함께
 	-- 넘기면 `T` 를 붙잡을 단서가 없습니다(질문 V 의 대가).
 	Arr.Of(1, 2):Map(function(v: number)
 		return v
@@ -298,7 +298,7 @@ same(
 )
 -- Map 은 콜백에 (원소, 위치, 뷰) 를 줍니다
 same(
-	Arr.Of(10, 20):Map(function(v: number, idx: number, arr: ArrView<number>)
+	Arr.Of(10, 20):Map(function(v: number, idx: number, arr: ArrView<unknown>)
 		return v + idx + arr.n
 	end),
 	{ 13, 24 },
@@ -504,7 +504,7 @@ do
 		end)
 	same(result, { 1, 1, 1 }, "3단 체이닝")
 	-- 콜백 안에서 뷰 메소드
-	local viewed = Arr.Of(1, 2):Map(function(v: number, idx: number, arr: ArrView<number>)
+	local viewed = Arr.Of(1, 2):Map(function(v: number, idx: number, arr: ArrView<unknown>)
 		return v + arr:Len() + arr:Slice(1, idx):Len()
 	end)
 	same(viewed, { 4, 6 }, "콜백 안에서 뷰 메소드")

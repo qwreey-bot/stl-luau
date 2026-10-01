@@ -33,7 +33,7 @@ local okDeep: Arr<number> = nums
 		return #s
 	end)
 -- 콜백 안에서 뷰 메소드가 되어야 합니다
-local okView: Arr<number> = nums:Map(function(v: number, idx: number, arr: ArrView<number>)
+local okView: Arr<number> = nums:Map(function(v: number, idx: number, arr: ArrView<unknown>)
 	return v + arr.n + arr:Len() + #arr:Join(",") + arr:Slice(1, idx):Len()
 end)
 -- 계약이 주는 메소드

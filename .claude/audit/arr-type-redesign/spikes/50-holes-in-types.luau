@@ -16,10 +16,15 @@
 
 	⭐ `neg7` 은 **구멍이던 자리**입니다: 콜백 타입의 셋째 인자가 `ArrView<T>`
 	이던 때는 네임스페이스 호출에서 원소 파라미터를 더 좁게(`number` ⊂
-	`number?`) 적어도 0건이었습니다. `ArrView<any>` 로 바꿔 닫았습니다(질문 V,
+	`number?`) 적어도 0건이었습니다. `ArrView<T>` 를 빼서 닫았습니다(질문 V,
 	`base/typing-limits.md`). `neg10` 은 같은 구멍의 유니온 판입니다.
 
-	기대 진단: 11건 (NEG 10 + CANARY 1)
+	⭐ `neg11`/`neg12` 는 **그 다음 구멍**입니다: 처음엔 `ArrView<any>` 로 뺐는데
+	`any` 가 콜백 반환을 타고 `Map`/`Flatmap` 의 결과 타입으로 새서, 셋째 인자로
+	읽은 값을 아무 원소 타입에나 담을 수 있었습니다(질문 Z, 리뷰 재현).
+	`ArrView<unknown>` 으로 닫았습니다.
+
+	기대 진단: 13건 (NEG 12 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
@@ -56,9 +61,21 @@ local mixed = Arr.Of<<number | string>>(1, "a")
 local neg10 = Arr.Filter(mixed, function(v: number) -- 유니온에서도 같은 구멍이었음
 	return v > 0
 end)
+local nums = Arr.Of(10, 20)
+local neg11: Arr<string> = Arr.Map(nums, function(_v: number, i: number, arr) -- arr[i] 가 결과로 새면 통과
+	return arr[i]
+end)
+local neg12: Arr<string> = Arr.Flatmap(nums, function(_v: number, i: number, arr)
+	return arr[i], arr[1]
+end)
 local canary: string = 42
+
+--[[ POS — 셋째 인자를 쓰려면 unknown 으로 받고 캐스트 ]]
+local okView: Arr<number> = Arr.Map(nums, function(v: number, i: number, arr: stl.ArrView<unknown>): number
+	return v + (arr[i] :: number)
+end)
 
 return {
 	filled, holed, fromOf, fromTable, seen, dense, fixed, total, count,
-	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, canary,
+	okView, neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, canary,
 }

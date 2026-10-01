@@ -34,7 +34,7 @@
 	| 타입 | 무엇 | 어디에 |
 	|---|---|---|
 	| `ArrData<T>` | 데이터부만 | 읽기만 하는 메소드의 `self` |
-	| `ArrView<T>` | 조회 + 자기폐쇄 | **콜백이 받는 컨테이너 인자**(`ArrView<any>` 로) |
+	| `ArrView<T>` | 조회 + 자기폐쇄 | **콜백이 받는 컨테이너 인자**(`ArrView<unknown>` 으로) |
 	| `Arr<T>` | 전체형 | 사용자가 들고 다니는 것 |
 
 	⭐ **콜백의 컨테이너 인자는 절대 `Arr<T>` 를 언급하면 안 됩니다.** 언급하면
@@ -42,7 +42,7 @@
 	그래서 `ArrView<T>` 의 자기폐쇄 메소드는 `Arr<T>` 가 아니라 `ArrView<T>`
 	를 돌려줍니다.
 
-	⭐ **그리고 콜백 타입에서는 `T` 도 언급하지 않습니다(`ArrView<any>`).**
+	⭐ **그리고 콜백 타입에서는 `T` 도 언급하지 않습니다(`ArrView<unknown>`).**
 	언급하면 네임스페이스 호출에서 콜백 원소를 더 좁게 적은 것
 	(`Arr<number?>` 에 `function(v: number)`)을 체커가 놓칩니다(질문 V,
 	`spikes/50`). 대가로 콜백 안 `arr[i]` 는 `any` 입니다.
@@ -99,17 +99,22 @@ export type ArrView<T> = ArrData<T> & {
 -- 교집합(`&`)으로 늘어놓으면 "모든 arity 를 동시에 만족" 을 요구해서
 -- `function(x: number) return tostring(x) end` 같은 정상 콜백이 거부됩니다(실측).
 --
--- ⭐ 셋째 인자는 **`ArrView<any>`** 입니다 — `ArrView<T>` 로 두면 네임스페이스
--- 호출(`Arr.Map(a, fn)`)에서 람다가 그 인자를 생략할 때 원소 파라미터를 더
--- 좁게 적은 것(`number?` 자리에 `v: number`)이 **진단 0건으로 통과**했습니다
--- (2026-09-30 실측, 질문 V). 드물게 쓰는 셋째 인자의 원소 타입을 내주고
--- 모든 콜백이 쓰는 첫 인자의 건전성을 삽니다.
-export type Mapper<T, G> = (element: T, index: number, arr: ArrView<any>) -> G
-export type Predicate<T> = (element: T, index: number, arr: ArrView<any>) -> boolean
-export type Folder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<any>) -> U
-export type UntilFolder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<any>) -> (U, boolean?)
+-- ⭐ 셋째 인자는 **`ArrView<unknown>`** 입니다.
+-- - `ArrView<T>` 로 두면 네임스페이스 호출(`Arr.Map(a, fn)`)에서 람다가 그
+--   인자를 생략할 때 원소 파라미터를 더 좁게 적은 것(`number?` 자리에
+--   `v: number`)이 **진단 0건으로 통과**했습니다(2026-09-30 실측, 질문 V).
+-- - `ArrView<any>` 로 두면 그 구멍은 닫히지만 `any` 가 **결과 타입으로
+--   샜습니다** — `Arr.Map(nums, function(v, i, arr) return arr[i] end)` 를
+--   `Arr<string>` 에 담아도 0건(리뷰 재현, 질문 Z).
+-- 대가: 콜백 안 `arr[i]` 는 `unknown` 이라 쓰려면 캐스트하고, 주석은
+-- `arr: ArrView<unknown>` 으로만 답니다(`ArrView<number>` 는 에러).
+-- 드물게 쓰는 셋째 인자의 편의를 내주고 모든 콜백의 건전성을 삽니다.
+export type Mapper<T, G> = (element: T, index: number, arr: ArrView<unknown>) -> G
+export type Predicate<T> = (element: T, index: number, arr: ArrView<unknown>) -> boolean
+export type Folder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<unknown>) -> U
+export type UntilFolder<T, U> = (accumulator: U, element: T, index: number, arr: ArrView<unknown>) -> (U, boolean?)
 -- 값을 여러 개 돌려줄 수 있는 변환 콜백. `Flatmap` 계열이 씁니다.
-export type Spreader<T, G> = (element: T, index: number, arr: ArrView<any>) -> ...G
+export type Spreader<T, G> = (element: T, index: number, arr: ArrView<unknown>) -> ...G
 -- `[min, max]` 의 **정수**를 돌려줘야 합니다(`math.random` 모양, Roblox 는
 -- `Random:NextInteger`). 실수(`NextNumber`)나 범위 밖이면 **에러**입니다 —
 -- 자르거나 가두면 분포가 조용히 치우칩니다. 균등성은 rng 책임입니다.
@@ -615,6 +620,12 @@ const function Compact<T>(self: ArrRead<T?>): Arr<T>
 end
 
 -- `Compact` 의 제자리 판.
+--
+-- ⚠️ **입력을 소비합니다**(질문 Y): 돌려받은 값이 같은 테이블이고 `Arr<T?>` 가
+-- `Arr<T>` 로 좁혀집니다. 결과만 쓰고 원래 변수는 다시 쓰지 마세요 — 원래 변수는 옛 타입
+-- 그대로라 타입 검사가 못 잡습니다(Rust 의 move 와 같은 결, Luau 는 강제 못 함).
+--     local dense = Arr.CompactInplace(holed)   -- 이후로는 dense 만
+--     Arr.PushBack(holed, nil)                  -- ❌ dense(Arr<number>)에 구멍이 생김
 const function CompactInplace<T>(self: ArrRead<T?>): Arr<T>
 	const raw = self :: any
 	const len = raw.n
@@ -1574,6 +1585,18 @@ const function Map<T, G>(self: ArrData<T>, fn: Mapper<T, G>, to: Arr<G>?): Arr<G
 end
 
 -- 각 원소를 변환해 **제자리에** 덮어씁니다. 타입이 바뀔 수 있습니다.
+--
+-- ⚠️ **입력을 소비합니다**(질문 Y): 돌려받은 값이 같은 테이블이고 **타입이
+-- 바뀝니다.** 결과만 쓰고 원래 변수는 다시 쓰지 마세요 — 원래 변수는 옛 타입
+-- 그대로라 타입 검사가 못 잡습니다(Rust 의 move 와 같은 결, Luau 는 강제 못 함).
+--
+--     const labels = Arr.MapInplace(nums, function(v: number): string
+--         return tostring(v)
+--     end)                                             -- 이후로는 labels 만
+--     Arr.Sum(nums)                                    -- ❌ 0건인데 런타임 에러
+--
+-- 같은 타입끼리(`T → T`)로 막는 안도 있었지만 "Map" 이라는 이름에 맞지 않아
+-- 접었습니다(사용자 결정 2026-10-01).
 const function MapInplace<T, G>(self: ArrData<T>, fn: Mapper<T, G>): Arr<G>
 	for idx = 1, self.n do
 		(self :: any)[idx] = fn(self[idx], idx, self :: any)
@@ -1676,6 +1699,10 @@ end
 
 -- 한 겹 평탄화(제자리).
 -- `Flat` 과 같은 이유로 입력 쪽을 엽니다.
+--
+-- ⚠️ **입력을 소비합니다**(질문 Y): 돌려받은 값이 같은 테이블이고 **타입이
+-- 바뀝니다.** 결과만 쓰고 원래 변수는 다시 쓰지 마세요 — 원래 변수는 옛 타입
+-- 그대로라 타입 검사가 못 잡습니다(Rust 의 move 와 같은 결, Luau 는 강제 못 함).
 const function FlatInplace<T>(self: ArrData<any>): Arr<T>
 	local idx = 1
 	local len = self.n
@@ -1730,6 +1757,10 @@ end
 
 -- `Flatmap` 의 제자리 판. 버퍼에 모은 뒤 한 번에 되돌려 씁니다 — 원소마다
 -- 밀면 O(n^2) 가 됩니다.
+--
+-- ⚠️ **입력을 소비합니다**(질문 Y): 돌려받은 값이 같은 테이블이고 **타입이
+-- 바뀝니다.** 결과만 쓰고 원래 변수는 다시 쓰지 마세요 — 원래 변수는 옛 타입
+-- 그대로라 타입 검사가 못 잡습니다(Rust 의 move 와 같은 결, Luau 는 강제 못 함).
 const function FlatmapInplace<T, G>(self: ArrData<T>, fn: Spreader<T, G>): Arr<G>
 	const len = self.n
 	const buffer = table.create(len)
@@ -1811,7 +1842,7 @@ end
 -- ⚠️ `arr:Reduce(math.max)` 는 **안 됩니다** — 콜백은 `(acc, v, index, arr)` 를
 -- 받으므로 `math.max` 가 위치와 배열까지 받아 틀린 값이나 에러가 납니다(타입
 -- 검사도 거부합니다). 예전 주석이 권하던 모양이라 적어둡니다(2026-09-30 리뷰).
-const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<any>) -> T): T?
+const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<unknown>) -> T): T?
 	const len = self.n
 	if len == 0 then
 		return nil

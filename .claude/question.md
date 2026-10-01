@@ -393,9 +393,13 @@ holed:Map(function(v: number) return v * 2 end)        -- 잡힘
 
 ---
 
-## ❓ 2026-09-30 리뷰(M1·M2·구멍)에서 나온 설계 질문
+## 2026-09-30 리뷰(M1·M2·구멍)에서 나온 설계 질문 (2026-10-01 결정됨)
 
-### Y. 타입을 바꾸는 제자리 판 — 원래 변수가 거짓말을 하게 됨
+### Y. 타입을 바꾸는 제자리 판 — 원래 변수가 거짓말을 하게 됨 — **[2026-10-01 사용자 결정] (b) 소비 규약**
+
+사용자: *"추천대로. T -> T 만 허용하면 Map 이란 이름에 부합하지 않게 됨."* →
+네 함수 주석과 `conventions.md` 의 `Inplace` 항목에 "입력을 소비한다" 를 적었습니다.
+
 
 리뷰가 재현: `MapInplace`/`FlatmapInplace`/`FlatInplace` 는 **같은 테이블**을
 다른 원소 타입으로 돌려주므로, 원래 변수가 `Arr<number>` 인 채로 문자열이나
@@ -420,7 +424,11 @@ Arr.Map(nums, function(v: number) return v * 2 end)   -- 0건 → 런타임 에�
 막으면 `FlatInplace` 가 통째로 사라집니다. 다만 "타입이 진실" 이라는 방향과는
 (a) 가 더 맞습니다.
 
-### Z. 콜백 셋째 인자 `ArrView<any>` 의 `any` 가 결과 타입으로 샘
+### Z. 콜백 셋째 인자 `ArrView<any>` 의 `any` 가 결과 타입으로 샘 — **[2026-10-01 사용자 결정] `ArrView<unknown>`**
+
+적용: 콜백 타입 다섯 + `Reduce`. `spikes/50` 에 누수 NEG 둘(`any` 로 되돌리면
+이 둘만 사라짐). 셋째 인자에 주석을 달던 세 곳은 `ArrView<unknown>` 으로.
+
 
 질문 V 에서 `ArrView<T>` → `ArrView<any>` 로 바꾼 대가를 "콜백 안 `arr[i]` 가
 `any`" 로 적었는데, 리뷰가 **그 `any` 가 `Map`/`Flatmap` 의 결과까지 나간다**는

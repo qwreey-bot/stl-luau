@@ -399,6 +399,16 @@ Arr.Map(holed, function(v: string) … end)              -- ✅ 잡힘 (넓은/�
 ⚠️ **새 콜백 타입을 만들 때 다른 인자에 `T` 를 품은 테이블을 넣지 마세요.**
 `spikes/50` 의 `neg7`(`T?`)과 `neg10`(유니온)이 이 구멍을 지킵니다.
 
+**[2026-10-01 사용자 결정 → 적용] `ArrView<any>` 가 아니라 `ArrView<unknown>`**
+(`question.md` Z). 리뷰가 `any` 의 누수를 재현했습니다 — 콜백이 `arr[i]` 를
+돌려주면 `any` 가 `Map`/`Flatmap` 의 결과 `Arr<G>` 로 나가 바깥 변수의 타입까지
+거짓이 됐습니다(`Arr.Map(nums, function(v, i, arr) return arr[i] end)` 를
+`Arr<string>` 에 담아도 0건). `unknown` 이면 V 의 구멍은 그대로 닫힌 채 이
+누수도 잡힙니다(`spikes/50` 의 `neg11`/`neg12` — `any` 로 되돌리면 이 둘만
+사라지는 것을 확인). 대가가 하나 바뀝니다: 콜백 셋째 인자에 주석을 달려면
+**`arr: ArrView<unknown>`** 이어야 하고(`ArrView<number>` 는 에러), 원소는
+캐스트해서 씁니다(`arr[i] :: number`).
+
 ---
 
 ## ⚠️ 원소가 유니온인 컨테이너 — `self` 를 전체형으로 받으면 무너진다 (2026-09-26)

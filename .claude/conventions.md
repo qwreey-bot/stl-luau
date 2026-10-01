@@ -94,8 +94,9 @@
   **런타임 그물**입니다. `?` 를 떼는 길은 `Compact`/`FillHoles`(새 배열).
   ⚠️ 그래서 **콜백 타입의 다른 인자에 `T` 를 넣지 않습니다** — 셋째 인자가
   `ArrView<T>` 이던 때는 네임스페이스 호출에서 콜백 원소를 더 좁게 적은 것
-  (`number?` 자리에 `v: number`)이 안 잡혔습니다. 지금은 `ArrView<any>`
-  (질문 V, `base/typing-limits.md`).
+  (`number?` 자리에 `v: number`)이 안 잡혔습니다. 지금은 **`ArrView<unknown>`**
+  (질문 V → Z: `any` 로 뺐더니 `any` 가 콜백 반환을 타고 결과 타입으로
+  샜습니다. `base/typing-limits.md`).
 
 - **맵/셋 표현**: `{ data, size }` 래퍼. 인스턴스에 길이 필드를 직접 두면
   `HashMap<string, …>` 에서 `Set("size", v)` 가 그걸 덮어씁니다.
@@ -103,6 +104,13 @@
 - **`Inplace` 접미사 쌍**: 새 컨테이너를 만드는 판과 자기를 변형하는 판을
   쌍으로 둡니다(`Sort`/`SortInplace`, `Reverse`/`ReverseInplace`). 둘 다
   필요하지 않다면 왜 아닌지 명확히 하세요.
+  ⚠️ **타입을 바꾸는 `*Inplace` 는 입력을 소비합니다**(2026-10-01 사용자 결정,
+  질문 Y): `MapInplace`/`FlatmapInplace`/`FlatInplace`/`CompactInplace` 는 같은
+  테이블을 다른 원소 타입으로 돌려주므로 **결과만 쓰고 원래 변수는 다시 쓰지
+  않습니다**(Rust 의 move — Luau 는 강제 못 함, 주석으로). `T → T` 로 막는 안은
+  *"Map 이란 이름에 부합하지 않게 됨"* 으로 접었습니다. 반대로 **입력으로 `T`
+  를 받는** 제자리 판은 조용히 `T` 가 넓어지므로 불변으로 막습니다
+  (`FillHolesInplace`, 질문 U) — 차이는 "타입 변화가 호출에 드러나는가" 입니다.
 
 - **구간 규약**: 닫힌 구간 `[start, last]`, 음수 인덱스 지원, 범위를 넘으면
   clamp, 뒤집힌 구간은 조용히 빈 결과 — `string.sub` 와 같습니다.
