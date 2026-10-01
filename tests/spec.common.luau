@@ -143,6 +143,16 @@ do
 			stl.Optional.Unwrap(stl.Optional.Of(nil :: number?))
 		end)
 	)
+	-- 7. Fut 의 Await — Fut 는 자기 안에 raise 자리가 있는 마지막 모듈(1라운드 리뷰:
+	--    여기가 없어 Fut 의 등록을 빼도 테스트가 통과했음)
+	atUserLine(
+		"Fut.Await",
+		expectLine("Fut.Await", "Await on a pending Fut", function()
+			const pending = stl.Fut.New(function(_resolve, _reject) end)
+			where = debug.info(1, "l") + 1
+			stl.Fut.Await(pending)
+		end)
+	)
 	-- 6. C 함수가 바로 부르면 가리킬 사용자 줄이 없음 — 메시지는 그대로, 위치 접두는 없음
 	const ok, err = pcall(Arr.At, Arr.Of(1), 0 / 0)
 	assert(not ok and tostring(err) == "Arr: At index is NaN", `C 프레임이 바로 부름: {err}`)

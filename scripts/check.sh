@@ -134,18 +134,33 @@ if [ "$req_fail" = "0" ]; then echo "  모든 모듈 require OK"; else fail=1; f
 echo
 echo "=== 에러 규약 (Common.raise + 모듈 등록)"
 err_fail=0
-if bad=$(grep -nE '\berror\(' src/*.luau | grep -v 'src/Common.luau' | grep -vE ',[[:space:]]*0\)'); then
-	echo "  FAIL  손으로 센 level — Common.raise 를 쓸 것"
+# 줄 단위 grep 은 우회됐습니다(1라운드 리뷰): 여러 줄로 나뉜 정당한 `error(\n x,\n 0\n)`
+# 을 막고, 줄 어딘가에 `, 0)` 만 있으면 `error(string.format("%d", 0), 2)` 를 통과시켰고,
+# `assert(` 는 보지 않았습니다. 그래서 파일 전체를 읽어 **짝 괄호까지** 맞춥니다 —
+# 주석을 걷어낸 뒤 `error(…)` 의 마지막 인자가 정확히 `0` 인지, `assert(` 와 `= error`
+# 별칭이 없는지.
+if ! bad=$(find src -name "*.luau" ! -name Common.luau -print0 | xargs -0 perl -0777 -ne '
+	s/--\[(=*)\[.*?\]\1\]//gs;      # 블록 주석
+	s/--[^\n]*//g;                    # 줄 주석 (문자열 안의 -- 는 src 에 없음)
+	while (/\berror\s*(\((?:[^()]++|(?1))*\))/g) {
+		my $call = $1;
+		print "$ARGV: error$call\n" unless $call =~ /,\s*0\s*\)\z/;
+	}
+	print "$ARGV: assert( 금지\n" while /\bassert\s*\(/g;
+	print "$ARGV: error 별칭 금지\n" while /=\s*error\b/g;
+' 2>&1) || [ -n "$bad" ]; then
+	echo "  FAIL  손으로 센 level / assert / 별칭 — Common.raise 를 쓸 것"
 	printf '        %s\n' "$bad"
 	err_fail=1
 fi
-for m in src/*.luau; do
+while IFS= read -r m; do
 	case "$m" in src/Types.luau | src/init.luau | src/Common.luau) continue ;; esac
-	if ! grep -qF 'Common.registerSource(debug.info(1, "s"))' "$m"; then
+	# 줄 머리에 고정 — 주석 안의 같은 문자열로는 통과하지 않게(1라운드 리뷰)
+	if ! grep -qE '^Common\.registerSource\(debug\.info\(1, "s"\)\)$' "$m"; then
 		echo "  FAIL  $m 가 registerSource 를 안 부름"
 		err_fail=1
 	fi
-done
+done < <(find src -name "*.luau" | sort)
 if [ "$err_fail" = "0" ]; then echo "  에러 규약 OK"; else fail=1; fi
 
 echo
