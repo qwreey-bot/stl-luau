@@ -143,7 +143,7 @@ do
 			stl.Optional.Unwrap(stl.Optional.Of(nil :: number?))
 		end)
 	)
-	-- 7. Fut 의 Await — Fut 는 자기 안에 raise 자리가 있는 마지막 모듈(1라운드 리뷰:
+	-- 6. Fut 의 Await — Fut 는 자기 안에 raise 자리가 있는 마지막 모듈(1라운드 리뷰:
 	--    여기가 없어 Fut 의 등록을 빼도 테스트가 통과했음)
 	atUserLine(
 		"Fut.Await",
@@ -153,7 +153,25 @@ do
 			stl.Fut.Await(pending)
 		end)
 	)
-	-- 6. C 함수가 바로 부르면 가리킬 사용자 줄이 없음 — 메시지는 그대로, 위치 접두는 없음
+	-- 7. 선택 스캔이 경계를 넘을 때의 엄격성 에러(2라운드 리뷰: `error(STRICT_ERROR, 0)`
+	--    이라 위치가 아예 안 붙었음 — 진입 검사로 걸리면 붙는 같은 메시지인데). 진입 검사
+	--    (`less(x, x)`)는 통과하고 비교마다 답이 바뀌는 비교자.
+	atUserLine(
+		"선택 스캔의 엄격성",
+		expectLine("선택 스캔의 엄격성", "less must be strict", function()
+			local calls = 0
+			const flaky = function(a: number, b: number): boolean
+				if a == b then
+					return false
+				end
+				calls += 1
+				return calls % 3 ~= 0
+			end
+			where = debug.info(1, "l") + 1
+			Arr.NthElement(Arr.Of(2, 4, 1, 3, 0), 3, flaky)
+		end)
+	)
+	-- 8. C 함수가 바로 부르면 가리킬 사용자 줄이 없음 — 메시지는 그대로, 위치 접두는 없음
 	const ok, err = pcall(Arr.At, Arr.Of(1), 0 / 0)
 	assert(not ok and tostring(err) == "Arr: At index is NaN", `C 프레임이 바로 부름: {err}`)
 end

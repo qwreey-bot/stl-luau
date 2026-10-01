@@ -134,33 +134,41 @@ if [ "$req_fail" = "0" ]; then echo "  모든 모듈 require OK"; else fail=1; f
 echo
 echo "=== 에러 규약 (Common.raise + 모듈 등록)"
 err_fail=0
-# 줄 단위 grep 은 우회됐습니다(1라운드 리뷰): 여러 줄로 나뉜 정당한 `error(\n x,\n 0\n)`
-# 을 막고, 줄 어딘가에 `, 0)` 만 있으면 `error(string.format("%d", 0), 2)` 를 통과시켰고,
-# `assert(` 는 보지 않았습니다. 그래서 파일 전체를 읽어 **짝 괄호까지** 맞춥니다 —
-# 주석을 걷어낸 뒤 `error(…)` 의 마지막 인자가 정확히 `0` 인지, `assert(` 와 `= error`
-# 별칭이 없는지.
-if ! bad=$(find src -name "*.luau" ! -name Common.luau -print0 | xargs -0 perl -0777 -ne '
-	s/--\[(=*)\[.*?\]\1\]//gs;      # 블록 주석
-	s/--[^\n]*//g;                    # 줄 주석 (문자열 안의 -- 는 src 에 없음)
-	while (/\berror\s*(\((?:[^()]++|(?1))*\))/g) {
+# 파일 전체를 한 번 훑어 **문자열 내용은 자리표시자로, 주석은 지운 뒤**(왼쪽부터 한 번에
+# — 문자열 안의 `(`·`--`·`--[[` 에 속지 않게, 2라운드 리뷰) 봅니다:
+#   - `error(…)` 는 짝 괄호까지 맞춰 **마지막 인자가 정확히 0** 이고, **첫 인자가 변수**
+#     (되던지기)여야 합니다 — 문자열·대문자 상수로 새로 내는 level 0 은 위치가 안 붙습니다
+#     (`error(STRICT_ERROR, 0)` 이 그랬음, 2라운드).
+#   - `error`/`assert` 는 **호출 이름으로만** — 값으로 쓰면(`local e = error`,
+#     `(error)(…)`, `{ error }`) 금지. `x.error`·`x:error` 는 다른 이름이라 제외.
+#   - 등록은 주석·문자열을 걷은 뒤 줄 머리에서 찾습니다(블록 주석 안의 등록은 안 셈).
+#   - `Common.luau` 도 봅니다 — `raise` 의 `error(message, level)` 한 곳만 허용.
+# 경계(제가 정함): 실수로 들어온 위반을 잡는 덫이지 **일부러 피해 가는 코드**(`_G.error`,
+# `rawget(_G, "error")`, `getfenv`)를 막는 장치가 아닙니다 — 그건 리뷰의 몫입니다.
+if ! bad=$(find src -name "*.luau" -print0 | xargs -0 perl -0777 -ne '
+	my $f = $ARGV;
+	s{ ( "(?:\\.|[^"\\\n])*" | \x27(?:\\.|[^\x27\\\n])*\x27 | `(?:\\.|[^`\\])*` )
+	 | ( --\[(=*)\[.*?\]\3\] | --[^\n]* )
+	 | ( \[(=*)\[.*?\]\5\] ) }
+	 { defined $1 ? "\"S\"" : defined $2 ? "" : "\"S\"" }gsex;
+	my $isCommon = $f =~ m{(^|/)Common\.luau\z};
+	my $allowed = 0;
+	while (/(?<![.:\w])error\s*(\((?:[^()]++|(?1))*\))/g) {
 		my $call = $1;
-		print "$ARGV: error$call\n" unless $call =~ /,\s*0\s*\)\z/;
+		if ($isCommon && $call =~ /\A\(\s*message\s*,\s*level\s*\)\z/ && !$allowed++) { next }
+		if ($call =~ /,\s*0\s*\)\z/ && $call =~ /\A\(\s*[a-z_][\w.]*\s*,/) { next }
+		print "$f: error$call\n";
 	}
-	print "$ARGV: assert( 금지\n" while /\bassert\s*\(/g;
-	print "$ARGV: error 별칭 금지\n" while /=\s*error\b/g;
+	print "$f: assert( 금지 — Common.raise 를 쓸 것\n" while /(?<![.:\w])assert\s*\(/g;
+	print "$f: error/assert 를 값으로 씀\n" while /(?<![.:\w])(?:error|assert)\b(?!\s*\()/g;
+	print "$f: registerSource 를 안 부름\n"
+		unless $isCommon || $f =~ m{(^|/)(Types|init)\.luau\z}
+		|| /^Common\.registerSource\(debug\.info\(1, "S"\)\)$/m;
 ' 2>&1) || [ -n "$bad" ]; then
-	echo "  FAIL  손으로 센 level / assert / 별칭 — Common.raise 를 쓸 것"
+	echo "  FAIL  에러 규약 위반 — Common.raise 를 쓸 것"
 	printf '        %s\n' "$bad"
 	err_fail=1
 fi
-while IFS= read -r m; do
-	case "$m" in src/Types.luau | src/init.luau | src/Common.luau) continue ;; esac
-	# 줄 머리에 고정 — 주석 안의 같은 문자열로는 통과하지 않게(1라운드 리뷰)
-	if ! grep -qE '^Common\.registerSource\(debug\.info\(1, "s"\)\)$' "$m"; then
-		echo "  FAIL  $m 가 registerSource 를 안 부름"
-		err_fail=1
-	fi
-done < <(find src -name "*.luau" | sort)
 if [ "$err_fail" = "0" ]; then echo "  에러 규약 OK"; else fail=1; fi
 
 echo

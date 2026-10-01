@@ -1296,13 +1296,13 @@ const function selectRange(a: { any }, lo: number, hi: number, k: number, less: 
 			while less(a[i], pivot) do
 				i += 1
 				if i > hi then
-					error(STRICT_ERROR, 0)
+					Common.raise(STRICT_ERROR)
 				end
 			end
 			while less(pivot, a[j]) do
 				j -= 1
 				if j < lo then
-					error(STRICT_ERROR, 0)
+					Common.raise(STRICT_ERROR)
 				end
 			end
 			if i <= j then
