@@ -42,7 +42,7 @@ local exports = {}
 function exports.listLength(list: any): number
 	const n = rawget(list, "n")
 	if type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge then
-		return n
+		return n + 0 -- `-0 + 0 = +0` — 결과 배열의 `n` 이 "-0" 으로 찍히지 않게
 	end
 	return #list
 end

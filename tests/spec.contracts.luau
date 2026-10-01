@@ -448,6 +448,27 @@ do
 			value = { __fut__ = true, status = "Resolved", values = { n = "x" }, listeners = {} },
 			is = stl.isFut,
 		},
+		-- Resolved 분기의 조건을 하나씩(M0 5라운드)
+		{
+			name = "Fut values.n 음수",
+			value = { __fut__ = true, status = "Resolved", values = { n = -1 }, listeners = {} },
+			is = stl.isFut,
+		},
+		{
+			name = "Fut values.n 소수",
+			value = { __fut__ = true, status = "Resolved", values = { n = 1.5 }, listeners = {} },
+			is = stl.isFut,
+		},
+		{
+			name = "Fut values.n 무한",
+			value = { __fut__ = true, status = "Resolved", values = { n = math.huge }, listeners = {} },
+			is = stl.isFut,
+		},
+		{
+			name = "Fut Resolved 인데 listeners 없음",
+			value = { __fut__ = true, status = "Resolved", values = { n = 0 } },
+			is = stl.isFut,
+		},
 	}
 	for _, case in deeper do
 		assert(not case.is(case.value), `{case.name} 을 진짜로 받아들임`)
@@ -595,6 +616,20 @@ do
 		const okAll, allFut = pcall(stl.Fut.All, { one, one, n = weird } :: any)
 		assert(okAll and stl.Fut.Status(allFut) == "Resolved", `Fut.All n={weird}`)
 	end
+	-- 구멍 든 Arr·pack 은 n 까지 봐서 구멍을 "Fut 이 아님" 으로 실패시킵니다 — 리터럴
+	-- `{ f, nil, f }` 만 쓰면 `#` 가 3 이라 `#` 로 되돌린 돌연변이가 살아남았음(M0 5라운드).
+	assert(stl.Fut.Status(stl.Fut.All(Arr.Of<<any>>(one, nil, one))) == "Rejected", "Fut.All(구멍 Arr)")
+	assert(stl.Fut.Status(stl.Fut.All(table.pack(one, nil) :: any)) == "Rejected", "Fut.All(pack 꼬리 구멍)")
+	-- FromTable 은 n 뒤의 raw 칸을 비웁니다 — 남으면 정렬·삽입 뒤 그 값이 배열 안으로
+	-- 다시 들어왔습니다(M0 5라운드, listLength 로 바꾸며 생긴 상태)
+	const shortened = table.pack(50, 40, 30, 20, 10) :: any
+	shortened.n = 2
+	const adopted = Arr.FromTable(shortened)
+	assert(adopted.n == 2 and adopted[3] == nil and adopted[5] == nil, "FromTable 은 n 뒤를 비움")
+	Arr.SortInplaceUnchecked(adopted)
+	assert(adopted[1] == 40 and adopted[2] == 50, "n 뒤 값이 정렬에 섞이지 않음")
+	-- n = -0 은 +0 으로(Sized 와 같은 정규화)
+	assert(tostring(Arr.FromTable({ n = -0 } :: any).n) == "0", "FromTable n = -0 → 0")
 end
 print("PASS")
 
