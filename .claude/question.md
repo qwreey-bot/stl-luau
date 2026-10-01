@@ -452,6 +452,32 @@ spikes/50 은 11건 그대로(V 의 구멍은 계속 닫힘), 위 누수 전부 
 
 ---
 
+## ❓ 2026-10-01 — 뿌리를 판 결과
+
+### AA. Luau 새 솔버의 결함을 업스트림에 보고할까
+
+`arr: ArrView<number>` 를 못 쓰는 뿌리는 **Luau 새 솔버의 결함**이었습니다
+(`base/typing-limits.md` "뿌리" 절, `spikes/52`). 최소 재현은 세 줄이고 옛
+솔버는 잡습니다. 업스트림 트래커에서 같은 보고를 못 찾았습니다.
+
+보고는 공개 저장소(`luau-lang/luau`)에 글을 올리는 일이라 **사용자 판단**입니다
+— 제가 대신 올리지 않습니다. 원하시면 아래 초안을 쓰시면 됩니다.
+
+> **New solver: annotation on a function literal is not checked against an inferred generic when the literal omits a later parameter that mentions the generic**
+>
+> ```lua
+> --!strict
+> local function F<T>(x: T, fn: (T, T) -> ()) end
+> local text: string = "x"
+> F(text, function(v: number) end) -- no error in the new solver; error with --solver=old
+> ```
+> The upper bound `T <: number` contributed by the annotation is lost when the lambda omits the second parameter (whose type mentions `T` covariantly). Declaring the parameter (`function(v: number, _w)`), using explicit type arguments (`F<<string>>`), or a non-generic signature all report the error. The omitted parameter's shape does not matter (`T`, `{ T }`, `{ read [number]: T }`, `{ get: () -> T }` all reproduce); a contravariant occurrence (`(T) -> ()`) does not. Observed on 0.734.
+
+고쳐지면 `spikes/52` 가 알려주고, 그때 `ArrView<T>` 로 되돌려 구체 주석을
+되살릴지 다시 여쭙겠습니다.
+
+---
+
 ### G. mlua 바인딩 — **보류 확정**
 
 사용자: *"얹혀지는 구조여도 좋아 … 여기에 얽메일 필요는 없어."*
