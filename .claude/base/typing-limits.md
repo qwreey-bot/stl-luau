@@ -22,6 +22,14 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > `put<<HashMap<string, number>, number>>(HashMap, m, 1)` 처럼 주세요. 순차
 > 계약(`ListOps`)은 원소 타입이 다른 인자에서 정해지면 추론으로 됩니다
 > (M0 리뷰 실측).
+>
+> ⚠️ **원소가 유니온(`number?`, `number | string`)이면 함수 묶음 계약에 모듈을
+> 담을 수 없습니다** — `ListOps<Arr<number?>, number?, number> = Arr` 가 `Get`
+> 불일치. 계약의 `Get: (C, I) -> E?` 에서 `E` 가 이미 `T?` 면 모듈 `Get` 의 `T?`
+> 와 맞추는 역추론이 모순됩니다(옛 교집합 시절 `spikes/46` 의 원인이 함수 묶음
+> 쪽에서 다시 나타남). `Algorithm.Keys` 는 명시적 타입 인자로도 길이 없습니다.
+> 우회는 캐스트. 추론 경로(`Algorithm.IndexOf(Arr, holed, 1)`)는 됩니다.
+> `spikes/46` 의 캐비엇 두 줄이 지금 에러인 것을 기록합니다(M0 3라운드).
 
 ## 원칙 (quad 에서 가져옴)
 

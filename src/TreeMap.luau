@@ -36,6 +36,7 @@
 ]]
 local Types = require("./Types")
 local BSearch = require("./BSearch")
+local Common = require("./Common")
 
 type Record<K, V> = Types.Record<K, V>
 type Comparator<K> = Types.Comparator<K>
@@ -359,8 +360,9 @@ end
 -- 동점(비교자가 0 을 돌려주는 두 키)에서 어느 쪽이 이길지를 정해두려고
 -- 원래 위치를 타이브레이커로 씁니다. `table.sort` 는 안정 정렬이 아니라서
 -- 이걸 안 하면 "뒤엣것이 이긴다" 가 보장되지 않습니다.
-const function FromRecords<K, V>(records: { Record<K, V> }, compare: Comparator<K>): TreeMap<K, V>
-	const count = #records
+const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>): TreeMap<K, V>
+	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드).
+	const records, count = Common.denseList(source)
 	if count == 0 then
 		return adopt({} :: { Record<K, V> }, 0, compare)
 	end

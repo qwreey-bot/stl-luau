@@ -33,6 +33,36 @@ type LessThan<T> = Types.LessThan<T>
 
 local exports = {}
 
+--[[ 리스트 길이 규약 (2026-10-01, M0 3라운드) ]]
+
+-- `{ T }` 를 받는 진입점이 리스트의 길이를 재는 **하나의 규칙**: `n` 이 0 이상의
+-- 정수로 있으면 그것(`Arr`, `table.pack` 결과), 없으면 `#`. `#`/`pairs` 로 읽으면
+-- `Arr` 의 `n` 과 태그 키까지 원소로 담거나(`HashSet.FromList(Arr.Of(10, 20))` 의
+-- 크기가 4) 구멍 뒤를 잃었습니다(`CloneFromTable`). `Fut.All` 이 먼저 쓰던 규칙입니다.
+function exports.listLength(list: any): number
+	const n = rawget(list, "n")
+	if type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge then
+		return n
+	end
+	return #list
+end
+
+-- 위 규칙의 길이까지 돌며 **구멍을 건너뛴** 조밀한 사본(메타테이블 없는 평범한
+-- 배열)과 그 개수.
+function exports.denseList<T>(list: { T }): ({ T }, number)
+	const len = exports.listLength(list)
+	const out = table.create(len) :: { T }
+	local count = 0
+	for idx = 1, len do
+		const item = list[idx]
+		if item ~= nil then
+			count += 1
+			out[count] = item
+		end
+	end
+	return out, count
+end
+
 --[[ 기본 3방향 비교자 ]]
 
 -- ⚠️ `a - b` 로 쓰면 안 됩니다 — `math.huge - math.huge` 가 NaN 이라 무한대가

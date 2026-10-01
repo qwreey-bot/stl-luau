@@ -33,6 +33,7 @@
 	수치는 `.claude/base/perf-measurements.md`.
 ]]
 local HashMap = require("./HashMap")
+local Common = require("./Common")
 
 type HashMapType<K, V> = HashMap.HashMap<K, V>
 
@@ -273,7 +274,11 @@ end
 const function FromList<T>(list: { T }): HashSet<T>
 	const out: { [T]: true } = {}
 	local count = 0
-	for _, item in list do
+	-- 길이는 `Common.listLength` 규약(`n` 우선) — `pairs` 로 돌면 `Arr` 의 `n`·태그도
+	-- 원소가 됐습니다(M0 3라운드). 구멍은 건너뜁니다.
+	const items, itemCount = Common.denseList(list)
+	for idx = 1, itemCount do
+		const item = items[idx]
 		if out[item] == nil then
 			out[item] = true
 			count += 1
@@ -283,7 +288,12 @@ const function FromList<T>(list: { T }): HashSet<T>
 end
 
 const function isHashSet(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true and type(rawget(value, "map")) == "table"
+	if type(value) ~= "table" or rawget(value, TAG) ~= true then
+		return false
+	end
+	-- 안쪽이 정말 맵인지까지 — `map = {}` 위조가 참이던 것(M0 3라운드).
+	const map: any = rawget(value, "map")
+	return type(map) == "table" and rawget(map, "__hashmap__") == true and type(rawget(map, "data")) == "table"
 end
 
 --#endregion

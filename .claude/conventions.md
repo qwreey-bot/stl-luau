@@ -121,6 +121,12 @@
   (질문 V → Z: `any` 로 뺐더니 `any` 가 콜백 반환을 타고 결과 타입으로
   샜습니다. `base/typing-limits.md`).
 
+- **리스트를 받는 진입점의 길이 규약**: `{ T }` 를 받는 함수(`FromList`,
+  `FromRecords`, `CloneFromTable` …)는 **`Common.listLength`**(`n` 이 0 이상의
+  정수면 그것, 아니면 `#`)로 길이를 재고 숫자 루프로 돕니다 — `#`/`pairs` 로
+  읽으면 `Arr` 의 `n`·태그 키까지 원소가 되거나 구멍 뒤를 잃었습니다(M0 3라운드).
+  구멍을 건너뛴 조밀한 사본이 필요하면 `Common.denseList`.
+
 - **맵/셋 표현**: `{ data, size }` 래퍼. 인스턴스에 길이 필드를 직접 두면
   `HashMap<string, …>` 에서 `Set("size", v)` 가 그걸 덮어씁니다.
 

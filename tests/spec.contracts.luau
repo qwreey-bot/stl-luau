@@ -388,7 +388,23 @@ do
 	}
 	for _, case in lookalikes do
 		assert(not case.is(case.value), `{case.name} 을 진짜로 받아들임`)
+		-- Fut 위조는 **내부 판별을 거치는 경로**(Chain/All)에서도 — 던지지 않고 Rejected
+		-- (공개 술어만 대조하면 내부 판별을 약화시킨 돌연변이가 살아남았음, M0 3라운드)
+		if case.is == stl.isFut then
+			const chained = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
+				return case.value
+			end)
+			assert(stl.Fut.Status(chained) == "Rejected", `{case.name}: Chain 이 입양함`)
+			const okAll, allFut = pcall(stl.Fut.All, { case.value } :: any)
+			assert(okAll and stl.Fut.Status(allFut) == "Rejected", `{case.name}: All 이 던지거나 입양함`)
+		end
 	end
+	-- 그럴듯한 위조(M0 3라운드): n 이 음수·NaN·소수인 Arr, 안쪽 맵이 맵이 아닌 셋
+	for _, forged in { { __arr__ = true, n = -1 }, { __arr__ = true, n = 0 / 0 }, { __arr__ = true, n = 1.5 } } do
+		assert(not stl.isArr(forged), "n 이 이상한 Arr 위조")
+	end
+	assert(not stl.isHashSet({ __hashset__ = true, map = {} }), "안쪽이 맵이 아닌 HashSet 위조")
+	assert(not stl.isTreeSet({ __treeset__ = true, map = {} }), "안쪽이 맵이 아닌 TreeSet 위조")
 	-- 위조 Fut 을 Chain 콜백이 돌려주면 입양하지 말고 실패시켜야 합니다(AwaitSafe 는 던지면 안 됨)
 	const forged = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
 		return { __fut__ = true }
@@ -439,6 +455,53 @@ do
 	const hs = stl.HashSet.Of(1, 2)
 	const setOps: SetOps<stl.HashSet<number>, number> = stl.HashSet
 	assert(setOps.Has(hs, 2) and not setOps.Has(hs, 3), "담아 둔 SetOps")
+end
+print("PASS")
+
+print("=== 8. ⭐ 리스트를 받는 진입점이 Arr·table.pack 결과를 받을 때 (M0 3라운드) ===")
+do
+	-- `{ T }` 를 받는 생성자들이 `#`/`pairs` 로 읽어 `Arr` 의 `n` 과 태그 키까지
+	-- 원소로 담거나(HashSet 크기 4), 구멍 뒤를 잃었습니다(CloneFromTable). 규약:
+	-- **`n` 이 숫자로 있으면 그 길이로 숫자 루프**(구멍은 건너뜀), 없으면 `#`.
+	const Arr, HashMap, HashSet, TreeMap, TreeSet, Heap =
+		stl.Arr, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap
+	local function lt(a: number, b: number): boolean
+		return a < b
+	end
+	const nums = Arr.Of(30, 10)
+	const set = HashSet.FromList(nums)
+	assert(
+		HashSet.Len(set) == 2 and HashSet.Has(set, 30) and not HashSet.Has(set, true :: any),
+		"HashSet.FromList(Arr)"
+	)
+	const holed = HashSet.FromList(Arr.Of<<number?>>(10, nil, 30) :: any)
+	assert(HashSet.Len(holed) == 2, "HashSet.FromList 는 구멍을 건너뜀")
+	assert(HashSet.Len(HashSet.FromList(table.pack(1, nil, 3) :: any)) == 2, "table.pack 결과도 n 을 따름")
+	assert(
+		table.concat(TreeSet.Items(TreeSet.FromList(nums, Common.compareNumber)), ",") == "10,30",
+		"TreeSet.FromList(Arr)"
+	)
+	const heap = Heap.FromList(nums, lt)
+	assert(Heap.Len(heap) == 2 and Heap.Peek(heap) == 10, "Heap.FromList(Arr)")
+
+	type Rec = stl.Record<string, number>
+	const records = Arr.Map(Arr.Of("a", "b"), function(s: string, i: number): Rec
+		return { key = s, value = i * 10 }
+	end)
+	const hm = HashMap.FromRecords(records)
+	assert(HashMap.Len(hm) == 2 and HashMap.Get(hm, "b") == 20, "HashMap.FromRecords(Arr)")
+	const tm = TreeMap.FromRecords(records, Common.compareString)
+	assert(TreeMap.Len(tm) == 2 and table.concat(TreeMap.Keys(tm), ",") == "a,b", "TreeMap.FromRecords(Arr)")
+	-- 사전을 받는 FromTable 은 Arr 를 "위치 → 값" 으로 읽습니다(n·태그 키는 원소가 아님)
+	const byIndex = HashMap.FromTable(nums :: any)
+	assert(HashMap.Len(byIndex) == 2 and HashMap.Get(byIndex, 1) == 30, "HashMap.FromTable(Arr) 는 위치 → 값")
+	assert(
+		HashMap.Get(byIndex, "n" :: any) == nil and HashMap.Get(byIndex, "__arr__" :: any) == nil,
+		"n·태그는 키가 아님"
+	)
+	-- 복사 판은 구멍까지 그대로(n 을 따름)
+	const cloned = Arr.CloneFromTable(Arr.Of<<number?>>(1, nil, 3) :: any)
+	assert(cloned.n == 3 and cloned[3] == 3 and cloned[2] == nil, "CloneFromTable 은 n 을 따름")
 end
 print("PASS")
 

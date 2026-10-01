@@ -71,6 +71,7 @@
 	— 실제로 그 버그를 낸 선례가 있습니다. 그래서 정규화 함수를 둘로 나눴습니다.
 ]]
 local Types = require("./Types")
+local Common = require("./Common")
 local Optional = require("./Optional")
 
 type LessThan<T> = Types.LessThan<T>
@@ -194,7 +195,13 @@ const function newSized<T>(len: number): Arr<T>
 end
 
 const function isArrRaw(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true and type(rawget(value, "n")) == "number"
+	if type(value) ~= "table" or rawget(value, TAG) ~= true then
+		return false
+	end
+	-- `n` 은 0 이상의 유한 정수여야 — 위조 `n = 0/0`·`-1` 을 `Flat` 이 입양하면
+	-- 라이브러리 줄 에러나 조용한 유실이었습니다(M0 3라운드).
+	const n = rawget(value, "n")
+	return type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge
 end
 
 --#endregion
@@ -1938,7 +1945,9 @@ end
 
 -- `FromTable` 의 복사 판. **길이를 `#` 로 재는 것과 그 함정이 같습니다.**
 const function CloneFromTable<T>(tbl: { T }): Arr<T>
-	const len = #tbl
+	-- 길이는 `Common.listLength` 규약(`n` 우선) — `#` 면 `Arr`·`table.pack` 결과의
+	-- 구멍 뒤가 조용히 사라졌습니다(M0 3라운드). 구멍은 **그대로** 복사합니다.
+	const len = Common.listLength(tbl)
 	const result = newSized(len)
 	table.move(tbl :: any, 1, len, 1, result :: any)
 	return result

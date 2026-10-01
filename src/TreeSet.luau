@@ -48,6 +48,7 @@
 ]]
 local Types = require("./Types")
 local TreeMap = require("./TreeMap")
+local Common = require("./Common")
 
 type Record<K, V> = Types.Record<K, V>
 type Comparator<T> = Types.Comparator<T>
@@ -397,8 +398,9 @@ end
 --
 -- ⚠️ 한 번에 정렬해서 담습니다(O(n log n)). `Add` 를 n 번 부르면 삽입마다
 -- 뒤를 밀어 **O(n^2)** 이 됩니다.
-const function FromList<T>(list: { T }, compare: Comparator<T>): TreeSet<T>
-	const count = #list
+const function FromList<T>(source: { T }, compare: Comparator<T>): TreeSet<T>
+	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드).
+	const list, count = Common.denseList(source)
 	if count == 0 then
 		return adopt({} :: { Record<T, true> }, 0, compare)
 	end
@@ -426,7 +428,12 @@ const function FromList<T>(list: { T }, compare: Comparator<T>): TreeSet<T>
 end
 
 const function isTreeSet(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true and type(rawget(value, "map")) == "table"
+	if type(value) ~= "table" or rawget(value, TAG) ~= true then
+		return false
+	end
+	-- 안쪽이 정말 트리 맵인지까지 — `map = {}` 위조가 참이던 것(M0 3라운드).
+	const map: any = rawget(value, "map")
+	return type(map) == "table" and rawget(map, "__treemap__") == true and type(rawget(map, "records")) == "table"
 end
 
 --#endregion

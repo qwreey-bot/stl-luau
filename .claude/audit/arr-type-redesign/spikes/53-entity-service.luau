@@ -14,7 +14,9 @@
 	(2라운드) 리터럴 NEG 를 모든 컨테이너로 넓히고, `CompactInplace` 의 `ArrRead`
 	self 로 리터럴·`table.pack` 결과·콜백 뷰가 `Arr` 로 둔갑하던 우회로를 막는 NEG 를 더함.
 
-	기대 진단: 22건 (NEG 21 + CANARY 1)
+	(3라운드) `Fut` 에도 팬텀 태그를 둬 리터럴 NEG 를 더함(다른 컨테이너와 대칭).
+
+	기대 진단: 23건 (NEG 22 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, HashSet, TreeMap, TreeSet, Heap, Fut =
@@ -55,6 +57,7 @@ local neg21 = Arr.Count(nums, function(_v: number, _i: number, view)
 	Arr.CompactInplace(view)
 	return true
 end)
+local neg22: stl.Fut<number> = { status = "Resolved", listeners = {}, _pack = function(_x: number) end }
 
 --[[ NEG 2 — 인스턴스에 메소드가 없다(옛 콜론 코드) ]]
 local neg5 = nums:Len()
@@ -76,5 +79,5 @@ local canary: string = 42
 
 return {
 	okLen, okHas, okGet, okPacked,
-	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, neg13, neg14, neg15, neg16, neg17, neg18, neg19, neg20, neg21, canary,
+	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, neg13, neg14, neg15, neg16, neg17, neg18, neg19, neg20, neg21, neg22, canary,
 }

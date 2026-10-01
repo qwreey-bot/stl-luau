@@ -17,7 +17,7 @@
 	되면서 위 원인(전체형에 섞인 계약 조각)은 **구조적으로 사라졌다.** 그래도
 	유니온 원소가 네임스페이스 함수에서 무너지지 않는지는 계속 지킨다.
 
-	기대 진단: 10건 (NEG 9 + CANARY 1)
+	기대 진단: 12건 (NEG 9 + CAVEAT 2 + CANARY 1 — 캐비엇은 지금 에러가 나는 한계 기록)
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
@@ -86,9 +86,16 @@ local neg6 = Arr.PushBack(mixed, true)                -- number | string 에 boo
 local neg7 = HashSet.Add(hs, true)
 local neg8: number = TreeMap.GetOr(tm, 1, false)          -- 값은 string | boolean
 local neg9 = Heap.Push(hp, true)
+--[[ 캐비엇(한계 — 지금은 에러, M0 3라운드): 원소가 유니온이면 함수 묶음 계약에
+	모듈을 담을 수 없습니다. 계약의 `Get: (C, I) -> E?` 에서 `E` 가 이미 `number?`
+	면 `E?` 와 모듈 `Get` 의 `T?` 를 맞추는 역추론이 모순됩니다 — 옛 교집합 시절
+	이 스파이크가 막던 원인이 함수 묶음 쪽에서 다시 나타난 것. 우회는 캐스트.
+	Luau 가 좋아져 통과하기 시작하면 건수가 줄어 배터리가 알려줍니다. ]]
+local caveat1: stl.ListOps<Arr<number?>, number?, number> = Arr
+local caveat2: stl.MapOps<stl.HashMap<string, number?>, string, number?> = HashMap
 local canary: string = 42
 
 return {
 	okF, okM, okC, okS, okP, okCl, okG, okFold, okChain, okMixed, okHs, okHsU, okHm, okTm, okHp,
-	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, canary,
+	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, caveat1, caveat2, canary,
 }

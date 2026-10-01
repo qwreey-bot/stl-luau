@@ -36,6 +36,7 @@
 	얹혀 있어도 바깥 어휘는 완전히 분리합니다.
 ]]
 local Types = require("./Types")
+local Common = require("./Common")
 
 type Record<K, V> = Types.Record<K, V>
 
@@ -223,6 +224,19 @@ end
 const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
+	if rawget(tbl :: any, "__arr__") == true then
+		-- `Arr` 는 "위치 → 값" 으로 읽습니다 — `pairs` 로 돌면 `n` 과 태그 키까지
+		-- 키가 됐습니다(M0 3라운드). 구멍은 키가 아닙니다.
+		const list = tbl :: any
+		for idx = 1, Common.listLength(list) do
+			const value = list[idx]
+			if value ~= nil then
+				copy[idx :: any] = value
+				count += 1
+			end
+		end
+		return tagged({ data = copy, size = count })
+	end
 	for key, value in tbl do
 		copy[key] = value
 		count += 1
@@ -231,10 +245,14 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 end
 
 -- 키-값 쌍 목록에서 만듭니다. `Records()` 의 역연산입니다.
-const function FromRecords<K, V>(records: { Record<K, V> }): HashMap<K, V>
+const function FromRecords<K, V>(source: { Record<K, V> }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
-	for _, rec in records do
+	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드) —
+	-- `pairs` 로 돌면 `Arr` 의 `n`(숫자)·태그(불리언)를 레코드로 읽어 터졌습니다.
+	const records, recordCount = Common.denseList(source)
+	for idx = 1, recordCount do
+		const rec = records[idx]
 		-- Set 과 같은 규칙: 뒤엣것이 이기고, 값이 nil 이면 삭제입니다.
 		const had = copy[rec.key] ~= nil
 		copy[rec.key] = rec.value

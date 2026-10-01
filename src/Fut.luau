@@ -84,6 +84,9 @@ export type Provider = {
 type Packed = { n: number, [number]: any }
 
 export type FutData = {
+	-- 타입에만 드러난 태그(생성자가 붙이는 실제 필드) — 리터럴이 Fut 자리에 들어가는
+	-- 것을 막습니다. 다른 컨테이너와 대칭(M0 3라운드).
+	read __fut__: true,
 	status: Status,
 	values: Packed?,
 	reason: any,
