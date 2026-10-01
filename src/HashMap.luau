@@ -118,7 +118,7 @@ const function Empty<K, V>(self: HashMapData<K, V>): boolean
 end
 
 -- 키만 모은 평범한 Lua 배열. **순서는 보장하지 않습니다.**
--- `Arr` 로 받고 싶으면 `Arr.FromTable(map:Keys())` 하세요 — 이 모듈이 `Arr`
+-- `Arr` 로 받고 싶으면 `Arr.FromTable(HashMap.Keys(map))` 하세요 — 이 모듈이 `Arr`
 -- 을 require 하지 않게 하려는 것입니다(의존을 한 방향으로 유지).
 const function Keys<K, V>(self: HashMapData<K, V>): { K }
 	const out: { K } = table.create(self.size)
@@ -140,7 +140,7 @@ const function Values<K, V>(self: HashMapData<K, V>): { V }
 	return out
 end
 
--- `for key, value in map:Iter() do … end`
+-- `for key, value in HashMap.Iter(map) do … end`
 -- ⭐ `(K, V)` 로 **비옵셔널로** 선언합니다 — 끝에서 `nil` 을 돌려주지만 타입엔
 -- 드러내지 않습니다. 드러내면 루프 변수가 옵셔널이 되어 바로 못 씁니다.
 -- Luau 자신의 `next`/`ipairs` 도 같은 방식입니다.

@@ -106,7 +106,7 @@ const function Empty<T>(self: TreeSetData<T>): boolean
 	return self.map.size == 0
 end
 
--- `for item in set:Iter() do … end` 또는 `for _, item in …` — **정렬 순서로**.
+-- `for item in TreeSet.Iter(set) do … end` 또는 `for _, item in …` — **정렬 순서로**.
 --
 -- ⭐ **원소를 두 자리 모두에 돌려주고, 상태는 클로저에 담습니다.** 그래서 두
 -- 형태가 다 되고 `HashSet` 과 바꿔 끼울 수 있습니다. 예전엔 `(인덱스, 원소)` 를

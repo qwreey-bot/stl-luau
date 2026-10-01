@@ -94,7 +94,7 @@ const function Empty<T>(self: HashSetData<T>): boolean
 	return self.map.size == 0
 end
 
--- `for _, item in set:Iter() do … end`  (또는 `for item in …`)
+-- `for _, item in HashSet.Iter(set) do … end`  (또는 `for item in …`)
 --
 -- ⭐ **원소를 두 자리 모두에 돌려줍니다.** 안쪽이 `{ [T]: true }` 라 `next` 가
 -- 키를 제어 변수로 써야 해서 첫 자리를 비울 수 없는데, 둘째에 더미 `true` 를

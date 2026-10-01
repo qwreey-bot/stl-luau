@@ -40,7 +40,11 @@
 - 포매터: **stylua 2.5.2**(`mise.toml` 고정, `stylua.toml`). `check.sh` 가
   `--check` 로 게이트를 겁니다.
 
-## 모듈 구조 (2026-09-22 전면 재작성 후)
+## 모듈 구조 (2026-09-22 전면 재작성 후, 2026-10-01 M0)
+
+⭐ **모든 컨테이너는 메타테이블 없는 평범한 테이블이고, 연산은 전부 모듈의
+네임스페이스 함수입니다**(`Arr.Map(a, fn)` — 콜론 메소드 없음, 질문 AB).
+판별은 태그 필드(`__arr__` 등), 계약은 함수 묶음(`Types.ListOps` 등).
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
@@ -56,7 +60,7 @@ src/
   Common.luau      비교자 어댑터와 기본 3방향 비교자
   Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
-  Arr.luau         배열. 메소드 76(checked/unchecked, 구멍 다루기 포함) + 생성자 8
+  Arr.luau         배열. 연산 76(checked/unchecked, 구멍 다루기 포함) + 생성자 8
   HashMap.luau     해시 맵. { data, size } 래퍼
   HashSet.luau     HashMap 위에 단방향으로 얹음
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
@@ -117,7 +121,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
 | `Types` / `Common` / `Algorithm` | 완성(작음) | — |
-| `Arr` | 메소드 76 + 생성자 8 | `spikes/40`, `46`, `49`, `50`, `51` |
+| `Arr` | 연산 76 + 생성자 8 | `spikes/40`, `46`, `49`, `50`, `51` |
 | `HashMap` / `HashSet` | 완성 | `spikes/41` |
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 | `spikes/43` |

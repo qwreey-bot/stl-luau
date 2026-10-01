@@ -43,7 +43,7 @@ export type Hasher<T> = (value: T, maxHash: number) -> number
 -- 막으려고 계약에 포함합니다.
 -- 받은 레코드를 고쳐도 컨테이너는 안 망가집니다 — 컨테이너들은 레코드를
 -- **새로 만들어서** 내줍니다(2026-09-30 리뷰). `read` 필드로 막는 안도 재봤는데,
--- 리터럴에서 제네릭을 못 뽑고 `FromRecords(m:Records())` 왕복까지 막혀 접었습니다.
+-- 리터럴에서 제네릭을 못 뽑고 `FromRecords(Records(m))` 왕복까지 막혀 접었습니다.
 export type Record<K, V> = { key: K, value: V }
 
 --[[ 컨테이너 계약 — 함수 묶음 ]]

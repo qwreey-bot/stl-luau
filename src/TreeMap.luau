@@ -193,7 +193,7 @@ const function Values<K, V>(self: TreeMapData<K, V>): { V }
 	return out
 end
 
--- `for key, value in map:Iter() do … end` — **정렬 순서로** 돕니다.
+-- `for key, value in TreeMap.Iter(map) do … end` — **정렬 순서로** 돕니다.
 --
 -- ⭐ **상태를 클로저에 담습니다.** 예전엔 인덱스를 제어 변수로 쓰면서 첫
 -- 반환값으로 **키**를 돌려줘서, generic for 가 키를 다음 인덱스로 넘겼습니다.

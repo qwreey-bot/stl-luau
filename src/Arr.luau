@@ -253,7 +253,7 @@ const function Empty<T>(self: ArrData<T>): boolean
 	return self.n == 0
 end
 
--- `for i, v in arr:Iter() do … end`
+-- `for i, v in Arr.Iter(arr) do … end`
 -- ⭐ 반환 타입을 `(number, T)` 로 **일부러 비옵셔널로** 선언합니다. 끝에서는
 -- `nil` 을 돌려주지만 타입에 드러내지 않습니다 — 드러내면 루프 변수가
 -- 옵셔널이 되어 산술에 바로 못 씁니다. Luau 자신의 `ipairs` 도 같은 방식입니다.
@@ -539,7 +539,7 @@ end
 	자리)에만 값을 합니다. `ToOptionals` 는 칸마다 테이블(128바이트)을 만들어
 	checked 합의 약 5배라 성능 경로가 아니라 **표현** 경로입니다.
 
-	`ToOptionals` 가 따로 있는 이유: 자연스러운 `arr:Map(Optional.Of)` 는
+	`ToOptionals` 가 따로 있는 이유: 자연스러운 `Arr.Map(arr, Optional.Of)` 는
 	**타입 에러**입니다 — 제네릭 함수 값을 콜백으로 그대로 넘기면 Luau 가
 	`T` 를 인스턴스화하지 못합니다(실측, 명시적 타입 인자로도 안 됨).
 ]]
@@ -571,14 +571,14 @@ end
 -- `FillHoles` 의 제자리 판. 할당이 없습니다.
 --
 -- ⚠️ **이것만 `self` 가 불변(`ArrData<T>`)입니다.** 공변으로 받으면
--- `arr:FillHolesInplace("문자열")` 이 `T` 를 `number | string` 으로 넓혀
+-- `Arr.FillHolesInplace(arr, "문자열")` 이 `T` 를 `number | string` 으로 넓혀
 -- **통과**하고, 제자리 변형이라 원래 변수(`Arr<number?>`)에 문자열이 들어갑니다
 -- (실측 — 타입 건전성 구멍). 새 배열을 만드는 `FillHoles` 는 이 문제가 없습니다.
 --
 -- 대가: `Arr<number?>` 는 채운 뒤에도 `Arr<number?>` 로 남습니다. `?` 를
 -- 빼야 하면 `FillHoles`(새 배열)나 `Compact` 를 쓰세요. `Arr<number>`(캐스트나
 -- 직접 대입으로 런타임에만 구멍이 난 것)는 그대로
--- `arr:FillHolesInplace(0):SumUnchecked()` 로 이어집니다.
+-- `Arr.SumUnchecked(Arr.FillHolesInplace(arr, 0))` 로 이어집니다.
 const function FillHolesInplace<T>(self: ArrData<T>, value: T): Arr<T>
 	for idx = 1, self.n do
 		if self[idx] == nil then
@@ -1632,7 +1632,7 @@ end
 -- 박고 입력은 여는 쪽이 정직합니다.
 --
 -- ⚠️ **호출자가 결과 타입을 직접 알려줘야 합니다** —
--- `nested:Flat<<number>>()` 가 권장이고 캐스트(`:: Arr<number>`)가 차선입니다.
+-- `Arr.Flat<<number>>(nested)` 가 권장이고 캐스트(`:: Arr<number>`)가 차선입니다.
 -- 선언 주석(`local flat: Arr<number> = …`)은 **안 됩니다**: Luau 는 기대
 -- 타입을 제네릭 호출 안으로 전파하지 않아 `T` 가 `unknown` 으로 남습니다.
 --
@@ -1823,8 +1823,8 @@ const function FoldRight<T, U>(self: ArrData<T>, init: U, fn: Folder<T, U>): U
 end
 
 -- 초기값 없이 **첫 원소를 씨앗으로** 접습니다. 빈 배열이면 `nil`.
--- 예: `arr:Reduce(function(a, b) return math.max(a, b) end)`.
--- ⚠️ `arr:Reduce(math.max)` 는 **안 됩니다** — 콜백은 `(acc, v, index, arr)` 를
+-- 예: `Arr.Reduce(arr, function(a, b) return math.max(a, b) end)`.
+-- ⚠️ `Arr.Reduce(arr, math.max)` 는 **안 됩니다** — 콜백은 `(acc, v, index, arr)` 를
 -- 받으므로 `math.max` 가 위치와 배열까지 받아 틀린 값이나 에러가 납니다(타입
 -- 검사도 거부합니다). 예전 주석이 권하던 모양이라 적어둡니다(2026-09-30 리뷰).
 const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<unknown>) -> T): T?
