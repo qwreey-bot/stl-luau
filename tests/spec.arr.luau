@@ -502,11 +502,14 @@ do
 		return n == 1
 	end)
 	same(result, { 1, 1, 1 }, "3단 변환")
-	-- 콜백의 셋째 인자는 읽기 전용 평범한 테이블입니다(메소드 없음)
-	local viewed = Arr.Map(Arr.Of(1, 2), function(v: number, idx: number, arr: ArrView<unknown>)
+	-- 콜백의 셋째 인자는 **원본 배열**을 읽기 전용으로 본 것입니다(메소드 없음).
+	-- 원소까지 읽어 확인합니다 — 길이만 보면 다른 테이블을 넘겨도 통과했습니다.
+	const source = Arr.Of(10, 20)
+	local viewed = Arr.Map(source, function(v: number, idx: number, arr: ArrView<unknown>)
+		assert(arr[idx] == v and rawequal(arr, source), "셋째 인자는 원본 배열")
 		return v + arr.n + idx
 	end)
-	same(viewed, { 4, 6 }, "콜백의 셋째 인자")
+	same(viewed, { 13, 24 }, "콜백의 셋째 인자")
 end
 print("PASS")
 
@@ -926,6 +929,27 @@ do
 		end),
 		"IsSorted 비교자"
 	)
+end
+print("PASS")
+
+print("=== 17b. FromTable 은 평범한 테이블만 입양 (M0 리뷰) ===")
+do
+	-- 입양한 테이블의 메타테이블이 남으면 범위 밖 조회가 메타메소드 값을 주고
+	-- 쓰기가 사용자 `__newindex` 를 타며, 1.59배 인덱싱 세금도 다시 붙습니다.
+	-- "인스턴스는 평범한 테이블" 전제를 지키려 거부하고 `CloneFromTable` 로 안내합니다.
+	const withMeta = setmetatable({ 10, 20 }, {
+		__index = function()
+			return 99
+		end,
+	}) :: { number }
+	const ok, err = pcall(function()
+		Arr.FromTable(withMeta)
+	end)
+	assert(not ok and string.find(tostring(err), "CloneFromTable", 1, true) ~= nil, `FromTable 메타테이블: {err}`)
+	assert(string.find(tostring(err), "spec.arr", 1, true) ~= nil, "에러는 사용자 줄")
+	-- 복사판은 됩니다(복사본은 평범한 테이블)
+	const copied = Arr.CloneFromTable(withMeta)
+	assert(getmetatable(copied) == nil and copied.n == 2 and copied[1] == 10, "CloneFromTable 은 평범한 테이블")
 end
 print("PASS")
 

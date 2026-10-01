@@ -44,8 +44,8 @@
 
 	결과가 여러 개일 수 있습니다(`Fut<T...>`). 타입 팩을 **팬텀 필드**
 	(`_pack: (T...) -> ()`)에 얹어 들고 다닙니다 — 런타임엔 그 필드가 없습니다.
-	tbox 의 튜플과 같은 기법이고, `type function` 없이 3단 체이닝까지 타입이
-	삽니다(스파이크로 확인).
+	tbox 의 튜플과 같은 기법이고, `type function` 없이 잇기를 세 번 중첩해도
+	(`Fut.AndThen(Fut.AndThen(Fut.AndThen(f, …), …), …)`) 타입이 삽니다(스파이크로 확인).
 
 	## `AndThen` 과 `Chain` 을 가릅니다
 
@@ -229,7 +229,14 @@ const function runInto(target: FutData, fn: (...any) -> ...any, ...: any)
 end
 
 const function isFutRaw(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true
+	if type(value) ~= "table" or rawget(value, TAG) ~= true then
+		return false
+	end
+	-- 위조 태그(`{ __fut__ = true }`)를 입양하면 상태가 셋 중 어느 것도 아닌 Fut 이
+	-- 생겨 "던지지 않는" `AwaitSafe` 가 던졌습니다(M0 리뷰). 모양까지 봅니다.
+	const status = rawget(value, "status")
+	return (status == "Pending" or status == "Resolved" or status == "Rejected")
+		and type(rawget(value, "listeners")) == "table"
 end
 
 -- `source` 가 정해지면 그 결과를 `target` 에 그대로 옮깁니다.
@@ -487,7 +494,14 @@ const function UseProvider(provider: Provider?): Provider
 end
 
 const function isFut(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true
+	if type(value) ~= "table" or rawget(value, TAG) ~= true then
+		return false
+	end
+	-- 위조 태그(`{ __fut__ = true }`)를 입양하면 상태가 셋 중 어느 것도 아닌 Fut 이
+	-- 생겨 "던지지 않는" `AwaitSafe` 가 던졌습니다(M0 리뷰). 모양까지 봅니다.
+	const status = rawget(value, "status")
+	return (status == "Pending" or status == "Resolved" or status == "Rejected")
+		and type(rawget(value, "listeners")) == "table"
 end
 
 --#endregion

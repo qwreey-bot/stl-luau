@@ -14,6 +14,14 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > (`spikes/46`), 구멍 규약(`T?`), 새 솔버의 생략 인자 결함(`spikes/52`, 셋째
 > 인자 `ArrView<unknown>`), 함수 묶음 계약의 추론(`read` 필드, 맵 계약은 타입
 > 인자 명시 — `conventions.md`).
+>
+> ⚠️ **함수 묶음 계약을 받는 사용자 제네릭 함수**(`put<C, V>(ops: MapOps<C,
+> string, V>, map: C, v: V)`, `SetOps` 도 같음)는 **맞는 호출도 타입 인자 없이는
+> 에러**입니다 — 원소 타입을 모듈의 제네릭 함수들에서도 끌어오며 `unknown` 이
+> 섞여 엉뚱한 이유의 진단이 납니다(위양성, 조용한 누수는 아님). 항상
+> `put<<HashMap<string, number>, number>>(HashMap, m, 1)` 처럼 주세요. 순차
+> 계약(`ListOps`)은 원소 타입이 다른 인자에서 정해지면 추론으로 됩니다
+> (M0 리뷰 실측).
 
 ## 원칙 (quad 에서 가져옴)
 

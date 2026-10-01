@@ -36,7 +36,7 @@ local HashMap = require("./HashMap")
 
 type HashMapType<K, V> = HashMap.HashMap<K, V>
 
-export type HashSetData<T> = { map: HashMapType<T, true> }
+export type HashSetData<T> = { map: HashMapType<T, true>, read __hashset__: true }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
@@ -283,7 +283,7 @@ const function FromList<T>(list: { T }): HashSet<T>
 end
 
 const function isHashSet(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true
+	return type(value) == "table" and rawget(value, TAG) == true and type(rawget(value, "map")) == "table"
 end
 
 --#endregion

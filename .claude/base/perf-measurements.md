@@ -452,11 +452,12 @@ n=2만에서 `NthElementInplace` 4~5ms 대 비교자 없는 `Sort()` 1.3~1.5ms �
 | 사용자 루프 읽기 | **0.70x** |
 | `Arr.Map` | 0.76x |
 | `Arr.Max` / `Arr.Filter` | 0.81x / 0.83x |
-| `Arr.PushBack` × N / `Arr.Of(3)` 생성 × N | 0.92x / 0.92x |
+| `Arr.PushBack` × N / `Arr.Of(3)` 생성 × N | 0.92x / 0.92x (리뷰 재측정 0.88~0.91x / **0.95~0.96x**) |
 | `Arr.SortInplace` | 0.94x |
 | `Arr.Fold`(콜백 비용이 지배) | 0.97x |
 | `HashMap.Set`+`Get` × N | 0.98x (변화 없음 — 키·값이 원래 메타테이블 없는 `data` 에 삶) |
 | `Heap.Push`+`Pop` | 1.01x (같은 이유 — `items`) |
 
 예측(16절)대로 **원소가 컨테이너 테이블에 직접 사는 `Arr` 만** 크게 받았고, 래퍼
-구조인 맵·셋·힙은 그대로입니다. 생성도 `setmetatable` 이 빠져 8% 가벼워졌습니다.
+구조인 맵·셋·힙은 그대로입니다. 생성도 `setmetatable` 이 빠져 4~8% 가벼워졌습니다
+(리뷰가 같은 벤치로 다시 재서 생성은 0.95~0.96x — 처음 적은 0.92x 는 낙관적이었음).

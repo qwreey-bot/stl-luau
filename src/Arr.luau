@@ -36,7 +36,8 @@
 	없습니다 — Luau 표준 라이브러리(`table`/`buffer`/`coroutine`)와 같은 모양.
 
 	- **속도**: 메타테이블이 붙은 테이블은 `t[i]` 가 1.59배 느렸습니다. 떼고 나니
-	  사용자 루프 0.58~0.63x, `Sum` 0.69x(perf 16절). 호출도 18~36% 빠릅니다.
+	  사용자 루프 0.57~0.70x, `Sum` 0.69x(perf 16-2절). `local` 로 받아 부르면
+	  호출도 더 빠릅니다(perf 14절).
 	- **타입**: 함수가 타입 **바깥**에 있으니 `Arr<T>` 는 데이터부 그 자체입니다.
 	  메소드 교집합·재귀 별칭 우회·"계약 멤버 재선언 금지" 같은 규칙이 필요 없습니다.
 	- **확장**: `Arr<T>` 를 받는 함수는 누구나 같은 모양으로 더할 수 있습니다 —
@@ -75,7 +76,10 @@ local Optional = require("./Optional")
 type LessThan<T> = Types.LessThan<T>
 type Optional<T> = Optional.Optional<T>
 
-export type ArrData<T> = { n: number, [number]: T }
+-- `read __arr__: true` 는 **타입에만 드러난 태그**입니다 — 런타임엔 생성자가 붙이는
+-- 실제 필드이고, 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr`
+-- 자리에 들어가는 것을 막습니다(M0 리뷰: 교집합을 걷어낸 뒤 열린 구멍).
+export type ArrData<T> = { n: number, read __arr__: true, [number]: T }
 
 -- 콜백이 셋째 인자로 받는 뷰 — **읽기 전용**입니다. 콜백 안에서 배열을 바꾸면
 -- 순회가 망가지니 타입이 막습니다. 원소 타입은 `unknown` 으로 씁니다(아래).
@@ -190,7 +194,7 @@ const function newSized<T>(len: number): Arr<T>
 end
 
 const function isArrRaw(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true
+	return type(value) == "table" and rawget(value, TAG) == true and type(rawget(value, "n")) == "number"
 end
 
 --#endregion
@@ -257,7 +261,8 @@ end
 -- ⭐ 반환 타입을 `(number, T)` 로 **일부러 비옵셔널로** 선언합니다. 끝에서는
 -- `nil` 을 돌려주지만 타입에 드러내지 않습니다 — 드러내면 루프 변수가
 -- 옵셔널이 되어 산술에 바로 못 씁니다. Luau 자신의 `ipairs` 도 같은 방식입니다.
--- 교집합 타입이라 `__iter` 는 타입을 잃지만 이 방식은 삽니다(spikes/37).
+-- 메타테이블이 없으니 `__iter` 자리도 없습니다(질문 AB) — 순회는 이 함수로.
+-- (예전 교집합 타입 시절에도 `__iter` 는 타입을 잃었고 이 방식은 살았음, spikes/37.)
 const function iterStep<T>(self: ArrData<T>, idx: number): (number, T)
 	const nextIdx = idx + 1
 	if nextIdx > self.n then
@@ -418,7 +423,9 @@ end
 
 	⚠️ **거의 항상 검사 있는 쪽을 쓰세요.** 이건 측정해서 이 자리가 정말
 	병목이라고 확인했을 때만 고르는 것입니다. **얻는 것이 얼마인지 알고
-	고르라고** 수치를 같이 둡니다(원소 20만/200만, 실제 콜론 호출로 실측):
+	고르라고** 수치를 같이 둡니다(원소 20만/200만, 2026-09-22 실측 — **M0 이전,
+	메타테이블이 있던 때**의 콜론 호출이라 지금은 checked 쪽도 빨라져 배수가
+	다를 수 있습니다. 다시 재면 perf 11절에 덧붙이세요):
 
 	| 무엇 | 빨라지는 정도 |
 	|---|---|
@@ -1909,6 +1916,12 @@ end
 -- **`Arr<number>` 인데 구멍이 있을 수 있습니다**. 구멍 가능성이 있는 입력은
 -- `{ number? }` 로 선언해 넘기세요 — 그러면 `Arr<number?>` 가 됩니다.
 const function FromTable<T>(tbl: { T }): Arr<T>
+	-- 메타테이블이 남으면 범위 밖 조회가 `__index` 값을 주고 쓰기가 `__newindex`
+	-- 를 타며 1.59배 인덱싱 세금도 다시 붙습니다 — "인스턴스는 평범한 테이블"
+	-- 전제가 이 경로만 비켜 갔습니다(M0 리뷰). 입양 대신 복사를 안내합니다.
+	if getmetatable(tbl :: any) ~= nil then
+		error("Arr: FromTable adopts plain tables only (this one has a metatable) — use CloneFromTable", 2)
+	end
 	return wrap(tbl :: any, #tbl)
 end
 

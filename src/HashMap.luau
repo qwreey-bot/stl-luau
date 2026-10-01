@@ -39,7 +39,9 @@ local Types = require("./Types")
 
 type Record<K, V> = Types.Record<K, V>
 
-export type HashMapData<K, V> = { data: { [K]: V }, size: number }
+-- `read __hashmap__: true` 는 타입에만 드러난 태그(생성자가 붙이는 실제 필드) —
+-- 리터럴이 맵 자리에 들어가는 것을 막습니다(M0 리뷰).
+export type HashMapData<K, V> = { data: { [K]: V }, size: number, read __hashmap__: true }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
@@ -59,7 +61,7 @@ const function Get<K, V>(self: HashMapData<K, V>, key: K): V?
 end
 
 -- 값을 넣습니다. 이미 있으면 덮어씁니다.
--- 반환이 없는 것은 계약이 그렇게 정해서입니다 — 체이닝은 못 합니다.
+-- 반환이 없는 것은 계약(`Types.MapOps`)이 그렇게 정해서입니다.
 --
 -- ⭐ **값이 `nil` 이면 삭제입니다** — Lua 의 `t[k] = nil` 과 같습니다. 예전엔
 -- 크기만 올리고 실제로는 아무것도 안 들어가 `size` 가 틀어졌습니다
@@ -256,7 +258,10 @@ const function Adopt<K, V>(data: { [K]: V }, size: number): HashMap<K, V>
 end
 
 const function isHashMap(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true
+	return type(value) == "table"
+		and rawget(value, TAG) == true
+		and type(rawget(value, "data")) == "table"
+		and type(rawget(value, "size")) == "number"
 end
 
 --#endregion

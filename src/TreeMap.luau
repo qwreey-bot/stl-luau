@@ -48,6 +48,9 @@ export type TreeMapData<K, V> = {
 	-- 레코드의 키와 찾는 키를 비교하는 어댑터. **생성 때 한 번만 만듭니다** —
 	-- 조회마다 클로저를 새로 만들면 조회 하나에 할당이 하나씩 붙습니다.
 	probe: KeyProbe<K, V>,
+	-- 타입에만 드러난 태그(생성자가 붙이는 실제 필드) — 리터럴이 맵 자리에 들어가는
+	-- 것을 막습니다(M0 리뷰).
+	read __treemap__: true,
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
@@ -98,7 +101,7 @@ end
 -- 끼워넣기는 뒤를 미는 O(n) 이지만 `table.move` 라 C 안에서 돕니다.
 --
 -- ⭐ **값이 `nil` 이면 삭제입니다** — `HashMap` 과 같은 규칙이고 Lua 의
--- `t[k] = nil` 과 같습니다. 예전엔 `nil` 값을 레코드로 저장해서 같은 `MapCore`
+-- `t[k] = nil` 과 같습니다. 예전엔 `nil` 값을 레코드로 저장해서 같은 `MapOps`
 -- 인데 두 맵의 뜻이 달랐습니다(2026-09-30 리뷰).
 const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
 	if isNaN(key) then
@@ -403,7 +406,10 @@ const function FromRecords<K, V>(records: { Record<K, V> }, compare: Comparator<
 end
 
 const function isTreeMap(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true
+	return type(value) == "table"
+		and rawget(value, TAG) == true
+		and type(rawget(value, "records")) == "table"
+		and type(rawget(value, "size")) == "number"
 end
 
 --#endregion

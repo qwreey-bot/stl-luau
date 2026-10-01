@@ -36,7 +36,7 @@ local Types = require("./Types")
 
 type LessThan<T> = Types.LessThan<T>
 
-export type HeapData<T> = { items: { T }, size: number, less: LessThan<T> }
+export type HeapData<T> = { items: { T }, size: number, less: LessThan<T>, read __heap__: true }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
@@ -245,7 +245,10 @@ const function FromList<T>(list: { T }, less: LessThan<T>): Heap<T>
 end
 
 const function isHeap(value: any): boolean
-	return type(value) == "table" and rawget(value, TAG) == true
+	return type(value) == "table"
+		and rawget(value, TAG) == true
+		and type(rawget(value, "items")) == "table"
+		and type(rawget(value, "size")) == "number"
 end
 
 --#endregion

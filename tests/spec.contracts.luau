@@ -149,6 +149,263 @@ do
 end
 print("PASS")
 
+print("=== 5. ⭐ 모든 생성·반환 경로가 태그를 붙이는가 (M0 리뷰) ===")
+do
+	-- 태그가 빠진 결과는 술어가 거짓이고, `Arr.Flat` 은 그 배열을 펼치지 않고,
+	-- `Fut.Chain`/`Fut.All` 은 그 Fut 을 거부합니다. 반환 경로 **전부**를 봅니다
+	-- (예전 "네임스페이스와 메소드는 같은 함수" 절의 새 구조 짝).
+	const Arr, HashMap, HashSet, TreeMap, TreeSet, Heap, Fut =
+		stl.Arr, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap, stl.Fut
+	local function a(): stl.Arr<number>
+		return Arr.Of(30, 10, 20)
+	end
+	local function id(v: number): number
+		return v
+	end
+	local function lt(x: number, y: number): boolean
+		return x < y
+	end
+	local function even(v: number): boolean
+		return v % 2 == 0
+	end
+	const arrResults: { [string]: any } = {
+		Of = a(),
+		Sized = Arr.Sized(2, 0),
+		FromTable = Arr.FromTable({ 1, 2 }),
+		CloneFromTable = Arr.CloneFromTable({ 1, 2 }),
+		FromIter = Arr.FromIter<<number>>(ipairs({ 1, 2 })),
+		FromFunc = Arr.FromFunc(2, id),
+		Concat = Arr.Concat(a(), a()),
+		Range = Arr.Range(1, 3),
+		FillHoles = Arr.FillHoles(Arr.Of<<number?>>(1, nil), 0),
+		FillHolesInplace = Arr.FillHolesInplace(a(), 0),
+		Compact = Arr.Compact(a()),
+		CompactInplace = Arr.CompactInplace(a()),
+		ToOptionals = Arr.ToOptionals(a()),
+		PushBack = Arr.PushBack(a(), 1),
+		PushBackMany = Arr.PushBackMany(a(), 1, 2),
+		PushBackArray = Arr.PushBackArray(a(), a()),
+		PushFront = Arr.PushFront(a(), 1),
+		PushFrontMany = Arr.PushFrontMany(a(), 1, 2),
+		PushFrontArray = Arr.PushFrontArray(a(), a()),
+		Insert = Arr.Insert(a(), 1, 5),
+		InsertMany = Arr.InsertMany(a(), 1, 5, 6),
+		InsertArray = Arr.InsertArray(a(), 1, a()),
+		Clone = Arr.Clone(a()),
+		Clear = Arr.Clear(a()),
+		Fill = Arr.Fill(a(), 0),
+		Slice = Arr.Slice(a(), 1, 2),
+		SliceTo = Arr.Slice(a(), 1, 2, Arr.Of(0)),
+		SliceInplace = Arr.SliceInplace(a(), 1, 2),
+		Erase = Arr.Erase(a(), 1, 1),
+		EraseInplace = Arr.EraseInplace(a(), 1, 1),
+		Splice = Arr.Splice(a(), 1, 1, a()),
+		SpliceInplace = Arr.SpliceInplace(a(), 1, 1, a()),
+		Reverse = Arr.Reverse(a()),
+		ReverseInplace = Arr.ReverseInplace(a()),
+		Rotate = Arr.Rotate(a(), 1),
+		RotateInplace = Arr.RotateInplace(a(), 1),
+		Shuffle = Arr.Shuffle(a()),
+		ShuffleInplace = Arr.ShuffleInplace(a()),
+		Sort = Arr.Sort(a()),
+		SortInplace = Arr.SortInplace(a()),
+		SortUnchecked = Arr.SortUnchecked(a()),
+		SortInplaceUnchecked = Arr.SortInplaceUnchecked(a()),
+		StableSort = Arr.StableSort(a()),
+		StableSortInplace = Arr.StableSortInplace(a()),
+		SortBy = Arr.SortBy(a(), id),
+		SortByInplace = Arr.SortByInplace(a(), id),
+		NthElementInplace = Arr.NthElementInplace(a(), 2),
+		PartialSort = Arr.PartialSort(a(), 2),
+		PartialSortInplace = Arr.PartialSortInplace(a(), 2),
+		MergeSorted = Arr.MergeSorted(Arr.Of(1, 3), Arr.Of(2), lt),
+		Map = Arr.Map(a(), id),
+		MapTo = Arr.Map(a(), id, Arr.Of(0)),
+		MapInplace = Arr.MapInplace(a(), id),
+		Filter = Arr.Filter(a(), even),
+		Retain = Arr.Retain(a(), even),
+		Flat = Arr.Flat<<number>>(Arr.Of(a(), a())),
+		FlatInplace = Arr.FlatInplace<<number>>(Arr.Of(a(), a())),
+		Flatmap = Arr.Flatmap(a(), function(v: number): ...number
+			return v, v
+		end),
+		FlatmapInplace = Arr.FlatmapInplace(a(), function(v: number): ...number
+			return v, v
+		end),
+		Drain = Arr.Drain(a(), id),
+		ConcatInplace = Arr.ConcatInplace(a(), a()),
+	}
+	for name, result in arrResults do
+		assert(stl.isArr(result), `Arr.{name} 결과에 태그가 없습니다`)
+		assert(getmetatable(result) == nil, `Arr.{name} 결과에 메타테이블이 있습니다`)
+	end
+
+	const hm = HashMap.New<<string, number>>()
+	HashMap.Set(hm, "x", 1)
+	const mapResults: { [string]: any } = {
+		New = hm,
+		FromTable = HashMap.FromTable<<string, number>>({ x = 1 }),
+		FromRecords = HashMap.FromRecords({ { key = "x", value = 1 } }),
+		Adopt = HashMap.Adopt({ x = 1 }, 1),
+		Clone = HashMap.Clone(hm),
+	}
+	for name, result in mapResults do
+		assert(stl.isHashMap(result), `HashMap.{name} 결과에 태그가 없습니다`)
+	end
+
+	const hs = HashSet.Of(1, 2)
+	const setResults: { [string]: any } = {
+		New = HashSet.New<<number>>(),
+		Of = hs,
+		FromList = HashSet.FromList({ 1, 2 }),
+		Clone = HashSet.Clone(hs),
+		Union = HashSet.Union(hs, hs),
+		Intersect = HashSet.Intersect(hs, hs),
+		Difference = HashSet.Difference(hs, hs),
+		SymmetricDifference = HashSet.SymmetricDifference(hs, hs),
+	}
+	for name, result in setResults do
+		assert(stl.isHashSet(result), `HashSet.{name} 결과에 태그가 없습니다`)
+	end
+
+	const tm = TreeMap.New<<number, number>>(Common.compareNumber)
+	const treeMapResults: { [string]: any } = {
+		New = tm,
+		FromRecords = TreeMap.FromRecords({ { key = 1, value = 1 } }, Common.compareNumber),
+		Adopt = TreeMap.Adopt({ { key = 1, value = 1 } }, 1, Common.compareNumber),
+		Clone = TreeMap.Clone(tm),
+	}
+	for name, result in treeMapResults do
+		assert(stl.isTreeMap(result), `TreeMap.{name} 결과에 태그가 없습니다`)
+	end
+
+	const ts = TreeSet.FromList({ 1, 2 }, Common.compareNumber)
+	const treeSetResults: { [string]: any } = {
+		New = TreeSet.New<<number>>(Common.compareNumber),
+		FromList = ts,
+		Clone = TreeSet.Clone(ts),
+		Union = TreeSet.Union(ts, ts),
+		Intersect = TreeSet.Intersect(ts, ts),
+		Difference = TreeSet.Difference(ts, ts),
+		SymmetricDifference = TreeSet.SymmetricDifference(ts, ts),
+	}
+	for name, result in treeSetResults do
+		assert(stl.isTreeSet(result), `TreeSet.{name} 결과에 태그가 없습니다`)
+	end
+
+	const hp = Heap.FromList({ 3, 1 }, lt)
+	const heapResults: { [string]: any } = {
+		New = Heap.New(lt),
+		FromList = hp,
+		Clone = Heap.Clone(hp),
+	}
+	for name, result in heapResults do
+		assert(stl.isHeap(result), `Heap.{name} 결과에 태그가 없습니다`)
+	end
+
+	const one = Fut.Resolved(1)
+	const futResults: { [string]: any } = {
+		New = Fut.New(function(resolve: (number) -> ())
+			resolve(1)
+		end),
+		Resolved = one,
+		Rejected = Fut.Rejected<<(number)>>("x"),
+		Async = Fut.Async(function(): number
+			return 1
+		end)(),
+		AndThen = Fut.AndThen(one, function(v: number): number
+			return v
+		end),
+		Chain = Fut.Chain(one, function(v: number)
+			return Fut.Resolved(v)
+		end),
+		Catch = Fut.Catch(Fut.Rejected<<(number)>>("x"), function(): number
+			return 0
+		end),
+		All = Fut.All({ one, one }),
+	}
+	for name, result in futResults do
+		assert(stl.isFut(result), `Fut.{name} 결과에 태그가 없습니다`)
+	end
+	-- 태그가 빠지면 실제로 틀어지는 두 자리를 직접 봅니다
+	const chained = Fut.Chain(one, function(v: number)
+		return Fut.AndThen(Fut.Resolved(v), function(w: number): number
+			return w + 1
+		end)
+	end)
+	assert(
+		Fut.Status(chained) == "Resolved" and Fut.Await(chained) == 2,
+		"Chain 이 AndThen 결과를 Fut 으로 받음"
+	)
+	const allArr = Fut.Await(Fut.All({ one, one }))
+	assert(stl.isArr(allArr), "Fut.All 결과는 태그 붙은 Arr")
+	assert(Arr.Flat<<number>>(Arr.Of(Arr.Map(a(), id))).n == 3, "Flat 이 Map 결과를 배열로 펼침")
+end
+print("PASS")
+
+print("=== 6. ⭐ 술어는 모양만 같은 테이블과 위조 태그를 거부하는가 (M0 리뷰) ===")
+do
+	const lookalikes: { { name: string, value: any, is: (any) -> boolean } } = {
+		-- 모양만 같고 태그가 없는 것
+		{ name = "Arr 모양", value = { n = 0 }, is = stl.isArr },
+		{ name = "HashMap 모양", value = { data = {}, size = 0 }, is = stl.isHashMap },
+		{ name = "HashSet 모양", value = { map = { data = {}, size = 0 } }, is = stl.isHashSet },
+		{ name = "TreeMap 모양", value = { records = {}, size = 0 }, is = stl.isTreeMap },
+		{ name = "TreeSet 모양", value = { map = { records = {}, size = 0 } }, is = stl.isTreeSet },
+		{ name = "Heap 모양", value = { items = {}, size = 0 }, is = stl.isHeap },
+		{ name = "Fut 모양", value = { status = "Pending", listeners = {} }, is = stl.isFut },
+		-- 태그만 있고 모양이 없는 것(위조)
+		{ name = "HashMap 위조", value = { __hashmap__ = true }, is = stl.isHashMap },
+		{ name = "HashSet 위조", value = { __hashset__ = true }, is = stl.isHashSet },
+		{ name = "TreeMap 위조", value = { __treemap__ = true }, is = stl.isTreeMap },
+		{ name = "TreeSet 위조", value = { __treeset__ = true }, is = stl.isTreeSet },
+		{ name = "Heap 위조", value = { __heap__ = true }, is = stl.isHeap },
+		{ name = "Fut 위조", value = { __fut__ = true }, is = stl.isFut },
+	}
+	for _, case in lookalikes do
+		assert(not case.is(case.value), `{case.name} 을 진짜로 받아들임`)
+	end
+	-- 위조 Fut 을 Chain 콜백이 돌려주면 입양하지 말고 실패시켜야 합니다(AwaitSafe 는 던지면 안 됨)
+	const forged = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
+		return { __fut__ = true }
+	end)
+	assert(stl.Fut.Status(forged) == "Rejected", "위조 Fut 은 Rejected")
+	assert(stl.Fut.AwaitSafe(forged) == false, "AwaitSafe 는 던지지 않음")
+	-- Optional 도 교차표에 — 다른 술어가 Optional 을, Optional 술어가 컨테이너를 받으면 안 됨
+	const present = stl.Optional.Present(1)
+	const containerPredicates: { (any) -> boolean } =
+		{ stl.isArr, stl.isHashMap, stl.isHashSet, stl.isTreeMap, stl.isTreeSet, stl.isHeap, stl.isFut }
+	for _, is in containerPredicates do
+		assert(not is(present), "컨테이너 술어가 Optional 을 받아들임")
+	end
+	assert(stl.isOptional(present) and not stl.isOptional(stl.Arr.Of(1)), "Optional 술어")
+end
+print("PASS")
+
+print("=== 7. 계약 보강 — 원소 타입 ≠ 위치 타입, Keys/Values 내용, 담아 둔 SetOps (M0 리뷰) ===")
+do
+	-- ListOps 의 반환 타입(I? 대 E?)은 원소와 위치가 둘 다 number 면 우연히 맞아떨어집니다
+	const s = stl.Arr.Of("x", "y", "z")
+	const pos: number? = stl.Algorithm.IndexOf(stl.Arr, s, "y")
+	assert(pos == 2, "문자열 배열의 IndexOf")
+	const ops: ListOps<stl.Arr<string>, string, number> = stl.Arr
+	assert(ops.Get(s, 3) == "z" and ops.FirstIndex(s) == 1 and ops.NextIndex(s, 1) == 2, "문자열 배열의 ListOps")
+
+	-- Keys/Values 는 개수가 아니라 **내용**을 봅니다(키와 값을 바꿔 돌려줘도 통과했음)
+	const m = stl.TreeMap.FromRecords({ { key = "b", value = 20 }, { key = "a", value = 10 } }, Common.compareString)
+	type T = stl.TreeMap<string, number>
+	const keys = stl.Algorithm.Keys<<T, string, number>>(stl.TreeMap, m)
+	const values = stl.Algorithm.Values<<T, string, number>>(stl.TreeMap, m)
+	assert(table.concat(keys, ",") == "a,b", "Algorithm.Keys 내용")
+	assert(values[1] == 10 and values[2] == 20, "Algorithm.Values 내용")
+
+	-- SetOps 자리에 모듈을 담아 두고 쓰기
+	const hs = stl.HashSet.Of(1, 2)
+	const setOps: SetOps<stl.HashSet<number>, number> = stl.HashSet
+	assert(setOps.Has(hs, 2) and not setOps.Has(hs, 3), "담아 둔 SetOps")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (계약) ===")
 
