@@ -30,6 +30,12 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 쪽에서 다시 나타남). `Algorithm.Keys` 는 명시적 타입 인자로도 길이 없습니다.
 > 우회는 캐스트. 추론 경로(`Algorithm.IndexOf(Arr, holed, 1)`)는 됩니다.
 > `spikes/46` 의 캐비엇 두 줄이 지금 에러인 것을 기록합니다(M0 3라운드).
+>
+> ⚠️ **가변 인자 자리의 꼬리 호출 결과는 검사되지 않습니다** — `Arr.Concat(a,
+> mk())` 에서 `mk(): { number }`(평범한 배열)나 문자열을 돌려주는 함수, 사용자
+> `f(...: number)` 에 `f(mkStr())` 까지 진단 0건입니다. 괄호로 감싸 값 하나로
+> 만들면(`(mk())`) 잡힙니다. `spikes/53` 캐비엇이 지금 0건인 것을 기록합니다
+> (M0 4라운드).
 
 ## 원칙 (quad 에서 가져옴)
 

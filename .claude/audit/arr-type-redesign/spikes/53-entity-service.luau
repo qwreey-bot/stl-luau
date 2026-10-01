@@ -59,6 +59,15 @@ local neg21 = Arr.Count(nums, function(_v: number, _i: number, view)
 end)
 local neg22: stl.Fut<number> = { status = "Resolved", listeners = {}, _pack = function(_x: number) end }
 
+--[[ 캐비엇(체커 한계 — 지금 0건, M0 4라운드): 가변 인자 자리의 **꼬리 호출 결과**는
+	검사되지 않습니다. 평범한 배열·문자열을 돌려주는 함수를 마지막 인자로 넘기면
+	`Arr.Concat` 이 진단 0건으로 받고 런타임에 터집니다. 괄호로 감싸면(`(mk())`)
+	값 하나가 되어 잡힙니다. 잡히기 시작하면 건수가 늘어 배터리가 알려줍니다. ]]
+local function plainList(): { number }
+	return { 1, 2 }
+end
+local caveat1 = Arr.Concat(Arr.Of(1), plainList())
+
 --[[ NEG 2 — 인스턴스에 메소드가 없다(옛 콜론 코드) ]]
 local neg5 = nums:Len()
 local neg6 = anys:Map(function(v: any): any
@@ -79,5 +88,5 @@ local canary: string = 42
 
 return {
 	okLen, okHas, okGet, okPacked,
-	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, neg13, neg14, neg15, neg16, neg17, neg18, neg19, neg20, neg21, neg22, canary,
+	neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, neg10, neg11, neg12, neg13, neg14, neg15, neg16, neg17, neg18, neg19, neg20, neg21, neg22, caveat1, canary,
 }

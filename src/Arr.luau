@@ -1940,15 +1940,27 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	if table.isfrozen(tbl :: any) then
 		error("Arr: FromTable cannot adopt a frozen table — use CloneFromTable", 2)
 	end
-	return wrap(tbl :: any, #tbl)
+	-- 길이는 `Common.listLength` 규약 — `table.pack` 이 준 `n`(꼬리 구멍 포함)을
+	-- `#` 로 덮어쓰던 것(M0 4라운드).
+	return wrap(tbl :: any, Common.listLength(tbl))
 end
 
--- `FromTable` 의 복사 판. **길이를 `#` 로 재는 것과 그 함정이 같습니다.**
+-- `FromTable` 의 복사 판. 길이는 `Common.listLength` 규약(`n` 우선, 없으면 `#` —
+-- 대입으로 만든 구멍은 `#` 의 함정이 같음). 메타테이블이 있어도 됩니다(원소 단위로 읽음).
 const function CloneFromTable<T>(tbl: { T }): Arr<T>
 	-- 길이는 `Common.listLength` 규약(`n` 우선) — `#` 면 `Arr`·`table.pack` 결과의
 	-- 구멍 뒤가 조용히 사라졌습니다(M0 3라운드). 구멍은 **그대로** 복사합니다.
 	const len = Common.listLength(tbl)
 	const result = newSized(len)
+	if getmetatable(tbl :: any) ~= nil then
+		-- 메타테이블이 있으면 원소 단위로(`__index` 를 따름) — 길이는 `__len` 을 따르는데
+		-- `table.move` 는 raw 로 읽어 칸이 전부 nil 이었습니다(M0 4라운드). `FromTable`
+		-- 이 메타테이블 테이블을 이리로 안내하므로 이 경로가 정상이어야 합니다.
+		for idx = 1, len do
+			result[idx] = (tbl :: any)[idx]
+		end
+		return result
+	end
 	table.move(tbl :: any, 1, len, 1, result :: any)
 	return result
 end

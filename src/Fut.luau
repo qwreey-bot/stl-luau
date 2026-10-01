@@ -61,6 +61,7 @@
 ]]
 
 const ArrModule = require("./Arr")
+const Common = require("./Common")
 type Arr<T> = ArrModule.Arr<T>
 
 export type Status = "Pending" | "Resolved" | "Rejected"
@@ -242,7 +243,18 @@ const function isFutRaw(value: any): boolean
 	-- 막을 수 없는 한계입니다(태그는 라이브러리 예약어).
 	const status = rawget(value, "status")
 	if status == "Resolved" then
-		return type(rawget(value, "values")) == "table" and type(rawget(value, "listeners")) == "table"
+		-- 값 팩의 `n` 까지 — `values = { n = "x" }` 위조가 unpack 에서 던졌습니다(M0 4라운드).
+		-- 경계: 그보다 깊은 위조(거대한 `n` 등)는 계약 밖입니다(태그는 예약어).
+		const values: any = rawget(value, "values")
+		if type(values) ~= "table" then
+			return false
+		end
+		const n = rawget(values, "n")
+		return type(n) == "number"
+			and n >= 0
+			and n == math.floor(n)
+			and n < math.huge
+			and type(rawget(value, "listeners")) == "table"
 	end
 	return (status == "Pending" or status == "Rejected") and type(rawget(value, "listeners")) == "table"
 end
@@ -447,7 +459,9 @@ const function All<T>(futs: { Fut<T> }): Fut<Arr<T>>
 	-- `n` 을 먼저 봅니다 — `Arr` 를 넘기면 `for … in` 이 `n` 과 태그 키까지 돌아
 	-- 터졌습니다(타입 검사는 통과했음, 2026-09-30 리뷰). 그리고 숫자 루프로
 	-- 돕니다 — `#` 와 `for … in` 이 구멍에서 서로 다른 걸 셌습니다.
-	const count = (futs :: any).n or #futs
+	-- 길이는 다른 진입점과 같은 `Common.listLength` 규약 — 일반 조회의 `.n` 이면
+	-- 소수 `n` 에서 영원히 Pending, 음수·NaN 에서 던졌습니다(M0 4라운드).
+	const count = Common.listLength(futs)
 	const target = newPending()
 	for idx = 1, count do
 		if not isFutRaw(futs[idx]) then

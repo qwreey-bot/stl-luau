@@ -405,6 +405,53 @@ do
 	end
 	assert(not stl.isHashSet({ __hashset__ = true, map = {} }), "안쪽이 맵이 아닌 HashSet 위조")
 	assert(not stl.isTreeSet({ __treeset__ = true, map = {} }), "안쪽이 맵이 아닌 TreeSet 위조")
+	-- 경계(M0 4라운드): 술어는 **태그 + 최상위 필드 전부의 타입**까지 봅니다. 안쪽
+	-- 조건을 하나씩만 빼 — 둘을 한꺼번에 빼면 하나를 지운 돌연변이가 살아남았음.
+	local function cmp(a: any, b: any): number
+		return if a < b then -1 elseif a > b then 1 else 0
+	end
+	const deeper: { { name: string, value: any, is: (any) -> boolean } } = {
+		{ name = "Arr n 무한", value = { __arr__ = true, n = math.huge }, is = stl.isArr },
+		{
+			name = "HashSet 안쪽 태그 없음",
+			value = { __hashset__ = true, map = { data = {}, size = 0 } },
+			is = stl.isHashSet,
+		},
+		{
+			name = "HashSet 안쪽 size 없음",
+			value = { __hashset__ = true, map = { __hashmap__ = true, data = {} } },
+			is = stl.isHashSet,
+		},
+		{
+			name = "HashSet 안쪽 data 없음",
+			value = { __hashset__ = true, map = { __hashmap__ = true, size = 0 } },
+			is = stl.isHashSet,
+		},
+		{ name = "Heap less 없음", value = { __heap__ = true, items = {}, size = 0 }, is = stl.isHeap },
+		{
+			name = "TreeMap compare 없음",
+			value = { __treemap__ = true, records = {}, size = 0, probe = cmp },
+			is = stl.isTreeMap,
+		},
+		{
+			name = "TreeMap probe 없음",
+			value = { __treemap__ = true, records = {}, size = 0, compare = cmp },
+			is = stl.isTreeMap,
+		},
+		{
+			name = "TreeSet 안쪽 compare 없음",
+			value = { __treeset__ = true, map = { __treemap__ = true, records = {}, size = 0, probe = cmp } },
+			is = stl.isTreeSet,
+		},
+		{
+			name = "Fut values.n 이 문자열",
+			value = { __fut__ = true, status = "Resolved", values = { n = "x" }, listeners = {} },
+			is = stl.isFut,
+		},
+	}
+	for _, case in deeper do
+		assert(not case.is(case.value), `{case.name} 을 진짜로 받아들임`)
+	end
 	-- 위조 Fut 을 Chain 콜백이 돌려주면 입양하지 말고 실패시켜야 합니다(AwaitSafe 는 던지면 안 됨)
 	const forged = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
 		return { __fut__ = true }
@@ -502,6 +549,52 @@ do
 	-- 복사 판은 구멍까지 그대로(n 을 따름)
 	const cloned = Arr.CloneFromTable(Arr.Of<<number?>>(1, nil, 3) :: any)
 	assert(cloned.n == 3 and cloned[3] == 3 and cloned[2] == nil, "CloneFromTable 은 n 을 따름")
+
+	-- (M0 4라운드) 구멍 든 입력·table.pack 을 **모든 진입점에** — 구멍 없는 입력만
+	-- 넣으면 `#` 와 `n` 이 같아 진입점을 `#` 로 되돌린 돌연변이가 살아남았음.
+	const packed = table.pack(30, nil, 10) :: any
+	assert(HashSet.Len(HashSet.FromList(packed)) == 2, "HashSet.FromList(pack)")
+	assert(
+		table.concat(TreeSet.Items(TreeSet.FromList(packed, Common.compareNumber)), ",") == "10,30",
+		"TreeSet.FromList(pack)"
+	)
+	const packedHeap = Heap.FromList(packed, lt)
+	assert(Heap.Len(packedHeap) == 2 and Heap.Peek(packedHeap) == 10, "Heap.FromList(pack)")
+	const packedRecords = table.pack({ key = "a", value = 1 }, nil, { key = "c", value = 3 }) :: any
+	assert(HashMap.Len(HashMap.FromRecords(packedRecords)) == 2, "HashMap.FromRecords(pack)")
+	assert(TreeMap.Len(TreeMap.FromRecords(packedRecords, Common.compareString)) == 2, "TreeMap.FromRecords(pack)")
+	const holedArr = Arr.Of<<number?>>(10, nil, 30)
+	const byIndexHoled = HashMap.FromTable(holedArr :: any)
+	assert(HashMap.Len(byIndexHoled) == 2 and HashMap.Get(byIndexHoled, 3) == 30, "HashMap.FromTable(구멍 Arr)")
+	-- Arr.FromTable 은 pack 이 준 n 을 그대로(꼬리 구멍 포함)
+	assert(Arr.FromTable(table.pack(1, nil, 3, nil, nil) :: any).n == 5, "Arr.FromTable(pack) 은 n 을 따름")
+	-- CloneFromTable 은 메타테이블이 있으면 원소 단위로 읽습니다(길이는 __len, 원소는 __index)
+	const proxy = setmetatable({}, {
+		__index = { 10, 20, 30 },
+		__len = function()
+			return 3
+		end,
+	}) :: any
+	const fromProxy = Arr.CloneFromTable(proxy)
+	assert(
+		fromProxy.n == 3 and fromProxy[1] == 10 and fromProxy[3] == 30,
+		"CloneFromTable 은 메타테이블 원소를 읽음"
+	)
+
+	-- listLength 단위: n 이 0 이상의 유한 정수일 때만 n, 아니면 #
+	assert(Common.listLength({ 1, 2, n = 5 }) == 5, "listLength n")
+	assert(Common.listLength({ 1, 2, n = -1 }) == 2, "listLength n 음수 → #")
+	assert(Common.listLength({ 1, 2, n = 1.5 }) == 2, "listLength n 소수 → #")
+	assert(Common.listLength({ 1, 2, n = math.huge }) == 2, "listLength n 무한 → #")
+	assert(Common.listLength({ 1, 2, n = 0 / 0 }) == 2, "listLength n NaN → #")
+	assert(Common.listLength({ 1, 2, n = "3" }) == 2, "listLength n 문자열 → #")
+
+	-- Fut.All 도 같은 규약 — 소수 n 이면 영원히 Pending 이었고, 음수·NaN 이면 던졌음
+	const one = stl.Fut.Resolved(1)
+	for _, weird in { 2.5, -1, 0 / 0 } do
+		const okAll, allFut = pcall(stl.Fut.All, { one, one, n = weird } :: any)
+		assert(okAll and stl.Fut.Status(allFut) == "Resolved", `Fut.All n={weird}`)
+	end
 end
 print("PASS")
 

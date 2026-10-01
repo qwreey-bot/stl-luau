@@ -291,9 +291,9 @@ const function isHashSet(value: any): boolean
 	if type(value) ~= "table" or rawget(value, TAG) ~= true then
 		return false
 	end
-	-- 안쪽이 정말 맵인지까지 — `map = {}` 위조가 참이던 것(M0 3라운드).
-	const map: any = rawget(value, "map")
-	return type(map) == "table" and rawget(map, "__hashmap__") == true and type(rawget(map, "data")) == "table"
+	-- 안쪽이 정말 맵인지는 맵의 술어에 맡깁니다 — 따로 적었더니 `size` 를 빠뜨려
+	-- 위조가 `HashSet.Add` 를 크래시시켰습니다(M0 4라운드). 판별은 한 곳에.
+	return HashMap.isHashMap(rawget(value, "map"))
 end
 
 --#endregion

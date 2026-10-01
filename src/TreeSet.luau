@@ -431,9 +431,9 @@ const function isTreeSet(value: any): boolean
 	if type(value) ~= "table" or rawget(value, TAG) ~= true then
 		return false
 	end
-	-- 안쪽이 정말 트리 맵인지까지 — `map = {}` 위조가 참이던 것(M0 3라운드).
-	const map: any = rawget(value, "map")
-	return type(map) == "table" and rawget(map, "__treemap__") == true and type(rawget(map, "records")) == "table"
+	-- 안쪽 판별은 트리 맵의 술어에 맡깁니다 — 따로 적었더니 `compare`/`probe` 를
+	-- 빠뜨렸습니다(M0 4라운드). 판별은 한 곳에.
+	return TreeMap.isTreeMap(rawget(value, "map"))
 end
 
 --#endregion

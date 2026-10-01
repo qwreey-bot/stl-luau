@@ -32,6 +32,16 @@ if [ "$total" != "0" ]; then
 	fail=1
 fi
 
+# src 의 린트 경고(LocalShadow·LocalUnused 등)도 0건이 기준선입니다. TypeError 만
+# 세면 이름 바꾸기에서 생긴 그림자 변수 같은 경고가 조용히 쌓였습니다(M0 4라운드).
+# tests 는 실험적 코드가 많아 제외합니다.
+lint=$(printf '%s\n' "$out" | grep -E '^src/[^(]+\([0-9]+,[0-9]+\): [A-Za-z]+: ' | grep -v '): TypeError:')
+if [ -n "$lint" ]; then
+	echo "  → src 린트 경고가 있습니다(기준선 0건):"
+	printf '%s\n' "$lint" | sed 's/^/    /'
+	fail=1
+fi
+
 # ⭐ 음성 대조군 배터리 — 이 저장소에서 가장 중요한 게이트다.
 # 진단 건수가 0 이 되는 것은 "타입이 완벽해졌다" 가 아니라 보통 "타입 검사가
 # 죽었다" 는 뜻이다(2026-08-31 에 실제로 0/6 이었다). 스파이크마다 나와야 할

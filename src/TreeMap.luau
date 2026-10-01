@@ -334,6 +334,11 @@ const function makeProbe<K, V>(compare: Comparator<K>): KeyProbe<K, V>
 	end
 end
 
+-- ⚠️ **입양**(`TreeMap.Adopt` 로 공개): 이미 만들어 둔 레코드 배열을 그대로
+-- 감쌉니다. **키로 정렬돼 있고 중복이 없으며 `size` 가 맞고 NaN 키가 없다**는 것을
+-- 검사하지 않습니다 — 호출자 책임입니다(`HashMap.Adopt` 와 같은 문). `TreeSet`
+-- 처럼 위에 얹히는 구현이 중간 배열을 한 번 더 만들지 않게 둔 문이고, 일반
+-- 사용자는 `FromRecords` 를 쓰세요(M0 4라운드 — 계약 문서가 없었음).
 const function adopt<K, V>(records: { Record<K, V> }, size: number, compare: Comparator<K>): TreeMap<K, V>
 	return tagged({
 		records = records,
@@ -383,13 +388,13 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 	const out = table.create(count) :: { Record<K, V> }
 	local size = 0
 	for pos = 1, count do
-		const source = records[order[pos]]
-		if size > 0 and compare(out[size].key, source.key) == 0 then
+		const rec = records[order[pos]]
+		if size > 0 and compare(out[size].key, rec.key) == 0 then
 			-- 같은 키가 이어지면 뒤엣것으로 덮어씁니다.
-			out[size] = { key = source.key, value = source.value }
+			out[size] = { key = rec.key, value = rec.value }
 		else
 			size += 1
-			out[size] = { key = source.key, value = source.value }
+			out[size] = { key = rec.key, value = rec.value }
 		end
 	end
 	-- `Set` 과 같은 규칙: 마지막 값이 nil 인 키는 삭제된 것으로 봅니다.
@@ -408,10 +413,15 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 end
 
 const function isTreeMap(value: any): boolean
+	-- 경계(M0 4라운드): 태그 + **최상위 필드 전부의 타입**까지 봅니다. 그보다 깊은
+	-- 불변식(크기가 맞는지, 정렬돼 있는지)까지 갖춘 위조는 계약 밖입니다 — 태그
+	-- 키는 라이브러리 예약어입니다(conventions "모듈 패턴").
 	return type(value) == "table"
 		and rawget(value, TAG) == true
 		and type(rawget(value, "records")) == "table"
 		and type(rawget(value, "size")) == "number"
+		and type(rawget(value, "compare")) == "function"
+		and type(rawget(value, "probe")) == "function"
 end
 
 --#endregion

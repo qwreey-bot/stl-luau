@@ -246,10 +246,14 @@ const function FromList<T>(list: { T }, less: LessThan<T>): Heap<T>
 end
 
 const function isHeap(value: any): boolean
+	-- 경계(M0 4라운드): 태그 + **최상위 필드 전부의 타입**까지 봅니다. 그보다 깊은
+	-- 불변식(크기가 맞는지, 정렬돼 있는지)까지 갖춘 위조는 계약 밖입니다 — 태그
+	-- 키는 라이브러리 예약어입니다(conventions "모듈 패턴").
 	return type(value) == "table"
 		and rawget(value, TAG) == true
 		and type(rawget(value, "items")) == "table"
 		and type(rawget(value, "size")) == "number"
+		and type(rawget(value, "less")) == "function"
 end
 
 --#endregion
