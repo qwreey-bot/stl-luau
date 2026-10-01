@@ -592,7 +592,9 @@ do
 	end), "MaxUnchecked 는 구멍에서 터져야 합니다")
 	-- 반면 checked 는 멀쩡해야 합니다
 	assert(Arr.Sum(holed) == 4 and Arr.Max(holed) == 3, "checked 는 구멍에서 멀쩡")
-	-- 정렬만은 터지지 않고 **조용히** 다르게 동작합니다 — 그게 가장 위험한 점
+	-- 정렬은 터지지 않습니다. (M0 6라운드부터) `#` 와 `n` 이 어긋나면 checked 판으로
+	-- 넘어가 결과도 맞습니다 — `#` 검사는 O(log n), 정렬 대비 0.3%(perf 17절). 구멍 검사
+	-- O(n) 을 건너뛰는 unchecked 의 존재 이유는 그대로입니다.
 	const holedSorted = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
 	holedSorted[1], holedSorted[3] = 1, 3
 	assert(
@@ -929,6 +931,29 @@ do
 		end),
 		"IsSorted 비교자"
 	)
+end
+print("PASS")
+
+print("=== 17c. SortInplaceUnchecked 는 n 밖의 값을 끌어오지 않는다 (M0 6라운드) ===")
+do
+	-- (b) n 없는 대입 구멍 테이블: FromTable 은 # 로 n=1 을 잡고 raw[3] 은 n 밖에 남음
+	const sparse = {} :: { number }
+	sparse[1] = 10
+	sparse[3] = 30
+	const a = Arr.FromTable(sparse)
+	Arr.PushBack(a, 20)
+	Arr.SortInplaceUnchecked(a, function(x: number, y: number): boolean
+		return x > y
+	end)
+	assert(a.n == 2 and a[1] == 20 and a[2] == 10, "n 밖의 30 을 끌어와 10 을 잃으면 안 됨")
+	-- (a) n 이 있고 n 뒤 값이 해시부에 — 비우기 루프가 # 경계에 막힘
+	const hashTail = { n = 2 } :: any
+	hashTail[1], hashTail[2], hashTail[5], hashTail[7] = 10, 20, 50, 70
+	const b = Arr.FromTable(hashTail)
+	Arr.PushBack(b, 30)
+	Arr.PushBack(b, 40)
+	Arr.SortInplaceUnchecked(b)
+	same(b, { 10, 20, 30, 40 }, "n 밖의 해시부 값이 정렬에 섞이면 안 됨")
 end
 print("PASS")
 
