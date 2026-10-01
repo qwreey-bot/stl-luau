@@ -563,6 +563,47 @@ do
 		not drained and rawequal(drainErr, boom),
 		`드레인이 첫 에러를 그대로 다시 던짐: {tostring(drainErr)}`
 	)
+
+	-- 같은 세 경로를 **문자열** 이유로, **사용자 함수 프레임을 거쳐**(5라운드 리뷰). 테이블은
+	-- `error` 가 위치를 안 붙여 `rethrow` 자리에 `raise` 를 써도 같았고, `pcall(f, …)` 처럼
+	-- C 가 바로 부르면 raise 도 위치를 못 붙여 역시 같았습니다 — 그래서 둘 다 피합니다.
+	const okAwait, awaitErr = pcall(function()
+		Fut.Await(Fut.Rejected("r"))
+	end)
+	assert(not okAwait and awaitErr == "r", `Await 가 위치를 덧붙임: {tostring(awaitErr)}`)
+
+	const stringPrevious = Fut.UseProvider({
+		resume = function(_co: thread)
+			error("boom", 0)
+		end,
+	})
+	-- settle 의 되던지기(사용자 함수가 resolve 를 부름)
+	local resolveA: (number) -> () = function(_: number) end
+	const pendingA = Fut.New(function(resolve: (number) -> (), _reject)
+		resolveA = resolve
+	end)
+	Fut.Async(function()
+		return Fut.Await(pendingA)
+	end)()
+	const okSettle, settleErr = pcall(function()
+		resolveA(1)
+	end)
+	-- 최상위 드레인의 되던지기(사용자 함수 안에서 드레인이 시작됨)
+	local resolveB: (number) -> () = function(_: number) end
+	const pendingB = Fut.New(function(resolve: (number) -> (), _reject)
+		resolveB = resolve
+	end)
+	Fut.Async(function()
+		return Fut.Await(pendingB)
+	end)()
+	const okDrain, drainStringErr = pcall(function()
+		Fut.Async(function()
+			resolveB(1)
+		end)()
+	end)
+	Fut.UseProvider(stringPrevious)
+	assert(not okSettle and settleErr == "boom", `settle 이 위치를 덧붙임: {tostring(settleErr)}`)
+	assert(not okDrain and drainStringErr == "boom", `드레인이 위치를 덧붙임: {tostring(drainStringErr)}`)
 end
 print("PASS")
 

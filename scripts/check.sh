@@ -154,18 +154,43 @@ if ! bad=$(find src -name "*.luau" -print0 | xargs -0 perl -0777 -ne '
 	# 보간의 {…} 는 깊이 제한 없이 재귀(표 생성자·안쪽 문자열 포함), 리터럴 부분에 개행 없음
 	# — 하나를 잘못 읽으면 닫는 백틱이 새 문자열의 시작이 돼 파일 대부분이 검사에서
 	# 빠졌습니다(4라운드). 아래 "남은 따옴표" 덫이 그런 어긋남을 실패로 바꿉니다.
-	my ($bt, $br);
-	$br = qr/\{(?:$dq|$sq|(??{$bt})|[^{}"\x27`]|(??{$br}))*\}/;
-	$bt = qr/`(?:$esc|[^`\\{\n]|(??{$br}))*`/;
 	my $long = qr/\[(=*)\[.*?\]\g{-1}\]/s;
+	my ($bt, $br);
+	$br = qr/\{(?:$dq|$sq|(??{$bt})|$long|[^{}"\x27`]|(??{$br}))*\}/;
+	$bt = qr/`(?:$esc|[^`\\{\n]|(??{$br}))*`/;
 	# 1) 주석 제거(문자열은 그대로)
 	s{ ($dq|$sq|$bt) | --(?:\[(=*)\[.*?\]\2\]|[^\n]*) | ($long) }
 	 { defined $1 ? $1 : defined $3 ? $3 : "" }gsex;
 	print "$f: registerSource 를 안 부름\n"
 		unless $isCommon || $f =~ m{\Asrc/(Types|init)\.luau\z}
-		|| /^Common\.registerSource\(debug\.info\(1, "s"\)\)$/m;
-	# 2) 문자열 내용을 자리표시자로
-	s{ ($dq|$sq|$bt) | ($long) }{"S"}gsx;
+		|| /^Common\.registerSource\(debug\.info\(1, "s"\)\)[ \t]*$/m;
+	# 2) 문자열 내용을 자리표시자로. 보간 문자열의 {…} 표현식은 **꺼내서 뒤에 붙여** 같은
+	#    검사를 받게 합니다 — 통째로 "S" 로 바꾸면 `{if ok then v else error("x")}` 가
+	#    사라졌습니다(5라운드). 표현식 안의 문자열도 같은 규칙으로(재귀).
+	my @exprs;
+	my $placeholder = sub {
+		my ($m) = @_;
+		if (defined $m && substr($m, 0, 1) eq "`") {
+			my $body = substr($m, 1, -1);
+			while ($body =~ /\G(?:$esc|[^`\\{\n]|($br))/gc) {
+				push @exprs, substr($1, 1, -1) if defined $1;
+			}
+		}
+		return "\"S\"";
+	};
+	my $strip = sub {
+		my ($t) = @_;
+		@exprs = ();
+		$t =~ s{ ($dq|$sq|$bt) | ($long) }{ $placeholder->($1) }gsex;
+		return ($t, @exprs);
+	};
+	my ($text, @pending) = $strip->($_);
+	while (@pending) {
+		my ($t, @more) = $strip->(shift @pending);
+		$text .= "\n$t";
+		push @pending, @more;
+	}
+	$_ = $text;
 	print "$f: 문자열을 못 읽음(남은 따옴표) — 게이트의 문자열 문법을 고칠 것\n"
 		if (my $q = $_) =~ s/"S"//gr =~ /["`\x27]/;
 	my @calls;
