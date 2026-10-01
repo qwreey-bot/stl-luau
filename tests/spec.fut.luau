@@ -529,6 +529,43 @@ do
 end
 print("PASS")
 
+print("=== 12. 되던지기는 값을 그대로 (2026-10-02, 에러 규약 4라운드) ===")
+do
+	-- `Common.rethrow` 가 `tostring` 을 거치거나 드레인 루프의 되던지기가 빠져도 테스트가
+	-- 통과했습니다(돌연변이로 재현). **같은 테이블**이 나오는지 `rawequal` 로 봅니다.
+	const reason = { id = 7 }
+	const ok, err = pcall(Fut.Await, Fut.Rejected(reason))
+	assert(not ok and rawequal(err, reason), `Await 의 이유가 그대로가 아님: {tostring(err)}`)
+
+	const outer = Fut.Async(function()
+		return Fut.Await(Fut.Rejected(reason))
+	end)()
+	const _, propagated = Fut.AwaitSafe(outer)
+	assert(rawequal(propagated, reason), "Async 를 거쳐도 이유가 그대로")
+
+	-- 기본 스케줄러의 드레인 루프: 잡이 던진 첫 에러를 삼키지 않고 그대로 다시 던짐
+	const boom = { id = 9 }
+	const previous = Fut.UseProvider({
+		resume = function(_co: thread)
+			error(boom, 0)
+		end,
+	})
+	local resolveLater: (number) -> () = function(_: number) end
+	const pending = Fut.New(function(resolve: (number) -> (), _reject)
+		resolveLater = resolve
+	end)
+	Fut.Async(function()
+		return Fut.Await(pending)
+	end)()
+	const drained, drainErr = pcall(resolveLater, 1)
+	Fut.UseProvider(previous)
+	assert(
+		not drained and rawequal(drainErr, boom),
+		`드레인이 첫 에러를 그대로 다시 던짐: {tostring(drainErr)}`
+	)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Fut) ===")
 

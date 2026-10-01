@@ -151,16 +151,23 @@ if ! bad=$(find src -name "*.luau" -print0 | xargs -0 perl -0777 -ne '
 	my $esc = qr/\\z\s*|\\./s;
 	my $dq = qr/"(?:$esc|[^"\\\n])*"/;
 	my $sq = qr/\x27(?:$esc|[^\x27\\\n])*\x27/;
-	my $bt; $bt = qr/`(?:$esc|[^`\\{]|\{(?:$dq|$sq|(??{$bt})|[^{}"\x27`]|\{[^{}]*\})*\})*`/s;
+	# 보간의 {…} 는 깊이 제한 없이 재귀(표 생성자·안쪽 문자열 포함), 리터럴 부분에 개행 없음
+	# — 하나를 잘못 읽으면 닫는 백틱이 새 문자열의 시작이 돼 파일 대부분이 검사에서
+	# 빠졌습니다(4라운드). 아래 "남은 따옴표" 덫이 그런 어긋남을 실패로 바꿉니다.
+	my ($bt, $br);
+	$br = qr/\{(?:$dq|$sq|(??{$bt})|[^{}"\x27`]|(??{$br}))*\}/;
+	$bt = qr/`(?:$esc|[^`\\{\n]|(??{$br}))*`/;
 	my $long = qr/\[(=*)\[.*?\]\g{-1}\]/s;
 	# 1) 주석 제거(문자열은 그대로)
 	s{ ($dq|$sq|$bt) | --(?:\[(=*)\[.*?\]\2\]|[^\n]*) | ($long) }
 	 { defined $1 ? $1 : defined $3 ? $3 : "" }gsex;
 	print "$f: registerSource 를 안 부름\n"
-		unless $isCommon || $f =~ m{(^|/)(Types|init)\.luau\z}
+		unless $isCommon || $f =~ m{\Asrc/(Types|init)\.luau\z}
 		|| /^Common\.registerSource\(debug\.info\(1, "s"\)\)$/m;
 	# 2) 문자열 내용을 자리표시자로
 	s{ ($dq|$sq|$bt) | ($long) }{"S"}gsx;
+	print "$f: 문자열을 못 읽음(남은 따옴표) — 게이트의 문자열 문법을 고칠 것\n"
+		if (my $q = $_) =~ s/"S"//gr =~ /["`\x27]/;
 	my @calls;
 	push @calls, $1 while /(?<![.:\w])error\s*(\((?:[^()]++|(?1))*\))/g;
 	if ($isCommon) {
