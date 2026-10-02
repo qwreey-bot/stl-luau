@@ -2016,11 +2016,17 @@ end
 --     local a = Arr.FromIter(ipairs(list)) :: Arr<number>  -- 차선
 --
 -- (`.claude/base/typing-limits.md` 의 "조용히 타입을 잃는 자리 셋")
+--
+-- **값 규칙**: 순회자가 값을 **하나** 내면 그것이, **둘 이상** 내면 둘째가 원소입니다
+-- (`pairs`/`ipairs` 는 값, `gmatch` 는 캡처가 하나면 그것 둘 이상이면 둘째). 개수는 **첫
+-- 호출에서 한 번** 세고, 순회자의 반환 개수가 호출마다 같다고 봅니다.
+-- ⚠️ **구멍이 생깁니다**: `(키, nil)` 을 내는 순회자(`Arr.Iter` 의 구멍)는 그 자리를
+-- 구멍으로 둡니다 — 원소 타입을 `T?` 로 적으세요: `Arr.FromIter<<number?>>(Arr.Iter(a))`.
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	const result: Arr<T> = newSized(0)
 	local count = 0
 	local key = control
-	-- 값이 둘이면 둘째가 값, 하나면 그것이 값입니다. **둘째의 nil 이 아니라 반환
+	-- 값이 둘 이상이면 둘째가 값, 하나면 그것이 값입니다. **둘째의 nil 이 아니라 반환
 	-- 개수로** 가릅니다 — `(index, nil)` 을 내는 순회자(`Arr.Iter` 의 구멍)에서
 	-- 인덱스를 값으로 담았습니다(2026-10-02 Gemini 사냥). 개수는 **첫 호출에서 한 번**
 	-- 셉니다 — 매번 세면 가변 인자 헬퍼가 원소마다 붙어 2.1배 느려졌습니다(perf 19절).

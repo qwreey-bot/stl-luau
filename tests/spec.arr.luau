@@ -1398,6 +1398,21 @@ do
 		oneFalse.n == 4 and oneFalse[1] == false and oneFalse[2] == true and oneFalse[3] == false,
 		`값 하나, false: n={oneFalse.n}`
 	)
+	-- 값을 셋 이상 내면 둘째가 원소(5라운드 — `returned >= 2` 를 `== 2` 로 바꿔도 통과했음).
+	-- 구멍 하나를 섞어 그 경로도.
+	local threeStep = 0
+	const three = Arr.FromIter(function(): (any, any, any)
+		threeStep += 1
+		if threeStep == 1 then
+			return "a", 1, "x"
+		elseif threeStep == 2 then
+			return "b", nil, "y"
+		elseif threeStep == 3 then
+			return "c", 3, "z"
+		end
+		return nil, nil, nil
+	end)
+	assert(three.n == 3 and three[1] == 1 and three[2] == nil and three[3] == 3, `값 셋: {three[1]}, {three[2]}`)
 	const words = Arr.FromIter(string.gmatch("ab cd", "%a+"))
 	assert(words.n == 2 and words[1] == "ab" and words[2] == "cd", "gmatch")
 	const pairsOf = Arr.FromIter(ipairs({ 10, 20 }))
