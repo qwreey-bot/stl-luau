@@ -17,13 +17,15 @@
 #     61001) — 한쪽 worktree 를 다른 쪽 과제가 고칠 수 없게. worktree 와 그 .git/worktrees/<이름>
 #     만 이 uid 소유라 메인 작업 트리·다른 worktree·.git/objects 에는 못 씀 → 커밋 불가 → 새로
 #     push 할 것도 없음. pre-push 훅(GIT_CONFIG_*)이 두 번째 줄로 push 를 거부;
-#   - HOME 은 /code/Projects/stl-luau-agy/.home, 실행마다 /code/.gemini(agy OAuth)를 새로 복사;
+#   - HOME 은 **과제마다 따로** /code/Projects/stl-luau-agy/.homes/<이름>, /code/.gemini(agy OAuth)를
+#     새로 복사 — 하나를 공유하면 둘을 동시에 띄울 때 복사가 서로를 지워 한쪽이 시작도 못 했습니다
+#     (2026-10-02, `cp: cannot create directory …/.gemini: File exists`);
 #   - 실행 전후 메인 레포의 HEAD 와 `git status` 를 비교해 guard.txt 에 적음.
 set -euo pipefail
 
 ROOT=/code/Projects/stl-luau
 BASE=/code/Projects/stl-luau-agy
-AGY_HOME=$BASE/.home
+HOMES=$BASE/.homes
 HOOKS=$BASE/.hooks
 AGY_UID=61001
 AGY=/code/.local/share/mise/installs/antigravity-cli/latest/agy
@@ -44,6 +46,7 @@ remove)
 	[[ "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "이름이 이상함"
 	git -C "$ROOT" worktree remove --force "$BASE/$name"
 	git -C "$ROOT" branch -D "agy/$name"
+	rm -rf "${HOMES:?}/${name:?}"
 	exit 0
 	;;
 run) ;;
@@ -64,10 +67,11 @@ done
 WT=$BASE/$name
 [[ -e "$WT" ]] && die "$WT 가 이미 있음 — 다른 이름을 쓰거나 remove 하세요"
 
-mkdir -p "$BASE" "$HOOKS"
-# HOME: 매 실행 OAuth 상태를 새로 복사(사용자 자신의 agy 사용이 갱신했을 수 있음)
+mkdir -p "$BASE" "$HOOKS" "$HOMES"
+# HOME: 과제마다 따로, OAuth 상태를 새로 복사(사용자 자신의 agy 사용이 갱신했을 수 있음)
+AGY_HOME=$HOMES/$name
+rm -rf "${AGY_HOME:?}"
 mkdir -p "$AGY_HOME"
-rm -rf "${AGY_HOME:?}/.gemini"
 cp -r /code/.gemini "$AGY_HOME/.gemini"
 chown -R $AGY_UID:$AGY_UID "$AGY_HOME"
 printf '#!/bin/sh\necho "push refused: agy delegate worktree" >&2\nexit 1\n' > "$HOOKS/pre-push"

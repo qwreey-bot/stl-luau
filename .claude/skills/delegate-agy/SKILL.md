@@ -126,8 +126,10 @@ quad 의 실측(2026-10-02)을 그대로 따릅니다. 여기서 다른 것은 u
   - worktree 와 `.git/worktrees/<이름>` 만 그 uid 소유입니다.
   - 그래서 메인 작업 트리와 `.git/objects` 에는 쓸 수 없고, 커밋할 수 없습니다.
   - pre-push 훅이 push 도 거부합니다.
-- HOME 은 `/code/Projects/stl-luau-agy/.home` 입니다. 실행마다 `/code/.gemini` 의 OAuth 를 새로
-  복사합니다.
+- HOME 은 **과제마다 따로** `/code/Projects/stl-luau-agy/.homes/<이름>` 입니다. 실행마다
+  `/code/.gemini` 의 OAuth 를 새로 복사하고, `remove` 가 지웁니다. 하나를 공유했더니 둘을
+  동시에 띄울 때 복사가 서로를 지워 한쪽이 시작도 못 했습니다(2026-10-02 — quad 스크립트도
+  같은 모양이라 그쪽에서 둘을 동시에 띄우면 같은 일이 날 수 있음).
 - PATH 앞에 mise 의 `luau`·`stylua` 설치 디렉터리를 붙입니다. 그래서 worktree 안에서
   `./scripts/check.sh` 가 돕니다.
 - 실행 전후로 메인 레포의 HEAD 와 status 를 비교해 `guard.txt` 에 적습니다. 메인 세션이 그
