@@ -1359,6 +1359,16 @@ do
 	const back = Arr.FromIter(Arr.Iter(holed))
 	assert(back.n == 3 and back[1] == 10 and back[2] == nil and back[3] == 30, `Iter 왕복: {back[2]}`)
 	-- 값이 하나인 순회자(string.gmatch)와 둘인 순회자(ipairs)는 그대로
+	-- 값이 하나인 순회자가 state·control 을 제대로 받는지(3라운드 — gmatch 는 둘 다 무시해
+	-- 루프를 나눈 뒤 이 경로의 `key = a`·state 전달을 지키는 테스트가 없었음)
+	const upto = function(limit: number, i: number): number?
+		if i < limit then
+			return i + 1
+		end
+		return nil
+	end
+	const counted = Arr.FromIter(upto, 3, 0)
+	assert(counted.n == 3 and counted[1] == 1 and counted[2] == 2 and counted[3] == 3, `upto: n={counted.n}`)
 	const words = Arr.FromIter(string.gmatch("ab cd", "%a+"))
 	assert(words.n == 2 and words[1] == "ab" and words[2] == "cd", "gmatch")
 	const pairsOf = Arr.FromIter(ipairs({ 10, 20 }))

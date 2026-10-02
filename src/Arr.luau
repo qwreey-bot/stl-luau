@@ -1996,6 +1996,14 @@ const function CloneFromTable<T>(tbl: { T }): Arr<T>
 	return result
 end
 
+-- `FromIter` 가 구멍 자리에 잠시 두는 값. 모듈 밖으로 나가지 않습니다.
+const HOLE = table.freeze({})
+
+-- 반환 개수와 앞의 둘. `select("#", ...)` 는 끝의 nil 까지 셉니다.
+const function countReturns(...: any): (number, any, any)
+	return select("#", ...), ...
+end
+
 -- 임의의 for-in 이터레이터에서 값을 모읍니다.
 -- `Arr.FromIter(pairs(t))`, `Arr.FromIter(string.gmatch(s, "%a+"))` 처럼 씁니다.
 --
@@ -2006,14 +2014,6 @@ end
 --     local a = Arr.FromIter(ipairs(list)) :: Arr<number>  -- 차선
 --
 -- (`.claude/base/typing-limits.md` 의 "조용히 타입을 잃는 자리 셋")
--- `FromIter` 가 구멍 자리에 잠시 두는 값. 모듈 밖으로 나가지 않습니다.
-const HOLE = table.freeze({})
-
--- 반환 개수와 앞의 둘. `select("#", ...)` 는 끝의 nil 까지 셉니다.
-const function countReturns(...: any): (number, any, any)
-	return select("#", ...), ...
-end
-
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	const result: Arr<T> = newSized(0)
 	local count = 0
