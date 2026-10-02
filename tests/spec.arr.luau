@@ -1350,6 +1350,37 @@ do
 end
 print("PASS")
 
+print("=== 19. 회귀 — 2026-10-02 Gemini(agy) 사냥 ===")
+do
+	-- (1) FromIter 가 "값이 하나인가 둘인가" 를 둘째 값의 nil 로 갈라, `(index, nil)` 을
+	--     내는 순회자(`Arr.Iter` 의 구멍)에서 **인덱스를 값으로** 담았음 — 조용한 오염.
+	--     반환 개수로 가릅니다.
+	const holed = Arr.Of<<number?>>(10, nil, 30)
+	const back = Arr.FromIter(Arr.Iter(holed))
+	assert(back.n == 3 and back[1] == 10 and back[2] == nil and back[3] == 30, `Iter 왕복: {back[2]}`)
+	-- 값이 하나인 순회자(string.gmatch)와 둘인 순회자(ipairs)는 그대로
+	const words = Arr.FromIter(string.gmatch("ab cd", "%a+"))
+	assert(words.n == 2 and words[1] == "ab" and words[2] == "cd", "gmatch")
+	const pairsOf = Arr.FromIter(ipairs({ 10, 20 }))
+	assert(pairsOf.n == 2 and pairsOf[1] == 10 and pairsOf[2] == 20, "ipairs")
+
+	-- (2) FromTable 의 "n 밖 raw 칸 비우기" 가 `#` 를 상한으로 써, `#` 가 n 이하에서
+	--     멈추면(구멍 뒤) 하나도 못 지웠고 큰 키(`[100]`)는 아예 못 봤음. CloneFromTable
+	--     처럼 1..n 의 정수 칸만 남깁니다.
+	const gap = Arr.FromTable({ n = 1, [1] = 10, [3] = 30 } :: any)
+	assert(gap.n == 1 and rawget(gap :: any, 3) == nil, `구멍 뒤 칸: {rawget(gap :: any, 3)}`)
+	const far = Arr.FromTable({ n = 2, [1] = 1, [2] = 2, [100] = 9, [0] = 7, [1.5] = 8 } :: any)
+	assert(
+		rawget(far :: any, 100) == nil and rawget(far :: any, 0) == nil and rawget(far :: any, 1.5) == nil,
+		"1..n 밖의 숫자 키"
+	)
+	assert(far.n == 2 and far[1] == 1 and far[2] == 2, "1..n 은 그대로")
+	-- 구멍 든 1..n 은 그대로(구멍은 원소 자리)
+	const inner = Arr.FromTable({ n = 3, [1] = 1, [3] = 3 } :: any)
+	assert(inner.n == 3 and inner[1] == 1 and inner[2] == nil and inner[3] == 3, "n 안의 구멍")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 

@@ -607,6 +607,25 @@ do
 end
 print("PASS")
 
+print("=== 13. 회귀 — 2026-10-02 Gemini(agy) 사냥 ===")
+do
+	-- Chain 의 콜백이 결과 Fut **자신**을 돌려주면 자기를 기다리며 영원히 Pending 이었음
+	-- (Promise/A+ 2.3.1 은 TypeError 로 거절). 실패로 정합니다.
+	local resolveSource: (number) -> () = function(_: number) end
+	const source = Fut.New(function(resolve: (number) -> (), _reject)
+		resolveSource = resolve
+	end)
+	local target: Fut<number>
+	target = Fut.Chain(source, function(_: number): Fut<number>
+		return target
+	end)
+	resolveSource(1)
+	assert(Fut.Status(target) == "Rejected", `자기 자신을 체인: {Fut.Status(target)}`)
+	const _, why = Fut.AwaitSafe(target)
+	assert(string.find(tostring(why), "cycle", 1, true) ~= nil, `이유: {tostring(why)}`)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Fut) ===")
 

@@ -1092,8 +1092,11 @@ end
 -- 예전엔 구멍이 있으면 뒤쪽이 정렬되지 않은 채 **조용히** 남았고, `n` 밖 raw 칸에
 -- 값이 남아 있으면(대입으로 만든 테이블을 입양한 경우 — `FromTable` 의 비우기도
 -- `#` 경계에 막혀 다 못 지움) 그 값이 안으로 섞이거나 크래시했습니다. 구멍이 있어도
--- `#` 가 우연히 `n` 과 같으면 여전히 `table.sort` 가 구멍을 만나 터질 수 있습니다
--- — 전제("구멍 없음")는 그대로입니다.
+-- `#` 가 `n` 과 같으면 여전히 `table.sort` 가 구멍을 만나 터집니다 — 그리고 **중간
+-- 구멍은 대개 그렇습니다**: `table.create`/`Sized` 로 배열 부분이 잡힌 테이블은 끝
+-- 칸만 차 있으면 `#` 가 `n` 입니다(2026-10-02 Gemini 실측). 이 검사가 잡는 것은 꼬리
+-- 구멍과 `n` 밖 값뿐이고, 전제("구멍 없음")는 그대로입니다 — 어겨도 조용하지 않고
+-- 비교 에러로 터집니다.
 const function SortInplaceUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
 	-- `table.sort` 는 `n` 이 아니라 `#` 를 봅니다. `#` 와 `n` 이 어긋나면(구멍, 또는
 	-- `n` 밖 raw 칸에 남은 값 — 대입으로 만든 테이블을 입양한 경우) 바깥 값이 섞이거나
@@ -1955,12 +1958,17 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	-- 길이는 `Common.listLength` 규약 — `table.pack` 이 준 `n`(꼬리 구멍 포함)을
 	-- `#` 로 덮어쓰던 것(M0 4라운드).
 	const len = Common.listLength(tbl)
-	-- `n` 이 실제 원소보다 짧으면 그 뒤 raw 칸을 비웁니다 — 남으면 `n` 바깥이라 안
-	-- 보이다가 정렬·삽입 뒤 배열 안으로 다시 들어왔습니다(M0 5라운드). 다른 제자리
-	-- 함수들이 지키는 "원소는 1..n 만" 불변식입니다. 입양이라 넘긴 테이블이 바뀝니다.
+	-- `1..n` 밖의 숫자 칸을 비웁니다 — 남으면 `n` 바깥이라 안 보이다가 정렬·삽입 뒤
+	-- 배열 안으로 다시 들어왔습니다(M0 5라운드). 다른 제자리 함수들이 지키는 "원소는
+	-- 1..n 만" 불변식이고, `CloneFromTable` 이 복사하는 범위와 같습니다. 입양이라 넘긴
+	-- 테이블이 바뀝니다. **`#` 를 상한으로 쓰지 않습니다** — 구멍 뒤에서 `#` 가 n 이하로
+	-- 멈추면 하나도 못 지웠고 큰 키(`[100]`)는 아예 못 봤습니다(2026-10-02 Gemini 사냥).
+	-- 순회 중 있던 키에 nil 을 넣는 것은 Lua 규격상 허용됩니다.
 	const raw = tbl :: any
-	for idx = len + 1, #raw do
-		raw[idx] = nil
+	for key in raw do
+		if type(key) == "number" and not (key >= 1 and key <= len and key == math.floor(key)) then
+			raw[key] = nil
+		end
 	end
 	return wrap(raw, len)
 end
@@ -1995,10 +2003,29 @@ end
 --     local a = Arr.FromIter(ipairs(list)) :: Arr<number>  -- 차선
 --
 -- (`.claude/base/typing-limits.md` 의 "조용히 타입을 잃는 자리 셋")
+-- 반환 개수와 앞의 둘. `select("#", ...)` 는 끝의 nil 까지 셉니다.
+const function countReturns(...: any): (number, any, any)
+	return select("#", ...), ...
+end
+
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	const result: Arr<T> = newSized(0)
 	local count = 0
 	local key = control
+	-- 값이 둘이면 둘째가 값, 하나면 그것이 값입니다. **둘째의 nil 이 아니라 반환
+	-- 개수로** 가릅니다 — `(index, nil)` 을 내는 순회자(`Arr.Iter` 의 구멍)에서
+	-- 인덱스를 값으로 담았습니다(2026-10-02 Gemini 사냥). 개수는 **첫 호출에서 한 번**
+	-- 셉니다 — 매번 세면 가변 인자 헬퍼가 원소마다 붙어 2.1배 느려졌습니다(perf 19절).
+	-- 순회자의 반환 개수는 호출마다 같다고 봅니다(`pairs`/`ipairs`/`gmatch`/`Arr.Iter`
+	-- 모두 그렇습니다).
+	const returned, firstA, firstB = countReturns(iter(state, key))
+	if firstA == nil then
+		return result
+	end
+	const twoValues = returned >= 2
+	key = firstA
+	count = 1
+	result[1] = if twoValues then firstB else firstA
 	while true do
 		const a, b = iter(state, key)
 		if a == nil then
@@ -2006,8 +2033,7 @@ const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 		end
 		key = a
 		count += 1
-		-- 값이 둘이면 둘째가 값, 하나면 그것이 값입니다.
-		result[count] = if b == nil then a else b
+		result[count] = if twoValues then b else a
 	end
 	result.n = count
 	return result

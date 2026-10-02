@@ -363,6 +363,11 @@ const function Chain<T..., U...>(self: Fut<T...>, fn: (T...) -> Fut<U...>): Fut<
 				settle(target, "Rejected", nil, inner)
 			elseif not isFutRaw(inner) then
 				settle(target, "Rejected", nil, "Fut: Chain callback must return a Fut")
+			elseif inner == target then
+				-- 결과 Fut 자신을 돌려주면 자기를 기다리며 영원히 Pending 이었습니다
+				-- (2026-10-02 Gemini 사냥, Promise/A+ 2.3.1 과 같게 거절). 더 긴 순환
+				-- (A → B → A)은 잡지 않습니다 — JS 프로미스도 같습니다.
+				settle(target, "Rejected", nil, "Fut: Chain callback returned the chained Fut itself (cycle)")
 			else
 				adopt(target, inner)
 			end
