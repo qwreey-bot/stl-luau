@@ -15,7 +15,8 @@
 	채워줄 수 없으니, **비어 있을 수 있는 칸은 타입이 `T?` 라고 말하게** 합니다.
 	구멍이 생기는 생성자는 전부 `Arr<T?>` 를 돌려주거나(`Of(1, nil, 3)`,
 	`FromTable({ 1, nil, 3 })`), 명시를 요구합니다(`Sized(n, fill)` 의 `fill`
-	은 필수 — 구멍을 원하면 `Arr.Sized<<number?>>(n, nil)`).
+	은 필수 — 구멍을 원하면 `Arr.Sized<<number?>>(n, nil)`; `FromIter` 는 원소 타입을
+	직접 적는 자리라 구멍이 생길 순회자면 `FromIter<<number?>>(Arr.Iter(a))`).
 
 	그래서 두 갈래가 어긋나지 않습니다:
 

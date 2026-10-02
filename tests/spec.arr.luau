@@ -1413,6 +1413,10 @@ do
 		return nil, nil, nil
 	end)
 	assert(three.n == 3 and three[1] == 1 and three[2] == nil and three[3] == 3, `값 셋: {three[1]}, {three[2]}`)
+	-- 빈 순회: 끝 모양이 셋(값 0개 — ipairs, nil 하나 — next/pairs, nil 둘 — Arr.Iter). 6라운드 —
+	-- `firstA == nil` 을 `returned == 0` 으로 바꿔도 ipairs 만으로는 못 갈랐음.
+	assert(Arr.FromIter(pairs({})).n == 0, "빈 pairs")
+	assert(Arr.FromIter(Arr.Iter(Arr.Of<<number>>())).n == 0, "빈 Arr.Iter")
 	const words = Arr.FromIter(string.gmatch("ab cd", "%a+"))
 	assert(words.n == 2 and words[1] == "ab" and words[2] == "cd", "gmatch")
 	const pairsOf = Arr.FromIter(ipairs({ 10, 20 }))
