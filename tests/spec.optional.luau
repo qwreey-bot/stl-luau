@@ -124,7 +124,7 @@ do
 	-- 그물**로 받아내는지, unchecked 가 문서대로 망가지는지를 보는 절이라서요.
 	const holed = (Arr.Sized<<number?>>(5, nil) :: any) :: Arr<number>
 	holed[1], holed[3], holed[5] = 3, 1, 2
-	-- 정리 전: SumUnchecked 는 터지고 SortInplaceUnchecked 는 조용히 틀린다
+	-- 정리 전: SumUnchecked 는 터지고 SortInplaceUnchecked 는 구멍에서 터지거나 checked 로 넘어간다
 	assert(not pcall(function()
 		return Arr.SumUnchecked(holed)
 	end), "정리 전 SumUnchecked 는 터짐")

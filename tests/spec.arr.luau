@@ -601,7 +601,7 @@ do
 		pcall(function()
 			return Arr.SortInplaceUnchecked(holedSorted)
 		end),
-		"SortInplaceUnchecked 는 구멍에서도 터지지 않습니다 (조용히 다름)"
+		"꼬리 구멍(# ≠ n)이면 SortInplaceUnchecked 는 checked 로 넘어가 터지지 않습니다"
 	)
 end
 print("PASS")
@@ -1366,6 +1366,12 @@ do
 	-- 구멍 자리표시자가 새지 않음 — 첫 원소가 구멍, 전부 구멍, 구멍이 많은 것
 	const firstHole = Arr.FromIter(Arr.Iter(Arr.Of<<number?>>(nil, 20, nil)))
 	assert(firstHole.n == 3 and firstHole[1] == nil and firstHole[2] == 20 and firstHole[3] == nil, "첫 구멍")
+	-- 첫 원소만 구멍(뒤 구멍이 정리를 대신 켜 주지 못하게), 진짜 false 는 구멍이 아님
+	-- (2라운드 리뷰 — 이 둘이 없어 돌연변이가 살아남았음)
+	const onlyFirst = Arr.FromIter(Arr.Iter(Arr.Of<<number?>>(nil, 20)))
+	assert(onlyFirst.n == 2 and onlyFirst[1] == nil and onlyFirst[2] == 20, `첫 원소만 구멍: {onlyFirst[1]}`)
+	const falses = Arr.FromIter(Arr.Iter(Arr.Of<<boolean?>>(false, nil, false)))
+	assert(falses.n == 3 and falses[1] == false and falses[2] == nil and falses[3] == false, "false 는 값")
 	const allHoles = Arr.FromIter(Arr.Iter(Arr.Sized<<number?>>(4, nil)))
 	assert(allHoles.n == 4 and allHoles[1] == nil and allHoles[4] == nil, "전부 구멍")
 	const sparse = Arr.Sized<<number?>>(9, nil)
@@ -1382,9 +1388,9 @@ do
 	--     되돌림, perf 20절) — CloneFromTable 은 1..n 만 복사하니 거기선 깨끗합니다.
 	const tail = Arr.FromTable({ n = 1, 10, 20, 30 } :: any)
 	assert(tail.n == 1 and rawget(tail :: any, 2) == nil and rawget(tail :: any, 3) == nil, "# 가 닿는 n 밖")
-	const cloned = Arr.CloneFromTable({ n = 1, [1] = 10, [3] = 30, [100] = 9 } :: any)
+	const sparseClone = Arr.CloneFromTable({ n = 1, [1] = 10, [3] = 30, [100] = 9 } :: any)
 	assert(
-		rawget(cloned :: any, 3) == nil and rawget(cloned :: any, 100) == nil,
+		rawget(sparseClone :: any, 3) == nil and rawget(sparseClone :: any, 100) == nil,
 		"희소 테이블은 Clone 이 깨끗"
 	)
 	-- 구멍 든 1..n 은 그대로(구멍은 원소 자리)

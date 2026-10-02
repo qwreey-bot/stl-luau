@@ -451,7 +451,7 @@ end
 	|---|---|
 	| `SumUnchecked` / `ProdUnchecked` | `attempt to perform arithmetic on nil` 로 **터집니다** |
 	| `MaxUnchecked` / `MinUnchecked` | 비교에서 **터지거나**, 비교자를 준 경우 그 비교자에 `nil` 이 넘어갑니다 |
-	| `SortUnchecked` / `SortInplaceUnchecked` | `#` 와 `n` 이 어긋나면(꼬리 구멍, `n` 밖 값) checked 판으로 넘어가 정답. 같으면(중간 구멍 — 대개 이쪽) 기본 비교에서 **터집니다**. nil 을 견디는 비교자를 주면 그 비교자에 `nil` 이 넘어갑니다 |
+	| `SortUnchecked` / `SortInplaceUnchecked` | `#` 와 `n` 이 어긋나면(꼬리 구멍, `n` 밖 값) checked 판으로 넘어가 정답. 같으면 기본 비교에서 **터집니다** — 어느 쪽일지는 `#` 가 구멍 배치·쓰기 순서에 따라 아무 경계나 돌려줘 예측할 수 없습니다(실측상 checked 쪽이 56~79%). 어느 쪽이든 조용히 틀리지는 않습니다. nil 을 견디는 비교자를 주면 그 비교자에 `nil` 이 넘어갑니다 |
 
 	예전 마지막 줄은 "구멍 뒤쪽이 조용히 잘린다" 였습니다 — M0 6라운드의 `#` 검사 뒤로는 조용한
 	경로가 없습니다(2026-10-02 리뷰가 재현으로 확인).
@@ -1093,11 +1093,12 @@ end
 -- 예전엔 구멍이 있으면 뒤쪽이 정렬되지 않은 채 **조용히** 남았고, `n` 밖 raw 칸에
 -- 값이 남아 있으면(대입으로 만든 테이블을 입양한 경우 — `FromTable` 의 비우기는
 -- `#` 가 닿는 데까지이고 그 너머는 계약 밖) 그 값이 안으로 섞이거나 크래시했습니다. 구멍이 있어도
--- `#` 가 `n` 과 같으면 여전히 `table.sort` 가 구멍을 만나 터집니다 — 그리고 **중간
--- 구멍은 대개 그렇습니다**: `table.create`/`Sized` 로 배열 부분이 잡힌 테이블은 끝
--- 칸만 차 있으면 `#` 가 `n` 입니다(2026-10-02 Gemini 실측). 이 검사가 잡는 것은 꼬리
--- 구멍과 `n` 밖 값뿐이고, 전제("구멍 없음")는 그대로입니다 — 어겨도 조용하지 않고
--- 비교 에러로 터집니다.
+-- `#` 가 `n` 과 같으면 여전히 `table.sort` 가 구멍을 만나 터집니다. 어느 쪽일지는
+-- 예측할 수 없습니다 — `#` 는 구멍 배치와 쓰기 순서에 따라 아무 경계나 돌려줍니다
+-- (맨 `table.create` 는 끝 칸만 차면 `#` 가 n 이지만 — Gemini 실측 — `n`·태그가 해시에
+-- 있는 `Arr` 은 다르고, 무작위 구멍 배열에서 checked 쪽이 56~79% — 2026-10-02 리뷰).
+-- 전제("구멍 없음")는 그대로이고, 어겨도 **조용히 틀리지는 않습니다**(무작위 2만 건에서
+-- 조용히 틀린 답 0).
 const function SortInplaceUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
 	-- `table.sort` 는 `n` 이 아니라 `#` 를 봅니다. `#` 와 `n` 이 어긋나면(구멍, 또는
 	-- `n` 밖 raw 칸에 남은 값 — 대입으로 만든 테이블을 입양한 경우) 바깥 값이 섞이거나
@@ -2024,41 +2025,57 @@ const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	-- 순회자의 반환 개수는 호출마다 같다고 봅니다(`pairs`/`ipairs`/`gmatch`/`Arr.Iter`
 	-- 모두 그렇습니다).
 	--
-	-- 구멍(값이 nil)은 **자리표시자로 채웠다가 끝에 한 번 nil 로** 바꿉니다 — nil 을 바로
-	-- 넣으면 그 자리에서 배열 부분이 못 자라 뒤 원소가 해시 부분에 쌓였고, 구멍이 많은
-	-- 순회자에서 만드는 것이 5배, 만든 배열의 인덱싱도 4.5배 느렸습니다(perf 19절, 리뷰).
+	-- 구멍(값이 nil)은 **자리표시자로 채우고 그 위치를 적어 두었다가 끝에 그 자리만 nil 로**
+	-- 바꿉니다 — nil 을 바로 넣으면 그 자리에서 배열 부분이 못 자라 뒤 원소가 해시 부분에
+	-- 쌓였고, 구멍이 많은 순회자에서 만드는 것이 5배, 만든 배열의 인덱싱도 4.5배 느렸습니다.
+	-- 루프는 값의 개수로 둘로 나눕니다 — 원소마다 "하나냐 둘이냐" 와 "구멍이냐" 를 묻는
+	-- 분기가 구멍 없는 순회자에서도 3~11% 를 냈습니다(perf 19절, 리뷰 둘).
 	const returned, firstA, firstB = countReturns(iter(state, key))
 	if firstA == nil then
 		return result
 	end
-	const twoValues = returned >= 2
-	local sawHole = false
 	key = firstA
 	count = 1
-	local first = if twoValues then firstB else firstA
-	if first == nil then
-		first, sawHole = HOLE, true
-	end
-	result[1] = first
-	while true do
-		const a, b = iter(state, key)
-		if a == nil then
-			break
+	if returned >= 2 then
+		const holes: { number } = {}
+		local holeCount = 0
+		if firstB == nil then
+			result[1] = HOLE
+			holeCount = 1
+			holes[1] = 1
+		else
+			result[1] = firstB
 		end
-		key = a
-		count += 1
-		local value = if twoValues then b else a
-		if value == nil then
-			value, sawHole = HOLE, true
-		end
-		result[count] = value
-	end
-	if sawHole then
-		const raw = result :: any
-		for idx = 1, count do
-			if raw[idx] == HOLE then
-				raw[idx] = nil
+		while true do
+			const a, b = iter(state, key)
+			if a == nil then
+				break
 			end
+			key = a
+			count += 1
+			if b == nil then
+				result[count] = HOLE
+				holeCount += 1
+				holes[holeCount] = count
+			else
+				result[count] = b
+			end
+		end
+		const raw = result :: any
+		for idx = 1, holeCount do
+			raw[holes[idx]] = nil
+		end
+	else
+		-- 값이 하나면 그것이 곧 다음 키라 nil 일 수 없습니다(nil 이면 순회 끝).
+		result[1] = firstA
+		while true do
+			const a = iter(state, key)
+			if a == nil then
+				break
+			end
+			key = a
+			count += 1
+			result[count] = a
 		end
 	end
 	result.n = count
