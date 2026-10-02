@@ -1363,18 +1363,30 @@ do
 	assert(words.n == 2 and words[1] == "ab" and words[2] == "cd", "gmatch")
 	const pairsOf = Arr.FromIter(ipairs({ 10, 20 }))
 	assert(pairsOf.n == 2 and pairsOf[1] == 10 and pairsOf[2] == 20, "ipairs")
+	-- 구멍 자리표시자가 새지 않음 — 첫 원소가 구멍, 전부 구멍, 구멍이 많은 것
+	const firstHole = Arr.FromIter(Arr.Iter(Arr.Of<<number?>>(nil, 20, nil)))
+	assert(firstHole.n == 3 and firstHole[1] == nil and firstHole[2] == 20 and firstHole[3] == nil, "첫 구멍")
+	const allHoles = Arr.FromIter(Arr.Iter(Arr.Sized<<number?>>(4, nil)))
+	assert(allHoles.n == 4 and allHoles[1] == nil and allHoles[4] == nil, "전부 구멍")
+	const sparse = Arr.Sized<<number?>>(9, nil)
+	for idx = 1, 9, 3 do
+		sparse[idx] = idx * 10
+	end
+	const sparseBack = Arr.FromIter(Arr.Iter(sparse))
+	for idx = 1, 9 do
+		assert(sparseBack[idx] == sparse[idx], `많은 구멍 {idx}: {sparseBack[idx]}`)
+	end
 
-	-- (2) FromTable 의 "n 밖 raw 칸 비우기" 가 `#` 를 상한으로 써, `#` 가 n 이하에서
-	--     멈추면(구멍 뒤) 하나도 못 지웠고 큰 키(`[100]`)는 아예 못 봤음. CloneFromTable
-	--     처럼 1..n 의 정수 칸만 남깁니다.
-	const gap = Arr.FromTable({ n = 1, [1] = 10, [3] = 30 } :: any)
-	assert(gap.n == 1 and rawget(gap :: any, 3) == nil, `구멍 뒤 칸: {rawget(gap :: any, 3)}`)
-	const far = Arr.FromTable({ n = 2, [1] = 1, [2] = 2, [100] = 9, [0] = 7, [1.5] = 8 } :: any)
+	-- (2) FromTable 의 "n 밖 raw 칸 비우기" — `#` 가 닿는 데까지가 약속입니다. 구멍 뒤·큰
+	--     키처럼 `#` 가 안 닿는 n 밖 키는 계약 밖(전부 지우면 입양이 복사보다 느려져
+	--     되돌림, perf 20절) — CloneFromTable 은 1..n 만 복사하니 거기선 깨끗합니다.
+	const tail = Arr.FromTable({ n = 1, 10, 20, 30 } :: any)
+	assert(tail.n == 1 and rawget(tail :: any, 2) == nil and rawget(tail :: any, 3) == nil, "# 가 닿는 n 밖")
+	const cloned = Arr.CloneFromTable({ n = 1, [1] = 10, [3] = 30, [100] = 9 } :: any)
 	assert(
-		rawget(far :: any, 100) == nil and rawget(far :: any, 0) == nil and rawget(far :: any, 1.5) == nil,
-		"1..n 밖의 숫자 키"
+		rawget(cloned :: any, 3) == nil and rawget(cloned :: any, 100) == nil,
+		"희소 테이블은 Clone 이 깨끗"
 	)
-	assert(far.n == 2 and far[1] == 1 and far[2] == 2, "1..n 은 그대로")
 	-- 구멍 든 1..n 은 그대로(구멍은 원소 자리)
 	const inner = Arr.FromTable({ n = 3, [1] = 1, [3] = 3 } :: any)
 	assert(inner.n == 3 and inner[1] == 1 and inner[2] == nil and inner[3] == 3, "n 안의 구멍")

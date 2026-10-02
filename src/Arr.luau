@@ -451,9 +451,10 @@ end
 	|---|---|
 	| `SumUnchecked` / `ProdUnchecked` | `attempt to perform arithmetic on nil` 로 **터집니다** |
 	| `MaxUnchecked` / `MinUnchecked` | 비교에서 **터지거나**, 비교자를 준 경우 그 비교자에 `nil` 이 넘어갑니다 |
-	| `SortUnchecked` / `SortInplaceUnchecked` | `table.sort` 가 `#` 를 보므로 **구멍 뒤쪽이 조용히 잘립니다**(터지지도 않습니다 — 가장 나쁜 쪽) |
+	| `SortUnchecked` / `SortInplaceUnchecked` | `#` 와 `n` 이 어긋나면(꼬리 구멍, `n` 밖 값) checked 판으로 넘어가 정답. 같으면(중간 구멍 — 대개 이쪽) 기본 비교에서 **터집니다**. nil 을 견디는 비교자를 주면 그 비교자에 `nil` 이 넘어갑니다 |
 
-	마지막 줄이 특히 중요합니다. 조용히 틀린 답이 나오는 유일한 자리입니다.
+	예전 마지막 줄은 "구멍 뒤쪽이 조용히 잘린다" 였습니다 — M0 6라운드의 `#` 검사 뒤로는 조용한
+	경로가 없습니다(2026-10-02 리뷰가 재현으로 확인).
 ]]
 
 -- `Sum` 의 검사 없는 판. **구멍이 없어야 합니다.**
@@ -1090,8 +1091,8 @@ end
 --
 -- (M0 6라운드) `#` 와 `n` 이 어긋나면 checked 판(`SortInplace`)으로 넘어갑니다 —
 -- 예전엔 구멍이 있으면 뒤쪽이 정렬되지 않은 채 **조용히** 남았고, `n` 밖 raw 칸에
--- 값이 남아 있으면(대입으로 만든 테이블을 입양한 경우 — `FromTable` 의 비우기도
--- `#` 경계에 막혀 다 못 지움) 그 값이 안으로 섞이거나 크래시했습니다. 구멍이 있어도
+-- 값이 남아 있으면(대입으로 만든 테이블을 입양한 경우 — `FromTable` 의 비우기는
+-- `#` 가 닿는 데까지이고 그 너머는 계약 밖) 그 값이 안으로 섞이거나 크래시했습니다. 구멍이 있어도
 -- `#` 가 `n` 과 같으면 여전히 `table.sort` 가 구멍을 만나 터집니다 — 그리고 **중간
 -- 구멍은 대개 그렇습니다**: `table.create`/`Sized` 로 배열 부분이 잡힌 테이블은 끝
 -- 칸만 차 있으면 `#` 가 `n` 입니다(2026-10-02 Gemini 실측). 이 검사가 잡는 것은 꼬리
@@ -1958,17 +1959,18 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	-- 길이는 `Common.listLength` 규약 — `table.pack` 이 준 `n`(꼬리 구멍 포함)을
 	-- `#` 로 덮어쓰던 것(M0 4라운드).
 	const len = Common.listLength(tbl)
-	-- `1..n` 밖의 숫자 칸을 비웁니다 — 남으면 `n` 바깥이라 안 보이다가 정렬·삽입 뒤
-	-- 배열 안으로 다시 들어왔습니다(M0 5라운드). 다른 제자리 함수들이 지키는 "원소는
-	-- 1..n 만" 불변식이고, `CloneFromTable` 이 복사하는 범위와 같습니다. 입양이라 넘긴
-	-- 테이블이 바뀝니다. **`#` 를 상한으로 쓰지 않습니다** — 구멍 뒤에서 `#` 가 n 이하로
-	-- 멈추면 하나도 못 지웠고 큰 키(`[100]`)는 아예 못 봤습니다(2026-10-02 Gemini 사냥).
-	-- 순회 중 있던 키에 nil 을 넣는 것은 Lua 규격상 허용됩니다.
+	-- `n` 이 실제 원소보다 짧으면 그 뒤 raw 칸을 `#` 가 닿는 데까지 비웁니다 — 남으면
+	-- `n` 바깥이라 안 보이다가 정렬·삽입 뒤 배열 안으로 다시 들어왔습니다(M0 5라운드).
+	-- 입양이라 넘긴 테이블이 바뀝니다.
+	-- **경계**(2026-10-02, 제가 정함 — 되돌리기 쉬움): `#` 가 닿지 않는 `n` 밖 숫자 키
+	-- (구멍 뒤 `{ n = 1, [1] = 10, [3] = 30 }` 의 `[3]`, 큰 키 `[100]`)는 **계약 밖**입니다 —
+	-- 그런 희소 테이블은 `CloneFromTable`(1..n 만 복사)로 넘기세요. Gemini 사냥이 이 자리를
+	-- 짚어 전부 순회해 지우게 했더니 입양이 5~8배 느려져 **복사보다 느려졌습니다**(perf 20절)
+	-- — "복사 없이 입양" 이라는 존재 이유가 사라져 되돌렸습니다. `next(raw, len)` 부터만
+	-- 도는 안은 `len` 이 해시 부분에 있으면 앞의 키를 건너뛰어 틀렸습니다(리뷰가 반례로 확인).
 	const raw = tbl :: any
-	for key in raw do
-		if type(key) == "number" and not (key >= 1 and key <= len and key == math.floor(key)) then
-			raw[key] = nil
-		end
+	for idx = len + 1, #raw do
+		raw[idx] = nil
 	end
 	return wrap(raw, len)
 end
@@ -2003,6 +2005,9 @@ end
 --     local a = Arr.FromIter(ipairs(list)) :: Arr<number>  -- 차선
 --
 -- (`.claude/base/typing-limits.md` 의 "조용히 타입을 잃는 자리 셋")
+-- `FromIter` 가 구멍 자리에 잠시 두는 값. 모듈 밖으로 나가지 않습니다.
+const HOLE = table.freeze({})
+
 -- 반환 개수와 앞의 둘. `select("#", ...)` 는 끝의 nil 까지 셉니다.
 const function countReturns(...: any): (number, any, any)
 	return select("#", ...), ...
@@ -2018,14 +2023,23 @@ const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	-- 셉니다 — 매번 세면 가변 인자 헬퍼가 원소마다 붙어 2.1배 느려졌습니다(perf 19절).
 	-- 순회자의 반환 개수는 호출마다 같다고 봅니다(`pairs`/`ipairs`/`gmatch`/`Arr.Iter`
 	-- 모두 그렇습니다).
+	--
+	-- 구멍(값이 nil)은 **자리표시자로 채웠다가 끝에 한 번 nil 로** 바꿉니다 — nil 을 바로
+	-- 넣으면 그 자리에서 배열 부분이 못 자라 뒤 원소가 해시 부분에 쌓였고, 구멍이 많은
+	-- 순회자에서 만드는 것이 5배, 만든 배열의 인덱싱도 4.5배 느렸습니다(perf 19절, 리뷰).
 	const returned, firstA, firstB = countReturns(iter(state, key))
 	if firstA == nil then
 		return result
 	end
 	const twoValues = returned >= 2
+	local sawHole = false
 	key = firstA
 	count = 1
-	result[1] = if twoValues then firstB else firstA
+	local first = if twoValues then firstB else firstA
+	if first == nil then
+		first, sawHole = HOLE, true
+	end
+	result[1] = first
 	while true do
 		const a, b = iter(state, key)
 		if a == nil then
@@ -2033,7 +2047,19 @@ const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 		end
 		key = a
 		count += 1
-		result[count] = if twoValues then b else a
+		local value = if twoValues then b else a
+		if value == nil then
+			value, sawHole = HOLE, true
+		end
+		result[count] = value
+	end
+	if sawHole then
+		const raw = result :: any
+		for idx = 1, count do
+			if raw[idx] == HOLE then
+				raw[idx] = nil
+			end
+		end
 	end
 	result.n = count
 	return result
