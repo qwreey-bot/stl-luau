@@ -6,7 +6,7 @@ description: stl-luau 에서 다른 모델 계열(Gemini 3.8 Flash, Antigravity 
 # delegate-agy — Gemini 에게 다른 시선을 맡기기
 
 quad 에서 먼저 만들었고(2026-10-02) 같은 날 사용자 요청으로 여기에 소급했습니다. 스크립트는
-`.claude/tools/agy-delegate.sh`, agy 의 진입점은 `.agents/rules/stl-luau.md` 입니다.
+`.claude/tools/agy-delegate.sh`, agy 의 진입점은 `GEMINI.md`(레포 루트) 입니다.
 
 ## 왜 쓰나 (사용자, 2026-10-02)
 
@@ -70,8 +70,9 @@ stl-luau 에서 이 맥락은 직접 겹칩니다. 2026-10-02 의 에러 규약 
    - 제안은 결정이 아님
 
    과제 쪽에는 다음을 적습니다.
-   - **읽을 파일을 경로로** 줍니다. 진입점 `.agents/rules/stl-luau.md` 는 규칙이 읽으라고
-     시킵니다.
+   - **읽을 파일을 경로로** 줍니다. 진입점인 레포 루트의 `GEMINI.md` 는 agy 가 작업공간
+     규칙으로 자동으로 싣습니다(agy 문서 `agy-customizations/docs/rules.md` — `.agents/rules/`
+     는 안 실렸음, 2026-10-02 연결 확인).
    - **무엇에서 튀어오르기를 원하는지 명시**합니다. 예: "이 문항들을 개별 결함으로 보지 말고
      공통 뿌리를 위에서 찾아라."
    - **반증 가능한 근거**(파일:줄, 실행 출력)를 요구합니다.
