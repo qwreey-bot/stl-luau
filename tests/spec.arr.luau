@@ -1369,6 +1369,35 @@ do
 	end
 	const counted = Arr.FromIter(upto, 3, 0)
 	assert(counted.n == 3 and counted[1] == 1 and counted[2] == 2 and counted[3] == 3, `upto: n={counted.n}`)
+	-- 키·값이 false 여도 순회의 끝이 아님(4라운드 — 끝 판정을 `not a` 로 바꿔도 통과했음).
+	-- 값 둘: 첫 키와 중간 키가 false. 값 하나: false 로 시작하고 중간에도 false.
+	-- (키가 false 면 다음 호출에 키를 못 쓰니 위치는 클로저가 셉니다.)
+	local twoStep = 0
+	const twoFalse = Arr.FromIter(function(): (any, any)
+		twoStep += 1
+		if twoStep == 1 then
+			return false, 7
+		elseif twoStep == 2 then
+			return true, 8
+		elseif twoStep == 3 then
+			return false, 9
+		end
+		return nil, nil
+	end)
+	assert(
+		twoFalse.n == 3 and twoFalse[1] == 7 and twoFalse[2] == 8 and twoFalse[3] == 9,
+		`값 둘, 키 false: n={twoFalse.n}`
+	)
+	const oneFalse = Arr.FromIter(coroutine.wrap(function()
+		coroutine.yield(false)
+		coroutine.yield(true)
+		coroutine.yield(false)
+		coroutine.yield(true)
+	end))
+	assert(
+		oneFalse.n == 4 and oneFalse[1] == false and oneFalse[2] == true and oneFalse[3] == false,
+		`값 하나, false: n={oneFalse.n}`
+	)
 	const words = Arr.FromIter(string.gmatch("ab cd", "%a+"))
 	assert(words.n == 2 and words[1] == "ab" and words[2] == "cd", "gmatch")
 	const pairsOf = Arr.FromIter(ipairs({ 10, 20 }))
