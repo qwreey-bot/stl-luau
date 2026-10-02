@@ -142,6 +142,11 @@
 - **맵/셋 표현**: `{ data, size }` 래퍼. 인스턴스에 길이 필드를 직접 두면
   `HashMap<string, …>` 에서 `Set("size", v)` 가 그걸 덮어씁니다.
 
+- **`*Unchecked` 는 늘리지 않습니다** (2026-10-02, 제가 정함 — 되돌리기 쉬움): 지금의 여섯
+  (`Sum`/`Prod`/`Max`/`Min`/`Sort`/`SortInplace`)뿐이고, M2 정렬 가족(질문 X)도 두지 않았습니다.
+  새 함수에 unchecked 판을 더하려면 checked 판 대비 **실측 이득**과 함께 질문으로 올리세요 —
+  함수마다 쌍이 붙으면 표면이 두 배가 됩니다(Gemini 뿌리 분석 2, `audit/agy/`).
+
 - **`Inplace` 접미사 쌍**: 새 컨테이너를 만드는 판과 자기를 변형하는 판을
   쌍으로 둡니다(`Sort`/`SortInplace`, `Reverse`/`ReverseInplace`). 둘 다
   필요하지 않다면 왜 아닌지 명확히 하세요.

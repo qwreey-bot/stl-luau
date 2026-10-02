@@ -222,6 +222,9 @@ end
 --     local m = HashMap.FromTable<<string, number>>({ a = 1 })  -- 권장
 --     local src: { [string]: number } = { a = 1 }               -- 차선
 --     local m = HashMap.FromTable(src)
+-- **사전을 받는 진입점**입니다 — `Arr` 만 "위치 → 값" 으로 따로 읽고, 그 밖의 테이블은
+-- 키 전부를 담습니다. `table.pack(…)` 결과를 넘기면 `"n"` 도 키가 됩니다(그 테이블의 정당한
+-- 키 — 2026-10-02 Gemini 지적, 그대로 둠). 리스트에서 만들려면 `Arr.FromList` 를 거치세요.
 const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0

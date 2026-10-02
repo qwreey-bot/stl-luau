@@ -9,7 +9,9 @@
 |---|---|
 | **AA. Luau 새 솔버 결함을 업스트림에 보고할지**(초안 있음, 공개 저장소라 사용자 판단 — 10-02 보강) | `question.md` AA |
 | **AC. 읽기만 하는 `Arr` 함수의 첫 인자를 `ArrRead<T>`(공변)로** — M3 전에 | `question.md` AC |
-| **AD. 콜백이 던지면 무엇을 약속할까**(계약 대 관측) — M3 전에 | `question.md` AD |
+| **AD. 콜백이 던지면 무엇을 약속할까**(계약 대 관측 — 10-02 Gemini 의견으로 추천 수정) — M3 전에 | `question.md` AD |
+| **AE. `Count` 가 두 뜻**(`Algorithm.Count` → `Len`?) | `question.md` AE |
+| AF. 술어 깊이·함수 묶음 계약의 무게 — 판단 재료(급하지 않음) | `question.md` AF |
 
 ## 📍 지금 여기 (2026-10-02)
 
