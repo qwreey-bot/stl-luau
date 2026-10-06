@@ -595,3 +595,19 @@ end
 같은 스파이크의 다른 발견: **유니온 & 메소드 교집합**(컨테이너들과 같은
 모양)은 메소드의 `T` 를 `number | nil` 로 잡아 무너집니다. 그래서 `Optional`
 은 메소드 없는 **평범한 태그 테이블 + 네임스페이스 함수**입니다.
+
+
+## ⚠️ 공변 인자 둘에서 제네릭을 풀면 교집합이 될 수 있다 (2026-10-06, 질문 AC)
+
+```lua
+local function Concat<T>(...: ArrRead<T>): Arr<T>   -- ArrRead = { read [number]: T, … }
+local c = Concat(nums, strs)                         -- Arr<number & string>  ← 진단 0건
+local n: number = c[1]                               -- 통과
+local s: string = c[1]                               -- 통과 — 건전하지 않음
+```
+
+`read` 인덱서(공변) 자리 둘에서 같은 `T` 를 풀면 새 솔버가 합(`|`)이 아니라 **교집합(`&`)** 을
+골랐습니다(luau 0.734). 그래서 **배열 여럿을 하나의 `T` 로 합치는 함수는 불변(`ArrData`)으로**
+둡니다(`Concat`, `MergeSorted`). 첫 인자 하나만 공변이고 다른 인자가 불변(`to: Arr<T>?`, `with:
+ArrData<T>`)이면 불변 쪽이 `T` 를 고정해 섞임이 에러로 잡힙니다(`Slice`/`Filter`/`Splice` 실측).
+`Equal(self, other)` 처럼 결과에 `T` 가 없으면 문제없습니다.

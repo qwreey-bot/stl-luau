@@ -50,6 +50,7 @@ export type Trait<I> = Trait.Trait<I>
 export type Arr<T> = Arr.Arr<T>
 export type ArrData<T> = Arr.ArrData<T>
 export type ArrView<T> = Arr.ArrView<T>
+export type ArrRead<T> = Arr.ArrRead<T>
 export type HashMap<K, V> = HashMap.HashMap<K, V>
 export type HashSet<T> = HashSet.HashSet<T>
 export type TreeMap<K, V> = TreeMap.TreeMap<K, V>

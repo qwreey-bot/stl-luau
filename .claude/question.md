@@ -559,6 +559,11 @@ class RFC(`syntax-classes`)는 동기가 "`setmetatable` 타입 추론이 어렵
 > 뭔가 정할 수 있는게 없어서 T 자리가 out/in 가능한지 out 만인지 모르기에 ArrRead 를 넣는거 필요한
 > 지점은 맞아보여."* — 읽기만 하면 `ArrRead<T>`, 쓰면 `ArrData<T>`. `CompactInplace` 는 같은 모양의
 > 다른 이름(`ArrConsumed`)으로. M3 전에 적용.
+>
+> **적용(2026-10-06)**: 읽기 함수 47개 + 내부 헬퍼 넷을 `ArrRead`. 하나 빗나감 — `Concat`·
+> `MergeSorted`(배열 둘 이상을 같은 `T` 로 합침)까지 바꾸니 솔버가 `T = number & string` 을 골라
+> 결과가 건전하지 않았습니다(`Arr.Concat(nums, strs)[1]` 이 `number` 에도 `string` 에도 들어감,
+> 진단 0건). 이 둘은 `ArrData` 로 되돌렸습니다. `spikes/56`(POS 넷 + NEG 넷).
 
 
 지금 `Arr` 함수의 첫 인자는 대부분 `ArrData<T>`(읽기·쓰기 인덱서 → **T 에 불변**)

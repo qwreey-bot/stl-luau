@@ -81,6 +81,14 @@
   `ArrView<T>` 는 읽기 전용 평범한 테이블입니다. 자세한 것은
   `.claude/base/typing-limits.md`.
 
+- ⭐ **읽기만 하는 함수의 첫 인자는 `ArrRead<T>`**(2026-10-06 사용자 결정, 질문 AC — `spikes/56`).
+  `read` 인덱서라 원소에 **공변**이라 좁은 배열을 넓은 자리에 넘길 수 있습니다(`Arr<number>` →
+  `Map<<number?, …>>`, 하위 레코드 → 상위 레코드). **쓰는 함수는 `ArrData<T>`**(불변) — 넓어진
+  원소로 쓰면 건전하지 않습니다. ⚠️ **둘 이상의 배열을 하나의 `T` 로 합치는 함수**(`Concat`,
+  `MergeSorted`)도 `ArrData` — `ArrRead` 둘에서 `T` 를 풀면 솔버가 `number & string` 을 골라
+  결과 원소를 아무 타입에나 넣을 수 있게 됐습니다(진단 0건, 실측). 입력을 소비하는 제자리
+  변환(`CompactInplace`)은 같은 모양의 `ArrConsumed<T>`. `ArrRead` 는 공개 타입입니다.
+
 - **함수의 첫 인자는 데이터부(`XxxData<T>`)로 받습니다.** 원소가 유니온일 때
   (`Arr<number?>`)도 추론이 서는지는 `spikes/46` 이 지킵니다. 자기 자신을
   돌려줄 땐 `return self :: any`. (예전엔 전체형에 섞인 계약 조각 때문에 이게

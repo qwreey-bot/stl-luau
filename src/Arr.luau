@@ -92,6 +92,24 @@ export type ArrData<T> = {
 	[number]: T,
 }
 
+-- ⭐ **읽기만 하는 함수의 첫 인자**(2026-10-06 사용자 결정, 질문 AC). `read` 인덱서라 원소에
+-- **공변**입니다 — `Arr<Frame | Part>` 를 `Map<<Instance, …>>` 에, `Arr<number>` 를 `<<number?>>`
+-- 자리에 넘길 수 있습니다(읽기·쓰기 인덱서인 `ArrData` 는 불변이라 안 됐음). 쓰는 함수는
+-- `ArrData` 를 받습니다 — 넓어진 원소로 쓰면 건전하지 않으니까요. 사용자 함수도 같은 규칙으로
+-- 쓰라고 공개합니다. 토큰·마커까지 요구해 리터럴·`table.pack` 결과·콜백 뷰가 들어오지 못합니다.
+export type ArrRead<T> = {
+	read n: number,
+	read __type: Trait.Token<"Arr">,
+	read __list: T,
+	read __listIndex: number,
+	read [number]: T,
+}
+
+-- **입력을 소비하는** 제자리 변환의 첫 인자(질문 Y·AC). 모양은 `ArrRead` 와 같지만(`?` 를
+-- 떼려고 공변 인덱서를 빌림) 원본을 고치므로 "읽기 전용" 이라는 이름을 붙이지 않습니다
+-- (Gemini 의 AC 지적 — `CompactInplace`).
+type ArrConsumed<T> = ArrRead<T>
+
 -- 콜백이 셋째 인자로 받는 뷰 — **읽기 전용**입니다. 콜백 안에서 배열을 바꾸면
 -- 순회가 망가지니 타입이 막습니다. 원소 타입은 `unknown` 으로 씁니다(아래).
 export type ArrView<T> = { read n: number, read [number]: T }
@@ -217,19 +235,19 @@ end
 -- 이 모듈 테이블이 그대로 `Types.ListOps` 구현체이고 `Trait.List` 에 등록됩니다(파일 끝) —
 -- `Algorithm.IndexOf(a, x)`.
 
-const function Get<T>(self: ArrData<T>, idx: number): T?
+const function Get<T>(self: ArrRead<T>, idx: number): T?
 	return self[idx]
 end
-const function FirstIndex<T>(self: ArrData<T>): number?
+const function FirstIndex<T>(self: ArrRead<T>): number?
 	return if self.n > 0 then 1 else nil
 end
-const function LastIndex<T>(self: ArrData<T>): number?
+const function LastIndex<T>(self: ArrRead<T>): number?
 	return if self.n > 0 then self.n else nil
 end
-const function NextIndex<T>(self: ArrData<T>, idx: number): number?
+const function NextIndex<T>(self: ArrRead<T>, idx: number): number?
 	return if idx < self.n then idx + 1 else nil
 end
-const function PrevIndex<T>(self: ArrData<T>, idx: number): number?
+const function PrevIndex<T>(self: ArrRead<T>, idx: number): number?
 	return if idx > 1 then idx - 1 else nil
 end
 
@@ -250,7 +268,7 @@ end
 -- `Get` 은 계약(`Types.ListOps`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
 -- `FirstIndex`/`NextIndex` 로 얻은 위치를 그대로 넣는 자리이고, 거기에 음수
 -- 변환을 끼우면 매 조회에 분기가 붙습니다.
-const function At<T>(self: ArrData<T>, idx: number): T?
+const function At<T>(self: ArrRead<T>, idx: number): T?
 	-- NaN 은 "범위 밖" 이 아니라 인자 오류입니다(구간·k 의 NaN 과 같은 정책).
 	if idx ~= idx then
 		Common.raise("Arr: At index is NaN")
@@ -264,11 +282,11 @@ const function At<T>(self: ArrData<T>, idx: number): T?
 	return self[pos]
 end
 
-const function Len<T>(self: ArrData<T>): number
+const function Len<T>(self: ArrRead<T>): number
 	return self.n
 end
 
-const function Empty<T>(self: ArrData<T>): boolean
+const function Empty<T>(self: ArrRead<T>): boolean
 	return self.n == 0
 end
 
@@ -278,7 +296,7 @@ end
 -- 옵셔널이 되어 산술에 바로 못 씁니다. Luau 자신의 `ipairs` 도 같은 방식입니다.
 -- 메타테이블이 없으니 `__iter` 자리도 없습니다(질문 AB) — 순회는 이 함수로.
 -- (예전 교집합 타입 시절에도 `__iter` 는 타입을 잃었고 이 방식은 살았음, spikes/37.)
-const function iterStep<T>(self: ArrData<T>, idx: number): (number, T)
+const function iterStep<T>(self: ArrRead<T>, idx: number): (number, T)
 	const nextIdx = idx + 1
 	if nextIdx > self.n then
 		return nil :: any, nil :: any
@@ -286,16 +304,16 @@ const function iterStep<T>(self: ArrData<T>, idx: number): (number, T)
 	return nextIdx, self[nextIdx]
 end
 
-const function Iter<T>(self: ArrData<T>): (typeof(iterStep), ArrData<T>, number)
+const function Iter<T>(self: ArrRead<T>): (typeof(iterStep), ArrRead<T>, number)
 	return iterStep, self, 0
 end
 
-const function Unpack<T>(self: ArrData<T>): ...T
+const function Unpack<T>(self: ArrRead<T>): ...T
 	return table.unpack(self :: any, 1, self.n)
 end
 
 -- 구분자로 이어붙입니다. `nil` 구멍은 건너뜁니다.
-const function Join<T>(self: ArrData<T>, delimiter: string?): string
+const function Join<T>(self: ArrRead<T>, delimiter: string?): string
 	const len = self.n
 	const parts = table.create(len)
 	local count = 0
@@ -310,7 +328,7 @@ const function Join<T>(self: ArrData<T>, delimiter: string?): string
 end
 
 -- 길이와 원소가 모두 같은가. 원소 비교는 `==` 입니다.
-const function Equal<T>(self: ArrData<T>, other: ArrData<T>): boolean
+const function Equal<T>(self: ArrRead<T>, other: ArrRead<T>): boolean
 	const len = self.n
 	if len ~= other.n then
 		return false
@@ -326,7 +344,7 @@ end
 -- 조건을 만족하는 원소의 개수.
 -- 세어서 구한 개수(AE, 2026-10-06 — `Len` 은 알고 있는 크기, `Count` 는 셈). 술어가
 -- 없으면 전체 — `Arr` 은 길이를 알고 있어 `n`(구멍도 자리).
-const function Count<T>(self: ArrData<T>, fn: Predicate<T>?): number
+const function Count<T>(self: ArrRead<T>, fn: Predicate<T>?): number
 	if fn == nil then
 		return self.n
 	end
@@ -340,7 +358,7 @@ const function Count<T>(self: ArrData<T>, fn: Predicate<T>?): number
 end
 
 -- 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
-const function Find<T>(self: ArrData<T>, fn: Predicate<T>): (T?, number?)
+const function Find<T>(self: ArrRead<T>, fn: Predicate<T>): (T?, number?)
 	for idx = 1, self.n do
 		const item = self[idx]
 		if fn(item, idx, self :: any) then
@@ -351,7 +369,7 @@ const function Find<T>(self: ArrData<T>, fn: Predicate<T>): (T?, number?)
 end
 
 -- 하나라도 만족하는가. 구간 인자를 받습니다.
-const function Some<T>(self: ArrData<T>, fn: Predicate<T>, start: number?, last: number?): boolean
+const function Some<T>(self: ArrRead<T>, fn: Predicate<T>, start: number?, last: number?): boolean
 	local s, l = resolveRange(self.n, start, last)
 	for idx = s, l do
 		if fn(self[idx], idx, self :: any) then
@@ -362,7 +380,7 @@ const function Some<T>(self: ArrData<T>, fn: Predicate<T>, start: number?, last:
 end
 
 -- 전부 만족하는가. 빈 구간이면 참입니다(공허 참).
-const function Every<T>(self: ArrData<T>, fn: Predicate<T>, start: number?, last: number?): boolean
+const function Every<T>(self: ArrRead<T>, fn: Predicate<T>, start: number?, last: number?): boolean
 	local s, l = resolveRange(self.n, start, last)
 	for idx = s, l do
 		if not fn(self[idx], idx, self :: any) then
@@ -375,7 +393,7 @@ end
 -- 가장 큰 원소. 빈 배열이면 `nil`. `nil` 구멍은 건너뜁니다.
 -- 비교자는 **불리언** `LessThan` 입니다 — 3방향 비교자를 쓰려면
 -- `Common.lessFrom(cmp)` 로 감싸세요(정렬이 1.82배 느려지는 대신).
-const function Max<T>(self: ArrData<T>, less: LessThan<T>?): T?
+const function Max<T>(self: ArrRead<T>, less: LessThan<T>?): T?
 	local best: T? = nil
 	for idx = 1, self.n do
 		const item = self[idx]
@@ -391,7 +409,7 @@ const function Max<T>(self: ArrData<T>, less: LessThan<T>?): T?
 end
 
 -- 가장 작은 원소. 빈 배열이면 `nil`. `nil` 구멍은 건너뜁니다.
-const function Min<T>(self: ArrData<T>, less: LessThan<T>?): T?
+const function Min<T>(self: ArrRead<T>, less: LessThan<T>?): T?
 	local best: T? = nil
 	for idx = 1, self.n do
 		const item = self[idx]
@@ -408,7 +426,7 @@ end
 
 -- 합. **숫자 배열에서만 부를 수 있습니다** — `Arr<string>` 에서 부르면
 -- 타입 에러입니다. `nil` 구멍은 건너뜁니다(핫 루프에서 13% 비용).
-const function Sum(self: ArrData<number>, base: number?): number
+const function Sum(self: ArrRead<number>, base: number?): number
 	local acc = base or 0
 	for idx = 1, self.n do
 		const item = self[idx]
@@ -420,7 +438,7 @@ const function Sum(self: ArrData<number>, base: number?): number
 end
 
 -- 곱. `Sum` 과 같은 규약이고 기본 씨앗은 1 입니다.
-const function Prod(self: ArrData<number>, base: number?): number
+const function Prod(self: ArrRead<number>, base: number?): number
 	local acc = base or 1
 	for idx = 1, self.n do
 		const item = self[idx]
@@ -470,7 +488,7 @@ end
 ]]
 
 -- `Sum` 의 검사 없는 판. **구멍이 없어야 합니다.**
-const function SumUnchecked(self: ArrData<number>, base: number?): number
+const function SumUnchecked(self: ArrRead<number>, base: number?): number
 	local acc = base or 0
 	for idx = 1, self.n do
 		acc += self[idx]
@@ -479,7 +497,7 @@ const function SumUnchecked(self: ArrData<number>, base: number?): number
 end
 
 -- `Prod` 의 검사 없는 판. **구멍이 없어야 합니다.**
-const function ProdUnchecked(self: ArrData<number>, base: number?): number
+const function ProdUnchecked(self: ArrRead<number>, base: number?): number
 	local acc = base or 1
 	for idx = 1, self.n do
 		acc *= self[idx]
@@ -488,7 +506,7 @@ const function ProdUnchecked(self: ArrData<number>, base: number?): number
 end
 
 -- `Max` 의 검사 없는 판. **구멍이 없어야 합니다.** 빈 배열이면 `nil`.
-const function MaxUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): T?
+const function MaxUnchecked<T>(self: ArrRead<T>, less: LessThan<T>?): T?
 	const len = self.n
 	if len == 0 then
 		return nil
@@ -515,7 +533,7 @@ const function MaxUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): T?
 end
 
 -- `Min` 의 검사 없는 판. **구멍이 없어야 합니다.** 빈 배열이면 `nil`.
-const function MinUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): T?
+const function MinUnchecked<T>(self: ArrRead<T>, less: LessThan<T>?): T?
 	const len = self.n
 	if len == 0 then
 		return nil
@@ -580,13 +598,6 @@ end
 -- 타입 토큰(`read __type`)과 마커까지 요구합니다 — 없으면 리터럴이나 `table.pack`
 -- 결과, 콜백의 읽기 전용 뷰가 `CompactInplace` 를 거쳐 `Arr<T>` 로 둔갑했습니다
 -- (M0 2라운드 — 1라운드가 막은 "리터럴이 Arr 자리에" 의 우회로).
-type ArrRead<T> = {
-	read n: number,
-	read __type: Trait.Token<"Arr">,
-	read __list: T,
-	read __listIndex: number,
-	read [number]: T,
-}
 
 -- 구멍을 `value` 로 채운 **새 배열**. 길이는 그대로이고 원본은 안 건드립니다.
 -- `Arr<number?>` 를 받아 **`Arr<number>` 를 돌려줍니다** — 구멍을 타입에
@@ -648,7 +659,7 @@ end
 -- 그대로라 타입 검사가 못 잡습니다(Rust 의 move 와 같은 결, Luau 는 강제 못 함).
 --     local dense = Arr.CompactInplace(holed)   -- 이후로는 dense 만
 --     Arr.PushBack(holed, nil)                  -- ❌ dense(Arr<number>)에 구멍이 생김
-const function CompactInplace<T>(self: ArrRead<T?>): Arr<T>
+const function CompactInplace<T>(self: ArrConsumed<T?>): Arr<T>
 	const raw = self :: any
 	const len = raw.n
 	local count = 0
@@ -807,7 +818,7 @@ end
 --#region ----------- 복제·비우기·채우기 -----------
 
 -- 얕은 복사. 원소 자체는 공유합니다.
-const function Clone<T>(self: ArrData<T>): Arr<T>
+const function Clone<T>(self: ArrRead<T>): Arr<T>
 	const len = self.n
 	const result = newSized(len)
 	table.move(self :: any, 1, len, 1, result :: any)
@@ -839,7 +850,7 @@ end
 
 -- 구간을 잘라낸 **새 배열**. `to` 를 주면 그 배열의 **뒤에 이어붙이고** 그것을
 -- 돌려줍니다(누적용). 뒤집힌 구간은 빈 결과입니다.
-const function Slice<T>(self: ArrData<T>, start: number?, last: number?, to: Arr<T>?): Arr<T>
+const function Slice<T>(self: ArrRead<T>, start: number?, last: number?, to: Arr<T>?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const count = if l >= s then l - s + 1 else 0
 	if to == nil then
@@ -875,7 +886,7 @@ const function SliceInplace<T>(self: ArrData<T>, start: number?, last: number?):
 end
 
 -- 구간을 **지운** 새 배열. 원본은 그대로입니다.
-const function Erase<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
+const function Erase<T>(self: ArrRead<T>, start: number?, last: number?): Arr<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	if l < s then
@@ -918,7 +929,7 @@ end
 -- 돌려주고 제자리 판은 `SpliceInplace` 입니다(자기 자신을 돌려줌). 인자도
 -- 개수가 아니라 **닫힌 구간** `[start, last]` 입니다. (2026-09-30 에
 -- `Replace` 에서 개명 — C++ `replace` 는 값→값 치환이라 오해를 불렀습니다.)
-const function Splice<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
+const function Splice<T>(self: ArrRead<T>, start: number, last: number, with: ArrData<T>): Arr<T>
 	const len = self.n
 	const rs, l = resolveRange(len, start, last)
 	-- 지울 구간이 비면 `with` 는 **삽입 위치**에 들어가므로 `1..n+1` 로 자릅니다.
@@ -981,7 +992,7 @@ const function ReverseInplace<T>(self: ArrData<T>, start: number?, last: number?
 end
 
 -- 구간을 뒤집은 **새 배열**(나머지는 그대로).
-const function Reverse<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
+const function Reverse<T>(self: ArrRead<T>, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const copy = Clone(self)
 	reverseRange(copy, s, l)
@@ -1021,7 +1032,7 @@ const function RotateInplace<T>(self: ArrData<T>, shift: number, start: number?,
 	return self :: any
 end
 
-const function Rotate<T>(self: ArrData<T>, shift: number, start: number?, last: number?): Arr<T>
+const function Rotate<T>(self: ArrRead<T>, shift: number, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const copy = Clone(self)
 	rotateRange(copy, shift, s, l)
@@ -1052,7 +1063,7 @@ const function ShuffleInplace<T>(self: ArrData<T>, start: number?, last: number?
 	return self :: any
 end
 
-const function Shuffle<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
+const function Shuffle<T>(self: ArrRead<T>, start: number?, last: number?, rng: Rng?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const copy = Clone(self)
 	shuffleRange(copy, s, l, rng)
@@ -1067,7 +1078,7 @@ end
 -- 비교자는 **불리언** `LessThan` 입니다 — `table.sort` 가 받는 모양 그대로라
 -- 래퍼가 없습니다. 3방향 비교자가 있으면 `Common.lessFrom(cmp)` 로 감싸세요
 -- (정렬이 1.82배 느려집니다).
-const function sortInto<T>(self: ArrData<T>, buffer: { T }, less: LessThan<T>?): number
+const function sortInto<T>(self: ArrRead<T>, buffer: { T }, less: LessThan<T>?): number
 	local count = 0
 	for idx = 1, self.n do
 		const item = self[idx]
@@ -1084,7 +1095,7 @@ const function sortInto<T>(self: ArrData<T>, buffer: { T }, less: LessThan<T>?):
 	return count
 end
 
-const function Sort<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
+const function Sort<T>(self: ArrRead<T>, less: LessThan<T>?): Arr<T>
 	const len = self.n
 	const buffer = table.create(len)
 	const count = sortInto(self, buffer, less)
@@ -1134,7 +1145,7 @@ const function SortInplaceUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): Ar
 end
 
 -- `Sort` 의 검사 없는 판. 복사한 뒤 제자리 정렬합니다.
-const function SortUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
+const function SortUnchecked<T>(self: ArrRead<T>, less: LessThan<T>?): Arr<T>
 	return SortInplaceUnchecked(Clone(self), less)
 end
 
@@ -1187,7 +1198,7 @@ end
 const INSERTION_CUTOFF = 24
 
 -- 값만 조밀하게 모읍니다. 구멍은 건너뜁니다.
-const function gatherValues<T>(self: ArrData<T>, buffer: { T }): number
+const function gatherValues<T>(self: ArrRead<T>, buffer: { T }): number
 	local count = 0
 	for idx = 1, self.n do
 		const item = self[idx]
@@ -1346,7 +1357,7 @@ end
 
 -- 같은 순위끼리 **입력 순서를 지키는** 정렬의 새 배열. 구멍은 꼬리로.
 -- 비교자를 안 주면 `<` 입니다.
-const function StableSort<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
+const function StableSort<T>(self: ArrRead<T>, less: LessThan<T>?): Arr<T>
 	const len = self.n
 	const buffer = table.create(len)
 	const count = gatherValues(self, buffer)
@@ -1368,7 +1379,7 @@ end
 -- 키를 뽑으면 n log n 번 부릅니다. **안정 정렬**입니다(같은 키는 입력 순서).
 -- `less` 는 키끼리의 비교이고, 안 주면 `<` 입니다. 구멍에는 `key` 를 부르지
 -- 않고 꼬리로 보냅니다.
-const function sortByInto<T, K>(self: ArrData<T>, key: (element: T) -> K, less: LessThan<K>?): ({ T }, number)
+const function sortByInto<T, K>(self: ArrRead<T>, key: (element: T) -> K, less: LessThan<K>?): ({ T }, number)
 	const len = self.n
 	const values = table.create(len)
 	const count = gatherValues(self, values)
@@ -1389,7 +1400,7 @@ const function sortByInto<T, K>(self: ArrData<T>, key: (element: T) -> K, less: 
 	return sorted, count
 end
 
-const function SortBy<T, K>(self: ArrData<T>, key: (element: T) -> K, less: LessThan<K>?): Arr<T>
+const function SortBy<T, K>(self: ArrRead<T>, key: (element: T) -> K, less: LessThan<K>?): Arr<T>
 	const sorted = sortByInto(self, key, less)
 	return wrap(sorted, self.n)
 end
@@ -1404,7 +1415,7 @@ end
 -- 정렬했을 때 `k` 번째에 올 **값**. 배열은 안 건드립니다. 평균 O(n), 최악 O(n log n).
 -- `k` 는 **구멍을 뺀 값들 사이의 순위**이고 음수는 뒤에서(`-1` = 최댓값)입니다.
 -- 범위 밖이면 `nil`. 중앙값은 `NthElement(a, (Len + 1) // 2)` 처럼.
-const function NthElement<T>(self: ArrData<T>, k: number, less: LessThan<T>?): T?
+const function NthElement<T>(self: ArrRead<T>, k: number, less: LessThan<T>?): T?
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
 	const i = toIndex(k)
@@ -1436,7 +1447,7 @@ end
 -- 가장 앞에 올 `k` 개를 **정렬해서** 담은 새 배열(길이 `min(k, 값 개수)`).
 -- 크기 k 힙으로 한 번 훑습니다 — O(n log k). **안정하지 않습니다**(C++
 -- `partial_sort` 와 같음). 가장 큰 k 개는 `less` 를 뒤집어 넘기세요.
-const function PartialSort<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+const function PartialSort<T>(self: ArrRead<T>, k: number, less: LessThan<T>?): Arr<T>
 	const lt: (any, any) -> boolean = less or defaultLess
 	-- 값이 둘 이상일 때만 비교가 일어납니다 — 첫 값을 표본으로.
 	local sample: any = nil
@@ -1581,7 +1592,7 @@ const function MergeSorted<T>(self: ArrData<T>, other: ArrData<T>, less: LessTha
 end
 
 -- 구멍을 건너뛰고 이웃한 값끼리 순서가 맞는가. 같은 값은 순서가 맞는 것으로 봅니다.
-const function IsSorted<T>(self: ArrData<T>, less: LessThan<T>?): boolean
+const function IsSorted<T>(self: ArrRead<T>, less: LessThan<T>?): boolean
 	const lt: (any, any) -> boolean = less or defaultLess
 	local prev: any = nil
 	for idx = 1, self.n do
@@ -1601,7 +1612,7 @@ end
 --#region ----------- 스트림 -----------
 
 -- 각 원소를 변환한 **새 배열**. `to` 를 주면 그 뒤에 이어붙입니다.
-const function Map<T, G>(self: ArrData<T>, fn: Mapper<T, G>, to: Arr<G>?): Arr<G>
+const function Map<T, G>(self: ArrRead<T>, fn: Mapper<T, G>, to: Arr<G>?): Arr<G>
 	const len = self.n
 	if to == nil then
 		const result = newSized(len)
@@ -1640,7 +1651,7 @@ const function MapInplace<T, G>(self: ArrData<T>, fn: Mapper<T, G>): Arr<G>
 end
 
 -- 조건을 만족하는 원소만 모은 **새 배열**. `to` 를 주면 그 뒤에 이어붙입니다.
-const function Filter<T>(self: ArrData<T>, fn: Predicate<T>, to: Arr<T>?): Arr<T>
+const function Filter<T>(self: ArrRead<T>, fn: Predicate<T>, to: Arr<T>?): Arr<T>
 	const len = self.n
 	const out: Arr<T> = to or newSized(0)
 	local outLen = out.n
@@ -1689,7 +1700,7 @@ end
 -- ⚠️ 안쪽 배열의 **구멍은 그대로 옮겨집니다.** 결과 타입은 호출자가 알려주는
 -- 것이라 `Flat<<number>>` 라고 하면 구멍이 든 `Arr<number>` 가 나올 수 있습니다
 -- — 안쪽에 구멍이 있을 수 있으면 `Flat<<number?>>` 로 받으세요.
-const function Flat<T>(self: ArrData<any>, start: number?, last: number?, to: Arr<T>?): Arr<T>
+const function Flat<T>(self: ArrRead<any>, start: number?, last: number?, to: Arr<T>?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
 	const out: Arr<T> = to or newSized(0)
 	local outLen = out.n
@@ -1770,7 +1781,7 @@ end
 
 -- 각 원소를 여러 값으로 펼쳐 이어붙인 **새 배열**. 콜백은 값 여러 개를
 -- 돌려줄 수 있습니다.
-const function Flatmap<T, G>(self: ArrData<T>, fn: Spreader<T, G>, to: Arr<G>?): Arr<G>
+const function Flatmap<T, G>(self: ArrRead<T>, fn: Spreader<T, G>, to: Arr<G>?): Arr<G>
 	const out: Arr<G> = to or newSized(0)
 	local outLen = out.n
 	for idx = 1, self.n do
@@ -1856,7 +1867,7 @@ end
 -- `FoldUntil` 조기 중단. **초기값이 앞에 옵니다** — 후행 클로저가 여러 줄일 때
 -- 초기값이 뒤에 붕 뜨지 않게 하려는 것이고 Rust·Haskell·Java 도 그렇습니다.
 
-const function Fold<T, U>(self: ArrData<T>, init: U, fn: Folder<T, U>): U
+const function Fold<T, U>(self: ArrRead<T>, init: U, fn: Folder<T, U>): U
 	local acc = init
 	for idx = 1, self.n do
 		acc = fn(acc, self[idx], idx, self :: any)
@@ -1864,7 +1875,7 @@ const function Fold<T, U>(self: ArrData<T>, init: U, fn: Folder<T, U>): U
 	return acc
 end
 
-const function FoldRight<T, U>(self: ArrData<T>, init: U, fn: Folder<T, U>): U
+const function FoldRight<T, U>(self: ArrRead<T>, init: U, fn: Folder<T, U>): U
 	local acc = init
 	for idx = self.n, 1, -1 do
 		acc = fn(acc, self[idx], idx, self :: any)
@@ -1877,7 +1888,7 @@ end
 -- ⚠️ `Arr.Reduce(arr, math.max)` 는 **안 됩니다** — 콜백은 `(acc, v, index, arr)` 를
 -- 받으므로 `math.max` 가 위치와 배열까지 받아 틀린 값이나 에러가 납니다(타입
 -- 검사도 거부합니다). 예전 주석이 권하던 모양이라 적어둡니다(2026-09-30 리뷰).
-const function Reduce<T>(self: ArrData<T>, fn: (a: T, b: T, index: number, arr: ArrView<unknown>) -> T): T?
+const function Reduce<T>(self: ArrRead<T>, fn: (a: T, b: T, index: number, arr: ArrView<unknown>) -> T): T?
 	const len = self.n
 	if len == 0 then
 		return nil
@@ -1895,7 +1906,7 @@ end
 --
 -- 돌려주는 둘째 값은 **멈춘 위치**입니다. 끝까지 갔으면 `nil` 이라 완주
 -- 여부를 알 수 있습니다.
-const function FoldUntil<T, U>(self: ArrData<T>, init: U, fn: UntilFolder<T, U>): (U, number?)
+const function FoldUntil<T, U>(self: ArrRead<T>, init: U, fn: UntilFolder<T, U>): (U, number?)
 	local acc = init
 	for idx = 1, self.n do
 		const nextAcc, done = fn(acc, self[idx], idx, self :: any)
