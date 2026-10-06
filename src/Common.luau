@@ -60,6 +60,11 @@ function exports.listLength(list: any): number
 		end
 	end
 	if validN then
+		-- 길이 정책(`[0, 2^26]`, `table.create` 한계) — 너무 큰 `n` 은 입양되거나 위치 없는
+		-- `table overflow` 였습니다(AC 리뷰). 숫자 인자 정책과 같은 메시지.
+		if n > 2 ^ 26 then
+			exports.raise(`stl: list length must be in [0, {2 ^ 26}] (got {n})`)
+		end
 		return n + 0 -- `-0 + 0 = +0` — 결과 배열의 `n` 이 "-0" 으로 찍히지 않게
 	end
 	return #list

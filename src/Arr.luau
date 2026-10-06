@@ -105,10 +105,17 @@ export type ArrRead<T> = {
 	read [number]: T,
 }
 
--- **입력을 소비하는** 제자리 변환의 첫 인자(질문 Y·AC). 모양은 `ArrRead` 와 같지만(`?` 를
--- 떼려고 공변 인덱서를 빌림) 원본을 고치므로 "읽기 전용" 이라는 이름을 붙이지 않습니다
--- (Gemini 의 AC 지적 — `CompactInplace`).
-type ArrConsumed<T> = ArrRead<T>
+-- **입력을 소비하는** 제자리 변환의 첫 인자(질문 Y·AC). 원소는 공변 인덱서를 빌리지만(`?` 를
+-- 떼려고) **`n` 은 읽기·쓰기**입니다 — `ArrRead` 와 같은 타입으로 두었더니 읽기 전용으로 빌린
+-- 참조(`ArrRead<Base>`)가 `CompactInplace` 를 거쳐 쓰기 가능한 `Arr<Base>` 를 얻어, 호출자의
+-- `Arr<Derived>` 에 `Base` 를 써 넣었습니다(진단 0건, AC 리뷰). 이제 `ArrRead` 는 못 들어옵니다.
+type ArrConsumed<T> = {
+	n: number,
+	read __type: Trait.Token<"Arr">,
+	read __list: T,
+	read __listIndex: number,
+	read [number]: T,
+}
 
 -- 콜백이 셋째 인자로 받는 뷰 — **읽기 전용**입니다. 콜백 안에서 배열을 바꾸면
 -- 순회가 망가지니 타입이 막습니다. 원소 타입은 `unknown` 으로 씁니다(아래).

@@ -560,10 +560,12 @@ class RFC(`syntax-classes`)는 동기가 "`setmetatable` 타입 추론이 어렵
 > 지점은 맞아보여."* — 읽기만 하면 `ArrRead<T>`, 쓰면 `ArrData<T>`. `CompactInplace` 는 같은 모양의
 > 다른 이름(`ArrConsumed`)으로. M3 전에 적용.
 >
-> **적용(2026-10-06)**: 읽기 함수 47개 + 내부 헬퍼 넷을 `ArrRead`. 하나 빗나감 — `Concat`·
+> **적용(2026-10-06)**: 읽기 함수 46개 + 내부 헬퍼 넷을 `ArrRead`. 하나 빗나감 — `Concat`·
 > `MergeSorted`(배열 둘 이상을 같은 `T` 로 합침)까지 바꾸니 솔버가 `T = number & string` 을 골라
 > 결과가 건전하지 않았습니다(`Arr.Concat(nums, strs)[1]` 이 `number` 에도 `string` 에도 들어감,
-> 진단 0건). 이 둘은 `ArrData` 로 되돌렸습니다. `spikes/56`(POS 넷 + NEG 넷).
+> 진단 0건). 이 둘은 `ArrData` 로 되돌렸습니다. 그리고 `ArrConsumed` 를 `ArrRead` 와 같은 타입으로
+> 두었더니 읽기 전용으로 빌린 참조가 `CompactInplace` 로 쓰기 가능한 배열을 얻는 구멍(리뷰) — `n` 을
+> 읽기·쓰기로 갈라 막음. `spikes/56`(POS 일곱 + NEG 다섯).
 
 
 지금 `Arr` 함수의 첫 인자는 대부분 `ArrData<T>`(읽기·쓰기 인덱서 → **T 에 불변**)

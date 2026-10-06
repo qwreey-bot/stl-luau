@@ -8,7 +8,7 @@
 	`ArrData` 로 둡니다 — `ArrRead` 둘에서 `T` 를 풀면 솔버가 `number & string` 을 골라 결과 원소를
 	`number` 에도 `string` 에도 넣을 수 있는 건전하지 않은 타입이 됐습니다(진단 0건, 실측).
 
-	기대 진단: 5건 (NEG 4 + CANARY 1)
+	기대 진단: 6건 (NEG 5 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
@@ -31,6 +31,15 @@ local found: Base? = Arr.Find<<Base>>(people, function(p)
 end)
 local sliced: Arr<Base> = Arr.Slice<<Base>>(people, 1, 1)
 local counted: number = Arr.Count<<number?>>(nums)
+local kept: Arr<Base> = Arr.Filter<<Base>>(people, function(p)
+	return p.name ~= ""
+end)
+local sortedBase: Arr<Base> = Arr.Sort<<Base>>(people, function(a, b)
+	return a.name < b.name
+end)
+local total: number = Arr.Fold<<Base, number>>(people, 0, function(acc, _p)
+	return acc + 1
+end)
 
 --[[ NEG — 쓰는 함수는 불변으로 남음 ]]
 local holed = Arr.Of<<number?>>(1, nil)
@@ -40,7 +49,11 @@ local neg3: Arr<number> = Arr.Map<<number?, number?>>(nums, function(v) -- 결�
 	return v
 end)
 local neg4 = Arr.Concat(nums, Arr.Of("x")) -- 합치는 함수는 불변(위 ⚠️) — 섞이면 에러
+-- 읽기 전용 참조로는 소비형 제자리 변환을 못 함 — 넓혀 빌린 쪽이 원본에 넓은 원소를 쓰던 구멍(AC 리뷰)
+local function borrow(list: stl.ArrRead<Base>)
+	return Arr.CompactInplace(list)
+end
 
 local canary: string = 42
 
-return { maybe, names, found, sliced, counted, holed, neg1, neg2, neg3, neg4, canary }
+return { maybe, names, found, sliced, counted, kept, sortedBase, total, holed, neg1, neg2, neg3, neg4, borrow, canary }

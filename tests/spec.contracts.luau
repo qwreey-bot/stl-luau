@@ -237,6 +237,7 @@ do
 	const mapResults: { [string]: any } = {
 		New = hm,
 		FromTable = HashMap.FromTable<<string, number>>({ x = 1 }),
+		FromTableArr = HashMap.FromTable(Arr.Of(10, 20) :: any), -- Arr 갈래(9라운드 — 이 반환 경로만 비어 있었음)
 		FromRecords = HashMap.FromRecords({ { key = "x", value = 1 } }),
 		Adopt = HashMap.Adopt({ x = 1 }, 1),
 		Clone = HashMap.Clone(hm),
@@ -387,6 +388,7 @@ do
 	assert(stl.Trait.ImplOf(ShowTrait, stl.HashMap.New()) == nil, "등록 안 한 종류는 nil")
 	for _, v in { nil, 1, "x", {} } :: { any } do
 		assert(stl.Trait.ImplOf(ShowTrait, v) == nil, `{typeof(v)} 는 안전하게 nil`)
+		assert(stl.Trait.Implements(ShowTrait, v) == false, `{typeof(v)} 는 안전하게 false(Implements)`)
 	end
 	-- Count: 술어 없으면 전체, 있으면 참인 것만(AE) — Arr 와 Algorithm 이 같은 뜻
 	const counted = stl.Arr.Of(1, 2, 3, 4)
@@ -482,6 +484,12 @@ do
 			name = "트레이트가 아님(ImplOf)",
 			run = function()
 				T.ImplOf(nil :: any, stl.Arr.Of(1))
+			end,
+		},
+		{
+			name = "트레이트가 아님(Implements)",
+			run = function()
+				T.Implements(nil :: any, stl.Arr.Of(1))
 			end,
 		},
 		{
@@ -617,6 +625,26 @@ do
 		assert(stl.TreeSet.Len(stl.TreeSet.FromList(empty, Common.compareNumber)) == 0, "빈 Arr → TreeSet")
 		assert(stl.Arr.CloneFromTable(empty).n == 0, "빈 Arr → CloneFromTable")
 		assert(stl.Fut.Status(stl.Fut.All(empty)) == "Resolved", "빈 Arr → Fut.All")
+	end
+	-- (AC 리뷰) 길이 정책 [0, 2^26] — 정수지만 너무 큰 n 은 어떤 진입점도 받지 않음(예전엔 FromTable 이
+	-- n = 2^27 인 Arr 를 입양하고 다른 진입점은 위치 없는 table overflow 였음)
+	const huge = { n = 2 ^ 27, 1 }
+	for _, run in
+		{
+			function()
+				stl.Arr.FromTable(huge :: any)
+			end,
+			function()
+				stl.Arr.CloneFromTable(huge :: any)
+			end,
+			function()
+				stl.HashSet.FromList(huge :: any)
+			end,
+		} :: { () -> () }
+	do
+		const msg = errOf(run)
+		assert(string.find(msg, "2^26", 1, true) or string.find(msg, "67108864", 1, true), `너무 큰 n: {msg}`)
+		assert(string.find(msg, "spec.contracts", 1, true) ~= nil, `너무 큰 n 의 줄: {msg}`)
 	end
 	-- (5라운드) "깨진 n" 은 nil 만이 아님 — 음수·소수·무한·NaN·문자열 전부(조건 하나만 빠져도 `#` 로
 	-- 조용히 읽었음)
