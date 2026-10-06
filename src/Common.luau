@@ -41,21 +41,23 @@ local exports = {}
 -- 크기가 4) 구멍 뒤를 잃었습니다(`CloneFromTable`). `Fut.All` 이 먼저 쓰던 규칙입니다.
 function exports.listLength(list: any): number
 	const n = rawget(list, "n")
-	if type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge then
-		return n + 0 -- `-0 + 0 = +0` — 결과 배열의 `n` 이 "-0" 으로 찍히지 않게
-	end
-	-- `n` 없는 **다른 종류의 컨테이너**(타입 토큰이 있음)는 리스트가 아닙니다 — `#` 가 0 이라
-	-- 조용히 빈 결과가 됐습니다(2026-10-06 Gemini 트레이트 검토 — `HashSet.FromList(map)`).
-	-- (`Arr` 은 늘 `n` 이 있어 위에서 끝남.)
-	-- 메시지는 내부 모듈 이름(Common) 없이 라이브러리 이름으로 — 사용자는 `HashSet.FromList` 등을
-	-- 불렀습니다(리뷰 2라운드).
+	-- **다른 종류의 컨테이너**(타입 토큰이 있고 이름이 Arr 가 아님)는 `n` 이 있든 없든 리스트가
+	-- 아닙니다 — `n` 이 없으면 `#` 가 0 이라 조용히 빈 결과(2026-10-06 Gemini 트레이트 검토 —
+	-- `HashSet.FromList(map)`), `n` 이 개수인 링 버퍼면 1..n 으로 조용히 잘못 읽었습니다(리뷰 4라운드).
+	-- 이름 "Arr" 는 다른 사본의 Arr 도 받으려고(Common 은 Trait 를 모름 — 순환). 메시지는 내부 모듈
+	-- 이름(Common) 없이 라이브러리 이름으로(리뷰 2라운드).
 	const token = rawget(list, "__type")
 	if token ~= nil then
 		const name = if type(token) == "table" then rawget(token, "name") else nil
-		if name == "Arr" then
+		if name ~= "Arr" then
+			exports.raise(`stl: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)}`)
+		end
+		if not (type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge) then
 			exports.raise(`stl: an Arr with an invalid n ({tostring(n)}) — its n must be a non-negative integer`)
 		end
-		exports.raise(`stl: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)}`)
+	end
+	if type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge then
+		return n + 0 -- `-0 + 0 = +0` — 결과 배열의 `n` 이 "-0" 으로 찍히지 않게
 	end
 	return #list
 end

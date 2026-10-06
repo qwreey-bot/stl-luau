@@ -610,6 +610,51 @@ do
 		string.find(foreignArrMsg, "another copy", 1, true) ~= nil,
 		`FromTable 의 다른 사본 Arr: {foreignArrMsg}`
 	)
+	-- (4라운드) FromTable 의 메시지 갈래 둘 더: 같은 사본의 다른 종류 / 예약 필드. FromList 쪽 이름.
+	const sameKindMsg = errOf(function()
+		stl.HashMap.FromTable(stl.HashSet.Of(1) :: any)
+	end)
+	assert(
+		string.find(sameKindMsg, "a HashSet container", 1, true)
+			and not string.find(sameKindMsg, "another copy", 1, true),
+		`FromTable 같은 사본 다른 종류: {sameKindMsg}`
+	)
+	const reservedMsg = errOf(function()
+		stl.HashMap.FromTable({ 1, __type = "x" } :: any)
+	end)
+	assert(string.find(reservedMsg, "reserved __type field (x)", 1, true) ~= nil, `예약 필드: {reservedMsg}`)
+	const listReservedMsg = errOf(function()
+		stl.HashSet.FromList({ 1, __type = "x" } :: any)
+	end)
+	assert(string.find(listReservedMsg, "got x", 1, true) ~= nil, `FromList 예약 필드: {listReservedMsg}`)
+	-- (4라운드) 같은 사본의 사용자 컨테이너가 `n` 을 가져도 리스트가 아님 — 링 버퍼처럼 `n` 이 개수면
+	-- 1..n 으로 조용히 잘못 읽었음. 이름이 Arr 가 아니면 `n` 과 상관없이 거절.
+	const Ring = T.NewType("Ring")
+	const ring = T.Stamp({ n = 3, head = 3, [1] = "c", [3] = "a", [4] = "b" }, Ring)
+	const ringRuns: { () -> () } = {
+		function()
+			stl.HashSet.FromList(ring :: any)
+		end,
+		function()
+			stl.Arr.CloneFromTable(ring :: any)
+		end,
+	}
+	for _, run in ringRuns do
+		const msg = errOf(run)
+		assert(
+			string.find(msg, "Ring", 1, true) and string.find(msg, "spec.contracts", 1, true),
+			`n 있는 사용자 컨테이너: {msg}`
+		)
+	end
+	-- (4라운드) Arr.FromTable 은 이 사본의 Arr 말고도 `__type` 이 있으면 거절(입력의 토큰을 덮어써
+	-- 다른 사본에서 사라지게 하지 않음)
+	const containerish: { any } = { foreignArr, ring, stl.HashSet.Of(1) }
+	for _, v in containerish do
+		const msg = errOf(function()
+			stl.Arr.FromTable(v)
+		end)
+		assert(string.find(msg, "already a container", 1, true) and string.find(msg, "spec.contracts", 1, true), msg)
+	end
 	-- Stamp 경계(2라운드 — 테이블 아님·얼린 테이블은 라이브러리 줄, 토큰 검사엔 테스트 없음)와
 	-- Trait.New 의 이름 검사
 	for _, run in
@@ -637,6 +682,11 @@ do
 	-- 내장 트레이트에 등록한 사용자 토큰도 버리면 수거됨(2라운드 — impls 가 강한 키라 남았음).
 	-- 그리고 **쥐고 있으면 남음**(3라운드 — `__mode = "kv"` 로 잘못 쓰면 인라인 구현이 증발했음).
 	-- 개수는 루프 전 기준선과 비교 — 다른 스펙·M5 의 Deque 가 List 를 구현해도 거짓 실패 없게.
+	-- 기준선 전에 수거 — 앞에서 버린 등록이 남아 있으면 기준선이 부풀어 거짓 실패했음(4라운드).
+	-- `collectgarbage("collect")` 는 Roblox 타입 정의에 없어 분석기가 모름 — 실행기(luau)에는 있음.
+	const fullGc = (_G :: any).collectgarbage
+	fullGc("collect")
+	fullGc("collect")
 	local before = 0
 	for _ in T.List.impls do
 		before += 1
@@ -657,8 +707,6 @@ do
 		T.Impl(T.List, tok, stl.Arr)
 		registered += 1
 	end
-	-- `collectgarbage("collect")` 는 Roblox 타입 정의에 없어 분석기가 모름 — 실행기(luau)에는 있음
-	const fullGc = (_G :: any).collectgarbage
 	fullGc("collect")
 	fullGc("collect")
 	local remaining = 0
@@ -667,7 +715,9 @@ do
 	end
 	assert(
 		remaining == before + 1,
-		`버린 사용자 토큰이 남음: List 구현 {remaining}개(기준 {before} + 쥔 것 1)`
+		if remaining > before + 1
+			then `버린 사용자 토큰이 남음: List 구현 {remaining}개(기준 {before} + 쥔 것 1)`
+			else `쥔 등록까지 사라짐: List 구현 {remaining}개(기준 {before} + 쥔 것 1)`
 	)
 	const kept = T.List.impls[keptToken] :: any
 	assert(kept ~= nil and kept.Get == stl.Arr.Get, "쥔 토큰의 인라인 구현은 남음")

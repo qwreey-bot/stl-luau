@@ -419,9 +419,7 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 end
 
 const function isTreeMap(value: any): boolean
-	-- 경계(M0 4라운드): 태그 + **최상위 필드 전부의 타입**까지 봅니다. 그보다 깊은
-	-- 불변식(크기가 맞는지, 정렬돼 있는지)까지 갖춘 위조는 계약 밖입니다 — 태그
-	-- 키는 라이브러리 예약어입니다(conventions "모듈 패턴").
+	-- 타입 토큰 하나만 봅니다(2026-10-06 — 위조는 막지 않음, `Trait.luau` 머리).
 	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
 
