@@ -273,6 +273,16 @@ do
 			end)
 		end)
 	)
+	-- KeyBy 는 자기 루프라 검사 호출이 따로(2라운드 — 빠져도 `not pcall` 만으로는 통과)
+	atUserLine(
+		"Arr.KeyBy nil 키",
+		expectLine("Arr.KeyBy nil 키", "KeyBy key is nil", function()
+			where = debug.info(1, "l") + 1
+			Arr.KeyBy(Arr.Of(10, 20), function(_v: number): any
+				return nil
+			end)
+		end)
+	)
 	atUserLine(
 		"TreeMap.Retain 중 변경",
 		expectLine("TreeMap.Retain 중 변경", "TreeMap: map modified during Retain", function()

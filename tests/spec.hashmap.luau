@@ -223,6 +223,13 @@ do
 	end)
 	assert(v == 2 and HashMap.Get(memo, "k") == 2, "make 의 반환이 이김")
 	size(memo, 1, "make 안의 같은 키")
+	-- make 가 같은 키를 넣고 nil 을 돌려주면 맵에 있는 값(2라운드 — 이 경우의 단언이 없었음)
+	const memoNil = HashMap.New<<string, number>>()
+	assert(HashMap.GetOrInsertWith(memoNil, "k", function(key: string): number
+		HashMap.Set(memoNil, key, 5)
+		return nil :: any
+	end) == 5, "make 가 넣고 nil")
+	size(memoNil, 1, "make 가 넣고 nil 의 크기")
 	-- 재귀 메모이즈(피보나치) — 다른 키를 넣는 make
 	const fibMemo = HashMap.New<<number, number>>()
 	local function fib(n: number): number
