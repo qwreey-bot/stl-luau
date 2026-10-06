@@ -395,6 +395,13 @@ do
 	end
 	assert(stl.Arr.Count(counted) == 4 and stl.Algorithm.Count(counted) == 4, "Count 전체")
 	assert(stl.Arr.Count(counted, isEven) == 2 and stl.Algorithm.Count(counted, isEven) == 2, "Count 술어")
+	-- 술어 없는 Count 는 **구멍도 자리로** 셉니다(7라운드 — "nil 아닌 것만" 으로 잘못 세도 통과했음)
+	for _, holed in { stl.Arr.Of<<number?>>(1, nil, 3), stl.Arr.Sized<<number?>>(3, nil) } :: { any } do
+		assert(
+			stl.Arr.Count(holed) == holed.n and stl.Algorithm.Count(holed) == holed.n,
+			`구멍 든 Count: n={holed.n}`
+		)
+	end
 	-- ⭐ 내장 종류 × 내장 트레이트 전수(리뷰 1라운드 — Set 등록을 빼도 아무것도 안 잡혔음)
 	const T = stl.Trait
 	const samples: { { name: string, value: any, list: any, map: any, set: any } } = {
