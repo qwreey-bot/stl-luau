@@ -23,7 +23,8 @@
 	## 타입 쪽 — 팬텀 마커
 
 	런타임 조회는 토큰으로 하지만 정적 타입은 그걸 따라가지 못하니, 트레이트마다
-	**타입에만 있는 필드**를 둡니다(`Types.ListMarker<E>` = `{ read __list: E }`). 런타임엔
+	**타입에만 있는 필드**를 둡니다(`Types.ListMarker<E, I>` = `{ read __type: Token<any>, read __list: E,
+	read __listIndex: I }` — 마커는 토큰도 요구합니다). 런타임엔
 	없습니다(quad 의 `StateMarker` 와 같은 결). 덕분에 `Algorithm.Keys(m)` 가 타입 인자
 	없이 `{ K }` 를 추론합니다 — 예전 `Algorithm.Keys<<HashMap<…>, K, V>>(HashMap, m)`.
 ]]

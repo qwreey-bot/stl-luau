@@ -588,6 +588,17 @@ do
 	end)
 	assert(string.find(brokenMsg, "invalid n", 1, true) ~= nil, `깨진 n 메시지: {brokenMsg}`)
 	assert(string.find(brokenMsg, "Common:", 1, true) == nil, `내부 모듈 이름: {brokenMsg}`)
+	-- (6라운드) 유효한 경계값 — 빈 Arr(`n = 0`, `-0`)는 모든 리스트 진입점이 받아야 함(`>= 0` 을
+	-- `> 0` 으로 바꿔도 통과했음)
+	const emptyArr = stl.Arr.Of<<number>>()
+	const negZero = stl.Arr.Of<<number>>() :: any
+	negZero.n = -0
+	for _, empty in { emptyArr, negZero } :: { any } do
+		assert(stl.HashSet.Len(stl.HashSet.FromList(empty)) == 0, "빈 Arr → HashSet")
+		assert(stl.TreeSet.Len(stl.TreeSet.FromList(empty, Common.compareNumber)) == 0, "빈 Arr → TreeSet")
+		assert(stl.Arr.CloneFromTable(empty).n == 0, "빈 Arr → CloneFromTable")
+		assert(stl.Fut.Status(stl.Fut.All(empty)) == "Resolved", "빈 Arr → Fut.All")
+	end
 	-- (5라운드) "깨진 n" 은 nil 만이 아님 — 음수·소수·무한·NaN·문자열 전부(조건 하나만 빠져도 `#` 로
 	-- 조용히 읽었음)
 	for _, badN in { -1, 1.5, math.huge, 0 / 0, "2" } :: { any } do
