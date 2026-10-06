@@ -490,6 +490,12 @@ spikes/50 은 11건 그대로(V 의 구멍은 계속 닫힘), 위 누수 전부 
 - 내신다면 초안에 더할 것: Related `#2168`/`#2894`, "그쪽 증상(맨 람다)과 별개 — 주석
   상한 소실" 한 줄, 버전 행렬(analyze 0.734 / luau-lsp 1.69.0).
 
+**2026-10-06 보강(AC 리뷰)** — 같은 영역의 **세 번째 증상**: 타입 인자도 주석도 없는 맨 람다가
+파라미터를 제약하지 않으면(`function(p) return p.name end`) 진단 0건으로 결과가 **자유 타입**이
+되어 아무 타입에나 들어갑니다. 라이브러리 없이 재현(`local function Map2<T, G>(xs: { T }, f: (T) -> G):
+{ G }` + `Map2({ 1, 2 }, function(v) return v end)` 를 `{ string }` 에), 옛 솔버는 잡음. `spikes/57`.
+업스트림에 낸다면 이쪽이 실해가 가장 큽니다(흔한 코드 모양에서 타입이 거짓말).
+
 ---
 
 ## ❓ 2026-10-01 — 호출 모양을 하나로
@@ -565,7 +571,7 @@ class RFC(`syntax-classes`)는 동기가 "`setmetatable` 타입 추론이 어렵
 > 결과가 건전하지 않았습니다(`Arr.Concat(nums, strs)[1]` 이 `number` 에도 `string` 에도 들어감,
 > 진단 0건). 이 둘은 `ArrData` 로 되돌렸습니다. 그리고 `ArrConsumed` 를 `ArrRead` 와 같은 타입으로
 > 두었더니 읽기 전용으로 빌린 참조가 `CompactInplace` 로 쓰기 가능한 배열을 얻는 구멍(리뷰) — `n` 을
-> 읽기·쓰기로 갈라 막음. `spikes/56`(POS 일곱 + NEG 다섯).
+> 읽기·쓰기로 갈라 막음. `spikes/56`(POS 여덟 + NEG 아홉).
 
 
 지금 `Arr` 함수의 첫 인자는 대부분 `ArrData<T>`(읽기·쓰기 인덱서 → **T 에 불변**)

@@ -8,7 +8,7 @@
 	`ArrData` 로 둡니다 — `ArrRead` 둘에서 `T` 를 풀면 솔버가 `number & string` 을 골라 결과 원소를
 	`number` 에도 `string` 에도 넣을 수 있는 건전하지 않은 타입이 됐습니다(진단 0건, 실측).
 
-	기대 진단: 6건 (NEG 5 + CANARY 1)
+	기대 진단: 10건 (NEG 9 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
@@ -53,7 +53,43 @@ local neg4 = Arr.Concat(nums, Arr.Of("x")) -- 합치는 함수는 불변(위 ⚠
 local function borrow(list: stl.ArrRead<Base>)
 	return Arr.CompactInplace(list)
 end
+-- 같은 종류의 다른 소비형 셋도(AC 2라운드 — MapInplace 를 ArrRead 로 바꿔도 아무것도 안 잡았음)
+local function borrowMap(list: stl.ArrRead<number>)
+	return Arr.MapInplace<<number, string>>(list, function(v)
+		return tostring(v)
+	end)
+end
+local function borrowFlat(list: stl.ArrRead<Arr<number>>)
+	return Arr.FlatInplace<<number>>(list)
+end
+local function borrowFlatmap(list: stl.ArrRead<number>)
+	return Arr.FlatmapInplace<<number, string>>(list, function(v)
+		return tostring(v)
+	end)
+end
+-- 읽기 함수도 토큰·마커를 요구(리터럴·table.pack 은 Arr 이 아님 — 2라운드 참고)
+local negLiteral = Arr.Clone({ n = 2, 10, 20 })
 
 local canary: string = 42
 
-return { maybe, names, found, sliced, counted, kept, sortedBase, total, holed, neg1, neg2, neg3, neg4, borrow, canary }
+return {
+	maybe,
+	names,
+	found,
+	sliced,
+	counted,
+	kept,
+	sortedBase,
+	total,
+	holed,
+	neg1,
+	neg2,
+	neg3,
+	neg4,
+	borrow,
+	borrowMap,
+	borrowFlat,
+	borrowFlatmap,
+	negLiteral,
+	canary,
+}

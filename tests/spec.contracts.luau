@@ -646,6 +646,12 @@ do
 		assert(string.find(msg, "2^26", 1, true) or string.find(msg, "67108864", 1, true), `너무 큰 n: {msg}`)
 		assert(string.find(msg, "spec.contracts", 1, true) ~= nil, `너무 큰 n 의 줄: {msg}`)
 	end
+	-- 길이 경계: 2^26 은 받고(할당 없이 입양), 2^26 + 1 은 거절(AC 2라운드 — `>` 를 `>=` 로 바꿔도 통과했음)
+	assert(stl.Arr.FromTable({ n = 2 ^ 26 } :: any).n == 2 ^ 26, "길이 2^26 은 받음")
+	const overCap = errOf(function()
+		stl.Arr.FromTable({ n = 2 ^ 26 + 1 } :: any)
+	end)
+	assert(string.find(overCap, "list length must be in", 1, true) ~= nil, `2^26 + 1: {overCap}`)
 	-- (5라운드) "깨진 n" 은 nil 만이 아님 — 음수·소수·무한·NaN·문자열 전부(조건 하나만 빠져도 `#` 로
 	-- 조용히 읽었음)
 	for _, badN in { -1, 1.5, math.huge, 0 / 0, "2" } :: { any } do
