@@ -63,7 +63,11 @@ do
 	assert(big.cap == 100 and Deque.Len(big) == 0, "capacity")
 	assert(Deque.New<<number>>(0).cap == 4 and Deque.New<<number>>(2.9).cap == 4, "최소 4")
 	assert(not pcall(Deque.New, -1) and not pcall(Deque.New, 0 / 0) and not pcall(Deque.New, 2 ^ 27), "capacity 정책")
-	assert(not pcall(Deque.New, 2 ^ 26 + 1) and Deque.New<<number>>(-0.5).cap == 4, "capacity 경계(소수는 0 쪽)")
+	-- 우리 메시지까지 봄 — `table.create(2^26 + 1)` 도 "table overflow" 로 터져 pcall 만으로는 경계를
+	-- 못 지켰음(2라운드)
+	const okBig, errBig = pcall(Deque.New, 2 ^ 26 + 1)
+	assert(not okBig and string.find(tostring(errBig), "Deque: capacity must be in", 1, true), tostring(errBig))
+	assert(Deque.New<<number>>(-0.5).cap == 4, "capacity 경계(소수는 0 쪽)")
 	-- 빈 입력에서 만든 것도 최소 4칸 — 0 칸이면 두 배로 늘릴 수 없음(1라운드: 바닥을 지워도 값은
 	-- 맞아 테스트가 통과했지만 cap 0·head -1 로 불변식이 깨졌음)
 	for _, empty in { Deque.Of(), Deque.FromList({}), Deque.Clone(Deque.New<<number>>()) } :: { Deque<number> } do
