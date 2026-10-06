@@ -395,6 +395,18 @@ do
 	end
 	assert(stl.Arr.Count(counted) == 4 and stl.Algorithm.Count(counted) == 4, "Count 전체")
 	assert(stl.Arr.Count(counted, isEven) == 2 and stl.Algorithm.Count(counted, isEven) == 2, "Count 술어")
+	-- (8라운드) 값과 위치가 다르고 참·거짓이 반반이 아닌 데이터 — 조건을 뒤집거나 위치를 넘기는
+	-- 실수가 위 데이터로는 같은 답이었음
+	const tens = stl.Arr.Of(10, 20, 30)
+	const over15 = function(v: number): boolean
+		return v > 15
+	end
+	assert(stl.Algorithm.Count(tens, over15) == 2 and stl.Arr.Count(tens, over15) == 2, "Count 술어(값 ≠ 위치)")
+	-- IndexOf 는 **처음** 위치 — 중복과 구멍(8라운드: 마지막 위치를 돌려줘도 통과했음)
+	assert(stl.Algorithm.IndexOf(stl.Arr.Of(10, 20, 20), 20) == 2, "IndexOf 중복은 처음")
+	assert(stl.Algorithm.IndexOf(stl.Arr.Of<<number?>>(10, nil, 30, nil), nil) == 2, "IndexOf 첫 구멍")
+	-- Fut.All 에 Fut 이 아닌 원소 → 던지지 않고 Rejected(8라운드 참고: 라이브러리 줄에서 던질 수 있었음)
+	assert(stl.Fut.Status(stl.Fut.All({ stl.Fut.Resolved(1), 2 :: any })) == "Rejected", "All 의 Fut 아닌 원소")
 	-- 술어 없는 Count 는 **구멍도 자리로** 셉니다(7라운드 — "nil 아닌 것만" 으로 잘못 세도 통과했음)
 	for _, holed in { stl.Arr.Of<<number?>>(1, nil, 3), stl.Arr.Sized<<number?>>(3, nil) } :: { any } do
 		assert(

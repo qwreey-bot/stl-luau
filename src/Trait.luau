@@ -114,7 +114,10 @@ const function ImplOf<I>(trait: Trait<I>, value: any): I?
 end
 
 const function Implements<I>(trait: Trait<I>, value: any): boolean
-	return ImplOf(trait, value) ~= nil
+	if not traits[trait] then
+		Common.raise(`Trait: Implements needs a trait (from Trait.New), got {typeof(trait)}`)
+	end
+	return trait.impls[TokenOf(value) :: any] ~= nil
 end
 
 -- 값에 타입 토큰을 붙입니다. 사용자 컨테이너의 생성자가 씁니다(라이브러리 모듈은 상수
