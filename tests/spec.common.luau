@@ -218,7 +218,7 @@ do
 	)
 	atUserLine(
 		"Arr.FromTable 이미 Arr",
-		expectLine("Arr.FromTable 이미 Arr", "already an Arr", function()
+		expectLine("Arr.FromTable 이미 Arr", "already a container", function()
 			const already = Arr.Of(1, 2)
 			where = debug.info(1, "l") + 1
 			Arr.FromTable(already :: any)

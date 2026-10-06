@@ -82,4 +82,13 @@ export type SetOps<C, T> = {
 	read Items: (set: C) -> { T },
 }
 
+--[[ 트레이트 마커 — 타입에만 있는 필드(런타임엔 없음, `Trait.luau` 머리) ]]
+
+-- 리스트(`Trait.List` 를 구현하는 종류). `E` 는 원소, `I` 는 위치.
+export type ListMarker<E, I> = { read __list: E, read __listIndex: I }
+-- 맵(`Trait.Map`). `K` 는 키, `V` 는 값.
+export type MapMarker<K, V> = { read __mapKey: K, read __mapValue: V }
+-- 셋(`Trait.Set`). `T` 는 원소.
+export type SetMarker<T> = { read __setItem: T }
+
 return {}

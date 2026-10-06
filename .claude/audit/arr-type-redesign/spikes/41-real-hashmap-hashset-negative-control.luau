@@ -48,7 +48,7 @@ for _item in HashSet.Iter(names) do
 	okSum += 1
 end
 -- 계약만 아는 공용 알고리즘이 맵 위에서 동작해야 합니다
-local okAlgoKeys: { string } = stl.Algorithm.Keys<<HashMap<string, number>, string, number>>(stl.HashMap, ages)
+local okAlgoKeys: { string } = stl.Algorithm.Keys(ages)
 
 --[[ NEG: 전부 에러여야 합니다 ]]
 local neg1 = HashMap.Get(ages, 42) -- 키 타입이 다름

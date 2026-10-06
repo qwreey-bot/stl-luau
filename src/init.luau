@@ -20,6 +20,7 @@
 ]]
 local Types = require("@self/Types")
 local Common = require("@self/Common")
+local Trait = require("@self/Trait")
 local Algorithm = require("@self/Algorithm")
 local BSearch = require("@self/BSearch")
 local Arr = require("@self/Arr")
@@ -39,6 +40,11 @@ export type Record<K, V> = Types.Record<K, V>
 export type ListOps<C, E, I> = Types.ListOps<C, E, I>
 export type MapOps<C, K, V> = Types.MapOps<C, K, V>
 export type SetOps<C, T> = Types.SetOps<C, T>
+export type ListMarker<E, I> = Types.ListMarker<E, I>
+export type MapMarker<K, V> = Types.MapMarker<K, V>
+export type SetMarker<T> = Types.SetMarker<T>
+export type TraitToken<N> = Trait.Token<N>
+export type Trait<I> = Trait.Trait<I>
 
 -- 컨테이너 타입
 export type Arr<T> = Arr.Arr<T>
@@ -57,6 +63,7 @@ export type FutProvider = Fut.Provider
 
 return {
 	Common = Common,
+	Trait = Trait,
 	Algorithm = Algorithm,
 	BSearch = BSearch,
 

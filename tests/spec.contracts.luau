@@ -58,8 +58,8 @@ do
 	assert(sumThroughContract(stl.Arr, a) == 60, "계약을 통한 합")
 	assert(sumThroughContract(stl.Arr, stl.Arr.Of<<number>>()) == 0, "빈 것")
 	-- 공용 알고리즘도 계약만 압니다
-	assert(stl.Algorithm.IndexOf(stl.Arr, a, 20) == 2, "Algorithm.IndexOf")
-	assert(stl.Algorithm.Count(stl.Arr, a) == 3, "Algorithm.Count")
+	assert(stl.Algorithm.IndexOf(a, 20) == 2, "Algorithm.IndexOf")
+	assert(stl.Algorithm.Count(a) == 3, "Algorithm.Count")
 end
 print("PASS")
 
@@ -78,16 +78,8 @@ do
 	assert(stl.HashMap.Len(hash) == stl.TreeMap.Len(tree), "둘의 크기가 같아야 합니다")
 
 	-- 공용 알고리즘도 양쪽에서 같아야 합니다
-	assert(
-		#stl.Algorithm.Keys<<H, string, number>>(stl.HashMap, hash)
-			== #stl.Algorithm.Keys<<T, string, number>>(stl.TreeMap, tree),
-		"Algorithm.Keys"
-	)
-	assert(
-		#stl.Algorithm.Values<<H, string, number>>(stl.HashMap, hash)
-			== #stl.Algorithm.Values<<T, string, number>>(stl.TreeMap, tree),
-		"Algorithm.Values"
-	)
+	assert(#stl.Algorithm.Keys(hash) == #stl.Algorithm.Keys(tree), "Algorithm.Keys")
+	assert(#stl.Algorithm.Values(hash) == #stl.Algorithm.Values(tree), "Algorithm.Values")
 
 	-- 계약 자리에 모듈을 담아 두고 나중에 쓰는 것도 돼야 합니다
 	const hashOps: MapOps<H, string, number> = stl.HashMap
@@ -343,162 +335,70 @@ do
 end
 print("PASS")
 
-print("=== 6. ⭐ 술어는 모양만 같은 테이블과 위조 태그를 거부하는가 (M0 리뷰) ===")
+print("=== 6. ⭐ 술어는 타입 토큰 하나를 본다 (2026-10-06, Trait) ===")
 do
-	const lookalikes: { { name: string, value: any, is: (any) -> boolean } } = {
-		-- 모양만 같고 태그가 없는 것
-		{ name = "Arr 모양", value = { n = 0 }, is = stl.isArr },
-		{ name = "HashMap 모양", value = { data = {}, size = 0 }, is = stl.isHashMap },
-		{ name = "HashSet 모양", value = { map = { data = {}, size = 0 } }, is = stl.isHashSet },
-		{ name = "TreeMap 모양", value = { records = {}, size = 0 }, is = stl.isTreeMap },
-		{ name = "TreeSet 모양", value = { map = { records = {}, size = 0 } }, is = stl.isTreeSet },
-		{ name = "Heap 모양", value = { items = {}, size = 0 }, is = stl.isHeap },
-		{ name = "Fut 모양", value = { status = "Pending", listeners = {} }, is = stl.isFut },
-		-- 태그만 있고 모양이 없는 것(위조)
-		{ name = "HashMap 위조", value = { __hashmap__ = true }, is = stl.isHashMap },
-		{ name = "HashSet 위조", value = { __hashset__ = true }, is = stl.isHashSet },
-		{ name = "TreeMap 위조", value = { __treemap__ = true }, is = stl.isTreeMap },
-		{ name = "TreeSet 위조", value = { __treeset__ = true }, is = stl.isTreeSet },
-		{ name = "Heap 위조", value = { __heap__ = true }, is = stl.isHeap },
-		{ name = "Fut 위조", value = { __fut__ = true }, is = stl.isFut },
-		-- 모양 조건을 **하나씩만** 뺀 위조 — 조건 하나를 지운 돌연변이가 나머지
-		-- 조건 덕에 살아남지 않게(M0 2라운드)
-		{ name = "Arr 위조(n 없음)", value = { __arr__ = true }, is = stl.isArr },
-		{ name = "Arr 위조(n 이 문자열)", value = { __arr__ = true, n = "3" }, is = stl.isArr },
-		{ name = "HashMap 위조(data 없음)", value = { __hashmap__ = true, size = 0 }, is = stl.isHashMap },
-		{ name = "HashMap 위조(size 없음)", value = { __hashmap__ = true, data = {} }, is = stl.isHashMap },
-		{ name = "HashSet 위조(map 없음)", value = { __hashset__ = true, size = 0 }, is = stl.isHashSet },
-		{ name = "TreeMap 위조(records 없음)", value = { __treemap__ = true, size = 0 }, is = stl.isTreeMap },
-		{ name = "TreeMap 위조(size 없음)", value = { __treemap__ = true, records = {} }, is = stl.isTreeMap },
-		{ name = "TreeSet 위조(map 없음)", value = { __treeset__ = true, size = 0 }, is = stl.isTreeSet },
-		{ name = "Heap 위조(items 없음)", value = { __heap__ = true, size = 0 }, is = stl.isHeap },
-		{ name = "Heap 위조(size 없음)", value = { __heap__ = true, items = {} }, is = stl.isHeap },
-		{ name = "Fut 위조(status 없음)", value = { __fut__ = true, listeners = {} }, is = stl.isFut },
-		{
-			name = "Fut 위조(status 이상)",
-			value = { __fut__ = true, status = "Done", listeners = {} },
-			is = stl.isFut,
-		},
-		{ name = "Fut 위조(listeners 없음)", value = { __fut__ = true, status = "Pending" }, is = stl.isFut },
-		{
-			name = "Fut 위조(Resolved 인데 values 없음)",
-			value = { __fut__ = true, status = "Resolved", listeners = {} },
-			is = stl.isFut,
-		},
+	-- 위조는 막지 않습니다(사용자 결정) — 토큰을 베껴 넣으면 그 종류입니다. 대신
+	-- **우연**은 막힙니다: 모양만 같은 테이블, 옛 문자열 태그, 직렬화했다 되읽은 것
+	-- (토큰의 정체성을 잃음)은 그 종류가 아닙니다.
+	const predicates: { { name: string, is: (any) -> boolean, token: any } } = {
+		{ name = "Arr", is = stl.isArr, token = stl.Trait.Types.Arr },
+		{ name = "HashMap", is = stl.isHashMap, token = stl.Trait.Types.HashMap },
+		{ name = "HashSet", is = stl.isHashSet, token = stl.Trait.Types.HashSet },
+		{ name = "TreeMap", is = stl.isTreeMap, token = stl.Trait.Types.TreeMap },
+		{ name = "TreeSet", is = stl.isTreeSet, token = stl.Trait.Types.TreeSet },
+		{ name = "Heap", is = stl.isHeap, token = stl.Trait.Types.Heap },
+		{ name = "Fut", is = stl.isFut, token = stl.Trait.Types.Fut },
 	}
-	for _, case in lookalikes do
-		assert(not case.is(case.value), `{case.name} 을 진짜로 받아들임`)
-		-- Fut 위조는 **내부 판별을 거치는 경로**(Chain/All)에서도 — 던지지 않고 Rejected
-		-- (공개 술어만 대조하면 내부 판별을 약화시킨 돌연변이가 살아남았음, M0 3라운드)
-		if case.is == stl.isFut then
-			const chained = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
-				return case.value
-			end)
-			assert(stl.Fut.Status(chained) == "Rejected", `{case.name}: Chain 이 입양함`)
-			const okAll, allFut = pcall(stl.Fut.All, { case.value } :: any)
-			assert(okAll and stl.Fut.Status(allFut) == "Rejected", `{case.name}: All 이 던지거나 입양함`)
+	const oldTags = { "__arr__", "__hashmap__", "__hashset__", "__treemap__", "__treeset__", "__heap__", "__fut__" }
+	for idx, case in predicates do
+		-- 테이블이 아닌 것·토큰 없는 것·옛 문자열 태그·이름만 같은 다른 토큰은 아님
+		for _, v in { nil, 1, "x", true, {}, { n = 0 }, { [oldTags[idx]] = true } } :: { any } do
+			assert(not case.is(v), `{case.name}: {typeof(v)} 를 받아들임`)
+		end
+		assert(not case.is({ __t = stl.Trait.NewType(case.name) }), `{case.name}: 이름만 같은 토큰`)
+		assert(not case.is({ __t = { name = case.name } }), `{case.name}: 직렬화했다 되읽은 토큰`)
+		-- 토큰을 베껴 넣으면 그 종류(위조는 계약 밖 — 막지 않음)
+		assert(case.is({ __t = case.token }), `{case.name}: 토큰을 가진 테이블`)
+		-- 다른 종류의 토큰은 아님(교차)
+		for jdx, other in predicates do
+			if jdx ~= idx then
+				assert(not case.is({ __t = other.token }), `{case.name} 술어가 {other.name} 토큰을 받음`)
+			end
 		end
 	end
-	-- 그럴듯한 위조(M0 3라운드): n 이 음수·NaN·소수인 Arr, 안쪽 맵이 맵이 아닌 셋
-	for _, forged in { { __arr__ = true, n = -1 }, { __arr__ = true, n = 0 / 0 }, { __arr__ = true, n = 1.5 } } do
-		assert(not stl.isArr(forged), "n 이 이상한 Arr 위조")
-	end
-	assert(not stl.isHashSet({ __hashset__ = true, map = {} }), "안쪽이 맵이 아닌 HashSet 위조")
-	assert(not stl.isTreeSet({ __treeset__ = true, map = {} }), "안쪽이 맵이 아닌 TreeSet 위조")
-	-- 경계(M0 4라운드): 술어는 **태그 + 최상위 필드 전부의 타입**까지 봅니다. 안쪽
-	-- 조건을 하나씩만 빼 — 둘을 한꺼번에 빼면 하나를 지운 돌연변이가 살아남았음.
-	local function cmp(a: any, b: any): number
-		return if a < b then -1 elseif a > b then 1 else 0
-	end
-	const deeper: { { name: string, value: any, is: (any) -> boolean } } = {
-		{ name = "Arr n 무한", value = { __arr__ = true, n = math.huge }, is = stl.isArr },
-		{
-			name = "HashSet 안쪽 태그 없음",
-			value = { __hashset__ = true, map = { data = {}, size = 0 } },
-			is = stl.isHashSet,
-		},
-		{
-			name = "HashSet 안쪽 size 없음",
-			value = { __hashset__ = true, map = { __hashmap__ = true, data = {} } },
-			is = stl.isHashSet,
-		},
-		{
-			name = "HashSet 안쪽 data 없음",
-			value = { __hashset__ = true, map = { __hashmap__ = true, size = 0 } },
-			is = stl.isHashSet,
-		},
-		{ name = "Heap less 없음", value = { __heap__ = true, items = {}, size = 0 }, is = stl.isHeap },
-		{
-			name = "TreeMap compare 없음",
-			value = { __treemap__ = true, records = {}, size = 0, probe = cmp },
-			is = stl.isTreeMap,
-		},
-		{
-			name = "TreeMap probe 없음",
-			value = { __treemap__ = true, records = {}, size = 0, compare = cmp },
-			is = stl.isTreeMap,
-		},
-		{
-			name = "TreeSet 안쪽 compare 없음",
-			value = { __treeset__ = true, map = { __treemap__ = true, records = {}, size = 0, probe = cmp } },
-			is = stl.isTreeSet,
-		},
-		{
-			name = "Fut values.n 이 문자열",
-			value = { __fut__ = true, status = "Resolved", values = { n = "x" }, listeners = {} },
-			is = stl.isFut,
-		},
-		-- Resolved 분기의 조건을 하나씩(M0 5라운드)
-		{
-			name = "Fut values.n 음수",
-			value = { __fut__ = true, status = "Resolved", values = { n = -1 }, listeners = {} },
-			is = stl.isFut,
-		},
-		{
-			name = "Fut values.n 소수",
-			value = { __fut__ = true, status = "Resolved", values = { n = 1.5 }, listeners = {} },
-			is = stl.isFut,
-		},
-		{
-			name = "Fut values.n 무한",
-			value = { __fut__ = true, status = "Resolved", values = { n = math.huge }, listeners = {} },
-			is = stl.isFut,
-		},
-		{
-			name = "Fut Resolved 인데 listeners 없음",
-			value = { __fut__ = true, status = "Resolved", values = { n = 0 } },
-			is = stl.isFut,
-		},
-	}
-	for _, case in deeper do
-		assert(not case.is(case.value), `{case.name} 을 진짜로 받아들임`)
-	end
-	-- 위조 Fut 을 Chain 콜백이 돌려주면 입양하지 말고 실패시켜야 합니다(AwaitSafe 는 던지면 안 됨)
-	const forged = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
-		return { __fut__ = true }
-	end)
-	assert(stl.Fut.Status(forged) == "Rejected", "위조 Fut 은 Rejected")
-	assert(stl.Fut.AwaitSafe(forged) == false, "AwaitSafe 는 던지지 않음")
-	-- 조금 더 그럴듯한 위조(Resolved 인데 values 없음)도 — 그리고 All 은 던지지
-	-- 않고 Rejected 를 돌려줘야 합니다(문서대로 "곧바로 실패")
-	const forged2 = { __fut__ = true, status = "Resolved", listeners = {} }
-	const chained2 = stl.Fut.Chain(stl.Fut.Resolved(1), function(): any
-		return forged2
-	end)
-	assert(
-		stl.Fut.Status(chained2) == "Rejected" and stl.Fut.AwaitSafe(chained2) == false,
-		"그럴듯한 위조도 Rejected"
-	)
-	const okAll, allFut = pcall(stl.Fut.All, { forged2 } :: any)
-	assert(okAll and stl.Fut.Status(allFut) == "Rejected", "All 은 위조를 받으면 던지지 않고 Rejected")
-	-- Optional 도 교차표에 — 다른 술어가 Optional 을, Optional 술어가 컨테이너를 받으면 안 됨
+	-- Optional 은 태그 유니온이라 토큰이 없습니다 — 교차만
 	const present = stl.Optional.Present(1)
-	const containerPredicates: { (any) -> boolean } =
-		{ stl.isArr, stl.isHashMap, stl.isHashSet, stl.isTreeMap, stl.isTreeSet, stl.isHeap, stl.isFut }
-	for _, is in containerPredicates do
-		assert(not is(present), "컨테이너 술어가 Optional 을 받아들임")
+	for _, case in predicates do
+		assert(not case.is(present), `{case.name} 술어가 Optional 을 받아들임`)
 	end
 	assert(stl.isOptional(present) and not stl.isOptional(stl.Arr.Of(1)), "Optional 술어")
+	-- ⭐ 바깥에서 자기 트레이트를 만들어 우리 Arr·HashMap 에 붙이기 — 한 종류가 여러
+	-- 트레이트를 구현(문자열 태그 하나로는 하드코딩이 필요했던 것)
+	type Show = { read Show: (any) -> string }
+	const ShowTrait = stl.Trait.New<<Show>>("Show")
+	stl.Trait.Impl(ShowTrait, stl.Trait.Types.Arr, {
+		Show = function(a: any): string
+			return `Arr({a.n})`
+		end,
+	})
+	const showArr = stl.Trait.ImplOf(ShowTrait, stl.Arr.Of(1, 2))
+	assert(showArr ~= nil and showArr.Show(stl.Arr.Of(1, 2)) == "Arr(2)", "사용자 트레이트를 Arr 에")
+	assert(stl.Trait.ImplOf(stl.Trait.List, stl.Arr.Of(1)) == stl.Arr, "Arr 은 List 도 그대로")
+	assert(stl.Trait.ImplOf(ShowTrait, stl.HashMap.New()) == nil, "등록 안 한 종류는 nil")
+	for _, v in { nil, 1, "x", {} } :: { any } do
+		assert(stl.Trait.ImplOf(ShowTrait, v) == nil, `{typeof(v)} 는 안전하게 nil`)
+	end
+	-- Count: 술어 없으면 전체, 있으면 참인 것만(AE) — Arr 와 Algorithm 이 같은 뜻
+	const counted = stl.Arr.Of(1, 2, 3, 4)
+	const isEven = function(v: number): boolean
+		return v % 2 == 0
+	end
+	assert(stl.Arr.Count(counted) == 4 and stl.Algorithm.Count(counted) == 4, "Count 전체")
+	assert(stl.Arr.Count(counted, isEven) == 2 and stl.Algorithm.Count(counted, isEven) == 2, "Count 술어")
+	-- 토큰이 아닌 것(얼지 않은 테이블)으로 Impl 하면 사용자 줄 에러
+	assert(not pcall(function()
+		stl.Trait.Impl(stl.Trait.List, {} :: any, stl.Arr)
+	end), "토큰이 아닌 것으로 Impl")
 end
 print("PASS")
 
@@ -506,7 +406,7 @@ print("=== 7. 계약 보강 — 원소 타입 ≠ 위치 타입, Keys/Values 내
 do
 	-- ListOps 의 반환 타입(I? 대 E?)은 원소와 위치가 둘 다 number 면 우연히 맞아떨어집니다
 	const s = stl.Arr.Of("x", "y", "z")
-	const pos: number? = stl.Algorithm.IndexOf(stl.Arr, s, "y")
+	const pos: number? = stl.Algorithm.IndexOf(s, "y")
 	assert(pos == 2, "문자열 배열의 IndexOf")
 	const ops: ListOps<stl.Arr<string>, string, number> = stl.Arr
 	assert(ops.Get(s, 3) == "z" and ops.FirstIndex(s) == 1 and ops.NextIndex(s, 1) == 2, "문자열 배열의 ListOps")
@@ -514,14 +414,22 @@ do
 	-- Keys/Values 는 개수가 아니라 **내용**을 봅니다(키와 값을 바꿔 돌려줘도 통과했음)
 	const m = stl.TreeMap.FromRecords({ { key = "b", value = 20 }, { key = "a", value = 10 } }, Common.compareString)
 	type T = stl.TreeMap<string, number>
-	const keys = stl.Algorithm.Keys<<T, string, number>>(stl.TreeMap, m)
-	const values = stl.Algorithm.Values<<T, string, number>>(stl.TreeMap, m)
+	const keys = stl.Algorithm.Keys(m)
+	const values = stl.Algorithm.Values(m)
 	assert(table.concat(keys, ",") == "a,b", "Algorithm.Keys 내용")
 	assert(values[1] == 10 and values[2] == 20, "Algorithm.Values 내용")
 
-	-- 사용자 MapOps 의 Records 가 Arr·table.pack 결과를 돌려줘도(M0 7라운드) — 예전엔
-	-- `n`·태그 키를 레코드로 읽어 라이브러리 줄에서 터졌음. 구멍은 건너뜁니다.
-	type MyMap = { recs: stl.Arr<stl.Record<string, number>?> }
+	-- ⭐ 사용자 컨테이너가 맵 트레이트에 들어오기(2026-10-06): 자기 타입 토큰을 만들고
+	-- `Trait.Impl` 한 줄. 타입에는 토큰과 트레이트 마커(타입에만 있는 필드)를 적고, 값은
+	-- 생성 함수에서 캐스트로 만듭니다(마커는 런타임에 없음). 그리고 Records 가
+	-- Arr·table.pack 결과를 돌려줘도(M0 7라운드) — 구멍은 건너뜁니다.
+	type MyMap = {
+		read __t: stl.TraitToken<string>,
+		read __mapKey: string,
+		read __mapValue: number,
+		recs: stl.Arr<stl.Record<string, number>?>,
+	}
+	const MyMapType = stl.Trait.NewType("MyMap")
 	const myOps: MapOps<MyMap, string, number> = {
 		Get = function(_m: MyMap, _k: string): number?
 			return nil
@@ -531,13 +439,13 @@ do
 			return stl.Arr.Clone(m.recs) :: any
 		end,
 	}
-	const mine: MyMap =
-		{ recs = stl.Arr.Of<<stl.Record<string, number>?>>({ key = "x", value = 1 }, nil, { key = "y", value = 2 }) }
-	assert(
-		table.concat(stl.Algorithm.Keys<<MyMap, string, number>>(myOps, mine), ",") == "x,y",
-		"Keys(Records 가 Arr)"
-	)
-	const myValues = stl.Algorithm.Values<<MyMap, string, number>>(myOps, mine)
+	stl.Trait.Impl(stl.Trait.Map, MyMapType, myOps)
+	const mine: MyMap = {
+		__t = MyMapType,
+		recs = stl.Arr.Of<<stl.Record<string, number>?>>({ key = "x", value = 1 }, nil, { key = "y", value = 2 }),
+	} :: any
+	assert(table.concat(stl.Algorithm.Keys(mine), ",") == "x,y", "Keys(사용자 맵, Records 가 Arr)")
+	const myValues = stl.Algorithm.Values(mine)
 	assert(#myValues == 2 and myValues[1] == 1 and myValues[2] == 2, "Values(Records 가 Arr)")
 
 	-- SetOps 자리에 모듈을 담아 두고 쓰기

@@ -75,14 +75,22 @@ local Types = require("./Types")
 local Common = require("./Common")
 Common.registerSource(debug.info(1, "s"))
 local Optional = require("./Optional")
+local Trait = require("./Trait")
 
 type LessThan<T> = Types.LessThan<T>
 type Optional<T> = Optional.Optional<T>
 
--- `read __arr__: true` 는 **타입에만 드러난 태그**입니다 — 런타임엔 생성자가 붙이는
--- 실제 필드이고, 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr`
--- 자리에 들어가는 것을 막습니다(M0 리뷰: 교집합을 걷어낸 뒤 열린 구멍).
-export type ArrData<T> = { n: number, read __arr__: true, [number]: T }
+-- `read __t: Token<"Arr">` 는 생성자가 붙이는 실제 필드(타입 토큰, `Trait.luau`)이고,
+-- 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr` 자리에 들어가는 것을
+-- 막습니다(M0 리뷰). `__list`/`__listIndex` 는 **타입에만 있는** 리스트 트레이트 마커입니다
+-- — `Algorithm.IndexOf(a, x)` 가 원소 타입을 여기서 추론합니다(런타임엔 없음).
+export type ArrData<T> = {
+	n: number,
+	read __t: Trait.Token<"Arr">,
+	read __list: T,
+	read __listIndex: number,
+	[number]: T,
+}
 
 -- 콜백이 셋째 인자로 받는 뷰 — **읽기 전용**입니다. 콜백 안에서 배열을 바꾸면
 -- 순회가 망가지니 타입이 막습니다. 원소 타입은 `unknown` 으로 씁니다(아래).
@@ -114,7 +122,9 @@ export type Spreader<T, G> = (element: T, index: number, arr: ArrView<unknown>) 
 -- 자르거나 가두면 분포가 조용히 치우칩니다. 균등성은 rng 책임입니다.
 export type Rng = (min: number, max: number) -> number
 
-const TAG = "__arr__"
+-- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
+const TYPE_KEY = "__t"
+const TOKEN = Trait.Types.Arr
 
 --#region ----------- 내부 헬퍼 -----------
 
@@ -172,7 +182,7 @@ end
 const function wrap<T>(raw: { [number]: T }, len: number): Arr<T>
 	const result = raw :: any
 	result.n = len
-	result[TAG] = true
+	result[TYPE_KEY] = TOKEN
 	return result
 end
 
@@ -196,14 +206,9 @@ const function newSized<T>(len: number): Arr<T>
 	return wrap(table.create(len) :: any, len)
 end
 
+-- 타입 토큰 하나만 봅니다(2026-10-06 — 위조는 막지 않음, `Trait.luau` 머리).
 const function isArrRaw(value: any): boolean
-	if type(value) ~= "table" or rawget(value, TAG) ~= true then
-		return false
-	end
-	-- `n` 은 0 이상의 유한 정수여야 — 위조 `n = 0/0`·`-1` 을 `Flat` 이 입양하면
-	-- 라이브러리 줄 에러나 조용한 유실이었습니다(M0 3라운드).
-	const n = rawget(value, "n")
-	return type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge
+	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
 
 --#endregion
@@ -318,7 +323,12 @@ const function Equal<T>(self: ArrData<T>, other: ArrData<T>): boolean
 end
 
 -- 조건을 만족하는 원소의 개수.
-const function Count<T>(self: ArrData<T>, fn: Predicate<T>): number
+-- 세어서 구한 개수(AE, 2026-10-06 — `Len` 은 알고 있는 크기, `Count` 는 셈). 술어가
+-- 없으면 전체 — `Arr` 은 길이를 알고 있어 `n`(구멍도 자리).
+const function Count<T>(self: ArrData<T>, fn: Predicate<T>?): number
+	if fn == nil then
+		return self.n
+	end
 	local total = 0
 	for idx = 1, self.n do
 		if fn(self[idx], idx, self :: any) then
@@ -566,10 +576,16 @@ end
 -- 드러남)를 **둘 다** 받으면서 `T = number` 로 잡고, 결과에서 `?` 를 뺄 수
 -- 있습니다. 읽기·쓰기 인덱서는 불변이라 `Arr<number>` 가 `ArrData<number?>`
 -- 자리에 안 들어갑니다(실측).
--- 팬텀 태그(`read __arr__`)까지 요구합니다 — 없으면 리터럴이나 `table.pack`
+-- 타입 토큰(`read __t`)과 마커까지 요구합니다 — 없으면 리터럴이나 `table.pack`
 -- 결과, 콜백의 읽기 전용 뷰가 `CompactInplace` 를 거쳐 `Arr<T>` 로 둔갑했습니다
 -- (M0 2라운드 — 1라운드가 막은 "리터럴이 Arr 자리에" 의 우회로).
-type ArrRead<T> = { read n: number, read __arr__: true, read [number]: T }
+type ArrRead<T> = {
+	read n: number,
+	read __t: Trait.Token<"Arr">,
+	read __list: T,
+	read __listIndex: number,
+	read [number]: T,
+}
 
 -- 구멍을 `value` 로 채운 **새 배열**. 길이는 그대로이고 원본은 안 건드립니다.
 -- `Arr<number?>` 를 받아 **`Arr<number>` 를 돌려줍니다** — 구멍을 타입에
@@ -1909,7 +1925,7 @@ export type Arr<T> = ArrData<T>
 -- `Arr.Of(1, 2, 3)`. 인자 사이의 `nil` 도 보존됩니다(`n` 이 진실이므로).
 const function Of<T>(...: T): Arr<T>
 	const raw: any = table.pack(...)
-	raw[TAG] = true
+	raw[TYPE_KEY] = TOKEN
 	return raw
 end
 
@@ -1953,8 +1969,8 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 		Common.raise("Arr: FromTable adopts plain tables only (this one has a metatable) — use CloneFromTable")
 	end
 	-- 이미 Arr 면 `#` 로 `n` 을 덮어써 구멍 뒤가 사라졌습니다(M0 2라운드, 예전부터).
-	if rawget(tbl :: any, TAG) ~= nil then
-		Common.raise("Arr: FromTable got a table that is already an Arr — use it as is, or Clone")
+	if rawget(tbl :: any, TYPE_KEY) ~= nil then
+		Common.raise("Arr: FromTable got a table that is already a container — use it as is, or Clone")
 	end
 	-- 동결된 테이블엔 길이·태그를 못 씁니다 — 라이브러리 줄의 "readonly table" 대신.
 	if table.isfrozen(tbl :: any) then
@@ -2164,7 +2180,7 @@ end
 --#endregion
 
 -- stylua: ignore
-return {
+const ArrModule = {
 	Of = Of,
 	Sized = Sized,
 	FromTable = FromTable,
@@ -2199,3 +2215,8 @@ return {
 	Fold = Fold, FoldRight = FoldRight, Reduce = Reduce, FoldUntil = FoldUntil, Get = Get,
 	FirstIndex = FirstIndex, LastIndex = LastIndex, NextIndex = NextIndex, PrevIndex = PrevIndex,
 }
+
+-- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
+Trait.Impl(Trait.List, TOKEN, ArrModule)
+
+return ArrModule

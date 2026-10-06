@@ -37,21 +37,30 @@
 ]]
 local Types = require("./Types")
 local Common = require("./Common")
+local Trait = require("./Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
 
--- `read __hashmap__: true` 는 타입에만 드러난 태그(생성자가 붙이는 실제 필드) —
+-- `read __t` 은 타입 토큰(생성자가 붙이는 실제 필드, `Trait.luau`) —
 -- 리터럴이 맵 자리에 들어가는 것을 막습니다(M0 리뷰).
-export type HashMapData<K, V> = { data: { [K]: V }, size: number, read __hashmap__: true }
+export type HashMapData<K, V> = {
+	data: { [K]: V },
+	size: number,
+	read __t: Trait.Token<"HashMap">,
+	read __mapKey: K,
+	read __mapValue: V,
+}
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
-const TAG = "__hashmap__"
+-- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
+const TYPE_KEY = "__t"
+const TOKEN = Trait.Types.HashMap
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
 const function tagged(raw: any): any
-	raw[TAG] = true
+	raw[TYPE_KEY] = TOKEN
 	return raw
 end
 
@@ -228,7 +237,7 @@ end
 const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
-	if rawget(tbl :: any, "__arr__") == true then
+	if Trait.TypeOf(tbl) == Trait.Types.Arr then
 		-- `Arr` 는 "위치 → 값" 으로 읽습니다 — `pairs` 로 돌면 `n` 과 태그 키까지
 		-- 키가 됐습니다(M0 3라운드). 구멍은 키가 아닙니다.
 		const list = tbl :: any
@@ -280,16 +289,13 @@ const function Adopt<K, V>(data: { [K]: V }, size: number): HashMap<K, V>
 end
 
 const function isHashMap(value: any): boolean
-	return type(value) == "table"
-		and rawget(value, TAG) == true
-		and type(rawget(value, "data")) == "table"
-		and type(rawget(value, "size")) == "number"
+	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
 
 --#endregion
 
 -- stylua: ignore
-return {
+const HashMapModule = {
 	New = New,
 	FromTable = FromTable,
 	FromRecords = FromRecords,
@@ -301,3 +307,8 @@ return {
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
 	Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set, Records = Records,
 }
+
+-- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.
+Trait.Impl(Trait.Map, TOKEN, HashMapModule)
+
+return HashMapModule

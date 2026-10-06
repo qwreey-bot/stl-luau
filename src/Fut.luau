@@ -62,6 +62,7 @@
 
 const ArrModule = require("./Arr")
 const Common = require("./Common")
+const Trait = require("./Trait")
 Common.registerSource(debug.info(1, "s"))
 type Arr<T> = ArrModule.Arr<T>
 
@@ -88,7 +89,7 @@ type Packed = { n: number, [number]: any }
 export type FutData = {
 	-- 타입에만 드러난 태그(생성자가 붙이는 실제 필드) — 리터럴이 Fut 자리에 들어가는
 	-- 것을 막습니다. 다른 컨테이너와 대칭(M0 3라운드).
-	read __fut__: true,
+	read __t: Trait.Token<"Fut">,
 	status: Status,
 	values: Packed?,
 	reason: any,
@@ -96,7 +97,9 @@ export type FutData = {
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB).
-const TAG = "__fut__"
+-- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
+const TYPE_KEY = "__t"
+const TOKEN = Trait.Types.Fut
 
 -- 즉시 실행. 순수 luau 의 기본값.
 --
@@ -181,7 +184,7 @@ const function newPending(): FutData
 		reason = nil,
 		listeners = {},
 	}
-	fut[TAG] = true
+	fut[TYPE_KEY] = TOKEN
 	return fut
 end
 
@@ -233,31 +236,10 @@ const function runInto(target: FutData, fn: (...any) -> ...any, ...: any)
 	end)
 end
 
+-- 타입 토큰 하나만 봅니다(2026-10-06 — 위조는 막지 않음, `Trait.luau` 머리). 예전엔
+-- 위조 `{ __fut__ = true }` 를 입양하지 않으려고 상태·값 팩 모양까지 봤습니다(M0).
 const function isFutRaw(value: any): boolean
-	if type(value) ~= "table" or rawget(value, TAG) ~= true then
-		return false
-	end
-	-- 위조 태그(`{ __fut__ = true }`)를 입양하면 상태가 셋 중 어느 것도 아닌 Fut 이
-	-- 생겨 "던지지 않는" `AwaitSafe` 가 던졌습니다(M0 리뷰). 모양까지 봅니다.
-	-- 이행된 것은 값 팩까지 — `{ status = "Resolved" }` 만 그럴듯하게 위조하면
-	-- 값을 읽다 던졌습니다(M0 2라운드). `Pending` 위조가 영원히 대기하는 것은
-	-- 막을 수 없는 한계입니다(태그는 라이브러리 예약어).
-	const status = rawget(value, "status")
-	if status == "Resolved" then
-		-- 값 팩의 `n` 까지 — `values = { n = "x" }` 위조가 unpack 에서 던졌습니다(M0 4라운드).
-		-- 경계: 그보다 깊은 위조(거대한 `n` 등)는 계약 밖입니다(태그는 예약어).
-		const values: any = rawget(value, "values")
-		if type(values) ~= "table" then
-			return false
-		end
-		const n = rawget(values, "n")
-		return type(n) == "number"
-			and n >= 0
-			and n == math.floor(n)
-			and n < math.huge
-			and type(rawget(value, "listeners")) == "table"
-	end
-	return (status == "Pending" or status == "Rejected") and type(rawget(value, "listeners")) == "table"
+	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
 
 -- `source` 가 정해지면 그 결과를 `target` 에 그대로 옮깁니다.

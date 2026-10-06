@@ -121,8 +121,8 @@ do
 	const src: { [string]: number } = { a = 1, b = 2 }
 	const m = HashMap.FromTable(src)
 	-- 구현을 모르는 공용 알고리즘이 계약만으로 동작해야 합니다
-	assert(#stl.Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m) == 2, "Algorithm.Keys")
-	assert(#stl.Algorithm.Values<<HashMap<string, number>, string, number>>(HashMap, m) == 2, "Algorithm.Values")
+	assert(#stl.Algorithm.Keys(m) == 2, "Algorithm.Keys")
+	assert(#stl.Algorithm.Values(m) == 2, "Algorithm.Values")
 end
 print("PASS")
 

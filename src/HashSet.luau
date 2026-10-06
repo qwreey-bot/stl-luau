@@ -34,19 +34,22 @@
 ]]
 local HashMap = require("./HashMap")
 local Common = require("./Common")
+local Trait = require("./Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type HashMapType<K, V> = HashMap.HashMap<K, V>
 
-export type HashSetData<T> = { map: HashMapType<T, true>, read __hashset__: true }
+export type HashSetData<T> = { map: HashMapType<T, true>, read __t: Trait.Token<"HashSet">, read __setItem: T }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
-const TAG = "__hashset__"
+-- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
+const TYPE_KEY = "__t"
+const TOKEN = Trait.Types.HashSet
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
 const function tagged(raw: any): any
-	raw[TAG] = true
+	raw[TYPE_KEY] = TOKEN
 	return raw
 end
 
@@ -289,18 +292,13 @@ const function FromList<T>(list: { T }): HashSet<T>
 end
 
 const function isHashSet(value: any): boolean
-	if type(value) ~= "table" or rawget(value, TAG) ~= true then
-		return false
-	end
-	-- 안쪽이 정말 맵인지는 맵의 술어에 맡깁니다 — 따로 적었더니 `size` 를 빠뜨려
-	-- 위조가 `HashSet.Add` 를 크래시시켰습니다(M0 4라운드). 판별은 한 곳에.
-	return HashMap.isHashMap(rawget(value, "map"))
+	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
 
 --#endregion
 
 -- stylua: ignore
-return {
+const HashSetModule = {
 	New = New,
 	Of = Of,
 	FromList = FromList,
@@ -313,3 +311,8 @@ return {
 	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal, Add = Add, Has = Has,
 	Remove = Remove, Items = Items,
 }
+
+-- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.
+Trait.Impl(Trait.Set, TOKEN, HashSetModule)
+
+return HashSetModule

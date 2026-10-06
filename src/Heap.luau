@@ -34,19 +34,22 @@
 ]]
 local Types = require("./Types")
 local Common = require("./Common")
+local Trait = require("./Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type LessThan<T> = Types.LessThan<T>
 
-export type HeapData<T> = { items: { T }, size: number, less: LessThan<T>, read __heap__: true }
+export type HeapData<T> = { items: { T }, size: number, less: LessThan<T>, read __t: Trait.Token<"Heap"> }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
-const TAG = "__heap__"
+-- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
+const TYPE_KEY = "__t"
+const TOKEN = Trait.Types.Heap
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
 const function tagged(raw: any): any
-	raw[TAG] = true
+	raw[TYPE_KEY] = TOKEN
 	return raw
 end
 
@@ -250,11 +253,7 @@ const function isHeap(value: any): boolean
 	-- 경계(M0 4라운드): 태그 + **최상위 필드 전부의 타입**까지 봅니다. 그보다 깊은
 	-- 불변식(크기가 맞는지, 정렬돼 있는지)까지 갖춘 위조는 계약 밖입니다 — 태그
 	-- 키는 라이브러리 예약어입니다(conventions "모듈 패턴").
-	return type(value) == "table"
-		and rawget(value, TAG) == true
-		and type(rawget(value, "items")) == "table"
-		and type(rawget(value, "size")) == "number"
-		and type(rawget(value, "less")) == "function"
+	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
 
 --#endregion
