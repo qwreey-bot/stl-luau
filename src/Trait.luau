@@ -92,7 +92,7 @@ const function Impl<I>(trait: Trait<I>, token: Token<any>, impl: I)
 end
 
 -- 값의 타입 토큰. 테이블이 아니거나, `__type` 이 없거나 토큰이 아니면 nil.
-const function TypeOf(value: any): Token<any>?
+const function TokenOf(value: any): Token<any>?
 	if type(value) ~= "table" then
 		return nil
 	end
@@ -106,7 +106,7 @@ const function ImplOf<I>(trait: Trait<I>, value: any): I?
 		Common.raise(`Trait: ImplOf needs a trait (from Trait.New), got {typeof(trait)}`)
 	end
 	-- `impls[nil]` 읽기는 에러가 아닙니다 — 토큰이 없으면 그대로 nil.
-	return trait.impls[TypeOf(value) :: any]
+	return trait.impls[TokenOf(value) :: any]
 end
 
 const function Implements<I>(trait: Trait<I>, value: any): boolean
@@ -143,7 +143,7 @@ const BuiltinTypes = table.freeze({
 return {
 	TYPE_KEY = TYPE_KEY,
 	NewType = NewType, New = New, Impl = Impl,
-	TypeOf = TypeOf, ImplOf = ImplOf, Implements = Implements, Stamp = Stamp,
+	TokenOf = TokenOf, ImplOf = ImplOf, Implements = Implements, Stamp = Stamp,
 	List = List, Map = Map, Set = Set,
 	Types = BuiltinTypes,
 }

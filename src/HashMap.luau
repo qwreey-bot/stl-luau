@@ -237,7 +237,7 @@ end
 const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
-	const token = Trait.TypeOf(tbl)
+	const token = Trait.TokenOf(tbl)
 	if token ~= nil and token ~= Trait.Types.Arr then
 		-- 다른 종류의 컨테이너를 사전으로 읽으면 내부 필드(`data`·`size`·`__type`…)가 키로
 		-- 쏟아졌습니다(2026-10-06 Gemini 트레이트 검토).

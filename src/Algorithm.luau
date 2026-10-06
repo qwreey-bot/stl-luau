@@ -38,7 +38,7 @@ local exports = {}
 const function implOf(trait: any, value: any, who: string): any
 	const impl = if type(value) == "table" then trait.impls[rawget(value, "__type")] else nil
 	if impl == nil then
-		const token = Trait.TypeOf(value)
+		const token = Trait.TokenOf(value)
 		-- 토큰이 있는데 구현이 없으면: 그 종류가 트레이트를 구현하지 않거나, **다른 사본의
 		-- 라이브러리**가 만든 값입니다 — 이름만 보면 "Arr 을 넘겼는데 왜" 가 됐습니다(Gemini).
 		const got = if token

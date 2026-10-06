@@ -731,7 +731,12 @@ AD 의 남은 확인(불변식 — `n`·`size` — 도 관측으로 둘지)도 �
 
 ---
 
-### AH. 트레이트 API 이름 — 다른 계열의 눈으로 (2026-10-06, `audit/agy/2026-10-06-trait-review.md`)
+### AH. 트레이트 API 이름 — 다른 계열의 눈으로 (2026-10-06, `audit/agy/2026-10-06-trait-review.md`) — **[2026-10-06 사용자 결정] `TokenOf` 로, 나머지 그대로**
+
+> 사용자: *"TokenOf 동의. quad 도 type** 를 포기했고 Brand 로 이름을 지을 수 밖에 없었던 이유기도
+> 해.(type 함수도 있으니까) Impl 은 그대로 둬도 될 것 같아. Trait 아래 두고 문서로 설명도 괜찮게
+> 보여."* — `Trait.TypeOf` → `Trait.TokenOf`. `Impl`, `Trait.NewType`/`Trait.Types` 는 그대로.
+> 교훈: Lua 내장(`type`/`typeof`)과 겹치는 `type…` 이름은 피합니다.
 
 Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열이 지었습니다). 지금 쓰는 곳이 적어
 바꾸기 쌉니다.

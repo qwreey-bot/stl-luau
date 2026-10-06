@@ -419,16 +419,16 @@ do
 		assert(T.ImplOf(T.Map, case.value) == case.map, `{case.name} 의 Map 구현`)
 		assert(T.ImplOf(T.Set, case.value) == case.set, `{case.name} 의 Set 구현`)
 		assert(T.Implements(T.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
-		assert(T.TypeOf(case.value) == (T.Types :: any)[case.name], `{case.name} 의 TypeOf`)
+		assert(T.TokenOf(case.value) == (T.Types :: any)[case.name], `{case.name} 의 TokenOf`)
 	end
-	-- TypeOf 는 토큰이 아닌 `__type`(숫자·문자열·아무 테이블)을 토큰으로 돌려주지 않음
+	-- TokenOf 는 토큰이 아닌 `__type`(숫자·문자열·아무 테이블)을 토큰으로 돌려주지 않음
 	for _, bogus in { 5, true, "Player", 0 / 0, {}, table.freeze({ name = "Arr" }) } :: { any } do
-		assert(T.TypeOf({ __type = bogus }) == nil, `토큰 아닌 __type: {tostring(bogus)}`)
+		assert(T.TokenOf({ __type = bogus }) == nil, `토큰 아닌 __type: {tostring(bogus)}`)
 	end
 	-- Stamp 로 사용자 값에 토큰
 	const MyKind = T.NewType("MyKind")
 	const stamped = T.Stamp({}, MyKind)
-	assert(T.TypeOf(stamped) == MyKind and not stl.isArr(stamped), "Stamp")
+	assert(T.TokenOf(stamped) == MyKind and not stl.isArr(stamped), "Stamp")
 	-- 공용 알고리즘의 에러는 토큰 아닌 `__type` 에서도 규약대로(리뷰 1라운드 — 라이브러리 줄에서
 	-- `attempt to index number with 'name'` 이었음)
 	for _, bogus in { 5, true, "Player", 0 / 0 } :: { any } do

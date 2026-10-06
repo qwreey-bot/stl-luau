@@ -57,6 +57,9 @@
     키 문자열 `"__type"` 은 모듈마다 **리터럴로** 적습니다 — `Trait.TYPE_KEY` 를 받아
     쓰면 상수 접기가 안 돼 생성이 7~11% 느렸습니다.
   - **구현은 트레이트가 듭니다**: `Trait.List`/`Map`/`Set` 이 `[토큰] = 구현(모듈 테이블)`.
+    값의 토큰은 `Trait.TokenOf(v)` — `type…` 이름은 Lua 내장 `type`/`typeof` 와 겹쳐 피합니다
+    (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewType`, `Trait.Types`)은
+    트레이트를 구현하지 않는 종류(`Heap`·`Fut`)도 쓰는 바탕이지만 `Trait` 밑에 둡니다.
     모듈을 불러올 때 `Trait.Impl(Trait.List, TOKEN, ArrModule)` 한 줄. 한 종류가 여러
     트레이트를, 바깥 트레이트를 우리 종류에, 바깥 종류를 우리 트레이트에 — 이름이 아니라
     정체성(테이블)으로 구분합니다.
