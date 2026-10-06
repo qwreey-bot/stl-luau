@@ -819,7 +819,7 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | 표현 | **링 버퍼**(perf 24절 — 길이 유지 큐에서 두 인덱스보다 3배 빠름). 길이 필드는 `n` 이 아니라 **`size`**(물리 칸이 감겨 있어 `{n, [1..n]}` 로 읽히면 틀림) | — |
 | 이름 | `PushBack`/`PushFront`/`PopBack`/`PopFront`(Arr 와 같음), 엿보기 **`Front`/`Back`**(Rust·C++), `At`(Arr 규약), `ToArr` | Java `peekFirst`/`peekLast` |
 | 반환 | 넣기·`Clear` 는 자기 자신(`Arr` 처럼), 꺼내기는 `T?`(비면 `nil` — 질문 AI) | — |
-| 읽기 함수의 공변(`ArrRead` 같은 `DequeRead`) | **안 둠** — 전부 `DequeData`(불변). 맵·셋과 같음 | 질문 AC 를 Deque 에도 넓히기 |
+| 읽기 함수의 공변(`ArrRead` 같은 `DequeRead`) | **안 둠** — 전부 `DequeData`(불변). 맵·셋과 같음 | 질문 AC 를 Deque 에도 넓히기. ⚠️ **리뷰어 의견(1라운드): 넓히자** — `Deque<number>` 를 `Deque<number?>` 받는 함수에 못 넘김(재현). AC 의 근거(읽기는 원소에 공변)가 맵·셋보다 같은 리스트인 Deque 에 더 직접 들어맞고, 사용자 코드가 없는 지금이 가장 쌈. 저도 동의 쪽입니다 — 정해 주시면 적용(`At`/`Front`/`Back`/`Len`/`Empty`/`Iter`/`ToArr`/`Clone`/계약 함수) |
 | 칸 수 | `New(capacity?)`(최소 4, `Arr` 길이 정책), 두 배로 늘리고 **줄이지 않음**(Rust 와 같음 — `Clone` 이 원소 수에 맞춤) | `ShrinkToFit` |
 | 안 넣은 것 | 위치에 쓰기(`SetAt`), `Insert`/`Remove`(가운데), `Rotate`, 스트림(`Map` 등) — 부르는 곳이 보이면 | — |
 

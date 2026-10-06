@@ -63,6 +63,17 @@ do
 	assert(big.cap == 100 and Deque.Len(big) == 0, "capacity")
 	assert(Deque.New<<number>>(0).cap == 4 and Deque.New<<number>>(2.9).cap == 4, "최소 4")
 	assert(not pcall(Deque.New, -1) and not pcall(Deque.New, 0 / 0) and not pcall(Deque.New, 2 ^ 27), "capacity 정책")
+	assert(not pcall(Deque.New, 2 ^ 26 + 1) and Deque.New<<number>>(-0.5).cap == 4, "capacity 경계(소수는 0 쪽)")
+	-- 빈 입력에서 만든 것도 최소 4칸 — 0 칸이면 두 배로 늘릴 수 없음(1라운드: 바닥을 지워도 값은
+	-- 맞아 테스트가 통과했지만 cap 0·head -1 로 불변식이 깨졌음)
+	for _, empty in { Deque.Of(), Deque.FromList({}), Deque.Clone(Deque.New<<number>>()) } :: { Deque<number> } do
+		assert(empty.cap >= 4, `빈 입력 cap {empty.cap}`)
+		for i = 1, 6 do
+			Deque.PushFront(empty, i * 10)
+		end
+		assert(empty.size <= empty.cap and empty.head >= 0 and empty.head < empty.cap, "빈 입력 뒤 불변식")
+		same(empty, { 60, 50, 40, 30, 20, 10 }, "빈 입력 뒤 PushFront")
+	end
 end
 print("PASS")
 
@@ -141,6 +152,23 @@ do
 	end
 	Deque.PushFront(d, 7)
 	same(d, { 7 }, "Clear 뒤 PushFront")
+	-- 감긴 상태의 Clear — 두 구간을 다 지움(O(size) 판)
+	const wrapped = Deque.New<<number>>(8)
+	for i = 1, 5 do
+		Deque.PushBack(wrapped, i * 10)
+	end
+	for _ = 1, 4 do
+		Deque.PopFront(wrapped)
+	end
+	for i = 6, 9 do
+		Deque.PushBack(wrapped, i * 10)
+	end
+	assert(wrapped.head + wrapped.size > wrapped.cap, "감긴 상태여야 함")
+	Deque.Clear(wrapped)
+	for idx = 1, wrapped.cap do
+		assert(rawget(wrapped :: any, idx) == nil, `감긴 Clear 칸 {idx}`)
+	end
+	same(wrapped, {}, "감긴 Clear")
 
 	-- 구멍
 	const h = Deque.New<<number?>>()

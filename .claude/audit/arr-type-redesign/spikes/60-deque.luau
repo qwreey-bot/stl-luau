@@ -5,7 +5,7 @@
 	지키는 성질: 꺼내기·조회는 **`?`**, 원소 타입은 넣기·꺼내기·순회·`ToArr` 를 지나며 그대로,
 	**타입 토큰**이 리터럴과 다른 종류(`Arr`)를 막음(서로 바꿔 넣을 수 없음).
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 13 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 14 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Deque, Arr = stl.Deque, stl.Arr
@@ -45,8 +45,11 @@ for _, v in Deque.Iter(d) do
 	local _negIter: string = v
 end
 
---[[ NEG — 타입 토큰: 리터럴과 다른 종류는 못 들어옴 ]]
+--[[ NEG — 리터럴과 다른 종류는 못 들어옴(모양·마커·토큰 이름) ]]
 Deque.PushBack({ head = 0, size = 0, cap = 4 }, 1)
+-- 마커까지 다 있고 **토큰만 없는** 꼴 — 이 줄만 토큰 때문에 에러(1라운드: 위 셋은 토큰을 지워도
+-- 모양·마커 때문에 에러라 토큰을 지키지 못했음 — spikes/55 의 교훈과 같은 자리)
+Deque.PushBack({ head = 0, size = 0, cap = 4, __list = 1, __listIndex = 1 }, 1)
 Deque.PushBack(Arr.Of(1), 2)
 Arr.PushBack(d, 2)
 

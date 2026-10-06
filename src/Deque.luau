@@ -270,9 +270,17 @@ end
 
 --#region ----------- 변형 -----------
 
--- 비웁니다. 칸 수(`cap`)는 그대로입니다.
+-- 비웁니다. 칸 수(`cap`)는 그대로입니다. 살아 있는 칸(감긴 두 구간)만 지워 **O(size)** — 처음엔
+-- `1..cap` 을 다 지워, 크게 자랐던 덱을 재사용(BFS 마다 `Clear`)하면 원소 둘에도 O(cap) 이었습니다
+-- (M5 리뷰 1라운드: cap 131072 에서 1000번 722ms). 살아 있지 않은 칸은 늘 비어 있습니다(꺼낼 때 지움).
 const function Clear<T>(self: DequeData<T>): Deque<T>
-	for idx = 1, self.cap do
+	const size = self.size
+	const head = self.head
+	const firstLen = math.min(size, self.cap - head)
+	for idx = head + 1, head + firstLen do
+		self[idx] = nil :: any
+	end
+	for idx = 1, size - firstLen do
 		self[idx] = nil :: any
 	end
 	self.head = 0
