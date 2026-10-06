@@ -160,6 +160,16 @@ const function CeilingItem<T>(self: TreeSetData<T>, item: T): T?
 	return TreeMap.CeilingKey(self.map, item)
 end
 
+-- `item` 보다 **작은** 원소 중 가장 큰 것(엄격 — `FloorItem` 은 같은 원소도 줌).
+const function LowerItem<T>(self: TreeSetData<T>, item: T): T?
+	return TreeMap.LowerKey(self.map, item)
+end
+
+-- `item` 보다 **큰** 원소 중 가장 작은 것(엄격 — `CeilingItem` 은 같은 원소도 줌).
+const function HigherItem<T>(self: TreeSetData<T>, item: T): T?
+	return TreeMap.HigherKey(self.map, item)
+end
+
 -- 구간 `[from, to]` 의 원소들. **양끝 포함**, 정렬 순서. 뒤집히면 빈 목록.
 const function RangeItems<T>(self: TreeSetData<T>, from: T, to: T): { T }
 	const recs = TreeMap.RangeRecords(self.map, from, to)
@@ -176,6 +186,26 @@ end
 
 const function Clear<T>(self: TreeSetData<T>): ()
 	TreeMap.Clear(self.map)
+end
+
+-- 가장 작은 원소를 **꺼냅니다**. 비었으면 `nil`. O(n) 입니다(`TreeMap.PopFirst`).
+const function PopFirst<T>(self: TreeSetData<T>): T?
+	const rec = TreeMap.PopFirst(self.map)
+	return if rec == nil then nil else rec.key
+end
+
+-- 가장 큰 원소를 꺼냅니다. O(1).
+const function PopLast<T>(self: TreeSetData<T>): T?
+	const rec = TreeMap.PopLast(self.map)
+	return if rec == nil then nil else rec.key
+end
+
+-- 조건을 만족하는 원소만 **남깁니다**(제자리, 정렬 순서로 부름). ⚠️ Java `retainAll` 과 달리
+-- 술어를 받습니다(질문 W).
+const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): ()
+	TreeMap.Retain(self.map, function(item: T, _value: true): boolean
+		return fn(item)
+	end)
 end
 
 const function Clone<T>(self: TreeSetData<T>): TreeSet<T>
@@ -450,6 +480,7 @@ const TreeSetModule = {
 	Intersect = Intersect, Difference = Difference, SymmetricDifference = SymmetricDifference,
 	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal, Add = Add, Has = Has,
 	Remove = Remove, Items = Items,
+	LowerItem = LowerItem, HigherItem = HigherItem, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
 }
 
 -- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.

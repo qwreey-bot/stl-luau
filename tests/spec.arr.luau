@@ -1987,6 +1987,93 @@ do
 end
 print("PASS")
 
+print("=== 23. M4 — GroupBy / CountBy / KeyBy (2026-10-07) ===")
+do
+	const HashMap = stl.HashMap
+	const words = Arr.Of("apple", "bob", "avocado", "cat", "banana")
+	local keyCalls = 0
+	const first = function(w: string): string
+		keyCalls += 1
+		return string.sub(w, 1, 1)
+	end
+	const g = Arr.GroupBy(words, first)
+	assert(keyCalls == 5, "키는 원소당 한 번")
+	assert(stl.isHashMap(g) and HashMap.Len(g) == 3, `무리 수 {HashMap.Len(g)}`)
+	same(HashMap.Get(g, "a") :: any, { "apple", "avocado" }, "무리 a — 입력 순서")
+	same(HashMap.Get(g, "b") :: any, { "bob", "banana" }, "무리 b")
+	same(HashMap.Get(g, "c") :: any, { "cat" }, "무리 c")
+	assert(Arr.isArr(HashMap.Get(g, "a")), "무리는 Arr")
+	-- 이어 쓸 수 있는 맵(크기가 맞음)
+	HashMap.Set(g, "z", Arr.Of("zoo"))
+	assert(HashMap.Len(g) == 4, "GroupBy 결과 크기")
+	assert(HashMap.Len(Arr.GroupBy(Arr.Sized(0, ""), first)) == 0, "빈 GroupBy")
+
+	const c = Arr.CountBy(words, first)
+	assert(HashMap.Get(c, "a") == 2 and HashMap.Get(c, "b") == 2 and HashMap.Get(c, "c") == 1, "CountBy")
+	assert(HashMap.Len(c) == 3, "CountBy 크기")
+	assert(HashMap.Len(Arr.CountBy(Arr.Sized(0, ""), first)) == 0, "빈 CountBy")
+
+	const k = Arr.KeyBy(words, first)
+	assert(HashMap.Get(k, "a") == "avocado" and HashMap.Get(k, "b") == "banana", "KeyBy 는 나중 것")
+	assert(HashMap.Len(k) == 3, "KeyBy 크기")
+
+	-- 구멍: key 를 부르고(nil 을 받음), GroupBy·CountBy 는 담고, KeyBy 는 그 키를 지움
+	const holed = Arr.Of<<number?>>(10, nil, 30, nil)
+	const parity = function(v: number?): string
+		return if v == nil then "hole" else "num"
+	end
+	const hg = Arr.GroupBy(holed, parity)
+	const holes = HashMap.Get(hg, "hole") :: any
+	assert(holes.n == 2 and holes[1] == nil and holes[2] == nil, "구멍 무리")
+	same(HashMap.Get(hg, "num") :: any, { 10, 30 }, "숫자 무리")
+	assert(HashMap.Get(Arr.CountBy(holed, parity), "hole") == 2, "구멍도 셈")
+	const lastWins = Arr.KeyBy(Arr.Of<<number?>>(10, nil), function(_v: number?): string
+		return "same"
+	end)
+	assert(HashMap.Len(lastWins) == 0 and not HashMap.Has(lastWins, "same"), "나중 구멍이 키를 지움")
+
+	-- 키가 nil·NaN 이면 에러
+	assert(not pcall(Arr.GroupBy, Arr.Of(10), function(_v: number): any
+		return nil
+	end), "nil 키")
+	assert(not pcall(Arr.CountBy, Arr.Of(10), function(_v: number): number
+		return 0 / 0
+	end), "NaN 키")
+	assert(not pcall(Arr.KeyBy, Arr.Of(10), function(_v: number): any
+		return nil
+	end), "KeyBy nil 키")
+	-- 무작위 대조: 무리를 이으면 원본 다중집합, CountBy = 무리 길이
+	math.randomseed(4)
+	for _round = 1, 100 do
+		const len = math.random(0, 15)
+		const a = Arr.FromFunc(len, function(_i: number): number
+			return math.random(1, 4) * 10
+		end)
+		const byTens = function(v: number): number
+			return v // 10
+		end
+		const groups = Arr.GroupBy(a, byTens)
+		const counts = Arr.CountBy(a, byTens)
+		local total = 0
+		for key, group in HashMap.Iter(groups) do
+			assert(HashMap.Get(counts, key) == group.n, "CountBy = 무리 길이")
+			for idx = 1, group.n do
+				assert(byTens(group[idx]) == key, "같은 무리는 같은 키")
+			end
+			total += group.n
+		end
+		assert(total == len and HashMap.Len(groups) == HashMap.Len(counts), "무리 합 = 길이")
+		const keyed = Arr.KeyBy(a, byTens)
+		for key, item in HashMap.Iter(keyed) do
+			const _, lastIdx = Arr.FindLast(a, function(v: number): boolean
+				return byTens(v) == key
+			end)
+			assert(a[lastIdx :: number] == item, "KeyBy 는 마지막")
+		end
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 

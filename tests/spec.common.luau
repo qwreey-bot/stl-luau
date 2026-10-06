@@ -253,6 +253,16 @@ do
 			Arr.Windows(Arr.Of(10, 20), 0 / 0)
 		end)
 	)
+	-- M4(2026-10-07) — 묶기 키(GroupBy·CountBy·KeyBy 가 공유)
+	atUserLine(
+		"Arr.GroupBy nil 키",
+		expectLine("Arr.GroupBy nil 키", "GroupBy key is nil", function()
+			where = debug.info(1, "l") + 1
+			Arr.GroupBy(Arr.Of(10, 20), function(_v: number): any
+				return nil
+			end)
+		end)
+	)
 	-- 10. 스택이 끝까지 라이브러리면(라이브러리 함수를 스레드 본문으로 바로 넘김 — Roblox 의
 	--     `task.spawn(Arr.At, …)`) 가리킬 사용자 줄이 없어 위치를 안 붙임. `error(message)` 로
 	--     바꾸면 `Common.luau` 줄이 붙었는데 테스트가 없었음(6라운드).

@@ -197,6 +197,109 @@ const function Clone<K, V>(self: HashMapData<K, V>): HashMap<K, V>
 	return tagged({ data = copy, size = self.size })
 end
 
+-- 조건을 만족하는 쌍만 **남깁니다**(제자리, Rust `retain`). 콜백은 `(key, value)` 를 받습니다.
+-- ⚠️ Java `retainAll`(다른 컬렉션을 받음)과 달리 **술어**를 받습니다(질문 W). 순서는 해시 순서.
+-- 콜백 안에서 이 맵에 새 키를 넣으면 순회가 망가집니다(Lua 의 `next` 규칙) — 지우기만 안전.
+const function Retain<K, V>(self: HashMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
+	const data = self.data
+	local removed = 0
+	for key, value in data do
+		if not fn(key, value) then
+			data[key] = nil
+			removed += 1
+		end
+	end
+	self.size -= removed
+end
+
+--#endregion
+
+--#region ----------- 넣거나 합치기 (M4, 2026-10-07) -----------
+
+-- 있으면 그 값, 없으면 `default` 를 넣고 그것을 돌려줍니다(Rust `entry(k).or_insert(v)`).
+-- `default` 가 `nil` 이면 아무것도 넣지 않고 `nil` — `Set` 의 "값이 nil 이면 삭제" 와 같은 규칙.
+const function GetOrInsert<K, V>(self: HashMapData<K, V>, key: K, default: V): V
+	const data = self.data
+	const found = data[key]
+	if found ~= nil then
+		return found
+	end
+	if default ~= nil then
+		-- 먼저 쓰고 셉니다(`Set` 과 같은 이유 — NaN·nil 키는 쓰기에서 터짐).
+		data[key] = default
+		self.size += 1
+	end
+	return default
+end
+
+-- `GetOrInsert` 인데 기본값을 **없을 때만** 만듭니다(Rust `or_insert_with`). 비싼 기본값
+-- (새 테이블·새 `Arr`)을 매번 만들지 않으려는 것 — 묶기를 손으로 짤 때의 재료(`Arr.GroupBy` 는 안을 직접 씀).
+-- `make` 는 키를 받습니다. `make` 가 `nil` 을 돌려주면 아무것도 넣지 않습니다.
+const function GetOrInsertWith<K, V>(self: HashMapData<K, V>, key: K, make: (key: K) -> V): V
+	const data = self.data
+	const found = data[key]
+	if found ~= nil then
+		return found
+	end
+	const value = make(key)
+	if value ~= nil then
+		-- `make` 가 같은 키를 넣었을 수 있어(재귀 메모이즈) 다시 봅니다 — 안 보면 크기를 두 번
+		-- 셌습니다. 값은 `make` 가 돌려준 것이 이깁니다.
+		const had = data[key] ~= nil
+		data[key] = value
+		if not had then
+			self.size += 1
+		end
+	end
+	return value
+end
+
+-- 키에 값을 **누적**합니다(Java `Map.merge`): 없으면 `value` 를 넣고, 있으면
+-- `combine(old, value)` 로 바꿉니다. 바뀐 값을 돌려줍니다. `combine` 이 `nil` 을 돌려주면
+-- 키를 지웁니다(`Set` 규칙). 예: 단어 세기 `HashMap.Accumulate(m, w, 1, add)`.
+-- (이름: `Update` 는 Python `dict.update`(덮어 합치기)와 겹쳐서 — 질문 W.)
+const function Accumulate<K, V>(self: HashMapData<K, V>, key: K, value: V, combine: (old: V, value: V) -> V): V?
+	const old = self.data[key]
+	if old == nil then
+		Set(self, key, value)
+		return value
+	end
+	const combined = combine(old, value)
+	Set(self, key, combined)
+	return combined
+end
+
+-- `other` 의 쌍을 **덮어 합친** 새 맵(같은 키는 `other` 가 이김 — Sift·Llama `Dictionary.merge`,
+-- Python `dict | other`). 두 맵은 그대로입니다. 누적하려면 `Accumulate`.
+const function Merge<K, V>(self: HashMapData<K, V>, other: HashMapData<K, V>): HashMap<K, V>
+	const copy: { [K]: V } = {}
+	local count = 0
+	for key, value in self.data do
+		copy[key] = value
+		count += 1
+	end
+	for key, value in other.data do
+		if copy[key] == nil then
+			count += 1
+		end
+		copy[key] = value
+	end
+	return tagged({ data = copy, size = count })
+end
+
+-- `Merge` 의 제자리 판 — `self` 에 `other` 를 덮어씁니다(Python `dict.update`).
+const function MergeInplace<K, V>(self: HashMapData<K, V>, other: HashMapData<K, V>): ()
+	const data = self.data
+	local count = self.size
+	for key, value in other.data do
+		if data[key] == nil then
+			count += 1
+		end
+		data[key] = value
+	end
+	self.size = count
+end
+
 --#endregion
 
 --#region ----------- 타입 -----------
@@ -320,6 +423,8 @@ const HashMapModule = {
 	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
 	Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set, Records = Records,
+	Retain = Retain, GetOrInsert = GetOrInsert, GetOrInsertWith = GetOrInsertWith, Accumulate = Accumulate,
+	Merge = Merge, MergeInplace = MergeInplace,
 }
 
 -- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.

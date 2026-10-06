@@ -178,6 +178,135 @@ do
 end
 print("PASS")
 
+print("=== M4. 넣거나 합치기 / Retain (2026-10-07) ===")
+do
+	-- 크기를 모든 변형마다 같이 봅니다(이 스펙의 규칙)
+	local function size(m: HashMap<string, number>, expected: number, label: string)
+		local counted = 0
+		for _ in m.data do
+			counted += 1
+		end
+		assert(
+			HashMap.Len(m) == expected and counted == expected,
+			`{label}: size={HashMap.Len(m)} 실제={counted} 기대={expected}`
+		)
+	end
+
+	-- GetOrInsert: 있으면 그 값(안 바꿈), 없으면 넣고 돌려줌, nil 기본값은 안 넣음
+	const m = HashMap.FromTable<<string, number>>({ a = 10 })
+	assert(HashMap.GetOrInsert(m, "a", 99) == 10, "있으면 그 값")
+	size(m, 1, "있으면 그대로")
+	assert(HashMap.GetOrInsert(m, "b", 20) == 20 and HashMap.Get(m, "b") == 20, "없으면 넣음")
+	size(m, 2, "넣으면 크기 +1")
+	assert(HashMap.GetOrInsert(m, "c", nil :: any) == nil, "nil 기본값")
+	size(m, 2, "nil 은 안 넣음")
+	assert(not pcall(HashMap.GetOrInsert, HashMap.New<<number, number>>(), 0 / 0, 1), "NaN 키는 Lua 가 거절")
+
+	-- GetOrInsertWith: 없을 때만 make, make 는 키를 받음
+	local made = 0
+	const make = function(key: string): number
+		made += 1
+		return #key * 100
+	end
+	assert(HashMap.GetOrInsertWith(m, "a", make) == 10 and made == 0, "있으면 make 안 부름")
+	assert(HashMap.GetOrInsertWith(m, "dddd", make) == 400 and made == 1, "없으면 make(key)")
+	size(m, 3, "GetOrInsertWith 크기")
+	assert(HashMap.GetOrInsertWith(m, "e", function(_k: string): number
+		return nil :: any
+	end) == nil, "make 가 nil")
+	size(m, 3, "make 가 nil 이면 안 넣음")
+	-- make 가 같은 키를 넣어도 크기를 두 번 세지 않음(재귀 메모이즈)
+	const memo = HashMap.New<<string, number>>()
+	const v = HashMap.GetOrInsertWith(memo, "k", function(key: string): number
+		HashMap.Set(memo, key, 1)
+		return 2
+	end)
+	assert(v == 2 and HashMap.Get(memo, "k") == 2, "make 의 반환이 이김")
+	size(memo, 1, "make 안의 같은 키")
+	-- 재귀 메모이즈(피보나치) — 다른 키를 넣는 make
+	const fibMemo = HashMap.New<<number, number>>()
+	local function fib(n: number): number
+		if n <= 2 then
+			return 1
+		end
+		return HashMap.GetOrInsertWith(fibMemo, n, function(k: number): number
+			return fib(k - 1) + fib(k - 2)
+		end)
+	end
+	assert(fib(30) == 832040 and HashMap.Len(fibMemo) == 28, `fib 메모 크기 {HashMap.Len(fibMemo)}`)
+
+	-- Accumulate: 없으면 value, 있으면 combine(old, value), nil 이면 지움
+	const words = HashMap.New<<string, number>>()
+	const add = function(old: number, value: number): number
+		return old + value
+	end
+	for _, w in { "x", "y", "x", "x" } do
+		HashMap.Accumulate(words, w, 1, add)
+	end
+	assert(HashMap.Get(words, "x") == 3 and HashMap.Get(words, "y") == 1, "단어 세기")
+	size(words, 2, "Accumulate 크기")
+	local args = ""
+	assert(HashMap.Accumulate(words, "x", 10, function(old: number, value: number): number
+		args = `{old},{value}`
+		return old * value
+	end) == 30, "바뀐 값을 돌려줌")
+	assert(args == "3,10", `combine 인자 순서: {args}`)
+	assert(HashMap.Accumulate(words, "x", 1, function(_o: number, _v: number): number
+		return nil :: any
+	end) == nil and not HashMap.Has(words, "x"), "combine 이 nil 이면 지움")
+	size(words, 1, "지운 뒤 크기")
+	assert(HashMap.Accumulate(words, "z", nil :: any, add) == nil, "없는데 value 가 nil")
+	size(words, 1, "nil value 는 안 넣음")
+
+	-- Merge: 새 맵, other 가 이김, 둘 다 그대로
+	const left = HashMap.FromTable<<string, number>>({ a = 1, b = 2 })
+	const right = HashMap.FromTable<<string, number>>({ b = 20, c = 30 })
+	const merged = HashMap.Merge(left, right)
+	assert(stl.isHashMap(merged) and merged ~= left and merged.data ~= left.data, "새 맵")
+	assert(
+		HashMap.Get(merged, "a") == 1 and HashMap.Get(merged, "b") == 20 and HashMap.Get(merged, "c") == 30,
+		"other 가 이김"
+	)
+	size(merged, 3, "Merge 크기")
+	size(left, 2, "left 그대로")
+	size(right, 2, "right 그대로")
+	assert(HashMap.Get(left, "b") == 2, "left 값 그대로")
+	size(HashMap.Merge(left, left), 2, "자기 자신과 Merge")
+	size(HashMap.Merge(HashMap.New<<string, number>>(), right), 2, "빈 것과")
+	-- MergeInplace
+	HashMap.MergeInplace(left, right)
+	assert(HashMap.Get(left, "b") == 20 and HashMap.Get(left, "c") == 30, "MergeInplace 덮어씀")
+	size(left, 3, "MergeInplace 크기")
+	HashMap.MergeInplace(left, left)
+	size(left, 3, "자기 자신과 MergeInplace")
+	HashMap.MergeInplace(left, HashMap.New<<string, number>>())
+	size(left, 3, "빈 것과 MergeInplace")
+
+	-- Retain: (key, value), 크기
+	const r = HashMap.FromTable<<string, number>>({ a = 10, b = 25, c = 30, d = 45 })
+	local seenPairs = 0
+	HashMap.Retain(r, function(key: string, value: number): boolean
+		seenPairs += 1
+		assert(HashMap.Get(r, key) == value or HashMap.Get(r, key) == nil, "키·값 짝")
+		return value % 10 == 0
+	end)
+	assert(seenPairs == 4, "모두 한 번씩")
+	assert(
+		HashMap.Has(r, "a") and HashMap.Has(r, "c") and not HashMap.Has(r, "b") and not HashMap.Has(r, "d"),
+		"Retain"
+	)
+	size(r, 2, "Retain 크기")
+	HashMap.Retain(r, function(_k: string, _v: number): boolean
+		return false
+	end)
+	size(r, 0, "전부 지움")
+	HashMap.Retain(r, function(_k: string, _v: number): boolean
+		return true
+	end)
+	size(r, 0, "빈 맵 Retain")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (HashMap) ===")
 

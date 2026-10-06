@@ -61,7 +61,7 @@ src/
   Common.luau      비교자 어댑터와 기본 3방향 비교자
   Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
-  Arr.luau         배열. 연산 100(checked/unchecked, 구멍 다루기 포함) + 생성자 8
+  Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 HashMap 을 돌려줌) + 생성자 8
   HashMap.luau     해시 맵. { data, size } 래퍼
   HashSet.luau     HashMap 위에 단방향으로 얹음
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
@@ -122,10 +122,10 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
 | `Types` / `Common` / `Algorithm` / `Trait` | 완성(작음) — 트레이트 2026-10-06 | `spikes/55` |
-| `Arr` | 연산 100 + 생성자 8 (M3 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
-| `HashMap` / `HashSet` | 완성 | `spikes/41` |
+| `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
+| `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |
-| `TreeMap` / `TreeSet` | 완성 | `spikes/43` |
+| `TreeMap` / `TreeSet` | 완성 — M4 Lower/Higher·Pop·Retain | `spikes/43`, `59` |
 | `Heap` | 완성 | `spikes/44` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |

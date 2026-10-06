@@ -266,6 +266,30 @@ const function CeilingKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 	return self.records[pos].key
 end
 
+-- `key` 보다 **작은** 키 중 가장 큰 것(엄격 — `FloorKey` 는 같은 키도 줌). 없으면 `nil`.
+const function LowerKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if isNaN(key) then
+		return nil
+	end
+	const pos = BSearch.LowerBound(self.records, self.size, key, self.probe)
+	if pos == 1 then
+		return nil
+	end
+	return self.records[pos - 1].key
+end
+
+-- `key` 보다 **큰** 키 중 가장 작은 것(엄격 — `CeilingKey` 는 같은 키도 줌). 없으면 `nil`.
+const function HigherKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if isNaN(key) then
+		return nil
+	end
+	const pos = BSearch.UpperBound(self.records, self.size, key, self.probe)
+	if pos > self.size then
+		return nil
+	end
+	return self.records[pos].key
+end
+
 -- 키 구간 `[fromKey, toKey]` 의 쌍들. **양끝 포함**이고 정렬 순서입니다.
 -- 구간이 뒤집혀 있으면 빈 목록입니다(이 저장소의 구간 규약).
 const function RangeRecords<K, V>(self: TreeMapData<K, V>, fromKey: K, toKey: K): { Record<K, V> }
@@ -300,6 +324,54 @@ const function Remove<K, V>(self: TreeMapData<K, V>, key: K): V?
 		return nil
 	end
 	return removeAt(self, pos)
+end
+
+-- 가장 작은 키의 쌍을 **꺼냅니다**. 비었으면 `nil`. 정렬 배열이라 뒤를 당기는 **O(n)**
+-- (`table.move`) — 양끝을 자주 꺼내는 용도면 `Heap` 이 맞습니다. 꺼낸 레코드는 맵과 공유하지
+-- 않으니(이미 빠짐) 복사하지 않습니다.
+const function PopFirst<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+	const size = self.size
+	if size == 0 then
+		return nil
+	end
+	const records = self.records
+	const rec = records[1]
+	table.move(records, 2, size, 1)
+	records[size] = nil :: any
+	self.size = size - 1
+	return rec
+end
+
+-- 가장 큰 키의 쌍을 꺼냅니다. O(1).
+const function PopLast<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+	const size = self.size
+	if size == 0 then
+		return nil
+	end
+	const records = self.records
+	const rec = records[size]
+	records[size] = nil :: any
+	self.size = size - 1
+	return rec
+end
+
+-- 조건을 만족하는 쌍만 **남깁니다**(제자리, 정렬 순서로 부름). 콜백은 `(key, value)`.
+-- ⚠️ Java `retainAll` 과 달리 술어를 받습니다(질문 W). 한 번 훑고 당겨 O(n).
+const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
+	const records = self.records
+	const size = self.size
+	local kept = 0
+	for idx = 1, size do
+		const rec = records[idx]
+		if fn(rec.key, rec.value) then
+			kept += 1
+			records[kept] = rec
+		end
+	end
+	for idx = kept + 1, size do
+		records[idx] = nil :: any
+	end
+	self.size = kept
 end
 
 const function Clear<K, V>(self: TreeMapData<K, V>): ()
@@ -438,6 +510,7 @@ const TreeMapModule = {
 	First = First, Last = Last, FloorKey = FloorKey, CeilingKey = CeilingKey,
 	RangeRecords = RangeRecords, Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set,
 	Records = Records,
+	LowerKey = LowerKey, HigherKey = HigherKey, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
 }
 
 -- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.

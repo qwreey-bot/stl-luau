@@ -790,6 +790,25 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
   두지 않았습니다 — `EraseInplace(a, i, i)`.
 - `ZipWith` 의 콜백은 `(a, b, index)` — 배열 뷰는 안 넘깁니다(두 배열 중 어느 것인지 애매).
 
+## 🔁 2026-10-07 — M4(맵·셋)에서 **제가 정한 것들** (되돌리기 쉬움 — 사용자 주무시는 동안)
+
+### AJ. M4 의 모양 — 아침에 확인 부탁
+
+| 무엇 | 정한 것 | 다른 길 |
+|---|---|---|
+| `HashMap.Merge` | **새 맵** + `MergeInplace`(제자리) 쌍 — `Inplace` 관례. 같은 키는 `other` 가 이김 | W 표는 "`Merge(other)` 덮어 합치기" 만 정함. 제자리 하나만 둘 수도 |
+| `Merge` 의 범위 | **`HashMap` 끼리만**(불변 — 같은 `K, V`) | `TreeMap.Merge`, 트레이트(`Trait.Map`)로 아무 맵이나 받기 — 부르는 곳이 보이면 |
+| 맵 변형의 반환 | `Retain`·`MergeInplace` 는 **`()`** — `Set`/`Clear` 와 같게 | `Arr.Retain` 처럼 자기 자신을 돌려주기(체이닝은 없으니 이득이 작음) |
+| `Accumulate(m, k, v, combine)` | 없으면 `v`, 있으면 `combine(old, v)`. **바뀐 값을 `V?` 로** 돌려주고 `nil` 이면 지움(Java `Map.merge`) | 반환 없음 |
+| `GetOrInsert(m, k, default)` | 있으면 그 값(안 바꿈). `default` 가 `nil` 이면 아무것도 안 넣음 | `nil` 이면 에러 |
+| `GetOrInsertWith(m, k, make)` | `make(key)` 를 **없을 때만**. `make` 가 같은 키를 넣었으면(재귀 메모이즈) 크기를 다시 셈 — 결과는 `make` 의 반환이 이김 | — |
+| `Retain` 콜백 | 맵 `(key, value)`, 셋 `(item)`. TreeMap/TreeSet 은 정렬 순서로 부름 | Rust 와 같음 |
+| `LowerKey`/`HigherKey` | **엄격**(같은 키는 안 줌) — `FloorKey`/`CeilingKey` 의 짝. 셋은 `LowerItem`/`HigherItem`(셋의 `FloorItem` 어휘) | Java `lowerKey`/`higherKey` 와 같음 |
+| `PopFirst`/`PopLast` | 맵은 **`Record<K, V>?`**(꺼낸 레코드를 그대로 — 이미 빠졌으니 복사 안 함), 셋은 `T?`. `PopFirst` 는 정렬 배열이라 O(n) | `(K?, V?)` 두 값으로 돌려주기 |
+| `Arr.GroupBy`/`CountBy`/`KeyBy` | **`HashMap` 을 돌려줌**(`HashMap<K, Arr<T>>`·`<K, number>`·`<K, T>`) → **`Arr` 가 `HashMap` 을 require**(한 방향, 순환 없음) | 평범한 테이블 `{ [K]: … }` 을 돌려주면 의존이 없음 |
+| 묶기의 키 | `(element) -> K`(`SortBy` 모양), 원소당 한 번, 구멍에도 부름. **키가 `nil`·NaN 이면 에러** | 그 원소를 건너뛰기 |
+| `KeyBy` 의 같은 키 | **나중 것이 이김**(lodash·Kotlin). 구멍 원소는 그 키를 **지움**(나중 것 + `Set` 의 nil 규칙) | 처음 것 |
+
 ---
 
 ### G. mlua 바인딩 — **보류 확정**

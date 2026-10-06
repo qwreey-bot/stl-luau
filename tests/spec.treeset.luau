@@ -221,6 +221,31 @@ do
 end
 print("PASS")
 
+print("=== M4. LowerItem / HigherItem / PopFirst / PopLast / Retain (2026-10-07) ===")
+do
+	const s = setOf(30, 10, 20)
+	assert(TreeSet.LowerItem(s, 20) == 10 and TreeSet.FloorItem(s, 20) == 20, "LowerItem 엄격")
+	assert(TreeSet.HigherItem(s, 20) == 30 and TreeSet.CeilingItem(s, 20) == 20, "HigherItem 엄격")
+	assert(TreeSet.LowerItem(s, 10) == nil and TreeSet.HigherItem(s, 30) == nil, "양끝 밖")
+	assert(TreeSet.LowerItem(s, 15) == 10 and TreeSet.HigherItem(s, 15) == 20, "사이 값")
+	assert(TreeSet.PopFirst(s) == 10 and itemsOf(s) == "20,30", "PopFirst")
+	assert(TreeSet.PopLast(s) == 30 and itemsOf(s) == "20", "PopLast")
+	assert(TreeSet.PopLast(s) == 20 and TreeSet.Empty(s), "마지막")
+	assert(TreeSet.PopFirst(s) == nil and TreeSet.PopLast(s) == nil and TreeSet.Len(s) == 0, "빈 Pop")
+	assert(TreeSet.Add(s, 5) and itemsOf(s) == "5", "꺼낸 뒤 Add")
+
+	const r = setOf(40, 10, 30, 20)
+	local order = {}
+	TreeSet.Retain(r, function(item: number): boolean
+		table.insert(order, item)
+		return item >= 25
+	end)
+	assert(table.concat(order, ",") == "10,20,30,40", "정렬 순서로 부름")
+	assert(itemsOf(r) == "30,40" and TreeSet.Len(r) == 2, "Retain")
+	assert(TreeSet.Has(r, 30) and not TreeSet.Has(r, 10), "Retain 뒤 Has")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeSet) ===")
 

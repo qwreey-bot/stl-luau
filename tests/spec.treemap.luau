@@ -236,6 +236,69 @@ do
 end
 print("PASS")
 
+print("=== M4. LowerKey / HigherKey / PopFirst / PopLast / Retain (2026-10-07) ===")
+do
+	const m = TreeMap.FromRecords({
+		{ key = 30, value = "c" },
+		{ key = 10, value = "a" },
+		{ key = 20, value = "b" },
+	}, Common.compareNumber)
+	-- 엄격: 같은 키는 안 줌(Floor/Ceiling 과 다름)
+	assert(TreeMap.LowerKey(m, 20) == 10 and TreeMap.FloorKey(m, 20) == 20, "LowerKey 엄격")
+	assert(TreeMap.HigherKey(m, 20) == 30 and TreeMap.CeilingKey(m, 20) == 20, "HigherKey 엄격")
+	assert(TreeMap.LowerKey(m, 25) == 20 and TreeMap.HigherKey(m, 25) == 30, "사이 값")
+	assert(TreeMap.LowerKey(m, 10) == nil and TreeMap.HigherKey(m, 30) == nil, "양끝 밖")
+	assert(TreeMap.LowerKey(m, 5) == nil and TreeMap.HigherKey(m, 5) == 10, "맨 앞보다 작음")
+	assert(TreeMap.LowerKey(m, 99) == 30 and TreeMap.HigherKey(m, 99) == nil, "맨 뒤보다 큼")
+	assert(TreeMap.LowerKey(m, 0 / 0) == nil and TreeMap.HigherKey(m, 0 / 0) == nil, "NaN 은 없음")
+	const e = TreeMap.New<<number, string>>(Common.compareNumber)
+	assert(TreeMap.LowerKey(e, 1) == nil and TreeMap.HigherKey(e, 1) == nil, "빈 맵")
+
+	-- PopFirst / PopLast: 꺼낸 쌍, 크기, 나머지 순서
+	const first = TreeMap.PopFirst(m)
+	assert(first ~= nil and first.key == 10 and first.value == "a", "PopFirst")
+	assert(TreeMap.Len(m) == 2 and keysOf(m) == "20,30", `PopFirst 뒤 {keysOf(m)}`)
+	assert(rawget(m.records :: any, 3) == nil, "꼬리 칸 비움")
+	const last = TreeMap.PopLast(m)
+	assert(last ~= nil and last.key == 30 and last.value == "c", "PopLast")
+	assert(TreeMap.Len(m) == 1 and keysOf(m) == "20", "PopLast 뒤")
+	assert(rawget(m.records :: any, 2) == nil, "PopLast 꼬리")
+	-- 꺼낸 레코드를 고쳐도 맵은 그대로
+	last.key = 1
+	assert(TreeMap.Get(m, 20) == "b" and TreeMap.Has(m, 1) == false, "꺼낸 레코드는 맵과 무관")
+	const only = TreeMap.PopLast(m)
+	assert(only ~= nil and only.key == 20 and TreeMap.Empty(m), "마지막 하나")
+	assert(TreeMap.PopFirst(m) == nil and TreeMap.PopLast(m) == nil and TreeMap.Len(m) == 0, "빈 Pop")
+	-- 꺼낸 뒤에도 정상 동작
+	TreeMap.Set(m, 50, "e")
+	TreeMap.Set(m, 40, "d")
+	assert(keysOf(m) == "40,50" and TreeMap.Get(m, 40) == "d", "꺼낸 뒤 Set")
+
+	-- Retain: 정렬 순서로 부름, (key, value), 남은 것 정렬 유지
+	const r = TreeMap.FromRecords({
+		{ key = 40, value = "d" },
+		{ key = 10, value = "a" },
+		{ key = 30, value = "c" },
+		{ key = 20, value = "b" },
+	}, Common.compareNumber)
+	local order = {}
+	TreeMap.Retain(r, function(key: number, value: string): boolean
+		table.insert(order, `{key}{value}`)
+		return key ~= 20 and key ~= 40
+	end)
+	assert(table.concat(order, ",") == "10a,20b,30c,40d", `Retain 순서 {table.concat(order, ",")}`)
+	assert(keysOf(r) == "10,30" and TreeMap.Len(r) == 2, "Retain")
+	assert(rawget(r.records :: any, 3) == nil and rawget(r.records :: any, 4) == nil, "Retain 꼬리")
+	assert(TreeMap.Get(r, 30) == "c" and TreeMap.Get(r, 20) == nil, "Retain 뒤 조회")
+	TreeMap.Set(r, 20, "B")
+	assert(keysOf(r) == "10,20,30", "Retain 뒤 삽입 위치")
+	TreeMap.Retain(r, function(_k: number, _v: string): boolean
+		return false
+	end)
+	assert(TreeMap.Empty(r) and rawget(r.records :: any, 1) == nil, "전부 지움")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeMap) ===")
 

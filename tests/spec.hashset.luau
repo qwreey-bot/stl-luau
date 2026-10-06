@@ -153,6 +153,32 @@ do
 end
 print("PASS")
 
+print("=== M4. Retain (2026-10-07) ===")
+do
+	const s = HashSet.Of(10, 15, 20, 25)
+	local calls = 0
+	HashSet.Retain(s, function(item: number): boolean
+		calls += 1
+		return item % 10 == 0
+	end)
+	assert(calls == 4, "원소마다 한 번")
+	assert(HashSet.Len(s) == 2 and HashSet.Has(s, 10) and HashSet.Has(s, 20) and not HashSet.Has(s, 15), "Retain")
+	local counted = 0
+	for _ in s.map.data do
+		counted += 1
+	end
+	assert(counted == 2, "실제 원소 수")
+	HashSet.Retain(s, function(_item: number): boolean
+		return false
+	end)
+	assert(HashSet.Len(s) == 0 and HashSet.Empty(s), "전부 지움")
+	HashSet.Retain(s, function(_item: number): boolean
+		return true
+	end)
+	assert(HashSet.Len(s) == 0, "빈 셋")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (HashSet) ===")
 

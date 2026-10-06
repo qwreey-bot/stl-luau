@@ -122,6 +122,22 @@ const function Clear<T>(self: HashSetData<T>): ()
 	HashMap.Clear(self.map)
 end
 
+-- 조건을 만족하는 원소만 **남깁니다**(제자리). ⚠️ Java `retainAll`(다른 컬렉션을 받음)과 달리
+-- 술어를 받습니다(질문 W) — 다른 셋과의 교집합은 `Intersect`. 콜백 안에서 이 셋에 원소를 넣으면
+-- 순회가 망가집니다(Lua 의 `next` 규칙).
+const function Retain<T>(self: HashSetData<T>, fn: (item: T) -> boolean): ()
+	const map = self.map
+	const data = map.data
+	local removed = 0
+	for item in data do
+		if not fn(item) then
+			data[item] = nil
+			removed += 1
+		end
+	end
+	map.size -= removed
+end
+
 const function Clone<T>(self: HashSetData<T>): HashSet<T>
 	return tagged({ map = HashMap.Clone(self.map) })
 end
@@ -310,6 +326,7 @@ const HashSetModule = {
 	Intersect = Intersect, Difference = Difference, SymmetricDifference = SymmetricDifference,
 	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal, Add = Add, Has = Has,
 	Remove = Remove, Items = Items,
+	Retain = Retain,
 }
 
 -- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.

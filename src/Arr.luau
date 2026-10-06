@@ -76,8 +76,12 @@ local Common = require("./Common")
 Common.registerSource(debug.info(1, "s"))
 local Optional = require("./Optional")
 local Trait = require("./Trait")
+-- `GroupBy`/`CountBy`/`KeyBy` 가 돌려줄 맵. 의존은 **Arr → HashMap 한 방향**입니다(HashMap 은
+-- Arr 을 모름 — `HashMap.Keys` 주석).
+local HashMap = require("./HashMap")
 
 type LessThan<T> = Types.LessThan<T>
+type HashMap<K, V> = HashMap.HashMap<K, V>
 type Optional<T> = Optional.Optional<T>
 
 -- `read __type: Token<"Arr">` 는 생성자가 붙이는 실제 필드(타입 토큰, `Trait.luau`)이고,
@@ -2292,6 +2296,77 @@ end
 
 --#endregion
 
+--#region ----------- 묶기 — 키로 맵 만들기 (M4, 2026-10-07) -----------
+-- 키는 원소당 한 번 계산합니다(`SortBy`·`MaxBy` 와 같은 `(element) -> K` 모양). 구멍에도 `key` 를
+-- 부릅니다(콜백 계열 — 구멍은 `nil` 그대로). 키가 `nil`·NaN 이면 **에러**입니다 — 맵의 키가 될 수
+-- 없는데 조용히 건너뛰면 원소가 사라집니다.
+
+const function checkGroupKey(key: any, who: string)
+	if key == nil or key ~= key then
+		Common.raise(`Arr: {who} key is {if key == nil then "nil" else "NaN"}`)
+	end
+end
+
+-- 키가 같은 원소끼리 모은 맵(`HashMap<K, Arr<T>>`). 무리 안은 **입력 순서**, 무리끼리는 맵이라
+-- 순서가 없습니다. 무리마다 `Arr` 하나.
+const function GroupBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<K, Arr<T>>
+	const groups = HashMap.New() :: HashMap<K, Arr<T>>
+	const data = groups.data
+	local count = 0
+	for idx = 1, self.n do
+		const item = self[idx]
+		const k = key(item)
+		checkGroupKey(k, "GroupBy")
+		local group = data[k]
+		if group == nil then
+			group = newSized(0)
+			data[k] = group
+			count += 1
+		end
+		const len = group.n + 1
+		group[len] = item
+		group.n = len
+	end
+	groups.size = count
+	return groups
+end
+
+-- 키마다 원소 수(`HashMap<K, number>`). 구멍도 셉니다(`key(nil)` 의 키로).
+const function CountBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<K, number>
+	const counts = HashMap.New() :: HashMap<K, number>
+	const data = counts.data
+	local size = 0
+	for idx = 1, self.n do
+		const k = key(self[idx])
+		checkGroupKey(k, "CountBy")
+		const prev = data[k]
+		if prev == nil then
+			data[k] = 1
+			size += 1
+		else
+			data[k] = prev + 1
+		end
+	end
+	counts.size = size
+	return counts
+end
+
+-- 키 → 원소 맵(`HashMap<K, T>`). 같은 키는 **나중 것이 이깁니다**(lodash `keyBy`, Kotlin
+-- `associateBy`). ⚠️ 구멍(`nil` 원소)은 맵에 들어갈 수 없어 그 키를 **지웁니다** — "나중 것이
+-- 이김" 과 `HashMap.Set` 의 "nil 은 삭제" 를 그대로 따른 것입니다.
+const function KeyBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<K, T>
+	const out = HashMap.New() :: HashMap<K, T>
+	for idx = 1, self.n do
+		const item = self[idx]
+		const k = key(item)
+		checkGroupKey(k, "KeyBy")
+		HashMap.Set(out, k, item)
+	end
+	return out
+end
+
+--#endregion
+
 --#region ----------- 접기 (Fold 네 갈래) -----------
 -- `Fold` 초기값 있음 / `FoldRight` 오른쪽부터 / `Reduce` 초기값 없음 /
 -- `FoldUntil` 조기 중단. **초기값이 앞에 옵니다** — 후행 클로저가 여러 줄일 때
@@ -2664,6 +2739,9 @@ const ArrModule = {
 	TakeWhile = TakeWhile, TakeWhileInplace = TakeWhileInplace, DropWhile = DropWhile, DropWhileInplace = DropWhileInplace,
 	Dedup = Dedup, DedupInplace = DedupInplace, Unique = Unique, UniqueInplace = UniqueInplace,
 	Scan = Scan, Zip = Zip, ZipWith = ZipWith, Chunks = Chunks, Windows = Windows,
+
+	-- M4(2026-10-07) — 키로 맵 만들기
+	GroupBy = GroupBy, CountBy = CountBy, KeyBy = KeyBy,
 }
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
