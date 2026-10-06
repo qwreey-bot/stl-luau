@@ -44,6 +44,14 @@ function exports.listLength(list: any): number
 	if type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge then
 		return n + 0 -- `-0 + 0 = +0` — 결과 배열의 `n` 이 "-0" 으로 찍히지 않게
 	end
+	-- `n` 없는 **다른 종류의 컨테이너**(타입 토큰이 있음)는 리스트가 아닙니다 — `#` 가 0 이라
+	-- 조용히 빈 결과가 됐습니다(2026-10-06 Gemini 트레이트 검토 — `HashSet.FromList(map)`).
+	-- (`Arr` 은 늘 `n` 이 있어 위에서 끝남.)
+	const token = rawget(list, "__type")
+	if token ~= nil then
+		const name = if type(token) == "table" then rawget(token, "name") else nil
+		exports.raise(`Common: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)}`)
+	end
 	return #list
 end
 

@@ -85,11 +85,19 @@ export type SetOps<C, T> = {
 
 --[[ 트레이트 마커 — 타입에만 있는 필드(런타임엔 없음, `Trait.luau` 머리) ]]
 
+-- 타입 토큰(`Trait.NewType` 이 만듦). `N` 은 이름의 리터럴 타입. 여기(말단)에 두는 것은
+-- 마커가 토큰을 요구하게 하려고 — 토큰 없는 평범한 테이블이 마커만 흉내 내면 타입은
+-- 통과하고 런타임에 터졌습니다(2026-10-06 Gemini 트레이트 검토).
+export type Token<N> = { read name: N }
+
+-- ⚠️ 마커 필드(`__list` 등)는 **타입에만** 있습니다 — 읽으면 nil 입니다(타입은 `T` 라고
+-- 하지만). 알고리즘이 원소 타입을 추론하는 재료일 뿐 읽는 코드를 쓰지 마세요(quad 의
+-- `StateMarker` 와 같은 약속, 질문 AG 3).
 -- 리스트(`Trait.List` 를 구현하는 종류). `E` 는 원소, `I` 는 위치.
-export type ListMarker<E, I> = { read __list: E, read __listIndex: I }
+export type ListMarker<E, I> = { read __type: Token<any>, read __list: E, read __listIndex: I }
 -- 맵(`Trait.Map`). `K` 는 키, `V` 는 값.
-export type MapMarker<K, V> = { read __mapKey: K, read __mapValue: V }
+export type MapMarker<K, V> = { read __type: Token<any>, read __mapKey: K, read __mapValue: V }
 -- 셋(`Trait.Set`). `T` 는 원소.
-export type SetMarker<T> = { read __setItem: T }
+export type SetMarker<T> = { read __type: Token<any>, read __setItem: T }
 
 return {}

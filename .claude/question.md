@@ -731,6 +731,19 @@ AD 의 남은 확인(불변식 — `n`·`size` — 도 관측으로 둘지)도 �
 
 ---
 
+### AH. 트레이트 API 이름 — 다른 계열의 눈으로 (2026-10-06, `audit/agy/2026-10-06-trait-review.md`)
+
+Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열이 지었습니다). 지금 쓰는 곳이 적어
+바꾸기 쌉니다.
+
+| 지금 | 지적 | 제 의견 |
+|---|---|---|
+| `Trait.TypeOf(v)` | 문자열이 아니라 **토큰**을 돌려주는데 Lua 내장 `type`/`typeof` 와 헷갈림 | **`TokenOf`** 로 — 동의합니다 |
+| `Trait.Impl(trait, token, impl)` | Rust 예약어 축약을 함수 이름으로, 인자도 `impl` | `Impl` 은 짧고 Rust/Luau 사용자에게 익숙해 그대로도 괜찮다고 봅니다. 바꾼다면 **`Implement`** |
+| `Trait.NewType` / `Trait.Types` | 토큰은 트레이트를 구현하지 않는 `Heap`/`Fut` 도 쓰는 바탕인데 `Trait` 밑에 있음 | 모듈을 둘로 쪼개면(`Token.New`, `Trait.New`) 깔끔하지만 require 가 하나 늘어납니다. **그대로 두고 문서로** 쪽을 추천 |
+
+---
+
 ### G. mlua 바인딩 — **보류 확정**
 
 사용자: *"얹혀지는 구조여도 좋아 … 여기에 얽메일 필요는 없어."*

@@ -24,7 +24,7 @@ FromTable n 밖 칸, Chain 자기 순환)을 찾음 → 고침, **리뷰 소진*
 2라운드 이후 동작 결함 0 — 6라운드부터 "현실적 실수 + 실제 순회자에서 틀림" 만 결함으로 세는
 기준으로 수렴). FromTable 은 입양이 복사보다 느려져 `#` 상한으로 되돌리고 경계를 그음(perf 20절).
 **트레이트 들임(AG, 2026-10-06 — `papers/06`)**: 값에는 타입 토큰, 구현은 트레이트, 위조 방지는 내림.
-**⭐ 다음: 트레이트 리뷰(소진까지) → AC(ArrRead) 적용 → M3.**
+**⭐ 다음: 트레이트 리뷰(소진까지, 2라운드~) → AC(ArrRead) 적용 → M3.** 질문 AH(트레이트 API 이름).
 전면 재작성(09-22) 이후 기반이 서 있습니다.
 `./scripts/check.sh` 가 **exit 0** 이고 게이트 일곱이 전부 섭니다:
 
@@ -82,8 +82,8 @@ local f = nested:Flat<<number>>()
 | ~~M2~~ | **✅ 2026-09-30** 정렬 가족(`spikes/51`, perf 15-2) — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
 | **M3** | **`Arr` 빈 조각** — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | **M4** | **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
-| **M5** | **`Deque`**(링 버퍼) | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
-| **M6** | `Multiset`, `OrderedMap` | M4 위에 얇게. 부르는 곳이 보이면 |
+| **M5** | **`Deque`**(링 버퍼) — ⚠️ 트레이트 메모(2026-10-06 Gemini): 리스트 진입점(`FromList`·`Fut.All`·`Common.listLength`)은 지금 `n`·`[i]` 를 전제 — Deque 가 `Trait.List` 로 들어오게 할지 정할 것 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
+| **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음, `MapOps` 엔 `Len`/`Has` 가 없음 | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |
 | **마지막** | **문서 사이트** — *"다른거 다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md` | 사용자 결정 |

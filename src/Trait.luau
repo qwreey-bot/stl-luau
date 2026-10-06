@@ -31,8 +31,9 @@ local Common = require("./Common")
 Common.registerSource(debug.info(1, "s"))
 local Types = require("./Types")
 
--- 타입 토큰. `N` 은 이름의 리터럴 타입 — 종류마다 구조가 달라 정적으로도 갈립니다.
-export type Token<N> = { read name: N }
+-- 타입 토큰. `N` 은 이름의 리터럴 타입 — 종류마다 구조가 달라 정적으로도 갈립니다(정의는
+-- `Types` — 마커가 토큰을 요구하려고 말단에 둠).
+export type Token<N> = Types.Token<N>
 -- 트레이트. `I` 는 구현 테이블의 타입(팬텀 — `impls` 의 값 타입).
 export type Trait<I> = { read name: string, read impls: { [any]: I } }
 

@@ -39,7 +39,11 @@ const function implOf(trait: any, value: any, who: string): any
 	const impl = if type(value) == "table" then trait.impls[rawget(value, "__type")] else nil
 	if impl == nil then
 		const token = Trait.TypeOf(value)
-		const got = if token then token.name else `{typeof(value)} without a type token`
+		-- 토큰이 있는데 구현이 없으면: 그 종류가 트레이트를 구현하지 않거나, **다른 사본의
+		-- 라이브러리**가 만든 값입니다 — 이름만 보면 "Arr 을 넘겼는데 왜" 가 됐습니다(Gemini).
+		const got = if token
+			then `{token.name}, which does not implement it here (a value from another copy of the library?)`
+			else `{typeof(value)} without a type token`
 		return Common.raise(`Algorithm: {who} needs a {trait.name} (got {got})`)
 	end
 	return impl

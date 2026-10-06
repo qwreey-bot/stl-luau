@@ -7,7 +7,7 @@
 	추론하는지. 예전엔 `Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
 	사용자 컨테이너·사용자 트레이트도 같은 모양으로 들어오는지.
 
-	기대 진단: 11건 (NEG 아홉이 10건 — neg6 은 두 자리 + CANARY 1)
+	기대 진단: 12건 (NEG 열이 11건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, TreeMap, Algorithm, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Algorithm, stl.Trait
@@ -75,7 +75,30 @@ type SetLike = { map: stl.HashMap<number, true>, read __setItem: number }
 local neg7: Arr<number> = (nil :: any) :: ArrLike
 local neg8: stl.HashMap<string, number> = (nil :: any) :: MapLike
 local neg9: stl.HashSet<number> = (nil :: any) :: SetLike
+-- 마커만 흉내 내고 토큰이 없는 평범한 테이블은 공용 알고리즘에 못 들어감(Gemini 트레이트 검토
+-- Case 1 — 마커가 토큰을 요구하기 전엔 타입은 통과하고 런타임에 터졌음)
+type MarkerOnly = { read __list: number, read __listIndex: number }
+local neg10 = Algorithm.IndexOf((nil :: any) :: MarkerOnly, 1)
 
 local canary: string = 42
 
-return { pos, cnt, keys, values, rankKeys, inPair, text, neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, canary }
+return {
+	pos,
+	cnt,
+	keys,
+	values,
+	rankKeys,
+	inPair,
+	text,
+	neg1,
+	neg2,
+	neg3,
+	neg4,
+	neg5,
+	neg6,
+	neg7,
+	neg8,
+	neg9,
+	neg10,
+	canary,
+}

@@ -494,6 +494,44 @@ do
 		)
 	end
 	assert(T.ImplOf(T.List, stl.Arr.Of(1)) == stl.Arr, "덮어쓰기 시도 뒤에도 내장 그대로")
+	-- 리스트·사전을 받는 진입점에 **다른 종류의 컨테이너**를 넘기면 조용히 비거나(`n` 이 없어
+	-- `#` 가 0) 내부 필드가 키로 쏟아졌음(Gemini 트레이트 검토 — Deque 가 들어오면 바로 남) →
+	-- 사용자 줄 에러. `Arr` 은 그대로 리스트로 받습니다.
+	const wrongInputs: { { name: string, run: () -> () } } = {
+		{
+			name = "HashSet.FromList(HashMap)",
+			run = function()
+				stl.HashSet.FromList(stl.HashMap.New() :: any)
+			end,
+		},
+		{
+			name = "Arr.CloneFromTable(TreeSet)",
+			run = function()
+				stl.Arr.CloneFromTable(stl.TreeSet.New(Common.compareNumber) :: any)
+			end,
+		},
+		{
+			name = "HashMap.FromTable(HashSet)",
+			run = function()
+				stl.HashMap.FromTable(stl.HashSet.Of(1) :: any)
+			end,
+		},
+		{
+			name = "Fut.All(HashMap)",
+			run = function()
+				stl.Fut.All(stl.HashMap.New() :: any)
+			end,
+		},
+	}
+	for _, case in wrongInputs do
+		const ok, err = pcall(case.run)
+		assert(not ok, `{case.name}: 에러가 안 남`)
+		assert(
+			string.find(tostring(err), "spec.contracts", 1, true) ~= nil,
+			`{case.name}: 사용자 줄이 아님: {err}`
+		)
+	end
+	assert(stl.HashSet.Len(stl.HashSet.FromList(stl.Arr.Of(1, 2))) == 2, "Arr 은 리스트로 받음")
 	-- 토큰이 아닌 것(얼지 않은 테이블)으로 Impl 하면 사용자 줄 에러
 	assert(not pcall(function()
 		stl.Trait.Impl(stl.Trait.List, {} :: any, stl.Arr)
