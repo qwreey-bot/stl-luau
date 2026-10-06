@@ -124,18 +124,17 @@ end
 
 -- 조건을 만족하는 원소만 **남깁니다**(제자리). ⚠️ Java `retainAll`(다른 컬렉션을 받음)과 달리
 -- 술어를 받습니다(질문 W) — 다른 셋과의 교집합은 `Intersect`. 콜백 안에서 이 셋에 원소를 넣으면
--- 순회가 망가집니다(Lua 의 `next` 규칙).
+-- 순회가 망가집니다(Lua 의 `next` 규칙). 지우기는 안전합니다 — 콜백이 `Remove` 로 지운 원소는
+-- 다시 세지 않습니다(`HashMap.Retain` 과 같은 이유, M4 리뷰 1라운드).
 const function Retain<T>(self: HashSetData<T>, fn: (item: T) -> boolean): ()
 	const map = self.map
 	const data = map.data
-	local removed = 0
 	for item in data do
-		if not fn(item) then
+		if not fn(item) and data[item] ~= nil then
 			data[item] = nil
-			removed += 1
+			map.size -= 1
 		end
 	end
-	map.size -= removed
 end
 
 const function Clone<T>(self: HashSetData<T>): HashSet<T>

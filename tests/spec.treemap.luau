@@ -296,6 +296,41 @@ do
 		return false
 	end)
 	assert(TreeMap.Empty(r) and rawget(r.records :: any, 1) == nil, "전부 지움")
+
+	-- 콜백 안에서 이 맵의 크기를 바꾸면 에러(M4 리뷰 1라운드 — 정렬 배열을 당기는 중이라
+	-- 라이브러리 밖 에러 "attempt to index nil" 로 죽었음). 메시지와 줄은 spec.common.
+	const mod = TreeMap.FromRecords({ { key = 10, value = "a" }, { key = 20, value = "b" } }, Common.compareNumber)
+	const ok, err = pcall(function()
+		TreeMap.Retain(mod, function(key: number, _v: string): boolean
+			if key == 10 then
+				TreeMap.Remove(mod, 20)
+			end
+			return true
+		end)
+	end)
+	assert(not ok and string.find(tostring(err), "modified during Retain", 1, true), tostring(err))
+	-- 값만 덮어쓰기(크기 그대로)는 에러가 아님
+	const overwrite = TreeMap.FromRecords({ { key = 10, value = "a" } }, Common.compareNumber)
+	TreeMap.Retain(overwrite, function(key: number, _v: string): boolean
+		TreeMap.Set(overwrite, key, "A")
+		return true
+	end)
+	assert(TreeMap.Get(overwrite, 10) == "A", "값 덮어쓰기")
+
+	-- NaN 은 없음 — 빼기 비교자에서도(1라운드: compareNumber 는 NaN 에 0 이라 가드를 지워도 통과했음,
+	-- `a - b` 는 NaN 을 돌려 탐색이 엉뚱한 키를 줌)
+	const sub = TreeMap.FromRecords(
+		{ { key = 10, value = "a" }, { key = 20, value = "b" } },
+		function(a: number, b: number): number
+			return a - b
+		end
+	)
+	const nan = 0 / 0
+	assert(TreeMap.LowerKey(sub, nan) == nil and TreeMap.HigherKey(sub, nan) == nil, "Lower/Higher NaN")
+	assert(TreeMap.FloorKey(sub, nan) == nil and TreeMap.CeilingKey(sub, nan) == nil, "Floor/Ceiling NaN")
+	assert(TreeMap.Get(sub, nan) == nil and not TreeMap.Has(sub, nan) and TreeMap.Remove(sub, nan) == nil, "조회 NaN")
+	assert(#TreeMap.RangeRecords(sub, nan, 20) == 0 and #TreeMap.RangeRecords(sub, 10, nan) == 0, "구간 NaN")
+	assert(TreeMap.Len(sub) == 2, "NaN 조회는 안 바꿈")
 end
 print("PASS")
 

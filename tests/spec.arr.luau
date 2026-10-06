@@ -2017,7 +2017,7 @@ do
 	assert(HashMap.Get(k, "a") == "avocado" and HashMap.Get(k, "b") == "banana", "KeyBy 는 나중 것")
 	assert(HashMap.Len(k) == 3, "KeyBy 크기")
 
-	-- 구멍: key 를 부르고(nil 을 받음), GroupBy·CountBy 는 담고, KeyBy 는 그 키를 지움
+	-- 구멍: GroupBy·CountBy 는 key 를 부르고(nil 을 받음) 담음, KeyBy 는 건너뜀(맵은 nil 값을 못 담음)
 	const holed = Arr.Of<<number?>>(10, nil, 30, nil)
 	const parity = function(v: number?): string
 		return if v == nil then "hole" else "num"
@@ -2027,10 +2027,16 @@ do
 	assert(holes.n == 2 and holes[1] == nil and holes[2] == nil, "구멍 무리")
 	same(HashMap.Get(hg, "num") :: any, { 10, 30 }, "숫자 무리")
 	assert(HashMap.Get(Arr.CountBy(holed, parity), "hole") == 2, "구멍도 셈")
-	const lastWins = Arr.KeyBy(Arr.Of<<number?>>(10, nil), function(_v: number?): string
+	local keyByCalls = 0
+	const lastWins = Arr.KeyBy(Arr.Of<<number?>>(10, nil, 30, nil), function(_v: number?): string
+		keyByCalls += 1
 		return "same"
 	end)
-	assert(HashMap.Len(lastWins) == 0 and not HashMap.Has(lastWins, "same"), "나중 구멍이 키를 지움")
+	assert(
+		HashMap.Get(lastWins, "same") == 30 and HashMap.Len(lastWins) == 1,
+		"구멍은 건너뜀 — 나중 값이 남음"
+	)
+	assert(keyByCalls == 2, `구멍엔 key 를 안 부름: {keyByCalls}`)
 
 	-- 키가 nil·NaN 이면 에러
 	assert(not pcall(Arr.GroupBy, Arr.Of(10), function(_v: number): any

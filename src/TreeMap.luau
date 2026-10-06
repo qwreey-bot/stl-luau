@@ -355,23 +355,38 @@ const function PopLast<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 	return rec
 end
 
--- 조건을 만족하는 쌍만 **남깁니다**(제자리, 정렬 순서로 부름). 콜백은 `(key, value)`.
--- ⚠️ Java `retainAll` 과 달리 술어를 받습니다(질문 W). 한 번 훑고 당겨 O(n).
-const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
+-- 남길 레코드를 앞으로 당기며 한 번 훑습니다. `TreeSet.Retain` 도 씁니다(`who` 가 에러 머리).
+-- ⚠️ 콜백 안에서 이 맵에 **넣거나 지우면 에러**입니다 — 정렬 배열을 당기는 중이라 위치가 어긋나
+-- 라이브러리 밖 에러("attempt to index nil")로 죽거나 조용히 틀렸습니다(M4 리뷰 1라운드). 값만
+-- 덮어쓰는 `Set`(크기 그대로)은 괜찮습니다. 지울 것은 `false` 로 돌려주세요.
+const function retainRecords(self: any, fn: (rec: any) -> boolean, who: string)
 	const records = self.records
 	const size = self.size
 	local kept = 0
 	for idx = 1, size do
 		const rec = records[idx]
-		if fn(rec.key, rec.value) then
+		const keep = fn(rec)
+		if self.size ~= size then
+			Common.raise(who)
+		end
+		if keep then
 			kept += 1
 			records[kept] = rec
 		end
 	end
 	for idx = kept + 1, size do
-		records[idx] = nil :: any
+		records[idx] = nil
 	end
 	self.size = kept
+end
+
+-- 조건을 만족하는 쌍만 **남깁니다**(제자리, 정렬 순서로 부름). 콜백은 `(key, value)`.
+-- ⚠️ Java `retainAll` 과 달리 술어를 받습니다(질문 W). 한 번 훑고 당겨 O(n). 콜백 안에서 이 맵에
+-- 넣거나 지우면 에러(위).
+const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
+	retainRecords(self, function(rec: Record<K, V>): boolean
+		return fn(rec.key, rec.value)
+	end, "TreeMap: map modified during Retain")
 end
 
 const function Clear<K, V>(self: TreeMapData<K, V>): ()
@@ -511,6 +526,8 @@ const TreeMapModule = {
 	RangeRecords = RangeRecords, Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set,
 	Records = Records,
 	LowerKey = LowerKey, HigherKey = HigherKey, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
+	-- 내부 문(TreeSet 이 씀 — Adopt 처럼 위에 얹히는 구현용).
+	RetainRecords = retainRecords,
 }
 
 -- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.

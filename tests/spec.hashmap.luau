@@ -304,6 +304,33 @@ do
 		return true
 	end)
 	size(r, 0, "빈 맵 Retain")
+
+	-- 콜백 안에서 같은 맵을 지워도 크기가 맞음(M4 리뷰 1라운드 — 현재 키를 Remove 하고 false 면
+	-- 두 번 세서 Len 0·실제 2 였음). 지우기는 주석이 약속한 안전한 변경입니다.
+	const cache = HashMap.FromTable<<string, number>>({ a = 1, b = 2, c = 3, d = 4 })
+	HashMap.Retain(cache, function(key: string, value: number): boolean
+		if value % 2 == 0 then
+			HashMap.Remove(cache, key) -- evict 같은 정리 함수가 지우고 false
+			return false
+		end
+		return true
+	end)
+	size(cache, 2, "콜백이 현재 키를 지움")
+	assert(HashMap.Has(cache, "a") and HashMap.Has(cache, "c"), "남은 것")
+	-- 아직 안 본 다른 키를 지움(그 키는 콜백에 안 올 수도 있음 — 크기만 맞으면 됨)
+	const other = HashMap.FromTable<<string, number>>({ a = 1, b = 2, c = 3, d = 4 })
+	HashMap.Retain(other, function(key: string, _value: number): boolean
+		if key == "a" or key == "b" then
+			HashMap.Remove(other, if key == "a" then "b" else "a")
+		end
+		return key ~= "c"
+	end)
+	local remaining = 0
+	for _ in other.data do
+		remaining += 1
+	end
+	size(other, remaining, "콜백이 다른 키를 지움")
+	assert(not HashMap.Has(other, "c") and HashMap.Has(other, "d"), "술어대로")
 end
 print("PASS")
 

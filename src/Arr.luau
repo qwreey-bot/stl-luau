@@ -2297,9 +2297,10 @@ end
 --#endregion
 
 --#region ----------- 묶기 — 키로 맵 만들기 (M4, 2026-10-07) -----------
--- 키는 원소당 한 번 계산합니다(`SortBy`·`MaxBy` 와 같은 `(element) -> K` 모양). 구멍에도 `key` 를
--- 부릅니다(콜백 계열 — 구멍은 `nil` 그대로). 키가 `nil`·NaN 이면 **에러**입니다 — 맵의 키가 될 수
--- 없는데 조용히 건너뛰면 원소가 사라집니다.
+-- 키는 원소당 한 번 계산합니다(`SortBy`·`MaxBy` 와 같은 `(element) -> K` 모양). `GroupBy`·`CountBy`
+-- 는 구멍에도 `key` 를 부릅니다(콜백 계열 — 구멍은 `nil` 그대로, 무리에 담김). `KeyBy` 는 구멍을
+-- 건너뜁니다(아래). 키가 `nil`·NaN 이면 **에러**입니다 — 맵의 키가 될 수 없는데 조용히 건너뛰면
+-- 원소가 사라집니다.
 
 const function checkGroupKey(key: any, who: string)
 	if key == nil or key ~= key then
@@ -2352,16 +2353,25 @@ const function CountBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<
 end
 
 -- 키 → 원소 맵(`HashMap<K, T>`). 같은 키는 **나중 것이 이깁니다**(lodash `keyBy`, Kotlin
--- `associateBy`). ⚠️ 구멍(`nil` 원소)은 맵에 들어갈 수 없어 그 키를 **지웁니다** — "나중 것이
--- 이김" 과 `HashMap.Set` 의 "nil 은 삭제" 를 그대로 따른 것입니다.
+-- `associateBy`). ⚠️ **구멍은 건너뜁니다**(`key` 도 안 부름) — 맵은 `nil` 값을 담을 수 없습니다.
+-- 예전엔 `Set` 의 "nil 은 삭제" 를 따라 그 키를 지웠는데, 결과가 구멍의 위치에 좌우돼 놀라웠습니다
+-- (M4 리뷰 1라운드 설계 의견).
 const function KeyBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<K, T>
 	const out = HashMap.New() :: HashMap<K, T>
+	const data = out.data
+	local size = 0
 	for idx = 1, self.n do
 		const item = self[idx]
-		const k = key(item)
-		checkGroupKey(k, "KeyBy")
-		HashMap.Set(out, k, item)
+		if item ~= nil then
+			const k = key(item)
+			checkGroupKey(k, "KeyBy")
+			if data[k] == nil then
+				size += 1
+			end
+			data[k] = item
+		end
 	end
+	out.size = size
 	return out
 end
 

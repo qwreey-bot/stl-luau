@@ -263,6 +263,39 @@ do
 			end)
 		end)
 	)
+	-- NaN 쪽(1라운드: `not pcall` 만 보면 Lua 의 "table index is NaN" 도 통과 — 메시지·줄이 규약 위반)
+	atUserLine(
+		"Arr.CountBy NaN 키",
+		expectLine("Arr.CountBy NaN 키", "CountBy key is NaN", function()
+			where = debug.info(1, "l") + 1
+			Arr.CountBy(Arr.Of(10, 20), function(_v: number): number
+				return 0 / 0
+			end)
+		end)
+	)
+	atUserLine(
+		"TreeMap.Retain 중 변경",
+		expectLine("TreeMap.Retain 중 변경", "TreeMap: map modified during Retain", function()
+			const m =
+				stl.TreeMap.FromRecords({ { key = 10, value = 1 }, { key = 20, value = 2 } }, Common.compareNumber)
+			where = debug.info(1, "l") + 1
+			stl.TreeMap.Retain(m, function(key: number, _v: number): boolean
+				stl.TreeMap.Set(m, key + 1, 0)
+				return true
+			end)
+		end)
+	)
+	atUserLine(
+		"TreeSet.Retain 중 변경",
+		expectLine("TreeSet.Retain 중 변경", "TreeSet: set modified during Retain", function()
+			const s = stl.TreeSet.FromList({ 10, 20 }, Common.compareNumber)
+			where = debug.info(1, "l") + 1
+			stl.TreeSet.Retain(s, function(item: number): boolean
+				stl.TreeSet.Add(s, item + 1)
+				return true
+			end)
+		end)
+	)
 	-- 10. 스택이 끝까지 라이브러리면(라이브러리 함수를 스레드 본문으로 바로 넘김 — Roblox 의
 	--     `task.spawn(Arr.At, …)`) 가리킬 사용자 줄이 없어 위치를 안 붙임. `error(message)` 로
 	--     바꾸면 `Common.luau` 줄이 붙었는데 테스트가 없었음(6라운드).

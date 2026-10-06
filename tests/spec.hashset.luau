@@ -176,6 +176,21 @@ do
 		return true
 	end)
 	assert(HashSet.Len(s) == 0, "빈 셋")
+
+	-- 콜백 안에서 같은 셋을 지워도 크기가 맞음(M4 리뷰 1라운드)
+	const evict = HashSet.Of(10, 15, 20, 25)
+	HashSet.Retain(evict, function(item: number): boolean
+		if item % 10 == 0 then
+			HashSet.Remove(evict, item)
+			return false
+		end
+		return true
+	end)
+	local n = 0
+	for _ in evict.map.data do
+		n += 1
+	end
+	assert(HashSet.Len(evict) == 2 and n == 2, `콜백이 지움: Len {HashSet.Len(evict)} 실제 {n}`)
 end
 print("PASS")
 

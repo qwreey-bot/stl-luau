@@ -201,11 +201,11 @@ const function PopLast<T>(self: TreeSetData<T>): T?
 end
 
 -- 조건을 만족하는 원소만 **남깁니다**(제자리, 정렬 순서로 부름). ⚠️ Java `retainAll` 과 달리
--- 술어를 받습니다(질문 W).
+-- 술어를 받습니다(질문 W). 콜백 안에서 이 셋에 넣거나 지우면 에러(`TreeMap.Retain` 과 같은 이유).
 const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): ()
-	TreeMap.Retain(self.map, function(item: T, _value: true): boolean
-		return fn(item)
-	end)
+	TreeMap.RetainRecords(self.map, function(rec: Record<T, true>): boolean
+		return fn(rec.key)
+	end, "TreeSet: set modified during Retain")
 end
 
 const function Clone<T>(self: TreeSetData<T>): TreeSet<T>

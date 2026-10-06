@@ -802,12 +802,12 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | `Accumulate(m, k, v, combine)` | 없으면 `v`, 있으면 `combine(old, v)`. **바뀐 값을 `V?` 로** 돌려주고 `nil` 이면 지움(Java `Map.merge`) | 반환 없음 |
 | `GetOrInsert(m, k, default)` | 있으면 그 값(안 바꿈). `default` 가 `nil` 이면 아무것도 안 넣음 | `nil` 이면 에러 |
 | `GetOrInsertWith(m, k, make)` | `make(key)` 를 **없을 때만**. `make` 가 같은 키를 넣었으면(재귀 메모이즈) 크기를 다시 셈 — 결과는 `make` 의 반환이 이김 | — |
-| `Retain` 콜백 | 맵 `(key, value)`, 셋 `(item)`. TreeMap/TreeSet 은 정렬 순서로 부름 | Rust 와 같음 |
+| `Retain` 콜백 | 맵 `(key, value)`, 셋 `(item)`. TreeMap/TreeSet 은 정렬 순서로 부름. 콜백 안에서 같은 컨테이너를 **지우는 것**은 Hash 쪽은 안전(크기 맞음), Tree 쪽은 **넣거나 지우면 에러**(정렬 배열을 당기는 중 — 리뷰 1라운드에서 크래시였음) | Tree 쪽도 지우기를 허용하려면 두 번 훑어야 함 |
 | `LowerKey`/`HigherKey` | **엄격**(같은 키는 안 줌) — `FloorKey`/`CeilingKey` 의 짝. 셋은 `LowerItem`/`HigherItem`(셋의 `FloorItem` 어휘) | Java `lowerKey`/`higherKey` 와 같음 |
 | `PopFirst`/`PopLast` | 맵은 **`Record<K, V>?`**(꺼낸 레코드를 그대로 — 이미 빠졌으니 복사 안 함), 셋은 `T?`. `PopFirst` 는 정렬 배열이라 O(n) | `(K?, V?)` 두 값으로 돌려주기 |
 | `Arr.GroupBy`/`CountBy`/`KeyBy` | **`HashMap` 을 돌려줌**(`HashMap<K, Arr<T>>`·`<K, number>`·`<K, T>`) → **`Arr` 가 `HashMap` 을 require**(한 방향, 순환 없음) | 평범한 테이블 `{ [K]: … }` 을 돌려주면 의존이 없음 |
 | 묶기의 키 | `(element) -> K`(`SortBy` 모양), 원소당 한 번, 구멍에도 부름. **키가 `nil`·NaN 이면 에러** | 그 원소를 건너뛰기 |
-| `KeyBy` 의 같은 키 | **나중 것이 이김**(lodash·Kotlin). 구멍 원소는 그 키를 **지움**(나중 것 + `Set` 의 nil 규칙) | 처음 것 |
+| `KeyBy` 의 같은 키 | **나중 것이 이김**(lodash·Kotlin). **구멍은 건너뜀**(`key` 도 안 부름 — 처음엔 그 키를 지웠는데 결과가 구멍 위치에 좌우돼 리뷰 1라운드 의견으로 바꿈) | 처음 것 |
 
 ---
 

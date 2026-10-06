@@ -200,16 +200,16 @@ end
 -- 조건을 만족하는 쌍만 **남깁니다**(제자리, Rust `retain`). 콜백은 `(key, value)` 를 받습니다.
 -- ⚠️ Java `retainAll`(다른 컬렉션을 받음)과 달리 **술어**를 받습니다(질문 W). 순서는 해시 순서.
 -- 콜백 안에서 이 맵에 새 키를 넣으면 순회가 망가집니다(Lua 의 `next` 규칙) — 지우기만 안전.
+-- 콜백이 `Remove` 로 지운 키(현재 키 포함)는 `Remove` 가 이미 셌으니 다시 세지 않습니다 —
+-- 예전엔 현재 키를 지우고 `false` 면 두 번 줄어 `Len` 이 실제보다 작았습니다(M4 리뷰 1라운드).
 const function Retain<K, V>(self: HashMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
 	const data = self.data
-	local removed = 0
 	for key, value in data do
-		if not fn(key, value) then
+		if not fn(key, value) and data[key] ~= nil then
 			data[key] = nil
-			removed += 1
+			self.size -= 1
 		end
 	end
-	self.size -= removed
 end
 
 --#endregion
@@ -234,7 +234,8 @@ end
 
 -- `GetOrInsert` 인데 기본값을 **없을 때만** 만듭니다(Rust `or_insert_with`). 비싼 기본값
 -- (새 테이블·새 `Arr`)을 매번 만들지 않으려는 것 — 묶기를 손으로 짤 때의 재료(`Arr.GroupBy` 는 안을 직접 씀).
--- `make` 는 키를 받습니다. `make` 가 `nil` 을 돌려주면 아무것도 넣지 않습니다.
+-- `make` 는 키를 받습니다. `make` 가 `nil` 을 돌려주면 아무것도 넣지 않고 그때 맵에 있는 값(보통
+-- `nil`, `make` 가 그 키를 직접 넣었으면 그 값)을 돌려줍니다.
 const function GetOrInsertWith<K, V>(self: HashMapData<K, V>, key: K, make: (key: K) -> V): V
 	const data = self.data
 	const found = data[key]
@@ -250,8 +251,9 @@ const function GetOrInsertWith<K, V>(self: HashMapData<K, V>, key: K, make: (key
 		if not had then
 			self.size += 1
 		end
+		return value
 	end
-	return value
+	return data[key] :: any
 end
 
 -- 키에 값을 **누적**합니다(Java `Map.merge`): 없으면 `value` 를 넣고, 있으면
