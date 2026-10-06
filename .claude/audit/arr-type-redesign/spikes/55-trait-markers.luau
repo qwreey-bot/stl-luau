@@ -7,7 +7,7 @@
 	추론하는지. 예전엔 `Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
 	사용자 컨테이너·사용자 트레이트도 같은 모양으로 들어오는지.
 
-	기대 진단: 8건 (NEG 여섯이 7건 — neg6 은 두 자리 + CANARY 1)
+	기대 진단: 11건 (NEG 아홉이 10건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, TreeMap, Algorithm, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Algorithm, stl.Trait
@@ -67,7 +67,15 @@ local neg3: { number } = Algorithm.Keys(ages) -- 키 타입
 local neg4: { string } = Algorithm.Values(ages) -- 값 타입
 local neg5: Arr<number> = { n = 3 } -- 생성자를 거치지 않은 리터럴은 Arr 이 아님(토큰 없음)
 local neg6: number = if shown then shown.Show(nums) else "" -- ImplOf 가 구현 타입을 돌려줌
+-- 토큰**만** 빠진 꼴 — 마커는 다 있어서 토큰 필드가 정말 막는지(리뷰 1라운드: 리터럴 NEG 는
+-- 마커도 같이 빠져 토큰을 지워도 안 잡혔음)
+type ArrLike = { n: number, read __list: number, read __listIndex: number, [number]: number }
+type MapLike = { data: { [string]: number }, size: number, read __mapKey: string, read __mapValue: number }
+type SetLike = { map: stl.HashMap<number, true>, read __setItem: number }
+local neg7: Arr<number> = (nil :: any) :: ArrLike
+local neg8: stl.HashMap<string, number> = (nil :: any) :: MapLike
+local neg9: stl.HashSet<number> = (nil :: any) :: SetLike
 
 local canary: string = 42
 
-return { pos, cnt, keys, values, rankKeys, inPair, text, neg1, neg2, neg3, neg4, neg5, neg6, canary }
+return { pos, cnt, keys, values, rankKeys, inPair, text, neg1, neg2, neg3, neg4, neg5, neg6, neg7, neg8, neg9, canary }

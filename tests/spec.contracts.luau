@@ -136,7 +136,7 @@ do
 	end
 	-- 맵 키로 태그 이름을 써도 태그가 덮이지 않습니다(키·값은 `data` 안에 삽니다)
 	const m = stl.HashMap.New<<string, number>>()
-	stl.HashMap.Set(m, "__hashmap__", 1)
+	stl.HashMap.Set(m, "__type", 1)
 	assert(stl.isHashMap(m) and stl.HashMap.Len(m) == 1, "태그 이름을 키로 써도 안전")
 end
 print("PASS")
@@ -395,6 +395,105 @@ do
 	end
 	assert(stl.Arr.Count(counted) == 4 and stl.Algorithm.Count(counted) == 4, "Count 전체")
 	assert(stl.Arr.Count(counted, isEven) == 2 and stl.Algorithm.Count(counted, isEven) == 2, "Count 술어")
+	-- ⭐ 내장 종류 × 내장 트레이트 전수(리뷰 1라운드 — Set 등록을 빼도 아무것도 안 잡혔음)
+	const T = stl.Trait
+	const samples: { { name: string, value: any, list: any, map: any, set: any } } = {
+		{ name = "Arr", value = stl.Arr.Of(1), list = stl.Arr, map = nil, set = nil },
+		{ name = "HashMap", value = stl.HashMap.New(), list = nil, map = stl.HashMap, set = nil },
+		{ name = "TreeMap", value = stl.TreeMap.New(Common.compareNumber), list = nil, map = stl.TreeMap, set = nil },
+		{ name = "HashSet", value = stl.HashSet.New(), list = nil, map = nil, set = stl.HashSet },
+		{ name = "TreeSet", value = stl.TreeSet.New(Common.compareNumber), list = nil, map = nil, set = stl.TreeSet },
+		{
+			name = "Heap",
+			value = stl.Heap.New(function(a: number, b: number): boolean
+				return a < b
+			end),
+			list = nil,
+			map = nil,
+			set = nil,
+		},
+		{ name = "Fut", value = stl.Fut.Resolved(1), list = nil, map = nil, set = nil },
+	}
+	for _, case in samples do
+		assert(T.ImplOf(T.List, case.value) == case.list, `{case.name} 의 List 구현`)
+		assert(T.ImplOf(T.Map, case.value) == case.map, `{case.name} 의 Map 구현`)
+		assert(T.ImplOf(T.Set, case.value) == case.set, `{case.name} 의 Set 구현`)
+		assert(T.Implements(T.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
+		assert(T.TypeOf(case.value) == (T.Types :: any)[case.name], `{case.name} 의 TypeOf`)
+	end
+	-- TypeOf 는 토큰이 아닌 `__type`(숫자·문자열·아무 테이블)을 토큰으로 돌려주지 않음
+	for _, bogus in { 5, true, "Player", 0 / 0, {}, table.freeze({ name = "Arr" }) } :: { any } do
+		assert(T.TypeOf({ __type = bogus }) == nil, `토큰 아닌 __type: {tostring(bogus)}`)
+	end
+	-- Stamp 로 사용자 값에 토큰
+	const MyKind = T.NewType("MyKind")
+	const stamped = T.Stamp({}, MyKind)
+	assert(T.TypeOf(stamped) == MyKind and not stl.isArr(stamped), "Stamp")
+	-- 공용 알고리즘의 에러는 토큰 아닌 `__type` 에서도 규약대로(리뷰 1라운드 — 라이브러리 줄에서
+	-- `attempt to index number with 'name'` 이었음)
+	for _, bogus in { 5, true, "Player", 0 / 0 } :: { any } do
+		const ok, err = pcall(function()
+			stl.Algorithm.IndexOf({ __type = bogus } :: any, 1)
+		end)
+		assert(not ok and string.find(tostring(err), "needs a List", 1, true) ~= nil, `에러 메시지: {err}`)
+		assert(string.find(tostring(err), "spec.contracts", 1, true) ~= nil, `사용자 줄이 아님: {err}`)
+	end
+	-- API 경계: 토큰이 아닌 것(얼었어도), 트레이트가 아닌 것, 이름이 문자열이 아닌 것, 같은 토큰을
+	-- 두 번 — 전부 사용자 줄 에러(리뷰 1라운드)
+	const boundary: { { name: string, run: () -> () } } = {
+		{
+			name = "얼린 아무 테이블",
+			run = function()
+				T.Impl(T.List, table.freeze({}) :: any, stl.Arr)
+			end,
+		},
+		{
+			name = "토큰 모음 테이블",
+			run = function()
+				T.Impl(T.List, T.Types :: any, stl.Arr)
+			end,
+		},
+		{
+			name = "트레이트가 아님(Impl)",
+			run = function()
+				T.Impl(nil :: any, MyKind, {})
+			end,
+		},
+		{
+			name = "트레이트가 아님(ImplOf)",
+			run = function()
+				T.ImplOf(nil :: any, stl.Arr.Of(1))
+			end,
+		},
+		{
+			name = "이름이 문자열이 아님",
+			run = function()
+				T.NewType(nil :: any)
+			end,
+		},
+		{
+			name = "같은 토큰을 두 번(내장 덮어쓰기)",
+			run = function()
+				T.Impl(T.List, T.Types.Arr, {} :: any)
+			end,
+		},
+		{
+			name = "구현이 nil",
+			run = function()
+				T.Impl(T.List, MyKind, nil :: any)
+			end,
+		},
+	}
+	for _, case in boundary do
+		const ok, err = pcall(case.run)
+		assert(not ok, `{case.name}: 에러가 안 남`)
+		assert(string.find(tostring(err), "Trait:", 1, true) ~= nil, `{case.name}: 규약 메시지가 아님: {err}`)
+		assert(
+			string.find(tostring(err), "spec.contracts", 1, true) ~= nil,
+			`{case.name}: 사용자 줄이 아님: {err}`
+		)
+	end
+	assert(T.ImplOf(T.List, stl.Arr.Of(1)) == stl.Arr, "덮어쓰기 시도 뒤에도 내장 그대로")
 	-- 토큰이 아닌 것(얼지 않은 테이블)으로 Impl 하면 사용자 줄 에러
 	assert(not pcall(function()
 		stl.Trait.Impl(stl.Trait.List, {} :: any, stl.Arr)
@@ -493,7 +592,7 @@ do
 	const byIndex = HashMap.FromTable(nums :: any)
 	assert(HashMap.Len(byIndex) == 2 and HashMap.Get(byIndex, 1) == 30, "HashMap.FromTable(Arr) 는 위치 → 값")
 	assert(
-		HashMap.Get(byIndex, "n" :: any) == nil and HashMap.Get(byIndex, "__arr__" :: any) == nil,
+		HashMap.Get(byIndex, "n" :: any) == nil and HashMap.Get(byIndex, "__type" :: any) == nil,
 		"n·태그는 키가 아님"
 	)
 	-- 복사 판은 구멍까지 그대로(n 을 따름)

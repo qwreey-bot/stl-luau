@@ -42,35 +42,68 @@ export type Trait<I> = { read name: string, read impls: { [any]: I } }
 -- **리터럴로** 다시 적습니다 — 이 값을 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느렸습니다.
 const TYPE_KEY = "__type"
 
+-- `NewType`·`New` 가 만든 것만 토큰·트레이트로 칩니다(약한 키 — 버려진 사용자 토큰은
+-- 수거됨). 얼린 아무 테이블, 토큰 모음 테이블, 숫자·문자열 `__type` 이 토큰 행세를 하면
+-- 에러 메시지가 라이브러리 줄에서 터졌습니다(리뷰 1라운드). 만드는 일이 드물어 비용 없음.
+const tokens: { [any]: true } = setmetatable({}, { __mode = "k" }) :: any
+const traits: { [any]: true } = setmetatable({}, { __mode = "k" }) :: any
+
 -- 새 타입 토큰. 사용자 컨테이너도 이걸로 만듭니다.
 const function NewType(name: string): Token<string>
-	return table.freeze({ name = name }) :: any
+	if type(name) ~= "string" then
+		Common.raise(`Trait: NewType needs a name string, got {typeof(name)}`)
+	end
+	const token = table.freeze({ name = name })
+	tokens[token] = true
+	return token :: any
 end
 
 -- 새 트레이트. 구현 테이블의 타입을 알려 주면 `ImplOf` 가 그 타입을 돌려줍니다:
 --     local Show = Trait.New<<{ read Show: (any) -> string }>>("Show")
 const function New<I>(name: string): Trait<I>
-	return { name = name, impls = {} } :: any
+	if type(name) ~= "string" then
+		Common.raise(`Trait: New needs a name string, got {typeof(name)}`)
+	end
+	const trait = { name = name, impls = {} }
+	traits[trait] = true
+	return trait :: any
 end
 
 -- `token` 종류가 `trait` 를 구현한다고 등록합니다. 보통 모듈을 불러올 때 한 번.
+-- **같은 (트레이트, 토큰) 을 두 번 등록하면 에러**입니다(2026-10-06, 제가 정함 — 되돌리기
+-- 쉬움): 덮어쓰기를 허용하면 내장 구현도 조용히 바뀌어 다른 모듈의 `Algorithm` 이 전역으로
+-- 달라집니다. 바꾸고 싶으면 자기 트레이트를 만드세요.
 const function Impl<I>(trait: Trait<I>, token: Token<any>, impl: I)
-	if type(token) ~= "table" or not table.isfrozen(token) then
+	if not traits[trait] then
+		Common.raise(`Trait: Impl needs a trait (from Trait.New), got {typeof(trait)}`)
+	end
+	if not tokens[token] then
 		Common.raise(`Trait: Impl needs a type token (from Trait.NewType), got {typeof(token)}`)
 	end
-	(trait.impls :: any)[token] = impl
+	if impl == nil then
+		Common.raise(`Trait: Impl needs an implementation for {trait.name}`)
+	end
+	const impls = trait.impls :: any
+	if impls[token] ~= nil then
+		Common.raise(`Trait: {token.name} already implements {trait.name}`)
+	end
+	impls[token] = impl
 end
 
--- 값의 타입 토큰. 테이블이 아니거나 토큰이 없으면 nil.
+-- 값의 타입 토큰. 테이블이 아니거나, `__type` 이 없거나 토큰이 아니면 nil.
 const function TypeOf(value: any): Token<any>?
 	if type(value) ~= "table" then
 		return nil
 	end
-	return rawget(value, TYPE_KEY) :: any
+	const token = rawget(value, TYPE_KEY)
+	return if tokens[token] then token :: any else nil
 end
 
 -- 값의 종류가 `trait` 를 구현하면 그 구현 테이블, 아니면 nil.
 const function ImplOf<I>(trait: Trait<I>, value: any): I?
+	if not traits[trait] then
+		Common.raise(`Trait: ImplOf needs a trait (from Trait.New), got {typeof(trait)}`)
+	end
 	-- `impls[nil]` 읽기는 에러가 아닙니다 — 토큰이 없으면 그대로 nil.
 	return trait.impls[TypeOf(value) :: any]
 end
@@ -79,8 +112,12 @@ const function Implements<I>(trait: Trait<I>, value: any): boolean
 	return ImplOf(trait, value) ~= nil
 end
 
--- 값에 타입 토큰을 붙입니다. 생성자들이 씁니다.
+-- 값에 타입 토큰을 붙입니다. 사용자 컨테이너의 생성자가 씁니다(라이브러리 모듈은 상수
+-- 접기를 받으려고 `"__type"` 리터럴로 직접 붙입니다).
 const function Stamp<T>(value: T, token: Token<any>): T
+	if not tokens[token] then
+		Common.raise(`Trait: Stamp needs a type token (from Trait.NewType), got {typeof(token)}`)
+	end
 	(value :: any)[TYPE_KEY] = token
 	return value
 end

@@ -130,12 +130,15 @@ luau-analyze src tests      # 타입 검사 + 린트
 
 | 컨테이너 | 표현 | 왜 |
 |---|---|---|
-| `Arr` | `{ n: number, [number]: T }` + `__arr__` 태그 | 연속 정수 인덱스. `#` 는 희소 배열에서 정의되지 않으므로 `n` 을 신뢰 |
+| `Arr` | `{ n: number, [number]: T }` | 연속 정수 인덱스. `#` 는 희소 배열에서 정의되지 않으므로 `n` 을 신뢰 |
 | `HashMap` | `{ data: { [K]: V }, size: number }` | 키를 `self` 에 바로 넣으면 `Set("size", v)` 가 길이 필드를 덮어씀 |
 | `HashSet` | `{ map: HashMap<T, true> }` | 맵 위에 단방향 |
 | `TreeMap` | `{ records: { Record }, size, compare, probe }` | 정렬 레코드 배열 + 이분 탐색 |
 | `TreeSet` | `{ map: TreeMap<T, true> }` | 맵 위에 단방향 |
 | `Heap` | `{ items: { T }, size, less }` | 배열에 담은 완전이진트리 |
+
+**모두 메타테이블 없는 평범한 테이블에 타입 토큰 `__type` 하나**를 더합니다(2026-10-01 M0,
+2026-10-06 트레이트 — `conventions.md` "모듈 패턴", `papers/06`).
 
 공통 규칙 셋:
 
@@ -145,44 +148,42 @@ luau-analyze src tests      # 타입 검사 + 린트
   하세요. 안쪽을 직접 다뤄야 하는 구현(예: `HashSet` 이 자기 `HashMap` 을)은
   같은 저장소 안이라 괜찮지만, 그게 아니면 공개 메소드를 쓰세요.
 
-런타임 판별은 컨테이너마다 다릅니다 — `Arr` 만 태그 필드(`__arr__`)를 쓰고
-(중첩 배열을 평탄화할 때 원소가 배열인지 봐야 하므로), 나머지는 메타테이블
-동일성(`getmetatable(v) == Ifce`)으로 봅니다.
+런타임 판별은 **타입 토큰 비교 하나**입니다(`rawget(v, "__type") == Trait.Types.Arr`). 구현은
+트레이트(`Trait.List`/`Map`/`Set`)가 `[토큰] = 모듈 테이블` 로 들고, 공용 알고리즘은 그걸로
+구현을 찾습니다. (예전: `Arr` 만 문자열 태그, 나머지는 메타테이블 동일성 — M0 에서 메타테이블을
+없애며 내림.)
 
 ## 모듈 패턴
 
-**[2026-09-22 확정]** 각 컨테이너 모듈은 다음 형태입니다. `src/Arr.luau` 가
-정석이고 `src/HashMap.luau` 가 가장 작은 예입니다.
+**[2026-10-06 갱신 — M0 + 트레이트]** `src/Arr.luau` 가 정석이고 `src/HashMap.luau` 가 가장
+작은 예입니다. 정본은 `conventions.md` "모듈 패턴".
 
 ```lua
-local Types = require("./Types")
+local Common = require("./Common")
+Common.registerSource(debug.info(1, "s"))   -- 에러 규약
+local Trait = require("./Trait")
 
-export type XxxData<T> = { … }          -- 데이터부
-local Ifce: XxxIfce & Types.SomeCore<…> -- 런타임 메소드 테이블 (전방 선언)
+export type XxxData<T> = {                   -- 데이터부 = 전체형
+	…,
+	read __type: Trait.Token<"Xxx">,          -- 타입 토큰(생성자가 붙임)
+	read __list: T, read __listIndex: number, -- 트레이트 마커(타입에만)
+}
+export type Xxx<T> = XxxData<T>
 
-const function Foo<T>(self: Xxx<T>, …) … end   -- 이름 붙은 top-level 함수들
+const TYPE_KEY = "__type"                    -- 리터럴(상수 접기)
+const TOKEN = Trait.Types.Xxx
 
-type XxxIfce = { Foo: typeof(Foo), … }  -- typeof 로 나열
-export type Xxx<T> = XxxData<T> & XxxIfce & Types.SomeCore<…>  -- 교집합
+const function Foo<T>(self: XxxData<T>, …) … end   -- 이름 붙은 top-level 함수들(서비스)
 
-Ifce = { Foo = Foo, … } :: any
-;(Ifce :: any).__index = Ifce
-
-return { New = New, … }                 -- 순수 테이블 네임스페이스
+-- stylua: ignore
+const XxxModule = { New = New, Foo = Foo, … }      -- 순수 테이블 네임스페이스
+Trait.Impl(Trait.List, TOKEN, XxxModule)           -- 모듈이 그대로 트레이트 구현
+return XxxModule
 ```
 
-네 가지가 전부 실측으로 강제된 것입니다:
-
-- **교집합(`&`)** — `setmetatable<>` 은 메소드 30개에서 무너집니다.
-- **이름 붙은 함수 + `typeof`** — 인라인 제네릭은 반환이 `Unifiable<Error>`
-  로 샙니다.
-- **순수 테이블 네임스페이스** — `__call` 로 만들면 제네릭 생성자가 타입
-  인자를 잃고 모듈 오타도 못 잡습니다.
-- **계약이 주는 멤버는 `XxxIfce` 에 다시 쓰지 않음** — self 타입이 달라
-  교집합이 충돌하고 메소드 타입이 통째로 죽습니다(진단 0건으로).
-
-자세한 근거는 `.claude/base/typing-limits.md` 와
-`.claude/audit/arr-type-redesign/REPORT.md`.
+예전 패턴(교집합 `XxxData & XxxIfce`, `typeof` 나열, `setmetatable`, "계약 멤버 재선언 금지")은
+M0(질문 AB)에서 메타테이블과 콜론 메소드를 없애며 전부 필요 없어졌습니다 — git 히스토리와
+`typing-limits.md` 머리.
 
 ## 비교 — 통화가 둘입니다
 

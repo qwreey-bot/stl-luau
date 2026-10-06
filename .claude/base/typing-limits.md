@@ -32,7 +32,8 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 담을 수 없습니다** — `ListOps<Arr<number?>, number?, number> = Arr` 가 `Get`
 > 불일치. 계약의 `Get: (C, I) -> E?` 에서 `E` 가 이미 `T?` 면 모듈 `Get` 의 `T?`
 > 와 맞추는 역추론이 모순됩니다(옛 교집합 시절 `spikes/46` 의 원인이 함수 묶음
-> 쪽에서 다시 나타남). `Algorithm.Keys` 는 명시적 타입 인자로도 길이 없습니다.
+> 쪽에서 다시 나타남). (2026-10-06: 트레이트 이후 `Algorithm.Keys/Values/IndexOf/Count` 는
+> 함수 묶음을 받지 않아 유니온 원소에서도 진단 0건 — 리뷰 확인.)
 > 우회는 캐스트. 추론 경로(`Algorithm.IndexOf(holed, 1)`)는 됩니다.
 > `spikes/46` 의 캐비엇 두 줄이 지금 에러인 것을 기록합니다(M0 3라운드).
 >

@@ -39,7 +39,7 @@ const function implOf(trait: any, value: any, who: string): any
 	const impl = if type(value) == "table" then trait.impls[rawget(value, "__type")] else nil
 	if impl == nil then
 		const token = Trait.TypeOf(value)
-		const got = if token then `a {token.name}` else `a {typeof(value)} without a type token`
+		const got = if token then token.name else `{typeof(value)} without a type token`
 		return Common.raise(`Algorithm: {who} needs a {trait.name} (got {got})`)
 	end
 	return impl

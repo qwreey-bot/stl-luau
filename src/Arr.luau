@@ -214,7 +214,8 @@ end
 --#endregion
 
 --#region ----------- 계약 구현 (Types.ListOps) -----------
--- 이 모듈 테이블이 그대로 `Types.ListOps` 구현체입니다 — `Algorithm.IndexOf(Arr, a, x)`.
+-- 이 모듈 테이블이 그대로 `Types.ListOps` 구현체이고 `Trait.List` 에 등록됩니다(파일 끝) —
+-- `Algorithm.IndexOf(a, x)`.
 
 const function Get<T>(self: ArrData<T>, idx: number): T?
 	return self[idx]

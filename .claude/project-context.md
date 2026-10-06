@@ -121,7 +121,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
-| `Types` / `Common` / `Algorithm` | 완성(작음) | — |
+| `Types` / `Common` / `Algorithm` / `Trait` | 완성(작음) — 트레이트 2026-10-06 | `spikes/55` |
 | `Arr` | 연산 76 + 생성자 8 | `spikes/40`, `46`, `49`, `50`, `51` |
 | `HashMap` / `HashSet` | 완성 | `spikes/41` |
 | `BSearch` | 완성 | `spikes/42` |

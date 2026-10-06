@@ -12,7 +12,8 @@
 	LIMIT 은 **남아 있는 한계**를 에러로 고정한 것입니다 — 사라지면(=솔버가 나아지면)
 	기대치를 내리고 `typing-limits.md` 를 고치세요.
 
-	기대 진단: 9건 (NEG 셋이 6건 — 한 식에 여럿 + LIMIT 2 + CANARY 1)
+	기대 진단: 11건 (NEG 셋이 8건 — 한 식에 여럿 + LIMIT 2 + CANARY 1). 2026-10-06 트레이트 마커를
+	더한 뒤 neg3 의 연쇄 진단 둘(57행 "Consider annotating the return", return 표)이 늘었음 — 무해.
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
