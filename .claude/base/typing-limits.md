@@ -614,4 +614,6 @@ local s: string = c[1]                               -- 통과 — 건전하지 
 골랐습니다(luau 0.734). 그래서 **배열 여럿을 하나의 `T` 로 합치는 함수는 불변(`ArrData`)으로**
 둡니다(`Concat`, `MergeSorted`). 첫 인자 하나만 공변이고 다른 인자가 불변(`to: Arr<T>?`, `with:
 ArrData<T>`)이면 불변 쪽이 `T` 를 고정해 섞임이 에러로 잡힙니다(`Slice`/`Filter`/`Splice` 실측).
-`Equal(self, other)` 처럼 결과에 `T` 가 없으면 문제없습니다.
+`Equal(self, other)` 처럼 결과에 `T` 가 없으면 건전합니다 — 다만 원소가 섞이면(`Arr<number>` 와
+`Arr<number?>`) 솔버가 교집합을 골라 맞는 호출도 에러라 `Equal<<number?>>(a, b)` 로 알려 주세요
+(AC 이전부터 같음).
