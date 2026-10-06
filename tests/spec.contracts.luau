@@ -532,6 +532,92 @@ do
 		)
 	end
 	assert(stl.HashSet.Len(stl.HashSet.FromList(stl.Arr.Of(1, 2))) == 2, "Arr 은 리스트로 받음")
+	-- (2라운드) 두 진입점이 같은 규칙: **등록 안 된 `__type`**(다른 사본의 컨테이너, 되읽은 것)도
+	-- 리스트·사전이 아님 — FromTable 은 내부 필드를 쏟았고 listLength 는 거절해 엇갈렸음
+	const foreignToken = table.freeze({ name = "HashSet" })
+	const foreignSet = { __type = foreignToken, map = {} }
+	const foreignRuns: { () -> () } = {
+		function()
+			stl.HashMap.FromTable(foreignSet :: any)
+		end,
+		function()
+			stl.HashSet.FromList(foreignSet :: any)
+		end,
+		function()
+			stl.HashMap.FromTable({ 1, 2, __type = "x" } :: any)
+		end,
+	}
+	for _, run in foreignRuns do
+		const ok, err = pcall(run)
+		assert(not ok and string.find(tostring(err), "spec.contracts", 1, true) ~= nil, `등록 안 된 __type: {err}`)
+	end
+	-- 메시지가 상황을 맞게 말함(2라운드 — 반대로 안내했음): 같은 사본의 다른 종류 / 다른 사본(되읽음) /
+	-- 토큰 없음. 깨진 `n` 의 Arr 은 "Arr 인데 n 이 이상함" 으로, 내부 모듈 이름(Common) 없이.
+	local function errOf(run: () -> ()): string
+		const ok, err = pcall(run)
+		assert(not ok, "에러가 나야 함")
+		return tostring(err)
+	end
+	const sameCopy = errOf(function()
+		stl.Algorithm.IndexOf(stl.HashMap.New() :: any, 1)
+	end)
+	assert(string.find(sameCopy, "HashMap does not implement List", 1, true) ~= nil, sameCopy)
+	assert(string.find(sameCopy, "another copy", 1, true) == nil, `같은 사본인데 사본 안내: {sameCopy}`)
+	const otherCopy = errOf(function()
+		stl.Algorithm.IndexOf({ __type = table.freeze({ name = "Arr" }) } :: any, 1)
+	end)
+	assert(string.find(otherCopy, "another copy", 1, true) ~= nil, `다른 사본 안내가 없음: {otherCopy}`)
+	const noToken = errOf(function()
+		stl.Algorithm.IndexOf({} :: any, 1)
+	end)
+	assert(string.find(noToken, "without a type token", 1, true) ~= nil, noToken)
+	const brokenN = stl.Arr.Of(1, 2) :: any
+	brokenN.n = nil
+	const brokenMsg = errOf(function()
+		stl.HashSet.FromList(brokenN)
+	end)
+	assert(string.find(brokenMsg, "invalid n", 1, true) ~= nil, `깨진 n 메시지: {brokenMsg}`)
+	assert(string.find(brokenMsg, "Common:", 1, true) == nil, `내부 모듈 이름: {brokenMsg}`)
+	-- Stamp 경계(2라운드 — 테이블 아님·얼린 테이블은 라이브러리 줄, 토큰 검사엔 테스트 없음)와
+	-- Trait.New 의 이름 검사
+	for _, run in
+		{
+			function()
+				T.Stamp(5 :: any, MyKind)
+			end,
+			function()
+				T.Stamp(table.freeze({}), MyKind)
+			end,
+			function()
+				T.Stamp({}, table.freeze({ name = "x" }) :: any)
+			end,
+			function()
+				T.New(nil :: any)
+			end,
+		}
+	do
+		const err = errOf(run)
+		assert(
+			string.find(err, "Trait:", 1, true) and string.find(err, "spec.contracts", 1, true),
+			`Trait 경계: {err}`
+		)
+	end
+	-- 내장 트레이트에 등록한 사용자 토큰도 버리면 수거됨(2라운드 — impls 가 강한 키라 남았음)
+	local registered = 0
+	for _ = 1, 50 do
+		const tok = T.NewType("Temp")
+		T.Impl(T.List, tok, stl.Arr)
+		registered += 1
+	end
+	-- `collectgarbage("collect")` 는 Roblox 타입 정의에 없어 분석기가 모름 — 실행기(luau)에는 있음
+	const fullGc = (_G :: any).collectgarbage
+	fullGc("collect")
+	fullGc("collect")
+	local remaining = 0
+	for _ in T.List.impls do
+		remaining += 1
+	end
+	assert(remaining == 1, `버린 사용자 토큰이 남음: List 구현 {remaining}개(Arr 만 있어야 함)`)
 	-- 토큰이 아닌 것(얼지 않은 테이블)으로 Impl 하면 사용자 줄 에러
 	assert(not pcall(function()
 		stl.Trait.Impl(stl.Trait.List, {} :: any, stl.Arr)

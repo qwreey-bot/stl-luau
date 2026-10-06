@@ -7,7 +7,7 @@
 	추론하는지. 예전엔 `Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
 	사용자 컨테이너·사용자 트레이트도 같은 모양으로 들어오는지.
 
-	기대 진단: 12건 (NEG 열이 11건 — neg6 은 두 자리 + CANARY 1)
+	기대 진단: 14건 (NEG 열둘이 13건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, TreeMap, Algorithm, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Algorithm, stl.Trait
@@ -79,6 +79,15 @@ local neg9: stl.HashSet<number> = (nil :: any) :: SetLike
 -- Case 1 — 마커가 토큰을 요구하기 전엔 타입은 통과하고 런타임에 터졌음)
 type MarkerOnly = { read __list: number, read __listIndex: number }
 local neg10 = Algorithm.IndexOf((nil :: any) :: MarkerOnly, 1)
+-- 맵·셋 마커도 토큰을 요구(2라운드 — ListMarker 만 대조돼 Map/SetMarker 의 `__type` 을 빼도 통과)
+local function keyOf<K, V>(map: stl.MapMarker<K, V>): K?
+	return nil
+end
+local function itemOf<T>(set: stl.SetMarker<T>): T?
+	return nil
+end
+local neg11 = keyOf((nil :: any) :: { read __mapKey: string, read __mapValue: number })
+local neg12 = itemOf((nil :: any) :: { read __setItem: number })
 
 local canary: string = 42
 

@@ -237,13 +237,15 @@ end
 const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
-	const token = Trait.TokenOf(tbl)
-	if token ~= nil and token ~= Trait.Types.Arr then
-		-- 다른 종류의 컨테이너를 사전으로 읽으면 내부 필드(`data`·`size`·`__type`…)가 키로
-		-- 쏟아졌습니다(2026-10-06 Gemini 트레이트 검토).
-		Common.raise(`HashMap: FromTable takes a plain table or an Arr, got {token.name}`)
+	-- `__type` 이 있으면(등록 여부와 무관 — 다른 사본의 컨테이너, 되읽은 테이블도) Arr 말고는
+	-- 사전이 아닙니다: 내부 필드(`data`·`size`·`__type`…)가 키로 쏟아졌습니다(2026-10-06 Gemini
+	-- 트레이트 검토, 리뷰 2라운드 — `Common.listLength` 와 같은 규칙).
+	const rawToken = rawget(tbl :: any, "__type")
+	if rawToken ~= nil and rawToken ~= Trait.Types.Arr then
+		const name = if type(rawToken) == "table" then rawget(rawToken, "name") else nil
+		Common.raise(`HashMap: FromTable takes a plain table or an Arr, got {tostring(name or rawToken)}`)
 	end
-	if token == Trait.Types.Arr then
+	if rawToken == Trait.Types.Arr then
 		-- `Arr` 는 "위치 → 값" 으로 읽습니다 — `pairs` 로 돌면 `n` 과 태그 키까지
 		-- 키가 됐습니다(M0 3라운드). 구멍은 키가 아닙니다.
 		const list = tbl :: any

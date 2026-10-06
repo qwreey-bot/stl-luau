@@ -38,12 +38,21 @@ local exports = {}
 const function implOf(trait: any, value: any, who: string): any
 	const impl = if type(value) == "table" then trait.impls[rawget(value, "__type")] else nil
 	if impl == nil then
+		-- 셋으로 가릅니다(리뷰 2라운드 — 반대로 안내했음): 이 사본의 토큰인데 구현이 없음 /
+		-- 이름 있는 토큰 모양이지만 이 사본이 모름(다른 사본의 라이브러리, 되읽은 테이블) / 토큰 없음.
 		const token = Trait.TokenOf(value)
-		-- 토큰이 있는데 구현이 없으면: 그 종류가 트레이트를 구현하지 않거나, **다른 사본의
-		-- 라이브러리**가 만든 값입니다 — 이름만 보면 "Arr 을 넘겼는데 왜" 가 됐습니다(Gemini).
-		const got = if token
-			then `{token.name}, which does not implement it here (a value from another copy of the library?)`
-			else `{typeof(value)} without a type token`
+		const raw = if type(value) == "table" then rawget(value, "__type") else nil
+		const rawName = if type(raw) == "table" then rawget(raw :: any, "name") else nil
+		if token then
+			return Common.raise(
+				`Algorithm: {who} needs a {trait.name} — {token.name} does not implement {trait.name}`
+			)
+		elseif type(rawName) == "string" then
+			return Common.raise(
+				`Algorithm: {who} needs a {trait.name} — got a {rawName} this library does not know (from another copy of the library, or a deserialized table?)`
+			)
+		end
+		const got = `{typeof(value)} without a type token`
 		return Common.raise(`Algorithm: {who} needs a {trait.name} (got {got})`)
 	end
 	return impl

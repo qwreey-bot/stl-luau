@@ -47,10 +47,15 @@ function exports.listLength(list: any): number
 	-- `n` 없는 **다른 종류의 컨테이너**(타입 토큰이 있음)는 리스트가 아닙니다 — `#` 가 0 이라
 	-- 조용히 빈 결과가 됐습니다(2026-10-06 Gemini 트레이트 검토 — `HashSet.FromList(map)`).
 	-- (`Arr` 은 늘 `n` 이 있어 위에서 끝남.)
+	-- 메시지는 내부 모듈 이름(Common) 없이 라이브러리 이름으로 — 사용자는 `HashSet.FromList` 등을
+	-- 불렀습니다(리뷰 2라운드).
 	const token = rawget(list, "__type")
 	if token ~= nil then
 		const name = if type(token) == "table" then rawget(token, "name") else nil
-		exports.raise(`Common: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)}`)
+		if name == "Arr" then
+			exports.raise(`stl: an Arr with an invalid n ({tostring(n)}) — its n must be a non-negative integer`)
+		end
+		exports.raise(`stl: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)}`)
 	end
 	return #list
 end

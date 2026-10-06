@@ -65,7 +65,10 @@ const function New<I>(name: string): Trait<I>
 	if type(name) ~= "string" then
 		Common.raise(`Trait: New needs a name string, got {typeof(name)}`)
 	end
-	const trait = { name = name, impls = {} }
+	-- `impls` 는 **약한 키** — 버린 사용자 토큰은 등록했어도 수거됩니다(아무도 그 토큰을 쥐지
+	-- 않으면 조회될 일도 없음). 내장 토큰은 `Trait.Types` 가 붙잡습니다. ⚠️ Luau 의 약한 키는
+	-- ephemeron 이 아니라 구현 테이블이 토큰을 참조하면 남습니다(리뷰 2라운드 실측).
+	const trait = { name = name, impls = setmetatable({}, { __mode = "k" }) }
 	traits[trait] = true
 	return trait :: any
 end
@@ -118,6 +121,9 @@ end
 const function Stamp<T>(value: T, token: Token<any>): T
 	if not tokens[token] then
 		Common.raise(`Trait: Stamp needs a type token (from Trait.NewType), got {typeof(token)}`)
+	end
+	if type(value) ~= "table" or table.isfrozen(value :: any) then
+		Common.raise(`Trait: Stamp needs a table that is not frozen, got {typeof(value)}`)
 	end
 	(value :: any)[TYPE_KEY] = token
 	return value
