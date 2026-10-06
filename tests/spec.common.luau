@@ -273,6 +273,22 @@ do
 			end)
 		end)
 	)
+	-- M5(2026-10-07) — Deque 의 raise 자리 둘
+	atUserLine(
+		"Deque.At NaN",
+		expectLine("Deque.At NaN", "Deque: At index is NaN", function()
+			const d = stl.Deque.Of(10, 20)
+			where = debug.info(1, "l") + 1
+			stl.Deque.At(d, 0 / 0)
+		end)
+	)
+	atUserLine(
+		"Deque.New capacity",
+		expectLine("Deque.New capacity", "Deque: capacity must be in", function()
+			where = debug.info(1, "l") + 1
+			stl.Deque.New(-1)
+		end)
+	)
 	-- KeyBy 는 자기 루프라 검사 호출이 따로(2라운드 — 빠져도 `not pcall` 만으로는 통과)
 	atUserLine(
 		"Arr.KeyBy nil 키",

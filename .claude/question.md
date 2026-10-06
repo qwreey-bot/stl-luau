@@ -809,6 +809,20 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | 묶기의 키 | `(element) -> K`(`SortBy` 모양), 원소당 한 번. `GroupBy`·`CountBy` 는 구멍에도 부름(`KeyBy` 는 구멍을 건너뜀 — 아래). **키가 `nil`·NaN 이면 에러** | 그 원소를 건너뛰기 |
 | `KeyBy` 의 같은 키 | **나중 것이 이김**(lodash·Kotlin). **구멍은 건너뜀**(`key` 도 안 부름 — 처음엔 그 키를 지웠는데 결과가 구멍 위치에 좌우돼 리뷰 1라운드 의견으로 바꿈) | 처음 것 |
 
+## 🔁 2026-10-07 — M5(`Deque`)에서 **제가 정한 것들** (되돌리기 쉬움 — 확인 부탁)
+
+### AK. `Deque` 의 모양
+
+| 무엇 | 정한 것 | 다른 길 |
+|---|---|---|
+| ⭐ **리스트 진입점이 Deque 를 받을까**(todos M5 메모) | **안 받음 — 지금 그대로**. `Arr.FromTable`·`Deque.FromList`·`Fut.All` 등 `Common.listLength` 진입점은 `__type` 이 `Arr` 가 아니면 에러. 넘기려면 `Deque.ToArr(d)`. Deque 는 `Trait.List` 를 구현하니 **`Algorithm`(트레이트를 보는 쪽)은 받음** | 진입점이 `Trait.List` 구현이면 `FirstIndex`/`NextIndex`/`Get` 으로 읽기 — 일반적이지만 진입점마다 느린 갈래가 생김 |
+| 표현 | **링 버퍼**(perf 24절 — 길이 유지 큐에서 두 인덱스보다 3배 빠름). 길이 필드는 `n` 이 아니라 **`size`**(물리 칸이 감겨 있어 `{n, [1..n]}` 로 읽히면 틀림) | — |
+| 이름 | `PushBack`/`PushFront`/`PopBack`/`PopFront`(Arr 와 같음), 엿보기 **`Front`/`Back`**(Rust·C++), `At`(Arr 규약), `ToArr` | Java `peekFirst`/`peekLast` |
+| 반환 | 넣기·`Clear` 는 자기 자신(`Arr` 처럼), 꺼내기는 `T?`(비면 `nil` — 질문 AI) | — |
+| 읽기 함수의 공변(`ArrRead` 같은 `DequeRead`) | **안 둠** — 전부 `DequeData`(불변). 맵·셋과 같음 | 질문 AC 를 Deque 에도 넓히기 |
+| 칸 수 | `New(capacity?)`(최소 4, `Arr` 길이 정책), 두 배로 늘리고 **줄이지 않음**(Rust 와 같음 — `Clone` 이 원소 수에 맞춤) | `ShrinkToFit` |
+| 안 넣은 것 | 위치에 쓰기(`SetAt`), `Insert`/`Remove`(가운데), `Rotate`, 스트림(`Map` 등) — 부르는 곳이 보이면 | — |
+
 ---
 
 ### G. mlua 바인딩 — **보류 확정**

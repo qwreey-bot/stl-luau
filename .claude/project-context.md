@@ -67,6 +67,7 @@ src/
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
   TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
   Heap.luau        이진 힙. 계약을 만족하지 않는 유일한 컨테이너
+  Deque.luau       링 버퍼 양끝 큐(M5). Trait.List 구현, 리스트 진입점은 안 받음(ToArr)
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
   Fut.luau         코루틴 래퍼(프로미스). provider, 다중 반환, All → Arr
 
@@ -79,6 +80,7 @@ tests/
   spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
   spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
+  spec.deque.luau
   spec.optional.luau  spec.fut.luau
 scripts/
   check.sh               타입 + 음성 대조군 배터리 + require + 포맷 + 테스트
@@ -127,6 +129,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 — M4 Lower/Higher·Pop·Retain | `spikes/43`, `59` |
 | `Heap` | 완성 | `spikes/44` |
+| `Deque` | 2026-10-07 (M5) | `spikes/60` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 

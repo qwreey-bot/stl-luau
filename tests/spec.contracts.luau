@@ -122,6 +122,7 @@ do
 			is = stl.isHeap,
 		},
 		{ name = "Fut", instance = stl.Fut.Resolved(), is = stl.isFut },
+		{ name = "Deque", instance = stl.Deque.Of(1), is = stl.isDeque },
 	}
 	for _, sample in samples do
 		assert(getmetatable(sample.instance) == nil, `{sample.name} 에 메타테이블이 붙어 있습니다`)
@@ -326,6 +327,24 @@ do
 		assert(stl.isHeap(result), `Heap.{name} 결과에 태그가 없습니다`)
 	end
 
+	-- Deque(M5, 2026-10-07)
+	const dq = stl.Deque.Of(1, 2)
+	const dequeResults: { [string]: any } = {
+		New = stl.Deque.New<<number>>(),
+		NewCapacity = stl.Deque.New<<number>>(10),
+		FromList = stl.Deque.FromList({ 1, 2 }),
+		Of = dq,
+		Clone = stl.Deque.Clone(dq),
+		Clear = stl.Deque.Clear(stl.Deque.Of(1)),
+		PushBack = stl.Deque.PushBack(stl.Deque.Of(1), 2),
+		PushFront = stl.Deque.PushFront(stl.Deque.Of(1), 2),
+	}
+	for name, result in dequeResults do
+		assert(stl.isDeque(result), `Deque.{name} 결과에 태그가 없습니다`)
+		assert(getmetatable(result) == nil, `Deque.{name} 결과에 메타테이블이 있습니다`)
+	end
+	assert(stl.isArr(stl.Deque.ToArr(dq)), "Deque.ToArr 는 Arr")
+
 	const one = Fut.Resolved(1)
 	const futResults: { [string]: any } = {
 		New = Fut.New(function(resolve: (number) -> ())
@@ -379,8 +398,10 @@ do
 		{ name = "TreeSet", is = stl.isTreeSet, token = stl.Trait.Types.TreeSet },
 		{ name = "Heap", is = stl.isHeap, token = stl.Trait.Types.Heap },
 		{ name = "Fut", is = stl.isFut, token = stl.Trait.Types.Fut },
+		{ name = "Deque", is = stl.isDeque, token = stl.Trait.Types.Deque },
 	}
-	const oldTags = { "__arr__", "__hashmap__", "__hashset__", "__treemap__", "__treeset__", "__heap__", "__fut__" }
+	const oldTags =
+		{ "__arr__", "__hashmap__", "__hashset__", "__treemap__", "__treeset__", "__heap__", "__fut__", "__deque__" }
 	for idx, case in predicates do
 		-- 테이블이 아닌 것·토큰 없는 것·옛 문자열 태그·이름만 같은 다른 토큰은 아님
 		for _, v in { nil, 1, "x", true, {}, { n = 0 }, { [oldTags[idx]] = true } } :: { any } do
@@ -464,6 +485,7 @@ do
 			set = nil,
 		},
 		{ name = "Fut", value = stl.Fut.Resolved(1), list = nil, map = nil, set = nil },
+		{ name = "Deque", value = stl.Deque.Of(1), list = stl.Deque, map = nil, set = nil },
 	}
 	for _, case in samples do
 		assert(T.ImplOf(T.List, case.value) == case.list, `{case.name} 의 List 구현`)

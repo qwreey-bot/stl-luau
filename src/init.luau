@@ -29,6 +29,7 @@ local HashSet = require("@self/HashSet")
 local TreeMap = require("@self/TreeMap")
 local TreeSet = require("@self/TreeSet")
 local Heap = require("@self/Heap")
+local Deque = require("@self/Deque")
 local Optional = require("@self/Optional")
 local Fut = require("@self/Fut")
 
@@ -57,6 +58,7 @@ export type HashSet<T> = HashSet.HashSet<T>
 export type TreeMap<K, V> = TreeMap.TreeMap<K, V>
 export type TreeSet<T> = TreeSet.TreeSet<T>
 export type Heap<T> = Heap.Heap<T>
+export type Deque<T> = Deque.Deque<T>
 export type Optional<T> = Optional.Optional<T>
 export type Fut<T...> = Fut.Fut<T...>
 export type FutStatus = Fut.Status
@@ -77,6 +79,7 @@ return {
 	TreeMap = TreeMap,
 	TreeSet = TreeSet,
 	Heap = Heap,
+	Deque = Deque,
 	Optional = Optional,
 	Fut = Fut,
 
@@ -87,6 +90,7 @@ return {
 	isTreeMap = TreeMap.isTreeMap,
 	isTreeSet = TreeSet.isTreeSet,
 	isHeap = Heap.isHeap,
+	isDeque = Deque.isDeque,
 	isOptional = Optional.isOptional,
 	isFut = Fut.isFut,
 }

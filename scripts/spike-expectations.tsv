@@ -62,3 +62,4 @@
 4	.claude/audit/arr-type-redesign/spikes/57-bare-lambda-free-type.luau	43,47,48,52
 20	.claude/audit/arr-type-redesign/spikes/58-arr-m3-surface.luau	60,61,62,63,64,70,73,76,79,82,88,89,92,93,98,101,104,110,113,117
 15	.claude/audit/arr-type-redesign/spikes/59-maps-m4-surface.luau	53,56,57,58,61,62,65,66,67,70,73,76,79,82,86
+14	.claude/audit/arr-type-redesign/spikes/60-deque.luau	33,34,35,36,37,40,41,42,43,45,49,50,51,53

@@ -147,6 +147,7 @@ const BuiltinTypes = table.freeze({
 	TreeSet = NewType("TreeSet") :: Token<"TreeSet">,
 	Heap = NewType("Heap") :: Token<"Heap">,
 	Fut = NewType("Fut") :: Token<"Fut">,
+	Deque = NewType("Deque") :: Token<"Deque">,
 })
 
 -- stylua: ignore
