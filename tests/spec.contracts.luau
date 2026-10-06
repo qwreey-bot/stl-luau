@@ -546,6 +546,16 @@ do
 		function()
 			stl.HashMap.FromTable({ 1, 2, __type = "x" } :: any)
 		end,
+		function()
+			stl.HashSet.FromList({ 1, 2, __type = "x" } :: any)
+		end,
+		-- (3라운드) 컨테이너 자리에 nil·숫자 — 라이브러리 줄의 rawget 에러가 되면 안 됨
+		function()
+			stl.Algorithm.IndexOf(nil :: any, 1)
+		end,
+		function()
+			stl.Algorithm.Keys(5 :: any)
+		end,
 	}
 	for _, run in foreignRuns do
 		const ok, err = pcall(run)
@@ -578,6 +588,28 @@ do
 	end)
 	assert(string.find(brokenMsg, "invalid n", 1, true) ~= nil, `깨진 n 메시지: {brokenMsg}`)
 	assert(string.find(brokenMsg, "Common:", 1, true) == nil, `내부 모듈 이름: {brokenMsg}`)
+	-- 다른 종류는 "Arr 인데 n 이 이상함" 이 아니라 "리스트가 아님 — HashMap"(3라운드)
+	const kindMsg = errOf(function()
+		stl.HashSet.FromList(stl.HashMap.New() :: any)
+	end)
+	assert(
+		string.find(kindMsg, "expected a list", 1, true) and string.find(kindMsg, "HashMap", 1, true),
+		`다른 종류 메시지: {kindMsg}`
+	)
+	-- 다른 사본의 Arr(유효한 n): 리스트 진입점은 위치로 받고, 사전 진입점(FromTable)은 거절 —
+	-- 의도된 비대칭(3라운드, conventions 리스트 길이 규약). FromTable 메시지는 "다른 사본" 을 말함.
+	const foreignArr = { __type = table.freeze({ name = "Arr" }), n = 2, 10, 20 }
+	assert(
+		stl.HashSet.Len(stl.HashSet.FromList(foreignArr :: any)) == 2,
+		"리스트 진입점은 다른 사본 Arr 을 받음"
+	)
+	const foreignArrMsg = errOf(function()
+		stl.HashMap.FromTable(foreignArr :: any)
+	end)
+	assert(
+		string.find(foreignArrMsg, "another copy", 1, true) ~= nil,
+		`FromTable 의 다른 사본 Arr: {foreignArrMsg}`
+	)
 	-- Stamp 경계(2라운드 — 테이블 아님·얼린 테이블은 라이브러리 줄, 토큰 검사엔 테스트 없음)와
 	-- Trait.New 의 이름 검사
 	for _, run in
@@ -602,7 +634,23 @@ do
 			`Trait 경계: {err}`
 		)
 	end
-	-- 내장 트레이트에 등록한 사용자 토큰도 버리면 수거됨(2라운드 — impls 가 강한 키라 남았음)
+	-- 내장 트레이트에 등록한 사용자 토큰도 버리면 수거됨(2라운드 — impls 가 강한 키라 남았음).
+	-- 그리고 **쥐고 있으면 남음**(3라운드 — `__mode = "kv"` 로 잘못 쓰면 인라인 구현이 증발했음).
+	-- 개수는 루프 전 기준선과 비교 — 다른 스펙·M5 의 Deque 가 List 를 구현해도 거짓 실패 없게.
+	local before = 0
+	for _ in T.List.impls do
+		before += 1
+	end
+	-- 구현 테이블은 **인라인으로**(따로 쥐는 지역 변수 없이) — 쥐고 있으면 `"kv"` 로 잘못 써도
+	-- 남아 돌연변이가 살아남았음.
+	const keptToken = T.NewType("Kept")
+	T.Impl(T.List, keptToken, { Get = stl.Arr.Get } :: any)
+	const ShowKept = T.New<<{ read Show: (any) -> string }>>("ShowKept")
+	T.Impl(ShowKept, T.Types.Arr, {
+		Show = function(_: any): string
+			return "kept"
+		end,
+	})
 	local registered = 0
 	for _ = 1, 50 do
 		const tok = T.NewType("Temp")
@@ -617,7 +665,14 @@ do
 	for _ in T.List.impls do
 		remaining += 1
 	end
-	assert(remaining == 1, `버린 사용자 토큰이 남음: List 구현 {remaining}개(Arr 만 있어야 함)`)
+	assert(
+		remaining == before + 1,
+		`버린 사용자 토큰이 남음: List 구현 {remaining}개(기준 {before} + 쥔 것 1)`
+	)
+	const kept = T.List.impls[keptToken] :: any
+	assert(kept ~= nil and kept.Get == stl.Arr.Get, "쥔 토큰의 인라인 구현은 남음")
+	const shown = T.ImplOf(ShowKept, stl.Arr.Of(1))
+	assert(shown ~= nil and shown.Show(stl.Arr.Of(1)) == "kept", "내장 토큰에 붙인 인라인 구현은 남음")
 	-- 토큰이 아닌 것(얼지 않은 테이블)으로 Impl 하면 사용자 줄 에러
 	assert(not pcall(function()
 		stl.Trait.Impl(stl.Trait.List, {} :: any, stl.Arr)
