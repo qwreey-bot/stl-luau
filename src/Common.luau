@@ -41,6 +41,9 @@ local exports = {}
 -- 크기가 4) 구멍 뒤를 잃었습니다(`CloneFromTable`). `Fut.All` 이 먼저 쓰던 규칙입니다.
 function exports.listLength(list: any): number
 	const n = rawget(list, "n")
+	-- 유효한 `n` 은 한 번만 판정합니다 — 두 갈래에 따로 적었더니 한쪽만 줄이는 실수를 테스트가
+	-- 못 잡을 자리가 생겼습니다(리뷰 5라운드).
+	const validN = type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge
 	-- **다른 종류의 컨테이너**(타입 토큰이 있고 이름이 Arr 가 아님)는 `n` 이 있든 없든 리스트가
 	-- 아닙니다 — `n` 이 없으면 `#` 가 0 이라 조용히 빈 결과(2026-10-06 Gemini 트레이트 검토 —
 	-- `HashSet.FromList(map)`), `n` 이 개수인 링 버퍼면 1..n 으로 조용히 잘못 읽었습니다(리뷰 4라운드).
@@ -52,11 +55,11 @@ function exports.listLength(list: any): number
 		if name ~= "Arr" then
 			exports.raise(`stl: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)}`)
 		end
-		if not (type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge) then
+		if not validN then
 			exports.raise(`stl: an Arr with an invalid n ({tostring(n)}) — its n must be a non-negative integer`)
 		end
 	end
-	if type(n) == "number" and n >= 0 and n == math.floor(n) and n < math.huge then
+	if validN then
 		return n + 0 -- `-0 + 0 = +0` — 결과 배열의 `n` 이 "-0" 으로 찍히지 않게
 	end
 	return #list

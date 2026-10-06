@@ -82,7 +82,7 @@ local f = nested:Flat<<number>>()
 | ~~M2~~ | **✅ 2026-09-30** 정렬 가족(`spikes/51`, perf 15-2) — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
 | **M3** | **`Arr` 빈 조각** — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | **M4** | **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
-| **M5** | **`Deque`**(링 버퍼) — ⚠️ 트레이트 메모(2026-10-06 Gemini): 리스트 진입점(`FromList`·`Fut.All`·`Common.listLength`)은 지금 `n`·`[i]` 를 전제 — Deque 가 `Trait.List` 로 들어오게 할지 정할 것. Deque 에 `n` 이라는 개수 필드를 두면 `listLength` 가 1..n 배열로 잘못 읽음(리뷰 추측 — 이름을 피하거나 규칙을 "Arr 토큰만" 으로) | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
+| **M5** | **`Deque`**(링 버퍼) — ⚠️ 트레이트 메모(2026-10-06 Gemini): 리스트 진입점(`FromList`·`Fut.All`·`Common.listLength`)은 지금 `n`·`[i]` 를 전제 — Deque 가 `Trait.List` 로 들어오게 할지 정할 것. (Deque 에 `n` 이 있어도 지금은 에러 — 이름이 Arr 가 아니면 리스트가 아님, 2026-10-06. 남은 질문은 Deque 를 `Trait.List` 로 받아들일지) | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
 | **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음, `MapOps` 엔 `Len`/`Has` 가 없음 | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |

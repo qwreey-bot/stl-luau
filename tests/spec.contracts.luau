@@ -588,6 +588,19 @@ do
 	end)
 	assert(string.find(brokenMsg, "invalid n", 1, true) ~= nil, `깨진 n 메시지: {brokenMsg}`)
 	assert(string.find(brokenMsg, "Common:", 1, true) == nil, `내부 모듈 이름: {brokenMsg}`)
+	-- (5라운드) "깨진 n" 은 nil 만이 아님 — 음수·소수·무한·NaN·문자열 전부(조건 하나만 빠져도 `#` 로
+	-- 조용히 읽었음)
+	for _, badN in { -1, 1.5, math.huge, 0 / 0, "2" } :: { any } do
+		const broken = stl.Arr.Of(10, 20, 30) :: any
+		broken.n = badN
+		const msg = errOf(function()
+			stl.HashSet.FromList(broken)
+		end)
+		assert(
+			string.find(msg, "invalid n", 1, true) and string.find(msg, "spec.contracts", 1, true),
+			`깨진 n {tostring(badN)}: {msg}`
+		)
+	end
 	-- 다른 종류는 "Arr 인데 n 이 이상함" 이 아니라 "리스트가 아님 — HashMap"(3라운드)
 	const kindMsg = errOf(function()
 		stl.HashSet.FromList(stl.HashMap.New() :: any)
