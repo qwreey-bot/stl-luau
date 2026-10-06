@@ -29,7 +29,7 @@ FromTable n 밖 칸, Chain 자기 순환)을 찾음 → 고침, **리뷰 소진*
 읽기 참조가 `CompactInplace` 로 쓰기를 얻음, `ArrConsumed` 분리). 범위 밖 발견: 맨 람다 자유 타입
 누수(새 솔버 결함, `spikes/57`, 질문 AA 보강).
 **M3(Arr 빈 조각) 구현(2026-10-07)** — 함수 24개, 질문 AI(사용자 결정 넷) + 제가 정한 것들, `spikes/58`,
-perf 22절. 리뷰 진행 중 — 결과는 아래 "자고 일어나서 볼 것".
+perf 22절. **리뷰 소진(1라운드 — 재현된 결함 0, 돌연변이 51개 중 현실적 생존 1 → 테스트로 막음).**
 전면 재작성(09-22) 이후 기반이 서 있습니다.
 `./scripts/check.sh` 가 **exit 0** 이고 게이트 일곱이 전부 섭니다:
 
@@ -85,7 +85,7 @@ local f = nested:Flat<<number>>()
 | ~~M0~~ | **✅ 2026-10-01** 호출 모양을 네임스페이스 하나로(질문 AB) — 리뷰 여덟 라운드(다수 → 6 → 4 → 10 → 4 → 1 → 1 → 없음) — 모든 모듈의 메타테이블·콜론 메소드 제거(데이터는 평범한 테이블 = 엔티티, 함수는 서비스), 타입 단순화(`ArrIfce` 교집합 제거), 계약은 함수 묶음을 넘기는 모양으로, 술어는 태그 필드로, 테스트·스파이크 변환, 인덱싱 이득 재측정, 리뷰 소진 | M3 가 함수를 스무 개 넘게 더하기 전에 |
 | ~~M1~~ | **✅ 2026-09-30** 이름 정리 — `Arr.Merge`/`MergeInplace` → `Concat`/`ConcatInplace`, `Replace`/`ReplaceInplace` → `Splice`/`SpliceInplace`(+"JS 와 다름" 주석), `At(idx)`(음수) 신설 | 새 표면이 옛 이름 위에 쌓이기 전에. `Merge` 라는 이름을 비워 `HashMap.Merge` 에 줌 |
 | ~~M2~~ | **✅ 2026-09-30** 정렬 가족(`spikes/51`, perf 15-2) — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
-| **M3** | **🔧 2026-10-07 구현, 리뷰 중** `Arr` 빈 조각 — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
+| ~~M3~~ | **✅ 2026-10-07** 리뷰 1라운드 소진(결함 0) — `Arr` 빈 조각 — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | **M4** | **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
 | **M5** | **`Deque`**(링 버퍼) — ⚠️ 트레이트 메모(2026-10-06 Gemini): 리스트 진입점(`FromList`·`Fut.All`·`Common.listLength`)은 지금 `n`·`[i]` 를 전제 — Deque 가 `Trait.List` 로 들어오게 할지 정할 것. (Deque 에 `n` 이 있어도 지금은 에러 — 이름이 Arr 가 아니면 리스트가 아님, 2026-10-06. 남은 질문은 Deque 를 `Trait.List` 로 받아들일지) | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
 | **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음, `MapOps` 엔 `Len`/`Has` 가 없음 | M4 위에 얇게. 부르는 곳이 보이면 |

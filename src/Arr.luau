@@ -510,6 +510,9 @@ end
 -- 키가 가장 큰 원소. 키는 **원소당 한 번** 계산합니다 — 비교자 안에서 키를 뽑으면 비교마다
 -- 두 번씩 부릅니다. `less` 는 키끼리의 비교이고 안 주면 `<`. 구멍은 건너뛰고 `key` 도 부르지
 -- 않습니다(`Max` 처럼). 같은 키가 여럿이면 처음 나온 것. 비었으면 `nil`.
+-- ⚠️ 콜백 타입은 동작보다 넓습니다 — `Arr<number?>` 면 `key` 가 `number?` 를 받아야 하지만 실제로
+-- `nil` 은 오지 않습니다. 의도입니다: 구멍은 타입에 드러내고(`?` 를 떼는 길은 `Compact`), 집계의
+-- 건너뛰기는 타입이 거짓말할 때의 런타임 그물입니다(`Max(less)`·`MinMax` 도 같음, 모듈 머리).
 const function MaxBy<T, K>(self: ArrRead<T>, key: (element: T) -> K, less: LessThan<K>?): T?
 	local best: T? = nil
 	local bestKey: any = nil

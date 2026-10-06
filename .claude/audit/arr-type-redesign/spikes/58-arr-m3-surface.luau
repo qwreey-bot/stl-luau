@@ -7,7 +7,7 @@
 	**원소 타입을 정확히** 옮김(`Pair<T, U>`·`Arr<U>`·`Arr<Arr<T>>`), 콜백 파라미터는 원소 타입으로
 	검사됨.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 19 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
@@ -105,6 +105,15 @@ local negDedup = Arr.Dedup(nums, function(a: string, b: string): boolean
 	return a == b
 end)
 
+--[[ NEG — 구멍 든 배열에 좁은 콜백(구멍은 T? — 집계가 구멍을 건너뛰어도 타입은 T? 를 요구) ]]
+local holedNums = Arr.Of<<number?>>(10, nil)
+local negHoledPartition = Arr.Partition(holedNums, function(v: number): boolean
+	return v > 0
+end)
+local negHoledMaxBy = Arr.MaxBy(holedNums, function(v: number): number
+	return v
+end)
+
 local canary: string = 42
 
 return {
@@ -146,5 +155,7 @@ return {
 	negZipWith,
 	negUnique,
 	negDedup,
+	negHoledPartition,
+	negHoledMaxBy,
 	canary,
 }
