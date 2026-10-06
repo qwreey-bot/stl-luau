@@ -15,6 +15,11 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 인자 `ArrView<unknown>`), 함수 묶음 계약의 추론(`read` 필드, 맵 계약은 타입
 > 인자 명시 — `conventions.md`).
 >
+> ⭐ **2026-10-06 트레이트(질문 AG)**: 공용 알고리즘은 이제 구현을 받지 않고 **트레이트
+> 마커**(`Types.ListMarker<E, I>` = `{ read __list: E, … }`, 타입에만 있는 필드)에서
+> 원소·키·값을 추론합니다 — `Algorithm.Keys(m)` 가 타입 인자 없이 `{ K }`(`spikes/55`).
+> 아래 두 문단은 **함수 묶음을 직접 받는** 함수에 여전히 해당합니다.
+>
 > ⚠️ **함수 묶음 계약을 받는 사용자 제네릭 함수**(`put<C, V>(ops: MapOps<C,
 > string, V>, map: C, v: V)`, `SetOps` 도 같음)는 **맞는 호출도 타입 인자 없이는
 > 에러**입니다 — 원소 타입을 모듈의 제네릭 함수들에서도 끌어오며 `unknown` 이
@@ -28,7 +33,7 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 불일치. 계약의 `Get: (C, I) -> E?` 에서 `E` 가 이미 `T?` 면 모듈 `Get` 의 `T?`
 > 와 맞추는 역추론이 모순됩니다(옛 교집합 시절 `spikes/46` 의 원인이 함수 묶음
 > 쪽에서 다시 나타남). `Algorithm.Keys` 는 명시적 타입 인자로도 길이 없습니다.
-> 우회는 캐스트. 추론 경로(`Algorithm.IndexOf(Arr, holed, 1)`)는 됩니다.
+> 우회는 캐스트. 추론 경로(`Algorithm.IndexOf(holed, 1)`)는 됩니다.
 > `spikes/46` 의 캐비엇 두 줄이 지금 에러인 것을 기록합니다(M0 3라운드).
 >
 > ⚠️ **가변 인자 자리의 꼬리 호출 결과는 검사되지 않습니다** — `Arr.Concat(a,

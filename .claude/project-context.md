@@ -44,7 +44,7 @@
 
 ⭐ **모든 컨테이너는 메타테이블 없는 평범한 테이블이고, 연산은 전부 모듈의
 네임스페이스 함수입니다**(`Arr.Map(a, fn)` — 콜론 메소드 없음, 질문 AB).
-판별은 태그 필드(`__arr__` 등), 계약은 함수 묶음(`Types.ListOps` 등).
+판별은 타입 토큰(`__type`), 구현은 트레이트(`Trait.List` 등 — `src/Trait.luau`, 질문 AG).
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
@@ -56,7 +56,8 @@ README.md, LICENSE      간단한 소개(API 가 굳으면 다시 씀), MIT
 default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
 src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
-  Types.luau       ⭐ 공유 계약만. **말단 모듈** — 아무것도 require 안 함
+  Types.luau       ⭐ 공유 계약·트레이트 마커만. **말단 모듈** — 아무것도 require 안 함
+  Trait.luau       타입 토큰과 트레이트 레지스트리(List/Map/Set). Algorithm 이 구현을 찾는 곳
   Common.luau      비교자 어댑터와 기본 3방향 비교자
   Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
