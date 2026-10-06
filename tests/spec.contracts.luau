@@ -355,14 +355,14 @@ do
 		for _, v in { nil, 1, "x", true, {}, { n = 0 }, { [oldTags[idx]] = true } } :: { any } do
 			assert(not case.is(v), `{case.name}: {typeof(v)} 를 받아들임`)
 		end
-		assert(not case.is({ __t = stl.Trait.NewType(case.name) }), `{case.name}: 이름만 같은 토큰`)
-		assert(not case.is({ __t = { name = case.name } }), `{case.name}: 직렬화했다 되읽은 토큰`)
+		assert(not case.is({ __type = stl.Trait.NewType(case.name) }), `{case.name}: 이름만 같은 토큰`)
+		assert(not case.is({ __type = { name = case.name } }), `{case.name}: 직렬화했다 되읽은 토큰`)
 		-- 토큰을 베껴 넣으면 그 종류(위조는 계약 밖 — 막지 않음)
-		assert(case.is({ __t = case.token }), `{case.name}: 토큰을 가진 테이블`)
+		assert(case.is({ __type = case.token }), `{case.name}: 토큰을 가진 테이블`)
 		-- 다른 종류의 토큰은 아님(교차)
 		for jdx, other in predicates do
 			if jdx ~= idx then
-				assert(not case.is({ __t = other.token }), `{case.name} 술어가 {other.name} 토큰을 받음`)
+				assert(not case.is({ __type = other.token }), `{case.name} 술어가 {other.name} 토큰을 받음`)
 			end
 		end
 	end
@@ -424,7 +424,7 @@ do
 	-- 생성 함수에서 캐스트로 만듭니다(마커는 런타임에 없음). 그리고 Records 가
 	-- Arr·table.pack 결과를 돌려줘도(M0 7라운드) — 구멍은 건너뜁니다.
 	type MyMap = {
-		read __t: stl.TraitToken<string>,
+		read __type: stl.TraitToken<string>,
 		read __mapKey: string,
 		read __mapValue: number,
 		recs: stl.Arr<stl.Record<string, number>?>,
@@ -441,7 +441,7 @@ do
 	}
 	stl.Trait.Impl(stl.Trait.Map, MyMapType, myOps)
 	const mine: MyMap = {
-		__t = MyMapType,
+		__type = MyMapType,
 		recs = stl.Arr.Of<<stl.Record<string, number>?>>({ key = "x", value = 1 }, nil, { key = "y", value = 2 }),
 	} :: any
 	assert(table.concat(stl.Algorithm.Keys(mine), ",") == "x,y", "Keys(사용자 맵, Records 가 Arr)")

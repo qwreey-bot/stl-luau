@@ -39,12 +39,12 @@ Common.registerSource(debug.info(1, "s"))
 
 type LessThan<T> = Types.LessThan<T>
 
-export type HeapData<T> = { items: { T }, size: number, less: LessThan<T>, read __t: Trait.Token<"Heap"> }
+export type HeapData<T> = { items: { T }, size: number, less: LessThan<T>, read __type: Trait.Token<"Heap"> }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
-const TYPE_KEY = "__t"
+const TYPE_KEY = "__type"
 const TOKEN = Trait.Types.Heap
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.

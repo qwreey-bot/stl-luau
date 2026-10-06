@@ -36,7 +36,7 @@ local exports = {}
 -- 값이 구현하는 트레이트의 구현 테이블. 없으면 사용자 줄 에러. 조회를 펼쳐 둡니다 —
 -- `Trait.ImplOf` 를 거치면 짧은 리스트에서 호출 비용이 16% 붙었습니다(perf 21절).
 const function implOf(trait: any, value: any, who: string): any
-	const impl = if type(value) == "table" then trait.impls[rawget(value, "__t")] else nil
+	const impl = if type(value) == "table" then trait.impls[rawget(value, "__type")] else nil
 	if impl == nil then
 		const token = Trait.TypeOf(value)
 		const got = if token then `a {token.name}` else `a {typeof(value)} without a type token`

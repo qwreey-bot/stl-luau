@@ -42,12 +42,12 @@ Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
 
--- `read __t` 은 타입 토큰(생성자가 붙이는 실제 필드, `Trait.luau`) —
+-- `read __type` 은 타입 토큰(생성자가 붙이는 실제 필드, `Trait.luau`) —
 -- 리터럴이 맵 자리에 들어가는 것을 막습니다(M0 리뷰).
 export type HashMapData<K, V> = {
 	data: { [K]: V },
 	size: number,
-	read __t: Trait.Token<"HashMap">,
+	read __type: Trait.Token<"HashMap">,
 	read __mapKey: K,
 	read __mapValue: V,
 }
@@ -55,7 +55,7 @@ export type HashMapData<K, V> = {
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
-const TYPE_KEY = "__t"
+const TYPE_KEY = "__type"
 const TOKEN = Trait.Types.HashMap
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.

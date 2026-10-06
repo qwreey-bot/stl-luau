@@ -27,7 +27,7 @@ local keys: { string } = Algorithm.Keys(ages)
 local values: { number } = Algorithm.Values(ages)
 local rankKeys: { number } = Algorithm.Keys(ranks)
 -- 사용자 리스트: 토큰 + 마커를 타입에 적고 구현을 등록
-type Pair<T> = { read __t: stl.TraitToken<string>, read __list: T, read __listIndex: number, a: T, b: T }
+type Pair<T> = { read __type: stl.TraitToken<string>, read __list: T, read __listIndex: number, a: T, b: T }
 local PairType = Trait.NewType("Pair")
 local pairOps: stl.ListOps<Pair<any>, any, number> = {
 	Get = function(p: Pair<any>, i: number): any
@@ -47,7 +47,7 @@ local pairOps: stl.ListOps<Pair<any>, any, number> = {
 	end,
 }
 Trait.Impl(Trait.List, PairType, pairOps)
-local pair: Pair<string> = { __t = PairType, a = "x", b = "y" } :: any
+local pair: Pair<string> = { __type = PairType, a = "x", b = "y" } :: any
 local inPair: number? = Algorithm.IndexOf(pair, "y")
 -- 사용자 트레이트를 우리 Arr 에 붙이기 — 구현 타입이 ImplOf 로 돌아옴
 type Show = { read Show: (any) -> string }

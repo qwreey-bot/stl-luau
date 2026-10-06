@@ -80,13 +80,13 @@ local Trait = require("./Trait")
 type LessThan<T> = Types.LessThan<T>
 type Optional<T> = Optional.Optional<T>
 
--- `read __t: Token<"Arr">` 는 생성자가 붙이는 실제 필드(타입 토큰, `Trait.luau`)이고,
+-- `read __type: Token<"Arr">` 는 생성자가 붙이는 실제 필드(타입 토큰, `Trait.luau`)이고,
 -- 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr` 자리에 들어가는 것을
 -- 막습니다(M0 리뷰). `__list`/`__listIndex` 는 **타입에만 있는** 리스트 트레이트 마커입니다
 -- — `Algorithm.IndexOf(a, x)` 가 원소 타입을 여기서 추론합니다(런타임엔 없음).
 export type ArrData<T> = {
 	n: number,
-	read __t: Trait.Token<"Arr">,
+	read __type: Trait.Token<"Arr">,
 	read __list: T,
 	read __listIndex: number,
 	[number]: T,
@@ -123,7 +123,7 @@ export type Spreader<T, G> = (element: T, index: number, arr: ArrView<unknown>) 
 export type Rng = (min: number, max: number) -> number
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
-const TYPE_KEY = "__t"
+const TYPE_KEY = "__type"
 const TOKEN = Trait.Types.Arr
 
 --#region ----------- 내부 헬퍼 -----------
@@ -576,12 +576,12 @@ end
 -- 드러남)를 **둘 다** 받으면서 `T = number` 로 잡고, 결과에서 `?` 를 뺄 수
 -- 있습니다. 읽기·쓰기 인덱서는 불변이라 `Arr<number>` 가 `ArrData<number?>`
 -- 자리에 안 들어갑니다(실측).
--- 타입 토큰(`read __t`)과 마커까지 요구합니다 — 없으면 리터럴이나 `table.pack`
+-- 타입 토큰(`read __type`)과 마커까지 요구합니다 — 없으면 리터럴이나 `table.pack`
 -- 결과, 콜백의 읽기 전용 뷰가 `CompactInplace` 를 거쳐 `Arr<T>` 로 둔갑했습니다
 -- (M0 2라운드 — 1라운드가 막은 "리터럴이 Arr 자리에" 의 우회로).
 type ArrRead<T> = {
 	read n: number,
-	read __t: Trait.Token<"Arr">,
+	read __type: Trait.Token<"Arr">,
 	read __list: T,
 	read __listIndex: number,
 	read [number]: T,

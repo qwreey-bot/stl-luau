@@ -89,7 +89,7 @@ type Packed = { n: number, [number]: any }
 export type FutData = {
 	-- 타입에만 드러난 태그(생성자가 붙이는 실제 필드) — 리터럴이 Fut 자리에 들어가는
 	-- 것을 막습니다. 다른 컨테이너와 대칭(M0 3라운드).
-	read __t: Trait.Token<"Fut">,
+	read __type: Trait.Token<"Fut">,
 	status: Status,
 	values: Packed?,
 	reason: any,
@@ -98,7 +98,7 @@ export type FutData = {
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB).
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
-const TYPE_KEY = "__t"
+const TYPE_KEY = "__type"
 const TOKEN = Trait.Types.Fut
 
 -- 즉시 실행. 순수 luau 의 기본값.
