@@ -242,6 +242,8 @@ do
 	end)
 	assert(table.concat(order, ",") == "10,20,30,40", "정렬 순서로 부름")
 	assert(itemsOf(r) == "30,40" and TreeSet.Len(r) == 2, "Retain")
+	-- 꼬리 칸을 비움 — 안 비우면 지운 원소의 참조가 남아 GC 가 못 거둠(3라운드)
+	assert(rawget(r.map.records :: any, 3) == nil and rawget(r.map.records :: any, 4) == nil, "Retain 꼬리")
 	assert(TreeSet.Has(r, 30) and not TreeSet.Has(r, 10), "Retain 뒤 Has")
 
 	-- 콜백 안에서 크기를 바꾸면 에러(M4 리뷰 1라운드 — 크래시였음)
