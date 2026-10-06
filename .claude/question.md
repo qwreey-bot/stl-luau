@@ -760,6 +760,36 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | `Trait.Impl(trait, token, impl)` | Rust 예약어 축약을 함수 이름으로, 인자도 `impl` | `Impl` 은 짧고 Rust/Luau 사용자에게 익숙해 그대로도 괜찮다고 봅니다. 바꾼다면 **`Implement`** |
 | `Trait.NewType` / `Trait.Types` | 토큰은 트레이트를 구현하지 않는 `Heap`/`Fut` 도 쓰는 바탕인데 `Trait` 밑에 있음 | 모듈을 둘로 쪼개면(`Token.New`, `Trait.New`) 깔끔하지만 require 가 하나 늘어납니다. **그대로 두고 문서로** 쪽을 추천 |
 
+## ❓ 2026-10-07 — M3(Arr 빈 조각)
+
+### AI. M3 의 의미 넷 — **[2026-10-07 사용자 결정] 전부 추천안**
+
+| 질문 | 결정 | 근거 |
+|---|---|---|
+| `Scan(a, init, fn)` 의 길이 | **n — `init` 미포함**: `Scan({1,2,3}, 0, +) = {1,3,6}` | C++ `inclusive_scan`. 누적합 직관, 입력과 위치가 맞음 |
+| `Zip`/`ZipWith` 길이가 다르면 | **짧은 쪽** | Rust·Python. 결과 원소에 구멍이 안 생김 |
+| 빈 `PopBack`/`PopFront`, 범위 밖 `SwapRemove` | **`nil`, 아무것도 안 바꿈** | `At` 의 "단일 조회 범위 밖은 nil", `table.remove` |
+| `Inplace` 쌍 | **원소 타입이 그대로인 거르기만**: `Dedup`·`Unique`·`TakeWhile`·`DropWhile` | 타입이 바뀌는 `Scan`·`Zip`·`Chunks`·`Windows` 와 둘을 돌려주는 `Partition` 은 새 배열만 |
+
+### 🔁 M3 에서 **제가 정한 것들** (되돌리기 쉬움)
+
+- **`Zip` 의 짝은 `Pair<T, U> = { first, second }`**(질문 W2 초안 — "이견 없던 것은 초안대로").
+  공개 타입 `stl.Pair`.
+- **`Unique` 의 같음 = 테이블 키의 같음**(테이블은 정체성, `__eq` 안 봄, `0 == -0`). 테이블 키가
+  될 수 없는 둘: **`nil` 은 하나로**(첫 구멍만 남음), **NaN 은 서로 다름**(모두 남음 — `Dedup` 의
+  `==` 와 같은 결). `key` 는 구멍에도 부릅니다(콜백 계열 규약 — 구멍은 `nil` 그대로).
+- **`Dedup` 의 `eq(kept, item)`** 은 **마지막으로 남긴 원소**와 비교(Rust `dedup_by`, C++ `unique`).
+  이웃끼리 비교하면 `near` 같은 비추이적 `eq` 에서 사슬이 통째로 하나가 됩니다.
+- **`MaxBy`/`MinBy`·`MinMax` 는 구멍을 건너뜀**(집계 — `Max`/`Min` 처럼, 구멍에 `key` 를 안 부름).
+  같은 값·키는 처음 것. 반환은 원소만(위치는 안 줌 — `Max` 와 같게).
+- **`IndexOf`/`LastIndexOf`/`Contains` 는 구간 인자 없음**(`Find` 처럼). 구간이 필요하면
+  `Some(a, fn, start, last)`. 비교는 `==`(NaN 못 찾음, `nil` 은 첫 구멍).
+- **`Chunks`/`Windows` 의 크기**: 0 쪽으로 자르고 1 미만·NaN 은 에러(Rust 는 0 에서 패닉), 무한대는
+  "전부 한 조각"/"빈 결과". 조각·창은 사본(지연 뷰 없음 — papers/04).
+- **`SwapRemove(idx)`** 는 `At` 규약(음수, 소수 0 쪽, NaN 에러). 순서를 지키는 한 칸 제거는 따로
+  두지 않았습니다 — `EraseInplace(a, i, i)`.
+- `ZipWith` 의 콜백은 `(a, b, index)` — 배열 뷰는 안 넘깁니다(두 배열 중 어느 것인지 애매).
+
 ---
 
 ### G. mlua 바인딩 — **보류 확정**

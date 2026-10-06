@@ -231,6 +231,28 @@ do
 			Arr.Range(1, 5, math.huge)
 		end)
 	)
+	-- M3(2026-10-07)의 raise 자리 둘 — SwapRemove 의 NaN, 조각·창 크기(Chunks·Windows 가 공유)
+	atUserLine(
+		"Arr.SwapRemove NaN",
+		expectLine("Arr.SwapRemove NaN", "SwapRemove index is NaN", function()
+			where = debug.info(1, "l") + 1
+			Arr.SwapRemove(Arr.Of(10, 20), 0 / 0)
+		end)
+	)
+	atUserLine(
+		"Arr.Chunks 크기",
+		expectLine("Arr.Chunks 크기", "Chunks size must be at least 1", function()
+			where = debug.info(1, "l") + 1
+			Arr.Chunks(Arr.Of(10, 20), 0)
+		end)
+	)
+	atUserLine(
+		"Arr.Windows 크기",
+		expectLine("Arr.Windows 크기", "Windows size must be at least 1", function()
+			where = debug.info(1, "l") + 1
+			Arr.Windows(Arr.Of(10, 20), 0 / 0)
+		end)
+	)
 	-- 10. 스택이 끝까지 라이브러리면(라이브러리 함수를 스레드 본문으로 바로 넘김 — Roblox 의
 	--     `task.spawn(Arr.At, …)`) 가리킬 사용자 줄이 없어 위치를 안 붙임. `error(message)` 로
 	--     바꾸면 `Common.luau` 줄이 붙었는데 테스트가 없었음(6라운드).

@@ -226,6 +226,30 @@ do
 		end),
 		Drain = Arr.Drain(a(), id),
 		ConcatInplace = Arr.ConcatInplace(a(), a()),
+		-- M3(2026-10-07)
+		PartitionYes = (Arr.Partition(a(), even)),
+		PartitionNo = select(2, Arr.Partition(a(), even)),
+		TakeWhile = Arr.TakeWhile(a(), even),
+		TakeWhileInplace = Arr.TakeWhileInplace(a(), even),
+		DropWhile = Arr.DropWhile(a(), even),
+		DropWhileInplace = Arr.DropWhileInplace(a(), even),
+		Dedup = Arr.Dedup(a()),
+		DedupInplace = Arr.DedupInplace(a()),
+		Unique = Arr.Unique(a()),
+		UniqueInplace = Arr.UniqueInplace(a()),
+		Scan = Arr.Scan(a(), 0, function(acc: number, v: number): number
+			return acc + v
+		end),
+		Zip = Arr.Zip(a(), a()),
+		ZipWith = Arr.ZipWith(a(), a(), function(x: number, y: number): number
+			return x + y
+		end),
+		Chunks = Arr.Chunks(a(), 2),
+		ChunksEmpty = Arr.Chunks(Arr.Sized(0, 0), 2),
+		ChunksInner = Arr.Chunks(a(), 2)[1],
+		Windows = Arr.Windows(a(), 2),
+		WindowsEmpty = Arr.Windows(a(), 9),
+		WindowsInner = Arr.Windows(a(), 2)[1],
 	}
 	for name, result in arrResults do
 		assert(stl.isArr(result), `Arr.{name} 결과에 태그가 없습니다`)

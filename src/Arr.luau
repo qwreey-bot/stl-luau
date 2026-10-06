@@ -227,6 +227,16 @@ const function checkLength(len: number, who: string): number
 	return count + 0
 end
 
+-- 조각·창의 크기 인자(`Chunks`/`Windows`). 소수는 0 쪽으로 자르고, 1 보다 작거나 NaN 이면
+-- 에러입니다(Rust 는 0 에서 패닉 — 0 크기 조각은 끝나지 않음). 무한대는 "전부 한 조각".
+const function checkSize(size: number, who: string): number
+	const width = toIndex(size)
+	if not (width >= 1) then
+		Common.raise(`Arr: {who} size must be at least 1 (got {size})`)
+	end
+	return width
+end
+
 const function newSized<T>(len: number): Arr<T>
 	return wrap(table.create(len) :: any, len)
 end
@@ -375,6 +385,49 @@ const function Find<T>(self: ArrRead<T>, fn: Predicate<T>): (T?, number?)
 	return nil, nil
 end
 
+-- 뒤에서부터 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
+const function FindLast<T>(self: ArrRead<T>, fn: Predicate<T>): (T?, number?)
+	for idx = self.n, 1, -1 do
+		const item = self[idx]
+		if fn(item, idx, self :: any) then
+			return item, idx
+		end
+	end
+	return nil, nil
+end
+
+-- 값으로 찾기(질문 W 어휘 — `Contains` 는 값을 포함함, `Has` 는 키를 가짐). 비교는 `==` 라
+-- **NaN 은 못 찾고**(NaN ~= NaN) 테이블은 정체성으로 비교합니다. `nil` 을 넘기면 첫 구멍을
+-- 찾습니다(`Arr<T?>` 에서만 타입이 허락). 구간을 좁히려면 `Some(a, fn, start, last)`.
+const function IndexOf<T>(self: ArrRead<T>, item: T): number?
+	for idx = 1, self.n do
+		if self[idx] == item then
+			return idx
+		end
+	end
+	return nil
+end
+
+-- 같은 값이 마지막으로 나오는 위치. 비교는 `IndexOf` 와 같습니다.
+const function LastIndexOf<T>(self: ArrRead<T>, item: T): number?
+	for idx = self.n, 1, -1 do
+		if self[idx] == item then
+			return idx
+		end
+	end
+	return nil
+end
+
+-- 같은 값이 있는가. 비교는 `IndexOf` 와 같습니다.
+const function Contains<T>(self: ArrRead<T>, item: T): boolean
+	for idx = 1, self.n do
+		if self[idx] == item then
+			return true
+		end
+	end
+	return false
+end
+
 -- 하나라도 만족하는가. 구간 인자를 받습니다.
 const function Some<T>(self: ArrRead<T>, fn: Predicate<T>, start: number?, last: number?): boolean
 	local s, l = resolveRange(self.n, start, last)
@@ -425,6 +478,71 @@ const function Min<T>(self: ArrRead<T>, less: LessThan<T>?): T?
 				best = item
 			elseif if less then less(item, best :: T) else (item :: any) < (best :: any) then
 				best = item
+			end
+		end
+	end
+	return best
+end
+
+-- 가장 작은 원소와 가장 큰 원소를 **한 번에**. 비었거나 구멍뿐이면 `nil, nil`. 구멍은
+-- 건너뜁니다. 같은 값이 여럿이면 둘 다 **처음 나온 것** — `Min`·`Max` 를 따로 부른 것과
+-- 같습니다(비교자가 엄격 약순서일 때). 원소당 비교는 많아야 둘 — 작은 쪽을 바꾼 원소는
+-- 큰 쪽과 비교하지 않습니다(더 작은 값이 최댓값을 넘을 수 없음).
+const function MinMax<T>(self: ArrRead<T>, less: LessThan<T>?): (T?, T?)
+	local lo: T? = nil
+	local hi: T? = nil
+	for idx = 1, self.n do
+		const item = self[idx]
+		if item ~= nil then
+			if lo == nil then
+				lo = item
+				hi = item
+			elseif if less then less(item, lo :: T) else (item :: any) < (lo :: any) then
+				lo = item
+			elseif if less then less(hi :: T, item) else (hi :: any) < (item :: any) then
+				hi = item
+			end
+		end
+	end
+	return lo, hi
+end
+
+-- 키가 가장 큰 원소. 키는 **원소당 한 번** 계산합니다 — 비교자 안에서 키를 뽑으면 비교마다
+-- 두 번씩 부릅니다. `less` 는 키끼리의 비교이고 안 주면 `<`. 구멍은 건너뛰고 `key` 도 부르지
+-- 않습니다(`Max` 처럼). 같은 키가 여럿이면 처음 나온 것. 비었으면 `nil`.
+const function MaxBy<T, K>(self: ArrRead<T>, key: (element: T) -> K, less: LessThan<K>?): T?
+	local best: T? = nil
+	local bestKey: any = nil
+	for idx = 1, self.n do
+		const item = self[idx]
+		if item ~= nil then
+			const k = key(item)
+			if best == nil then
+				best = item
+				bestKey = k
+			elseif if less then less(bestKey, k) else bestKey < (k :: any) then
+				best = item
+				bestKey = k
+			end
+		end
+	end
+	return best
+end
+
+-- 키가 가장 작은 원소. `MaxBy` 와 같은 규약입니다.
+const function MinBy<T, K>(self: ArrRead<T>, key: (element: T) -> K, less: LessThan<K>?): T?
+	local best: T? = nil
+	local bestKey: any = nil
+	for idx = 1, self.n do
+		const item = self[idx]
+		if item ~= nil then
+			const k = key(item)
+			if best == nil then
+				best = item
+				bestKey = k
+			elseif if less then less(k, bestKey) else (k :: any) < bestKey then
+				best = item
+				bestKey = k
 			end
 		end
 	end
@@ -818,6 +936,59 @@ const function InsertArray<T>(self: ArrData<T>, at: number, source: ArrData<T>):
 	table.move(source :: any, 1, sourceLen, pos, self :: any)
 	self.n = len + sourceLen
 	return self :: any
+end
+
+--#endregion
+
+--#region ----------- 원소 꺼내기 -----------
+-- 꺼낸 원소를 돌려줍니다. 비었거나 범위 밖이면 **`nil` 을 돌려주고 아무것도 안 바꿉니다**
+-- (2026-10-07 사용자 결정, 질문 AI — `At` 의 "단일 조회의 범위 밖은 `nil`", `table.remove` 와
+-- 같음). 구멍을 꺼내도 `nil` 이니 둘을 가르려면 `Len` 을 먼저 보세요.
+
+-- 마지막 원소를 꺼냅니다. O(1).
+const function PopBack<T>(self: ArrData<T>): T?
+	const len = self.n
+	if len == 0 then
+		return nil
+	end
+	const item = self[len]
+	self[len] = nil :: any
+	self.n = len - 1
+	return item
+end
+
+-- 첫 원소를 꺼냅니다. **뒤 원소를 전부 당겨야 해 O(n)** 입니다(`PushFront` 와 같음) — 큐로
+-- 쓸 거면 양끝이 O(1) 인 `Deque`(M5)를 기다리거나 머리 위치를 따로 들고 다니세요.
+const function PopFront<T>(self: ArrData<T>): T?
+	const len = self.n
+	if len == 0 then
+		return nil
+	end
+	const item = self[1]
+	table.move(self :: any, 2, len, 1)
+	self[len] = nil :: any
+	self.n = len - 1
+	return item
+end
+
+-- `idx` 의 원소를 꺼내고 **마지막 원소로 그 자리를 메웁니다** — 순서를 버리는 대신 O(1)
+-- (Rust `Vec::swap_remove`). 순서를 지키려면 `EraseInplace(a, idx, idx)`(O(n)).
+-- `idx` 는 `At` 과 같은 규약: 음수는 뒤에서, 소수는 0 쪽으로, NaN 은 에러, 범위 밖은 `nil`.
+const function SwapRemove<T>(self: ArrData<T>, idx: number): T?
+	if idx ~= idx then
+		Common.raise("Arr: SwapRemove index is NaN")
+	end
+	const len = self.n
+	const i = toIndex(idx)
+	const pos = if i < 0 then len + i + 1 else i
+	if pos < 1 or pos > len then
+		return nil
+	end
+	const item = self[pos]
+	self[pos] = self[len]
+	self[len] = nil :: any
+	self.n = len - 1
+	return item
 end
 
 --#endregion
@@ -1691,6 +1862,255 @@ const function Retain<T>(self: ArrData<T>, fn: Predicate<T>): Arr<T>
 	return self :: any
 end
 
+-- 조건을 만족하는 것과 아닌 것을 **두 새 배열로** 한 번에 나눕니다(둘 다 입력 순서). `Filter`
+-- 두 번과 달리 콜백을 원소당 한 번 부릅니다. ⚠️ C++/Swift 의 `partition` 처럼 제자리에서
+-- 재배치하지 **않습니다**(질문 W — 이름은 유지하고 문서로 못박음). 두 배열을 돌려주니 제자리
+-- 판은 없습니다.
+const function Partition<T>(self: ArrRead<T>, fn: Predicate<T>): (Arr<T>, Arr<T>)
+	const yes = {}
+	const no = {}
+	local yesLen = 0
+	local noLen = 0
+	for idx = 1, self.n do
+		const item = self[idx]
+		if fn(item, idx, self :: any) then
+			yesLen += 1
+			yes[yesLen] = item
+		else
+			noLen += 1
+			no[noLen] = item
+		end
+	end
+	return wrap(yes, yesLen), wrap(no, noLen)
+end
+
+-- 앞에서부터 조건을 만족하는 원소의 수(처음 깨진 곳 바로 앞까지).
+const function leadingCount<T>(self: ArrRead<T>, fn: Predicate<T>): number
+	const len = self.n
+	for idx = 1, len do
+		if not fn(self[idx], idx, self :: any) then
+			return idx - 1
+		end
+	end
+	return len
+end
+
+-- 앞에서부터 조건이 **처음 깨지기 전까지**의 새 배열. 깨진 원소 뒤는 보지 않습니다 —
+-- 정렬된 데이터를 자를 때. 원하는 구간이 위치로 정해지면 `Slice`.
+const function TakeWhile<T>(self: ArrRead<T>, fn: Predicate<T>): Arr<T>
+	const count = leadingCount(self, fn)
+	const result = newSized(count)
+	table.move(self :: any, 1, count, 1, result :: any)
+	return result
+end
+
+-- `TakeWhile` 의 제자리 판 — 앞부분만 남깁니다.
+const function TakeWhileInplace<T>(self: ArrData<T>, fn: Predicate<T>): Arr<T>
+	const len = self.n
+	const count = leadingCount(self, fn)
+	for idx = count + 1, len do
+		self[idx] = nil :: any
+	end
+	self.n = count
+	return self :: any
+end
+
+-- 앞에서부터 조건을 만족하는 원소를 **건너뛴 나머지**의 새 배열. `TakeWhile` 의 짝입니다.
+const function DropWhile<T>(self: ArrRead<T>, fn: Predicate<T>): Arr<T>
+	const len = self.n
+	const skip = leadingCount(self, fn)
+	const result = newSized(len - skip)
+	table.move(self :: any, skip + 1, len, 1, result :: any)
+	return result
+end
+
+-- `DropWhile` 의 제자리 판 — 남은 원소를 앞으로 당깁니다.
+const function DropWhileInplace<T>(self: ArrData<T>, fn: Predicate<T>): Arr<T>
+	const len = self.n
+	const skip = leadingCount(self, fn)
+	if skip == 0 then
+		return self :: any
+	end
+	const afterLen = len - skip
+	table.move(self :: any, skip + 1, len, 1)
+	for idx = afterLen + 1, len do
+		self[idx] = nil :: any
+	end
+	self.n = afterLen
+	return self :: any
+end
+
+-- **이웃한** 같은 원소를 하나로 줄여 `out` 에 씁니다. 남긴 개수를 돌려줍니다. `out` 이
+-- `self` 여도 됩니다 — 쓰는 위치가 읽는 위치를 앞서지 않습니다.
+const function dedupInto<T>(self: ArrRead<T>, eq: ((kept: T, item: T) -> boolean)?, out: any): number
+	const len = self.n
+	if len == 0 then
+		return 0
+	end
+	local kept = self[1]
+	out[1] = kept
+	local count = 1
+	for idx = 2, len do
+		const item = self[idx]
+		if not (if eq then eq(kept, item) else kept == item) then
+			count += 1
+			out[count] = item
+			kept = item
+		end
+	end
+	return count
+end
+
+-- **이웃한** 같은 원소를 하나로 줄인 새 배열(Rust `dedup`, C++ `unique`). 정렬한 뒤에 부르면
+-- 전체 중복 제거입니다 — 정렬 없이 전체 중복을 없애려면 `Unique`. 같음은 `eq` 이고 기본은
+-- `==` 입니다(그래서 NaN 은 줄지 않고, 이웃한 구멍은 하나로 줄어듦). `eq` 는 **마지막으로
+-- 남긴 원소**와 다음 원소를 받습니다 — `eq(kept, item)`(Rust `dedup_by` 와 같은 쪽).
+const function Dedup<T>(self: ArrRead<T>, eq: ((kept: T, item: T) -> boolean)?): Arr<T>
+	const result = newSized(self.n)
+	result.n = dedupInto(self, eq, result)
+	return result
+end
+
+-- `Dedup` 의 제자리 판.
+const function DedupInplace<T>(self: ArrData<T>, eq: ((kept: T, item: T) -> boolean)?): Arr<T>
+	const len = self.n
+	const count = dedupInto(self, eq, self)
+	for idx = count + 1, len do
+		self[idx] = nil :: any
+	end
+	self.n = count
+	return self :: any
+end
+
+-- 처음 나온 것만 남겨 `out` 에 씁니다. `dedupInto` 처럼 `out` 이 `self` 여도 됩니다.
+const function uniqueInto<T, K>(self: ArrRead<T>, key: ((element: T) -> K)?, out: any): number
+	const seen: { [any]: true } = {}
+	local seenNil = false
+	local count = 0
+	for idx = 1, self.n do
+		const item = self[idx]
+		const k: any = if key then key(item) else item
+		local fresh: boolean
+		if k == nil then
+			fresh = not seenNil
+			seenNil = true
+		elseif k ~= k then
+			fresh = true
+		else
+			fresh = seen[k] == nil
+			seen[k] = true
+		end
+		if fresh then
+			count += 1
+			out[count] = item
+		end
+	end
+	return count
+end
+
+-- 처음 나온 것만 남긴 새 배열(순서 유지). 해시라 O(n) 이고 정렬이 필요 없습니다 — 이웃만 보는
+-- 건 `Dedup`. `key` 를 주면 그 값으로 같음을 봅니다(원소당 한 번, 구멍에도 부름).
+-- 같음은 **테이블 키의 같음**입니다 — 테이블은 정체성(`__eq` 를 안 봄), `0` 과 `-0` 은 같음.
+-- 테이블 키가 될 수 없는 둘은 따로 정했습니다: `nil`(구멍)은 하나로 쳐 첫 구멍만 남고,
+-- NaN 은 `Dedup` 의 `==` 처럼 서로 달라 모두 남습니다.
+const function Unique<T, K>(self: ArrRead<T>, key: ((element: T) -> K)?): Arr<T>
+	const result = newSized(self.n)
+	result.n = uniqueInto(self, key, result)
+	return result
+end
+
+-- `Unique` 의 제자리 판.
+const function UniqueInplace<T, K>(self: ArrData<T>, key: ((element: T) -> K)?): Arr<T>
+	const len = self.n
+	const count = uniqueInto(self, key, self)
+	for idx = count + 1, len do
+		self[idx] = nil :: any
+	end
+	self.n = count
+	return self :: any
+end
+
+-- 접는 중간값을 모두 남긴 새 배열(누적합의 일반형). 길이는 입력과 같고 **`init` 은 담지
+-- 않습니다**(2026-10-07 사용자 결정, 질문 AI): `Scan(Of(1, 2, 3), 0, add)` 는 `{1, 3, 6}` —
+-- `결과[i] = fn(결과[i - 1], a[i])`, `결과[0] = init`. 콜백 모양은 `Fold` 와 같습니다.
+-- 원소 타입이 바뀌는 변환이라 제자리 판은 없습니다(`MapInplace` 처럼 소비형으로 둘 만큼의
+-- 수요가 아직 없음).
+const function Scan<T, U>(self: ArrRead<T>, init: U, fn: Folder<T, U>): Arr<U>
+	const len = self.n
+	const result = newSized(len)
+	local acc = init
+	for idx = 1, len do
+		acc = fn(acc, self[idx], idx, self :: any)
+		result[idx] = acc
+	end
+	return result :: any
+end
+
+-- `Zip` 의 짝. Luau 에는 튜플 테이블 타입이 없어 이름 붙은 필드입니다(질문 W2).
+export type Pair<T, U> = { first: T, second: U }
+
+-- 두 배열을 짝지은 새 배열. **짧은 쪽에 맞춥니다**(2026-10-07 사용자 결정, 질문 AI — Rust·Python
+-- 과 같음). 칸마다 테이블이 하나씩 생깁니다 — 짝을 바로 쓸 거면 할당 없는 `ZipWith`(질문 W2:
+-- 성능 경로와 편의를 나눔). 구멍은 그대로 짝에 들어갑니다(`first = nil`).
+const function Zip<T, U>(self: ArrRead<T>, other: ArrRead<U>): Arr<Pair<T, U>>
+	const len = math.min(self.n, other.n)
+	const result = newSized(len)
+	for idx = 1, len do
+		result[idx] = { first = self[idx], second = other[idx] }
+	end
+	return result :: any
+end
+
+-- 두 배열의 같은 위치끼리 `fn` 으로 합친 새 배열. 길이는 `Zip` 처럼 짧은 쪽입니다.
+const function ZipWith<T, U, G>(self: ArrRead<T>, other: ArrRead<U>, fn: (a: T, b: U, index: number) -> G): Arr<G>
+	const len = math.min(self.n, other.n)
+	const result = newSized(len)
+	for idx = 1, len do
+		result[idx] = fn(self[idx], other[idx], idx)
+	end
+	return result :: any
+end
+
+-- 앞에서부터 `size` 개씩 자른 조각들(마지막 조각은 짧을 수 있음, Rust `chunks`). 조각은
+-- **사본**입니다 — 즉시 `Arr<Arr<T>>` 를 만들고, 지연 뷰는 두지 않습니다(papers/04: 지연
+-- 반복자가 2.9배 느림). 구멍은 조각에 그대로. 원소 타입이 바뀌니 제자리 판은 없습니다.
+const function Chunks<T>(self: ArrRead<T>, size: number): Arr<Arr<T>>
+	const step = checkSize(size, "Chunks")
+	const len = self.n
+	if len == 0 then
+		return newSized(0) :: any
+	end
+	const width = if step > len then len else step
+	const count = math.ceil(len / width)
+	const result = newSized(count)
+	for chunkIdx = 1, count do
+		const s = (chunkIdx - 1) * width + 1
+		const l = if s + width - 1 > len then len else s + width - 1
+		const chunk = newSized(l - s + 1)
+		table.move(self :: any, s, l, 1, chunk :: any)
+		result[chunkIdx] = chunk
+	end
+	return result :: any
+end
+
+-- 길이 `size` 인 미끄럼 창들 — 이웃한 창이 `size - 1` 칸 겹칩니다(Rust `windows`). 창마다
+-- **사본**이라 O(n·size) 입니다. `size` 가 길이보다 크면 빈 배열.
+const function Windows<T>(self: ArrRead<T>, size: number): Arr<Arr<T>>
+	const width = checkSize(size, "Windows")
+	const len = self.n
+	if width > len then
+		return newSized(0) :: any
+	end
+	const count = len - width + 1
+	const result = newSized(count)
+	for s = 1, count do
+		const window = newSized(width)
+		table.move(self :: any, s, s + width - 1, 1, window :: any)
+		result[s] = window
+	end
+	return result :: any
+end
+
 -- 한 겹 평탄화한 **새 배열**. 구간 인자를 받습니다(예전의 `rangeflat` 이
 -- 여기 흡수됐습니다). 연속된 비배열 구간은 `table.move` 로 한 번에 옮깁니다.
 -- ⚠️ **입력 쪽 원소 타입을 `any` 로 엽니다.** 자연스러운 선언인
@@ -2233,6 +2653,14 @@ const ArrModule = {
 	Flatmap = Flatmap, FlatmapInplace = FlatmapInplace, Drain = Drain, ConcatInplace = ConcatInplace,
 	Fold = Fold, FoldRight = FoldRight, Reduce = Reduce, FoldUntil = FoldUntil, Get = Get,
 	FirstIndex = FirstIndex, LastIndex = LastIndex, NextIndex = NextIndex, PrevIndex = PrevIndex,
+
+	-- M3(2026-10-07) — 빈 조각
+	PopBack = PopBack, PopFront = PopFront, SwapRemove = SwapRemove,
+	FindLast = FindLast, IndexOf = IndexOf, LastIndexOf = LastIndexOf, Contains = Contains,
+	MinMax = MinMax, MaxBy = MaxBy, MinBy = MinBy, Partition = Partition,
+	TakeWhile = TakeWhile, TakeWhileInplace = TakeWhileInplace, DropWhile = DropWhile, DropWhileInplace = DropWhileInplace,
+	Dedup = Dedup, DedupInplace = DedupInplace, Unique = Unique, UniqueInplace = UniqueInplace,
+	Scan = Scan, Zip = Zip, ZipWith = ZipWith, Chunks = Chunks, Windows = Windows,
 }
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.

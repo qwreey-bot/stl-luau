@@ -1457,6 +1457,532 @@ do
 end
 print("PASS")
 
+print("=== 20. M3 — 꺼내기 / 값 조회 / 집계 (2026-10-07) ===")
+do
+	-- PopBack / PopFront: 꺼낸 값, 빈 배열은 nil 이고 그대로(질문 AI)
+	const a = Arr.Of(10, 20, 30)
+	assert(Arr.PopBack(a) == 30, "PopBack 값")
+	same(a, { 10, 20 }, "PopBack 뒤")
+	assert(rawget(a :: any, 3) == nil, "PopBack 은 칸을 비움")
+	assert(Arr.PopFront(a) == 10, "PopFront 값")
+	same(a, { 20 }, "PopFront 뒤")
+	assert(rawget(a :: any, 2) == nil, "PopFront 는 꼬리 칸을 비움")
+	assert(Arr.PopFront(a) == 20 and a.n == 0 and rawget(a :: any, 1) == nil, "하나에서 PopFront")
+	assert(Arr.PopBack(a) == nil and a.n == 0, "빈 PopBack")
+	assert(Arr.PopFront(a) == nil and a.n == 0, "빈 PopFront")
+	-- 구멍을 꺼내도 nil — 길이는 줄어듦(빈 것과 가르는 건 Len)
+	const holed = Arr.Of<<number?>>(10, nil)
+	assert(Arr.PopBack(holed) == nil and holed.n == 1, "구멍 PopBack")
+	const holedFront = Arr.Of<<number?>>(nil, 20, nil, 40)
+	assert(Arr.PopFront(holedFront) == nil and holedFront.n == 3, "구멍 PopFront")
+	assert(holedFront[1] == 20 and holedFront[2] == nil and holedFront[3] == 40, "구멍 PopFront 뒤 위치")
+	assert(rawget(holedFront :: any, 4) == nil, "구멍 PopFront 꼬리")
+	-- 꺼낸 뒤에도 태그·n 이 살아 이어 쓸 수 있음
+	Arr.PushBack(a, 7)
+	same(a, { 7 }, "꺼낸 뒤 PushBack")
+
+	-- SwapRemove: 마지막으로 메움, At 규약(음수·소수·범위 밖 nil)
+	const sw = Arr.Of(10, 20, 30, 40)
+	assert(Arr.SwapRemove(sw, 2) == 20, "SwapRemove 값")
+	same(sw, { 10, 40, 30 }, "SwapRemove 메움")
+	assert(rawget(sw :: any, 4) == nil, "SwapRemove 꼬리 칸")
+	assert(Arr.SwapRemove(sw, -1) == 30, "SwapRemove 음수 = 마지막")
+	same(sw, { 10, 40 }, "마지막을 지우면 메울 것 없음")
+	assert(Arr.SwapRemove(sw, 1.9) == 10, "소수는 0 쪽")
+	same(sw, { 40 }, "소수 뒤")
+	assert(Arr.SwapRemove(sw, 2) == nil and sw.n == 1, "범위 밖(뒤)")
+	assert(Arr.SwapRemove(sw, 0) == nil and sw.n == 1, "0 은 범위 밖")
+	assert(Arr.SwapRemove(sw, -2) == nil and sw.n == 1, "범위 밖(음수)")
+	assert(Arr.SwapRemove(sw, math.huge) == nil and Arr.SwapRemove(sw, -math.huge) == nil, "무한대는 범위 밖")
+	assert(Arr.SwapRemove(sw, 1) == 40 and sw.n == 0 and rawget(sw :: any, 1) == nil, "하나에서")
+	assert(Arr.SwapRemove(sw, 1) == nil, "빈 SwapRemove")
+	assert(not pcall(Arr.SwapRemove, Arr.Of(1), 0 / 0), "NaN 은 에러")
+	-- 메우는 원소가 구멍이어도 자리를 지킴
+	const swHole = Arr.Of<<number?>>(10, 20, nil)
+	assert(Arr.SwapRemove(swHole, 1) == 10 and swHole.n == 2, "구멍으로 메움")
+	assert(swHole[1] == nil and swHole[2] == 20, "구멍으로 메운 위치")
+
+	-- FindLast: 뒤에서 처음, 위치까지
+	const f = Arr.Of(10, 25, 30, 45, 50)
+	const odd = function(v: number): boolean
+		return v % 2 == 1
+	end
+	const lastOdd, lastIdx = Arr.FindLast(f, odd)
+	assert(lastOdd == 45 and lastIdx == 4, `FindLast: {lastOdd} {lastIdx}`)
+	const firstOdd, firstIdx = Arr.Find(f, odd)
+	assert(firstOdd == 25 and firstIdx == 2, "Find 와 다른 답")
+	const none, noneIdx = Arr.FindLast(f, function(v: number): boolean
+		return v > 100
+	end)
+	assert(none == nil and noneIdx == nil, "FindLast 없음")
+	assert(select("#", Arr.FindLast(emptyNum(), odd)) == 2, "빈 FindLast 도 둘")
+	-- 콜백은 원소·위치·배열을 받고 구멍은 nil 로
+	local seen = {}
+	Arr.FindLast(Arr.Of<<number?>>(10, nil, 30), function(v: number?, i: number, arr: ArrView<unknown>): boolean
+		table.insert(seen, `{tostring(v)}@{i}/{arr.n}`)
+		return false
+	end)
+	assert(table.concat(seen, ",") == "30@3/3,nil@2/3,10@1/3", table.concat(seen, ","))
+
+	-- IndexOf / LastIndexOf / Contains: == 비교
+	const v = Arr.Of(10, 20, 10, 30)
+	assert(Arr.IndexOf(v, 10) == 1 and Arr.LastIndexOf(v, 10) == 3, "처음·마지막")
+	assert(Arr.IndexOf(v, 30) == 4 and Arr.LastIndexOf(v, 30) == 4, "하나뿐")
+	assert(Arr.IndexOf(v, 99) == nil and Arr.LastIndexOf(v, 99) == nil, "없음")
+	assert(Arr.Contains(v, 20) and not Arr.Contains(v, 99), "Contains")
+	assert(not Arr.Contains(emptyNum(), 0) and Arr.IndexOf(emptyNum(), 0) == nil, "빈 배열")
+	-- 위치를 값으로 착각하지 않음(값 10, 20 이 위치 1, 2 와 다름)
+	assert(Arr.IndexOf(Arr.Of(2, 1), 1) == 2, "값과 위치가 다른 배열")
+	-- nil 은 구멍을 찾음, NaN 은 못 찾음
+	const h = Arr.Of<<number?>>(10, nil, 30, nil)
+	assert(Arr.IndexOf(h, nil) == 2 and Arr.LastIndexOf(h, nil) == 4 and Arr.Contains(h, nil), "구멍 찾기")
+	assert(not Arr.Contains(Arr.Of(10, 20), nil :: any), "구멍 없는 배열엔 nil 없음")
+	const nan = 0 / 0
+	assert(not Arr.Contains(Arr.Of(1, nan), nan) and Arr.IndexOf(Arr.Of(nan), nan) == nil, "NaN 은 못 찾음")
+	-- 테이블은 정체성
+	const t1, t2 = { 1 }, { 1 }
+	assert(Arr.IndexOf(Arr.Of(t1, t2), t2) == 2, "테이블 정체성")
+	-- n 밖은 안 봄
+	const shrunk = Arr.Of(10, 20, 30)
+	Arr.PopBack(shrunk)
+	rawset(shrunk :: any, 3, 30)
+	assert(not Arr.Contains(shrunk, 30) and Arr.LastIndexOf(shrunk, 30) == nil, "n 밖 칸")
+	assert(Arr.FindLast(shrunk, function(x: number): boolean
+		return x == 30
+	end) == nil, "FindLast 도 n 밖 안 봄")
+
+	-- MinMax: Min·Max 와 같은 답, 구멍 건너뜀, 같은 값이면 처음 것
+	const mm = Arr.Of(30, 10, 50, 20)
+	const lo, hi = Arr.MinMax(mm)
+	assert(lo == 10 and hi == 50, `MinMax: {lo} {hi}`)
+	const elo, ehi = Arr.MinMax(emptyNum())
+	assert(elo == nil and ehi == nil, "빈 MinMax")
+	const one1, one2 = Arr.MinMax(Arr.Of(7))
+	assert(one1 == 7 and one2 == 7, "하나")
+	const hlo, hhi = Arr.MinMax(Arr.Of<<number?>>(nil, 30, nil, 10, nil) :: any)
+	assert(hlo == 10 and hhi == 30, "구멍 건너뜀")
+	const allHole1, allHole2 = Arr.MinMax(Arr.Of<<number?>>(nil, nil) :: any)
+	assert(allHole1 == nil and allHole2 == nil, "구멍뿐")
+	-- 같은 값이면 처음 것(정체성으로 확인)
+	const ka, kb, kc = { k = 1, id = "a" }, { k = 1, id = "b" }, { k = 1, id = "c" }
+	const byK = function(x: { k: number, id: string }, y: { k: number, id: string }): boolean
+		return x.k < y.k
+	end
+	const tlo, thi = Arr.MinMax(Arr.Of(ka, kb, kc), byK)
+	assert(tlo == ka and thi == ka, "같은 값은 처음 것")
+	assert(Arr.Min(Arr.Of(ka, kb, kc), byK) == ka and Arr.Max(Arr.Of(ka, kb, kc), byK) == ka, "Min·Max 도 처음 것")
+	-- 비교자 방향을 뒤집으면 뒤바뀜
+	const desc = function(x: number, y: number): boolean
+		return x > y
+	end
+	const dlo, dhi = Arr.MinMax(mm, desc)
+	assert(dlo == 50 and dhi == 10, "비교자")
+	-- 큰 값이 먼저 와도(작은 쪽 갱신 뒤 큰 쪽을 건너뛰는 elseif 가 틀리지 않게)
+	const up1, up2 = Arr.MinMax(Arr.Of(5, 1, 9, 0, 12, -3))
+	assert(up1 == -3 and up2 == 12, "갱신 교대")
+
+	-- MaxBy / MinBy: 키는 원소당 한 번, 같은 키는 처음 것, 구멍엔 key 를 안 부름
+	const words = Arr.Of("ccc", "a", "bb", "ddd", "e")
+	local keyCalls = 0
+	const len = function(w: string): number
+		keyCalls += 1
+		return #w
+	end
+	assert(Arr.MaxBy(words, len) == "ccc", "MaxBy 처음 것")
+	assert(keyCalls == 5, `키 호출 {keyCalls}`)
+	keyCalls = 0
+	assert(Arr.MinBy(words, len) == "a", "MinBy 처음 것")
+	assert(keyCalls == 5, `키 호출 {keyCalls}`)
+	assert(Arr.MaxBy(Arr.Sized(0, ""), len) == nil and Arr.MinBy(Arr.Sized(0, ""), len) == nil, "빈 것")
+	keyCalls = 0
+	const holedWords = Arr.Of<<string?>>(nil, "bb", nil, "a")
+	assert(Arr.MaxBy(holedWords :: any, len) == "bb" and keyCalls == 2, "구멍엔 key 안 부름")
+	-- 키 비교자
+	const byLenDesc = function(x: number, y: number): boolean
+		return x > y
+	end
+	assert(Arr.MaxBy(words, len, byLenDesc) == "a", "MaxBy 비교자")
+	assert(Arr.MinBy(words, len, byLenDesc) == "ccc", "MinBy 비교자")
+	-- 키가 원소와 다른 순서(값 10, 20, 30 의 키가 거꾸로)
+	const negKey = function(x: number): number
+		return -x
+	end
+	assert(Arr.MaxBy(Arr.Of(20, 10, 30), negKey) == 10 and Arr.MinBy(Arr.Of(20, 10, 30), negKey) == 30, "키 순서")
+end
+print("PASS")
+
+print("=== 21. M3 — 나누기 / 거르기 / 짝 / 조각 (2026-10-07) ===")
+do
+	const even = function(v: number): boolean
+		return v % 2 == 0
+	end
+	-- Partition: 두 새 배열, 입력 순서, 콜백은 원소당 한 번
+	const p = Arr.Of(10, 15, 20, 25, 30)
+	local calls = 0
+	const yes, no = Arr.Partition(p, function(v: number): boolean
+		calls += 1
+		return v % 10 == 0
+	end)
+	same(yes, { 10, 20, 30 }, "Partition 참")
+	same(no, { 15, 25 }, "Partition 거짓")
+	assert(calls == 5, "콜백 한 번씩")
+	same(p, { 10, 15, 20, 25, 30 }, "원본 그대로")
+	assert(Arr.isArr(yes) and Arr.isArr(no), "둘 다 Arr")
+	const ey, en = Arr.Partition(emptyNum(), even)
+	assert(ey.n == 0 and en.n == 0 and ey ~= en, "빈 Partition 은 서로 다른 둘")
+	const hy, hn = Arr.Partition(Arr.Of<<number?>>(10, nil, 30), function(v: number?): boolean
+		return v == nil
+	end)
+	assert(hy.n == 1 and hy[1] == nil and hn.n == 2 and hn[1] == 10 and hn[2] == 30, "구멍은 콜백에 nil")
+
+	-- TakeWhile / DropWhile (+Inplace): 처음 깨진 곳까지, 그 뒤는 안 봄
+	const tw = Arr.Of(10, 20, 35, 40, 50)
+	local twCalls = 0
+	const evenCounted = function(v: number): boolean
+		twCalls += 1
+		return v % 2 == 0
+	end
+	same(Arr.TakeWhile(tw, evenCounted), { 10, 20 }, "TakeWhile")
+	assert(twCalls == 3, `깨진 뒤는 안 봄: {twCalls}`)
+	same(Arr.DropWhile(tw, even), { 35, 40, 50 }, "DropWhile")
+	same(
+		Arr.TakeWhile(tw, function(_v: number): boolean
+			return true
+		end),
+		{ 10, 20, 35, 40, 50 },
+		"전부 참"
+	)
+	same(
+		Arr.DropWhile(tw, function(_v: number): boolean
+			return true
+		end),
+		{},
+		"전부 참이면 Drop 은 빔"
+	)
+	same(
+		Arr.TakeWhile(tw, function(_v: number): boolean
+			return false
+		end),
+		{},
+		"처음부터 거짓"
+	)
+	same(
+		Arr.DropWhile(tw, function(_v: number): boolean
+			return false
+		end),
+		{ 10, 20, 35, 40, 50 },
+		"처음부터 거짓이면 Drop 은 전부"
+	)
+	same(Arr.TakeWhile(emptyNum(), even), {}, "빈 TakeWhile")
+	same(Arr.DropWhile(emptyNum(), even), {}, "빈 DropWhile")
+	same(tw, { 10, 20, 35, 40, 50 }, "새 배열판은 원본 그대로")
+	-- 제자리
+	const twi = Arr.Of(10, 20, 35, 40)
+	assert(Arr.TakeWhileInplace(twi, even) == twi, "같은 테이블")
+	same(twi, { 10, 20 }, "TakeWhileInplace")
+	assert(rawget(twi :: any, 3) == nil and rawget(twi :: any, 4) == nil, "꼬리 비움")
+	const dwi = Arr.Of(10, 20, 35, 40)
+	assert(Arr.DropWhileInplace(dwi, even) == dwi, "같은 테이블")
+	same(dwi, { 35, 40 }, "DropWhileInplace")
+	assert(rawget(dwi :: any, 3) == nil and rawget(dwi :: any, 4) == nil, "꼬리 비움")
+	const dwiAll = Arr.Of(10, 20)
+	same(Arr.DropWhileInplace(dwiAll, even), {}, "전부 버림")
+	assert(rawget(dwiAll :: any, 1) == nil, "전부 버리면 칸도 빔")
+	const dwiNone = Arr.Of(15, 20)
+	same(Arr.DropWhileInplace(dwiNone, even), { 15, 20 }, "안 버림")
+	-- 구멍: 콜백이 nil 을 받고, 구멍도 옮겨짐
+	const twh = Arr.Of<<number?>>(10, nil, 30, 45)
+	const notOdd = function(v: number?): boolean
+		return v == nil or v % 2 == 0
+	end
+	const takenH = Arr.TakeWhile(twh, notOdd)
+	assert(takenH.n == 3 and takenH[2] == nil and takenH[3] == 30, "구멍 Take")
+	const droppedH = Arr.DropWhile(Arr.Of<<number?>>(10, 15, nil, 30), even :: any)
+	assert(droppedH.n == 3 and droppedH[1] == 15 and droppedH[2] == nil and droppedH[3] == 30, "구멍 Drop")
+
+	-- Dedup (+Inplace): 이웃만, kept 와 비교
+	same(Arr.Dedup(Arr.Of(10, 10, 20, 10, 10, 30, 30)), { 10, 20, 10, 30 }, "Dedup 이웃만")
+	same(Arr.Dedup(emptyNum()), {}, "빈 Dedup")
+	same(Arr.Dedup(Arr.Of(10)), { 10 }, "하나")
+	same(Arr.Dedup(Arr.Of(10, 10, 10)), { 10 }, "전부 같음")
+	-- eq 는 (마지막으로 남긴 것, 다음) — 차이 5 이내면 같다고 보면 10, 14, 18 은 10 하나로(이웃끼리 비교였다면 다 하나)
+	const near = function(kept: number, item: number): boolean
+		return math.abs(kept - item) <= 5
+	end
+	same(Arr.Dedup(Arr.Of(10, 14, 18, 22)), { 10, 14, 18, 22 }, "기본 == 는 다 다름")
+	same(Arr.Dedup(Arr.Of(10, 14, 18, 22), near), { 10, 18 }, "eq 는 남긴 것과 비교")
+	local eqArgs = {}
+	Arr.Dedup(Arr.Of(10, 20, 30), function(kept: number, item: number): boolean
+		table.insert(eqArgs, `{kept}-{item}`)
+		return false
+	end)
+	assert(table.concat(eqArgs, ",") == "10-20,20-30", table.concat(eqArgs, ","))
+	-- 구멍은 이웃이면 하나로, NaN 은 안 줄어듦
+	const dh = Arr.Dedup(Arr.Of<<number?>>(nil, nil, 10, nil, nil))
+	assert(dh.n == 3 and dh[1] == nil and dh[2] == 10 and dh[3] == nil, "구멍 Dedup")
+	assert(Arr.Dedup(Arr.Of(0 / 0, 0 / 0)).n == 2, "NaN 은 안 줄어듦")
+	-- 제자리
+	const di = Arr.Of(10, 10, 20, 20, 20, 30)
+	assert(Arr.DedupInplace(di) == di, "같은 테이블")
+	same(di, { 10, 20, 30 }, "DedupInplace")
+	for idx = 4, 6 do
+		assert(rawget(di :: any, idx) == nil, `꼬리 {idx}`)
+	end
+	same(Arr.DedupInplace(emptyNum()), {}, "빈 DedupInplace")
+
+	-- Unique (+Inplace): 처음 것, 해시, nil 은 하나, NaN 은 각각
+	same(Arr.Unique(Arr.Of(30, 10, 30, 20, 10)), { 30, 10, 20 }, "Unique 처음 것")
+	same(Arr.Unique(emptyNum()), {}, "빈 Unique")
+	const uh = Arr.Unique(Arr.Of<<number?>>(nil, 10, nil, 10, 20))
+	assert(uh.n == 3 and uh[1] == nil and uh[2] == 10 and uh[3] == 20, "구멍은 첫 것만")
+	assert(Arr.Unique(Arr.Of(0 / 0, 1, 0 / 0)).n == 3, "NaN 은 각각")
+	assert(Arr.Unique(Arr.Of(0, -0)).n == 1, "0 과 -0 은 같음")
+	same(Arr.Unique(Arr.Of(true, false, true, false)), { true, false }, "false 도 키")
+	-- key: 원소당 한 번, 구멍에도 부름
+	local ukCalls = 0
+	const byTen = function(x: number?): number?
+		ukCalls += 1
+		return if x == nil then nil else x // 10
+	end
+	const uk = Arr.Unique(Arr.Of<<number?>>(11, 15, nil, 23, 19, nil), byTen)
+	assert(uk.n == 3 and uk[1] == 11 and uk[2] == nil and uk[3] == 23, "Unique key")
+	assert(ukCalls == 6, `key 호출 {ukCalls}`)
+	-- key 가 nil·NaN 을 돌려줘도
+	const ukNil = Arr.Unique(Arr.Of(10, 20, 30), function(_x: number): number?
+		return nil
+	end)
+	same(ukNil, { 10 }, "key 가 전부 nil 이면 하나")
+	same(
+		Arr.Unique(Arr.Of(10, 20), function(_x: number): number
+			return 0 / 0
+		end),
+		{ 10, 20 },
+		"key 가 NaN 이면 각각"
+	)
+	-- 테이블은 정체성
+	const ta, tb = { 1 }, { 1 }
+	assert(Arr.Unique(Arr.Of(ta, tb, ta)).n == 2, "테이블 정체성")
+	-- 제자리
+	const ui = Arr.Of(30, 10, 30, 20, 10)
+	assert(Arr.UniqueInplace(ui) == ui, "같은 테이블")
+	same(ui, { 30, 10, 20 }, "UniqueInplace")
+	assert(rawget(ui :: any, 4) == nil and rawget(ui :: any, 5) == nil, "꼬리 비움")
+
+	-- Scan: init 미포함, 길이 n(질문 AI)
+	const add = function(acc: number, x: number): number
+		return acc + x
+	end
+	same(Arr.Scan(Arr.Of(10, 20, 30), 0, add), { 10, 30, 60 }, "누적합")
+	same(Arr.Scan(Arr.Of(10, 20, 30), 5, add), { 15, 35, 65 }, "init 은 담지 않음")
+	same(Arr.Scan(emptyNum(), 0, add), {}, "빈 Scan")
+	-- 타입이 바뀜, 콜백은 (acc, 원소, 위치, 배열)
+	const labels = Arr.Scan(
+		Arr.Of(10, 20),
+		"",
+		function(acc: string, x: number, i: number, arr: ArrView<unknown>): string
+			return `{acc}{x}@{i}/{arr.n};`
+		end
+	)
+	same(labels, { "10@1/2;", "10@1/2;20@2/2;" }, "Scan 타입 변화")
+	-- 구멍은 콜백에 nil
+	const sh = Arr.Scan(Arr.Of<<number?>>(10, nil, 30), 0, function(acc: number, x: number?): number
+		return acc + (x or 100)
+	end)
+	same(sh, { 10, 110, 140 }, "구멍 Scan")
+
+	-- Zip / ZipWith: 짧은 쪽에 맞춤
+	const za = Arr.Of(10, 20, 30)
+	const zb = Arr.Of("x", "y")
+	const z = Arr.Zip(za, zb)
+	assert(z.n == 2 and z[1].first == 10 and z[1].second == "x" and z[2].first == 20 and z[2].second == "y", "Zip")
+	assert(z[1] ~= z[2], "짝은 칸마다 새 테이블")
+	assert(Arr.Zip(zb, za).n == 2 and Arr.Zip(zb, za)[2].second == 20, "뒤집어도 짧은 쪽")
+	assert(Arr.Zip(za, Arr.Sized(0, "")).n == 0, "한쪽이 비면 빔")
+	const zh = Arr.Zip(Arr.Of<<number?>>(nil, 20), Arr.Of("x", "y"))
+	assert(zh.n == 2 and zh[1].first == nil and zh[1].second == "x", "구멍은 짝에 그대로")
+	const zw = Arr.ZipWith(za, zb, function(n: number, s: string, i: number): string
+		return `{s}{n}#{i}`
+	end)
+	same(zw, { "x10#1", "y20#2" }, "ZipWith")
+	same(
+		Arr.ZipWith(za, za, function(x: number, y: number): number
+			return x * y
+		end),
+		{ 100, 400, 900 },
+		"자기 자신과"
+	)
+	same(
+		Arr.ZipWith(emptyNum(), za, function(x: number, y: number): number
+			return x + y
+		end),
+		{},
+		"빈 ZipWith"
+	)
+
+	-- Chunks: 마지막은 짧을 수 있음, 사본
+	const c = Arr.Of(10, 20, 30, 40, 50)
+	const ch = Arr.Chunks(c, 2)
+	assert(ch.n == 3, `조각 수 {ch.n}`)
+	same(ch[1], { 10, 20 }, "조각 1")
+	same(ch[2], { 30, 40 }, "조각 2")
+	same(ch[3], { 50 }, "마지막 조각은 짧음")
+	assert(Arr.isArr(ch[1]) and Arr.isArr(ch), "조각도 Arr")
+	ch[1][1] = 99
+	assert(c[1] == 10, "조각은 사본")
+	same(Arr.Chunks(c, 5)[1], { 10, 20, 30, 40, 50 }, "딱 맞음")
+	assert(Arr.Chunks(c, 5).n == 1 and Arr.Chunks(c, 1).n == 5, "크기 5·1")
+	assert(Arr.Chunks(c, 99).n == 1 and Arr.Chunks(c, math.huge).n == 1, "길이보다 큼·무한대")
+	same(Arr.Chunks(c, math.huge)[1], { 10, 20, 30, 40, 50 }, "무한대는 전부 한 조각")
+	same(Arr.Chunks(c, 2.9)[1], { 10, 20 }, "소수는 0 쪽")
+	assert(Arr.Chunks(emptyNum(), 3).n == 0, "빈 Chunks")
+	assert(
+		not pcall(Arr.Chunks, c, 0) and not pcall(Arr.Chunks, c, 0.5) and not pcall(Arr.Chunks, c, -1),
+		"1 보다 작으면 에러"
+	)
+	assert(not pcall(Arr.Chunks, c, 0 / 0), "NaN 은 에러")
+	assert(not pcall(Arr.Chunks, emptyNum(), 0), "빈 배열이어도 크기는 검사")
+	const chh = Arr.Chunks(Arr.Of<<number?>>(10, nil, nil, 40), 2)
+	assert(chh.n == 2 and chh[1].n == 2 and chh[1][2] == nil and chh[2].n == 2 and chh[2][1] == nil, "구멍 조각")
+
+	-- Windows: 겹치는 창, 사본, 길이보다 크면 빔
+	const w = Arr.Windows(Arr.Of(10, 20, 30, 40), 3)
+	assert(w.n == 2, `창 수 {w.n}`)
+	same(w[1], { 10, 20, 30 }, "창 1")
+	same(w[2], { 20, 30, 40 }, "창 2")
+	w[1][2] = 99
+	assert(w[2][1] == 20, "창은 서로 다른 사본")
+	assert(Arr.Windows(Arr.Of(10, 20), 3).n == 0, "길이보다 크면 빔")
+	assert(Arr.Windows(Arr.Of(10, 20), math.huge).n == 0, "무한대도 빔")
+	assert(Arr.Windows(Arr.Of(10, 20), 2).n == 1 and Arr.Windows(Arr.Of(10, 20), 1).n == 2, "딱 맞음·1")
+	assert(Arr.Windows(emptyNum(), 1).n == 0, "빈 Windows")
+	assert(not pcall(Arr.Windows, Arr.Of(1), 0) and not pcall(Arr.Windows, Arr.Of(1), 0 / 0), "크기 검사")
+	const wh = Arr.Windows(Arr.Of<<number?>>(10, nil, 30), 2)
+	assert(wh.n == 2 and wh[1].n == 2 and wh[1][2] == nil and wh[2][1] == nil and wh[2][2] == 30, "구멍 창")
+end
+print("PASS")
+
+print("=== 22. M3 — 무작위 대조 (2026-10-07) ===")
+do
+	-- 눈으로 안 보이는 것은 대조로: 단순한 정의(이중 루프·Filter 두 번·Slice·Fold)와 비교합니다.
+	math.randomseed(20261007)
+	for _round = 1, 300 do
+		const len = math.random(0, 12)
+		const raw = {}
+		for idx = 1, len do
+			-- 값 범위를 좁게 — 중복·이웃 중복이 자주 나오게. 구멍도 섞음
+			raw[idx] = if math.random() < 0.15 then nil else math.random(1, 5) * 10
+		end
+		const a = Arr.FromTable<<number?>>(table.move(raw, 1, len, 1, { n = len } :: any) :: any)
+		assert(a.n == len, "대조 입력 길이")
+
+		-- Unique ↔ 이중 루프
+		const expectUnique = {}
+		local eu = 0
+		for idx = 1, len do
+			local dup = false
+			for j = 1, idx - 1 do
+				if a[j] == a[idx] then
+					dup = true
+					break
+				end
+			end
+			if not dup then
+				eu += 1
+				expectUnique[eu] = a[idx]
+			end
+		end
+		const u = Arr.Unique(a)
+		assert(u.n == eu, `Unique 길이 {u.n} ~= {eu}`)
+		for idx = 1, eu do
+			assert(u[idx] == expectUnique[idx], `Unique [{idx}]`)
+		end
+
+		-- Dedup ↔ 이웃 비교
+		const d = Arr.Dedup(a)
+		local ed = 0
+		for idx = 1, len do
+			if idx == 1 or a[idx] ~= a[idx - 1] then
+				ed += 1
+				assert(d[ed] == a[idx], `Dedup [{ed}]`)
+			end
+		end
+		assert(d.n == ed, "Dedup 길이")
+		-- 제자리 판은 새 배열판과 같은 결과
+		const di = Arr.DedupInplace(Arr.Clone(a))
+		const ui = Arr.UniqueInplace(Arr.Clone(a))
+		assert(Arr.Equal(di, d) and Arr.Equal(ui, u), "제자리 판")
+		for idx = di.n + 1, len do
+			assert(rawget(di :: any, idx) == nil, "Dedup 꼬리")
+		end
+
+		-- Partition ↔ Filter 두 번
+		const big = function(x: number?): boolean
+			return x ~= nil and x >= 30
+		end
+		const yes, no = Arr.Partition(a, big)
+		assert(Arr.Equal(yes, Arr.Filter(a, big)), "Partition 참")
+		assert(
+			Arr.Equal(
+				no,
+				Arr.Filter(a, function(x: number?): boolean
+					return not big(x)
+				end)
+			),
+			"Partition 거짓"
+		)
+
+		-- TakeWhile ++ DropWhile = 원본, 제자리 판도 같음
+		const small = function(x: number?): boolean
+			return x == nil or x < 40
+		end
+		const taken, dropped = Arr.TakeWhile(a, small), Arr.DropWhile(a, small)
+		assert(Arr.Equal(Arr.Concat(taken, dropped), a), "Take ++ Drop")
+		assert(Arr.Equal(Arr.TakeWhileInplace(Arr.Clone(a), small), taken), "TakeWhileInplace")
+		assert(Arr.Equal(Arr.DropWhileInplace(Arr.Clone(a), small), dropped), "DropWhileInplace")
+
+		-- Chunks 를 이으면 원본, Windows 는 Slice 와 같음
+		const size = math.random(1, 5)
+		const chunks = Arr.Chunks(a, size)
+		const joined = Arr.Sized<<number?>>(0, nil)
+		for idx = 1, chunks.n do
+			assert(chunks[idx].n == size or (idx == chunks.n and chunks[idx].n <= size), "조각 크기")
+			Arr.PushBackArray(joined, chunks[idx])
+		end
+		assert(Arr.Equal(joined, a), "Chunks 를 이으면 원본")
+		const windows = Arr.Windows(a, size)
+		assert(windows.n == math.max(0, len - size + 1), "창 수")
+		for idx = 1, windows.n do
+			assert(Arr.Equal(windows[idx], Arr.Slice(a, idx, idx + size - 1)), "창 = Slice")
+		end
+
+		-- MinMax ↔ Min, Max (구멍 건너뜀)
+		const dense = Arr.Compact(a)
+		const lo, hi = Arr.MinMax(dense)
+		assert(lo == Arr.Min(dense) and hi == Arr.Max(dense), "MinMax = Min, Max")
+
+		-- Scan 의 마지막 = Fold, 각 칸 = 앞부분의 Fold
+		const plus = function(acc: number, x: number?): number
+			return acc + (x or 0)
+		end
+		const scanned = Arr.Scan(a, 0, plus)
+		assert(scanned.n == len, "Scan 길이")
+		for idx = 1, len do
+			assert(scanned[idx] == Arr.Fold(Arr.Slice(a, 1, idx), 0, plus), "Scan = 앞부분 Fold")
+		end
+
+		-- IndexOf/LastIndexOf/Contains ↔ Find/FindLast
+		const target = math.random(1, 5) * 10
+		const isTarget = function(x: number?): boolean
+			return x == target
+		end
+		const _, fi = Arr.Find(a, isTarget)
+		const _, li = Arr.FindLast(a, isTarget)
+		assert(Arr.IndexOf(a, target) == fi and Arr.LastIndexOf(a, target) == li, "IndexOf = Find")
+		assert(Arr.Contains(a, target) == (fi ~= nil), "Contains")
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Arr) ===")
 
