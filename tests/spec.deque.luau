@@ -53,8 +53,11 @@ do
 		"FromList 는 n 을 따름"
 	)
 	-- 다른 종류의 컨테이너는 리스트가 아님(Common.listLength — Deque 자신도)
-	assert(not pcall(Deque.FromList, Deque.Of(1, 2) :: any), "Deque 는 리스트 진입점이 거절")
-	assert(not pcall(Arr.FromTable, Deque.Of(1, 2) :: any), "Arr.FromTable 도 Deque 를 거절")
+	-- 거절하며 바꾸는 길(ToArr)을 안내(가로지른 리뷰)
+	const okList, errList = pcall(Deque.FromList, Deque.Of(1, 2) :: any)
+	assert(not okList and string.find(tostring(errList), "Deque.ToArr", 1, true), tostring(errList))
+	const okAdopt, errAdopt = pcall(Arr.FromTable, Deque.Of(1, 2) :: any)
+	assert(not okAdopt and string.find(tostring(errAdopt), "Deque.ToArr", 1, true), tostring(errAdopt))
 	-- 반대 방향은 ToArr
 	same(Deque.FromList(Deque.ToArr(Deque.Of(10, 20))), { 10, 20 }, "ToArr 왕복")
 

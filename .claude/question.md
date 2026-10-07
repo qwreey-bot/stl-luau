@@ -823,6 +823,21 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | 칸 수 | `New(capacity?)`(최소 4, `Arr` 길이 정책), 두 배로 늘리고 **줄이지 않음**(Rust 와 같음 — `Clone` 이 원소 수에 맞춤) | `ShrinkToFit` |
 | 안 넣은 것 | 위치에 쓰기(`SetAt`), `Insert`/`Remove`(가운데), `Rotate`, 스트림(`Map` 등) — 부르는 곳이 보이면 | — |
 
+## ❓ 2026-10-07 아침 — 밤 작업 전체를 가로지른 리뷰(`43b65a9..96e3a68`)에서 나온 일관성
+
+재현된 결함은 0. 문서 표류는 고쳤고(conventions 에 Deque `size`·콜백 중 변경·의존 방향, architecture 표, README·GEMINI
+숫자), Deque 를 리스트 진입점에 넣을 때 에러가 `ToArr` 를 안내하게 했습니다. 남은 것은 모양 선택이라 여쭙니다.
+
+### AL. 모듈 사이 어긋남 — 맞출까
+
+| # | 어긋남 | 제 추천 |
+|---|---|---|
+| 1 | **콜백이 같은 컨테이너를 바꿀 때**: Tree 는 에러, Hash 는 지우기만 안전, **`Arr`(Retain·`*Inplace`·Map …)은 아무 말 없이 틀릴 수 있음**(`Retain` 콜백이 `PopBack` 하면 `Arr<number>` 에 구멍, 리뷰 재현) | **문서로 "약속 없음"**(conventions 에 지금 적어 둠). 검사를 넣으면 원소마다 `n` 읽기 — 핫 루프라 안 넣음 |
+| 2 | **키 콜백이 `nil` 을 돌려줄 때**: `GroupBy`/`CountBy`/`KeyBy` 는 사용자 줄 에러, `SortBy`/`MaxBy`/`MinBy` 는 라이브러리 줄의 원시 비교 에러, `Unique` 는 `nil` 을 값으로 묶음 | **그대로 + 문서 한 줄**. 비교 계열의 원시 에러는 `Sort`(섞인 타입)와 같은 결이고 검사는 원소마다 비용. 묶기는 맵 키라서, `Unique` 는 값 비교라서 각각 맞음 |
+| 3 | **양끝 엿보기 이름이 넷**: `Arr.At(1)`/`At(-1)`, `Deque.Front`/`Back`, `TreeMap.First`/`Last`, `Heap.Peek` | 정렬 구조의 `First`/`Last`(Java `TreeMap`)와 덱의 `Front`/`Back`(Rust·C++)은 뜻이 달라 **그대로**. 갈아 끼우기를 원하시면 `Deque` 를 `First`/`Last` 로 |
+| 4 | `TreeMap` 에 `GetOrInsert(With)`·`Accumulate` 가 없음(HashMap 만) | **부르는 곳이 보이면**(정렬 맵에서 넣기는 O(n) 이라 쓰임이 다름) |
+| 5 | `Clear` 반환: `Arr`·`Deque` 는 자기 자신, 맵·셋·`Heap` 은 `()`(Heap 은 `Push` 는 자기 자신인데 `Clear` 는 `()` — 원래 있던 것) | 리스트 계열 = 자기 자신, 맵·셋 = `()` 로 **그대로**. `Heap.Clear` 만 자기 자신으로 맞출지는 취향 |
+
 ---
 
 ### G. mlua 바인딩 — **보류 확정**

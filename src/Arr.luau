@@ -965,7 +965,7 @@ const function PopBack<T>(self: ArrData<T>): T?
 end
 
 -- 첫 원소를 꺼냅니다. **뒤 원소를 전부 당겨야 해 O(n)** 입니다(`PushFront` 와 같음) — 큐로
--- 쓸 거면 양끝이 O(1) 인 `Deque`(M5)를 기다리거나 머리 위치를 따로 들고 다니세요.
+-- 쓸 거면 양끝이 O(1) 인 `Deque` 를 쓰세요(perf 24절 — 길이 1000 큐에서 0.24배).
 const function PopFront<T>(self: ArrData<T>): T?
 	const len = self.n
 	if len == 0 then
@@ -2497,7 +2497,9 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	end
 	-- 이미 Arr 면 `#` 로 `n` 을 덮어써 구멍 뒤가 사라졌습니다(M0 2라운드, 예전부터).
 	if rawget(tbl :: any, TYPE_KEY) ~= nil then
-		Common.raise("Arr: FromTable got a table that is already a container — use it as is, or Clone")
+		Common.raise(
+			"Arr: FromTable got a table that is already a container — use it as is, Clone it, or convert it (e.g. Deque.ToArr)"
+		)
 	end
 	-- 동결된 테이블엔 길이·태그를 못 씁니다 — 라이브러리 줄의 "readonly table" 대신.
 	if table.isfrozen(tbl :: any) then

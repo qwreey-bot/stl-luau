@@ -14,8 +14,8 @@
 ## 무엇인가
 
 Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너·알고리즘 모음. `src/` 에
-`Arr`(배열, 연산 76 + 생성자 8), `HashMap`/`HashSet`, `TreeMap`/`TreeSet`(정렬 배열 + 이분 탐색),
-`Heap`, `Optional`, `Fut`(코루틴 프로미스), `Algorithm`(계약만 아는 공용 알고리즘), `Common`.
+`Arr`(배열, 연산 103 + 생성자 8), `HashMap`/`HashSet`, `TreeMap`/`TreeSet`(정렬 배열 + 이분 탐색),
+`Heap`, `Deque`(링 버퍼), `Optional`, `Fut`(코루틴 프로미스), `Algorithm`(계약만 아는 공용 알고리즘), `Common`.
 1인 프로젝트, 아직 게시 전. **성능이 1급 관심사**이고 모든 성능 주장은 실측입니다
 (`.claude/base/perf-measurements.md`).
 

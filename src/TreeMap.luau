@@ -361,7 +361,7 @@ end
 -- 위치가 어긋나 라이브러리 밖 에러("attempt to index nil")로 죽거나 조용히 틀렸습니다(M4 리뷰
 -- 1라운드). 값만 덮어쓰는 `Set` 은 괜찮습니다. 지울 것은 `false` 로 돌려주세요. (검사는 크기만
 -- 봅니다 — 하나 지우고 하나 넣어 크기가 같으면 지나갑니다.) 공유 헬퍼에 클로저를 끼웠더니
--- 1.44배 느려져(2라운드 실측) `TreeSet.Retain` 과 몸통을 따로 둡니다.
+-- 1.40배 느려져(perf 23절) `TreeSet.Retain` 과 몸통을 따로 둡니다.
 const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
 	const records = self.records
 	const size = self.size

@@ -9,6 +9,7 @@
 |---|---|
 | **AA. Luau 새 솔버 결함을 업스트림에 보고할지**(초안 있음, 공개 저장소라 사용자 판단 — 10-02 보강) | `question.md` AA |
 | **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
+| **AL. 밤 작업 전체를 가로지른 리뷰의 일관성 다섯**(결함 0 — 맞출지 여쭘) | `question.md` AL |
 | **AK. Deque 의 모양** — 특히 ⭐ 읽기 함수를 `DequeRead`(공변)로 넓힐지(리뷰어·저 모두 "넓히자"), 리스트 진입점이 Deque 를 받을지(지금 안 받음) | `question.md` AK |
 
 ## ☀️ 자고 일어나서 볼 것 (2026-10-07 밤 자율 작업)
@@ -104,7 +105,7 @@ local f = nested:Flat<<number>>()
 | ~~M2~~ | **✅ 2026-09-30** 정렬 가족(`spikes/51`, perf 15-2) — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
 | ~~M3~~ | **✅ 2026-10-07** 리뷰 1라운드 소진(결함 0) — `Arr` 빈 조각 — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | ~~M4~~ | **✅ 2026-10-07** 리뷰 소진(3라운드 — 결함 1 → 0 → 0, 2·3라운드는 테스트 공백·성능만). 모양은 질문 AJ(제가 정함, **확인 대기**) **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
-| ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(**확인 대기** — `DequeRead` 공변 여부 포함) **`Deque`**(링 버퍼) — ⚠️ 트레이트 메모(2026-10-06 Gemini): 리스트 진입점(`FromList`·`Fut.All`·`Common.listLength`)은 지금 `n`·`[i]` 를 전제 — Deque 가 `Trait.List` 로 들어오게 할지 정할 것. (Deque 에 `n` 이 있어도 지금은 에러 — 이름이 Arr 가 아니면 리스트가 아님, 2026-10-06. 남은 질문은 Deque 를 `Trait.List` 로 받아들일지) | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
+| ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(**확인 대기** — `DequeRead` 공변 여부 포함) **`Deque`**(링 버퍼) — 리스트 진입점이 Deque 를 받을지는 AK 에서 잠정 "안 받음(`ToArr`)", `Algorithm` 은 받음 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
 | **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음, `MapOps` 엔 `Len`/`Has` 가 없음 | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |

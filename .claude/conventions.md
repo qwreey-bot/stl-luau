@@ -167,6 +167,21 @@
 - **맵/셋 표현**: `{ data, size }` 래퍼. 인스턴스에 길이 필드를 직접 두면
   `HashMap<string, …>` 에서 `Set("size", v)` 가 그걸 덮어씁니다.
 
+- **`Deque` 는 `n` 이 아니라 `size`** (2026-10-07 M5, 질문 AK): 링 버퍼라 물리 칸이 감겨 있어 `{ n, [1..n] }`
+  리스트로 읽히면 틀립니다. 리스트 진입점(`Common.listLength`)은 받지 않고 `Deque.ToArr` 로 넘깁니다 —
+  트레이트를 보는 `Algorithm` 은 받습니다. 새 컨테이너가 위치로 읽히면 안 되면 같은 이유로 `n` 을 피하세요.
+
+- **콜백이 같은 컨테이너를 바꾸면** (2026-10-07 M4 리뷰, 질문 AJ — 정리는 사용자 확인 대기):
+  `HashMap`/`HashSet.Retain` 은 **지우기만 안전**(크기를 맞게 셈, 새 키는 Lua `next` 규칙상 깨짐),
+  `TreeMap`/`TreeSet.Retain` 은 **크기가 바뀌면 에러**(정렬 배열을 당기는 중 — 예전엔 라이브러리 밖
+  에러로 죽었음, 검사 비용 perf 23절). `Arr` 의 콜백 계열(`Retain`·`Map`·`*Inplace` …)은 **약속 없음** —
+  검사도 없고 결과가 틀릴 수 있습니다(구간·`n` 을 루프 전에 읽음). 콜백 안에서는 다른 컨테이너에
+  모으세요.
+
+- **의존 방향**: `Arr → HashMap`(`GroupBy`/`CountBy`/`KeyBy` 가 맵을 돌려줌, 2026-10-07), `Deque → Arr`
+  (`ToArr`), `HashSet → HashMap`, `TreeSet → TreeMap`. 반대 방향(`HashMap` 이 `Arr` 을 아는 것)은 만들지
+  않습니다 — 순환이 생깁니다.
+
 - **`*Unchecked` 는 늘리지 않습니다** (2026-10-02, 제가 정함 — 되돌리기 쉬움): 지금의 여섯
   (`Sum`/`Prod`/`Max`/`Min`/`Sort`/`SortInplace`)뿐이고, M2 정렬 가족(질문 X)도 두지 않았습니다.
   새 함수에 unchecked 판을 더하려면 checked 판 대비 **실측 이득**과 함께 질문으로 올리세요 —
