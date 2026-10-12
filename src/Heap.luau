@@ -39,7 +39,14 @@ Common.registerSource(debug.info(1, "s"))
 
 type LessThan<T> = Types.LessThan<T>
 
-export type HeapData<T> = { items: { T }, size: number, less: LessThan<T>, read __type: Trait.Token<"Heap"> }
+export type HeapData<T> = {
+	items: { T },
+	size: number,
+	less: LessThan<T>,
+	read __type: Trait.Token<"Heap">,
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	read __collectionMut: true,
+}
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
@@ -259,7 +266,7 @@ end
 --#endregion
 
 -- stylua: ignore
-return {
+const HeapModule = {
 	New = New,
 	FromList = FromList,
 	isHeap = isHeap,
@@ -269,3 +276,8 @@ return {
 	Len = Len, Empty = Empty, Peek = Peek, Items = Items, Sorted = Sorted, Push = Push, Pop = Pop,
 	PushPop = PushPop, Replace = Replace, Clear = Clear, Clone = Clone,
 }
+
+-- 리스트·맵·셋 계약은 만족하지 않지만(순서가 힙 순서) 크기와 비우기는 됩니다(2026-10-12).
+Trait.Impl(Trait.Collection, TOKEN, HeapModule)
+
+return HeapModule

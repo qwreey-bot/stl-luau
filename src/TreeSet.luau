@@ -62,6 +62,8 @@ export type TreeSetData<T> = {
 	read __type: Trait.Token<"TreeSet">,
 	read __setItem: T,
 	read __setMut: (T) -> T,
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	read __collectionMut: true,
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
@@ -513,5 +515,6 @@ const TreeSetModule = {
 
 -- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.
 Trait.Impl(Trait.Set, TOKEN, TreeSetModule)
+Trait.Impl(Trait.Collection, TOKEN, TreeSetModule)
 
 return TreeSetModule

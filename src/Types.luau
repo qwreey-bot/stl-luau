@@ -67,10 +67,21 @@ export type ListOps<C, E, I> = {
 }
 
 -- 키로 값을 찾는 컨테이너. HashMap/TreeMap 이 만족합니다.
+--
+-- ⭐ 2026-10-12 에 `Has`·`Remove`·`Iter` 를 더했습니다(질문 AM 다 → AO, 사용자: *"hash 인지 tree 인지
+-- 몰라도 만질 수 있게"*). 예전의 셋(`Get`·`Set`·`Records`)만으로는 구현을 모르는 코드가 지울 수도,
+-- 할당 없이 돌 수도 없었습니다. 크기와 비우기는 맵만의 것이 아니라 아래 `CollectionOps` 에 있습니다.
+-- - `Remove` 는 지운 값을 돌려줍니다(없었으면 `nil`).
+-- - `Iter` 는 `for key, value in ops.Iter(map) do` 에 쓰는 순회자(함수 하나, 또는 함수·상태·처음 값).
+--   순서는 구현의 것입니다(해시는 약속 없음, 정렬 맵은 키 순서). 도는 동안 맵을 바꾸면 정의되지 않은
+--   동작입니다(conventions).
 export type MapOps<C, K, V> = {
 	read Get: (map: C, key: K) -> V?,
 	read Set: (map: C, key: K, value: V) -> (),
+	read Has: (map: C, key: K) -> boolean,
+	read Remove: (map: C, key: K) -> V?,
 	read Records: (map: C) -> { Record<K, V> },
+	read Iter: (map: C) -> ((...any) -> (K, V), ...any),
 }
 
 -- 원소의 존재만 다루는 컨테이너. HashSet/TreeSet 이 만족합니다.
@@ -81,6 +92,14 @@ export type SetOps<C, T> = {
 	read Has: (set: C, item: T) -> boolean,
 	read Remove: (set: C, item: T) -> boolean,
 	read Items: (set: C) -> { T },
+}
+
+-- 원소를 담는 것이면 무엇이든(2026-10-12, 질문 AM 다 → AO — Java `Collection` 의 결). 리스트·맵·셋·힙이
+-- 전부 만족합니다. **크기는 알고 있는 값**이어야 합니다(O(1) — 세어서 구하는 것은 `Algorithm.Count`).
+-- `Clear` 는 자기 자신을 돌려줍니다(질문 AM 가).
+export type CollectionOps<C> = {
+	read Len: (collection: C) -> number,
+	read Clear: (collection: C) -> C,
 }
 
 --[[ 트레이트 마커 — 타입에만 있는 필드(런타임엔 없음, `Trait.luau` 머리) ]]
@@ -123,5 +142,15 @@ export type MapMarkerMut<K, V> = {
 	read __mapMut: (K, V) -> (K, V),
 }
 export type SetMarkerMut<T> = { read __type: Token<any>, read __setItem: T, read __setMut: (T) -> T }
+
+-- 컬렉션(`Trait.Collection`). 읽는 쪽(`Algorithm.Len`)은 **타입 토큰만** 요구합니다 — 토큰은 있지만
+-- 컬렉션이 아닌 것(`Fut`)은 타입을 지나 런타임에 `Common.raise` 로 걸립니다(마커 필드를 일곱 타입에 하나
+-- 더 두는 값을 못 해서).
+export type CollectionMarker = { read __type: Token<any> }
+-- **바꾸는 쪽**(`Algorithm.Clear`)은 이 팬텀을 요구합니다 — 원소 타입이 흘러들지 않아 불변일 필요는
+-- 없지만, **읽기 전용으로 빌린 참조**(`ArrRead`·`DequeRead`)가 `Clear` 를 얻으면 안 됩니다(토큰만 요구하니
+-- 진단 0건으로 지워졌습니다 — 시제품에서 재현, AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결). 팬텀은
+-- 데이터 타입(`ArrData`·`DequeData`·맵·셋·`HeapData`)에만 있습니다. 새 컨테이너에도 같이 넣으세요.
+export type CollectionMarkerMut = { read __type: Token<any>, read __collectionMut: true }
 
 return {}

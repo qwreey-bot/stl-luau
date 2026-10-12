@@ -957,6 +957,58 @@ local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
 자체는 이미 분명하며(`table index is nil`), 타입이 `nil` 을 막고, 스택 추적에는 사용자 줄이 같이 나옵니다. 트리와
 다른 점은 **조용히 망가지지 않는다**는 것입니다 — 트리는 넣는 순간엔 아무 일 없다가 나중에 다른 곳에서 터졌습니다.
 
+### AO. 트레이트 넓히기 — 종류를 모르고 만지기 (2026-10-12, AM 다를 앞당김) — 🔁 제가 정한 모양(확인 부탁)
+
+사용자: *"hash 인지 tree 인지 몰라도 만질 수 있게 하는 Map trait 은 따로 안 보이네"* → "지금 진행". 넣은 것:
+
+| 무엇 | 정한 것 | 다른 길 |
+|---|---|---|
+| **`Trait.Collection`** = `CollectionOps<C>` `{ Len, Clear }` | 일곱 컨테이너 전부(`Arr`·`Deque`·`HashMap`·`TreeMap`·`HashSet`·`TreeSet`·`Heap`) 구현. `Algorithm.Len(c)`, `Algorithm.Clear(c)`(넣은 타입 그대로 반환 — `<C>(c: C & CollectionMarkerMut): C`) | `Empty` 도 넣기(= `Len == 0` 이라 뺌) |
+| ⚠️ **`Clear` 의 마커** | **`CollectionMarkerMut`** — 데이터 타입에 팬텀 `read __collectionMut: true` 하나 더. 시제품(AM)의 "토큰만 요구" 로는 **읽기 전용으로 빌린 `ArrRead`·`DequeRead` 가 진단 0건으로 지워졌습니다**(재현 — AC 의 구멍과 같은 결) | — |
+| `Len` 의 마커 | **토큰만**(`CollectionMarker`). 빌린 참조도 받음. `Fut` 처럼 토큰은 있고 컬렉션이 아닌 것은 타입을 지나 런타임 에러(사용자 줄) | 읽기 팬텀(`__collection`)을 열 타입에 하나씩 더 두면 정적으로 막힘 — 에러 메시지가 길어지는 값을 못 한다고 봄 |
+| **`MapOps`** 에 `Has`·`Remove`·`Iter` | 여섯(`Get`·`Set`·`Has`·`Remove`·`Records`·`Iter`). `Iter` 의 타입은 `(map) -> ((...any) -> (K, V), ...any)` — 함수 하나(TreeMap)든 삼중항(HashMap)이든 `for k, v in ops.Iter(m)` 로 돎 | `Records` 를 빼고 `Iter` 에서 유도 — 사용자 구현이 다섯으로 줄지만 지금 쓰는 곳이 있어 둠 |
+| `Algorithm.Keys`/`Values` | **`ops.Iter` 로**(레코드 할당 없음, 0.62~0.87배 — perf 28절). 크기는 `Collection` 도 구현하면 미리 잡음 | — |
+| **`Trait.New(name, required?)`** | 구현이 꼭 가져야 할 함수 이름 목록(선택). `Trait.Impl` 이 **등록할 때** 확인해 사용자 줄 에러(`MyMap is missing Iter for Map`). 계약을 넓히자 예전 구현(셋만 있던 것)이 알고리즘 안에서 `attempt to call a nil value` 로 죽어서 | 검사 없음(타입 쓰는 코드는 정적으로 잡힘) |
+| 안 넣은 것 | `SetOps` 의 `Iter`(`Items` 가 있음), `Algorithm.Refill`(위 둘로 세 줄 — `spikes/63` 의 `refill`), 리스트 쪽 쓰기 계약 | 부르는 곳이 보이면 |
+
+**종류를 모르는 사용자 코드의 모양**(지금):
+
+```lua
+local function refill<K, V>(m: stl.MapMarkerMut<K, V> & stl.CollectionMarkerMut, records: { stl.Record<K, V> })
+	stl.Algorithm.Clear(m)
+	const ops = stl.Trait.ImplOf(stl.Trait.Map, m)   -- MapOps<any, any, any>? — 타입이 헐거움
+	if ops then
+		for _, rec in records do ops.Set(m, rec.key, rec.value) end
+	end
+end
+```
+
+### AP. ❓ 위에서 남은 두 가지 — 여쭙니다
+
+**1. `HashMap.Iter` 가 `data` 테이블을 그대로 돌려주면 순회가 9배 빠릅니다** (perf 27절). 지금은 `(next, data, nil)`
+삼중항(오늘 래퍼를 걷어 0.54~0.73배가 됨). `data` 테이블 자체를 돌려주면 `for k, v in HashMap.Iter(m)` 이 Luau 의
+일반화 순회(테이블 직접)를 타서 `for k, v in m.data` 와 같아집니다(1000개: 15.9us → 3.2us).
+
+| 안 | 얻는 것 | 잃는 것 |
+|---|---|---|
+| (a) 지금 그대로(삼중항) | 모양이 함수라 `Arr.FromIter(HashMap.Iter(m))`, 손으로 `step(state, key)` 가 됨 | 순회가 5배 느림(대 테이블) |
+| (b) `data` 를 돌려줌 | 순회 9배(대 오늘 아침), 5배(대 지금) | 반환이 함수가 아님 — `FromIter` 가 테이블도 받게 해야 하고, `MapOps.Iter` 의 타입이 "for-in 에 넣을 수 있는 것" 으로 헐거워짐. `HashSet.Iter`(`(item, item)` 을 주는 설계)는 따로 |
+| (c) 이름을 나눔 — `Iter` 는 그대로, **빠른 길은 문서로**(`for k, v in m.data`) | 표면 변화 없음 | `data` 를 직접 읽는 것을 권하게 됨(architecture 는 "읽기만 하세요" 라 이미 허용) |
+
+제 추천은 **(b)** 쪽입니다(성능이 1급이고 `for-in` 이 압도적인 쓰임) — 다만 공개 모양이 바뀌어 여쭙니다.
+
+**2. 종류를 모르는 코드가 `Get`/`Set`/`Has`/`Remove` 를 타입 있게 부르는 길.** 지금은 `Trait.ImplOf(Trait.Map, m)` 로
+구현을 꺼내 부르는데 그 타입이 `MapOps<any, any, any>` 라 `ops.Set(m, 1, "bad")` 가 안 잡힙니다.
+
+| 안 | 모양 | 걸리는 것 |
+|---|---|---|
+| (a) 지금 그대로 | `Trait.ImplOf(Trait.Map, m)` — 헐거운 타입, 호출은 직접(빠름) | 타입 안전은 사용자 제네릭의 서명(`MapMarkerMut`)까지만 |
+| (b) `Algorithm` 에 얇은 래퍼 | `Algorithm.Get(m, k)`·`Set(m, k, v)`·`Has`·`Remove`(맵), 셋은 `Add`… | 호출마다 구현 찾기 +40ns(`HashMap.Set` 자체가 ~27ns). **이름 충돌** — 맵의 `Has`/`Remove` 와 셋의 `Has`/`Remove` 가 한 네임스페이스에(런타임 분기는 되지만 타입은 오버로드가 필요) |
+| (c) 타입 있는 구현 꺼내기 | `const ops = Algorithm.MapOf(m)` → `MapOps<MapMarkerMut<K, V>, K, V>` — 루프 밖에서 한 번, 호출은 직접 | `ops` 를 **다른 맵**에 써도 타입이 통과(`MapOf(hashMap)` 의 `Set` 을 `TreeMap` 에 — 같은 `K, V` 면 0건, 런타임에 깨짐) |
+
+제 추천은 **(a) 로 두고 부르는 곳이 보이면 (c)** 입니다 — (b) 는 이름이 걸리고, (c) 의 구멍은 한 함수 안에서 꺼내 바로
+쓰는 관용으로 줄어듭니다.
+
 ---
 
 ### G. mlua 바인딩 — **보류 확정**

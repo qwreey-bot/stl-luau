@@ -47,6 +47,9 @@ export type SetMarker<T> = Types.SetMarker<T>
 export type ListMarkerMut<E, I> = Types.ListMarkerMut<E, I>
 export type MapMarkerMut<K, V> = Types.MapMarkerMut<K, V>
 export type SetMarkerMut<T> = Types.SetMarkerMut<T>
+export type CollectionOps<C> = Types.CollectionOps<C>
+export type CollectionMarker = Types.CollectionMarker
+export type CollectionMarkerMut = Types.CollectionMarkerMut
 export type TraitToken<N> = Trait.Token<N>
 export type Trait<I> = Trait.Trait<I>
 

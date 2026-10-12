@@ -56,7 +56,10 @@
     붙입니다. **모든 생성·반환 경로**가 붙여야 합니다(`spec.contracts` 5절이 전수로 지킴).
     키 문자열 `"__type"` 은 모듈마다 **리터럴로** 적습니다 — `Trait.TYPE_KEY` 를 받아
     쓰면 상수 접기가 안 돼 생성이 7~11% 느렸습니다.
-  - **구현은 트레이트가 듭니다**: `Trait.List`/`Map`/`Set` 이 `[토큰] = 구현(모듈 테이블)`.
+  - **구현은 트레이트가 듭니다**: `Trait.List`/`Map`/`Set`/`Collection` 이 `[토큰] = 구현(모듈 테이블)`.
+    `Collection`(`Len`·`Clear`, 2026-10-12 질문 AO)은 일곱 컨테이너 전부가 구현합니다 — 새 컨테이너도 등록하고
+    데이터 타입에 `read __collectionMut: true` 를 넣으세요. 트레이트를 만들 때 `Trait.New(name, { 필수 함수 이름 })`
+    을 주면 `Impl` 이 등록 때 빠진 함수를 사용자 줄 에러로 알립니다.
     값의 토큰은 `Trait.TokenOf(v)` — `type…` 이름은 Lua 내장 `type`/`typeof` 와 겹쳐 피합니다
     (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewType`, `Trait.Types`)은
     트레이트를 구현하지 않는 종류(`Heap`·`Fut`)도 쓰는 바탕이지만 `Trait` 밑에 둡니다.
@@ -119,6 +122,10 @@
   (`Algorithm.IndexOf(list, item)` — 넓어져도 그냥 "없음")과, 위치를 타입 변수로 두지 않은 조회
   (`ListMarker<E, number>` + `idx: number`)는 읽기 마커로 건전하고 `ArrRead`(빌린 참조)도 받습니다.
   라이브러리의 `Algorithm` 에 그런 함수(쓰기, 키를 넘기는 조회)를 더할 때도 `Mut` 마커로.
+  ⭐ **원소 타입이 흘러들지 않아도, 컨테이너를 바꾸는 제네릭은 "바꿔도 되는 참조" 를 요구합니다**(2026-10-12,
+  질문 AO — `spikes/63`): `Algorithm.Clear` 는 `CollectionMarkerMut`(팬텀 `__collectionMut`)을 받습니다. 토큰만
+  요구했더니 읽기 전용으로 빌린 `ArrRead`·`DequeRead` 가 진단 0건으로 지워졌습니다. 읽기만 하는 것(`Algorithm.Len`)은
+  토큰만(`CollectionMarker`) — 빌린 참조도 받습니다.
 
 - **제네릭이 안 풀릴 땐 명시적 타입 인자** `f<<T>>(...)` 를 씁니다 —
   `Arr.Of<<number>>()`, `HashMap.New<<string, number>>()`,

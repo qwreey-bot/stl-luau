@@ -51,6 +51,8 @@ export type DequeData<T> = {
 	read __listIndex: number,
 	-- 쓰는 제네릭용 불변 팬텀(`Types.ListMarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __listMut: (T, number) -> (T, number),
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	read __collectionMut: true,
 	[number]: T,
 }
 export type Deque<T> = DequeData<T>
@@ -366,8 +368,10 @@ const DequeModule = {
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
 Trait.Impl(Trait.List, TOKEN, DequeModule)
+Trait.Impl(Trait.Collection, TOKEN, DequeModule)
 
 -- `Types` 는 계약 타입만 — 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
 const _ops: Types.ListOps<Deque<any>, any, number> = DequeModule
+const _collection: Types.CollectionOps<Deque<any>> = DequeModule
 
 return DequeModule

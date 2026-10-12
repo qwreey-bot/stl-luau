@@ -52,6 +52,8 @@ export type HashMapData<K, V> = {
 	read __mapValue: V,
 	-- 쓰는 제네릭용 불변 팬텀(`Types.MapMarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __mapMut: (K, V) -> (K, V),
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	read __collectionMut: true,
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
@@ -439,5 +441,6 @@ const HashMapModule = {
 
 -- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.
 Trait.Impl(Trait.Map, TOKEN, HashMapModule)
+Trait.Impl(Trait.Collection, TOKEN, HashMapModule)
 
 return HashMapModule

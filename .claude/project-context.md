@@ -57,7 +57,7 @@ default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
 src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
   Types.luau       ⭐ 공유 계약·트레이트 마커만. **말단 모듈** — 아무것도 require 안 함
-  Trait.luau       타입 토큰과 트레이트 레지스트리(List/Map/Set). Algorithm 이 구현을 찾는 곳
+  Trait.luau       타입 토큰과 트레이트 레지스트리(List/Map/Set/Collection). Algorithm 이 구현을 찾는 곳
   Common.luau      비교자 어댑터와 기본 3방향 비교자
   Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
@@ -66,7 +66,7 @@ src/
   HashSet.luau     HashMap 위에 단방향으로 얹음
   TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
   TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
-  Heap.luau        이진 힙. 계약을 만족하지 않는 유일한 컨테이너
+  Heap.luau        이진 힙. 리스트·맵·셋 계약은 만족하지 않음(Collection 만 — 크기·비우기)
   Deque.luau       링 버퍼 양끝 큐(M5). Trait.List 구현, 리스트 진입점은 안 받음(ToArr)
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
   Fut.luau         코루틴 래퍼(프로미스). provider, 다중 반환, All → Arr
@@ -123,7 +123,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
-| `Types` / `Common` / `Algorithm` / `Trait` | 완성(작음) — 트레이트 2026-10-06, 쓰는 제네릭용 불변 마커 2026-10-12 | `spikes/55`, `61` |
+| `Types` / `Common` / `Algorithm` / `Trait` | 완성(작음) — 트레이트 2026-10-06, 쓰는 제네릭용 불변 마커·`Collection` 트레이트·넓힌 `MapOps` 2026-10-12 | `spikes/55`, `61`, `63` |
 | `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
 | `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |

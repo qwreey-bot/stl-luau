@@ -832,7 +832,17 @@ do
 	-- 구현 테이블은 **인라인으로**(따로 쥐는 지역 변수 없이) — 쥐고 있으면 `"kv"` 로 잘못 써도
 	-- 남아 돌연변이가 살아남았음.
 	const keptToken = T.NewType("Kept")
-	T.Impl(T.List, keptToken, { Get = stl.Arr.Get } :: any)
+	T.Impl(
+		T.List,
+		keptToken,
+		{
+			Get = stl.Arr.Get,
+			FirstIndex = stl.Arr.FirstIndex,
+			LastIndex = stl.Arr.LastIndex,
+			NextIndex = stl.Arr.NextIndex,
+			PrevIndex = stl.Arr.PrevIndex,
+		} :: any
+	)
 	const ShowKept = T.New<<{ read Show: (any) -> string }>>("ShowKept")
 	T.Impl(ShowKept, T.Types.Arr, {
 		Show = function(_: any): string
@@ -887,84 +897,175 @@ do
 
 	-- ⭐ 사용자 컨테이너가 맵 트레이트에 들어오기(2026-10-06): 자기 타입 토큰을 만들고
 	-- `Trait.Impl` 한 줄. 타입에는 토큰과 트레이트 마커(타입에만 있는 필드)를 적고, 값은
-	-- 생성 함수에서 캐스트로 만듭니다(마커는 런타임에 없음). 그리고 Records 가
-	-- Arr·table.pack 결과를 돌려줘도(M0 7라운드) — 구멍은 건너뜁니다.
+	-- 생성 함수에서 캐스트로 만듭니다(마커는 런타임에 없음).
+	-- 2026-10-12: 계약이 여섯으로(`Has`·`Remove`·`Iter` 추가). `Keys`/`Values` 는 `Iter` 로 돕니다 —
+	-- 넣은 순서를 지키는 연결 목록 맵으로, 순회자가 **함수 하나**(상태를 클로저에)인 모양을 봅니다.
 	type MyMap = {
 		read __type: stl.TraitToken<string>,
 		read __mapKey: string,
 		read __mapValue: number,
-		recs: stl.Arr<stl.Record<string, number>?>,
+		read __mapMut: (string, number) -> (string, number),
+		keys: { string },
+		values: { number },
 	}
 	const MyMapType = stl.Trait.NewType("MyMap")
+	const function find(m: MyMap, k: string): number?
+		return table.find(m.keys, k)
+	end
 	const myOps: MapOps<MyMap, string, number> = {
-		Get = function(_m: MyMap, _k: string): number?
-			return nil
+		Get = function(m: MyMap, k: string): number?
+			const at = find(m, k)
+			return if at then m.values[at] else nil
 		end,
-		Set = function(_m: MyMap, _k: string, _v: number) end,
+		Set = function(m: MyMap, k: string, v: number)
+			const at = find(m, k)
+			if at then
+				m.values[at] = v
+			else
+				table.insert(m.keys, k)
+				table.insert(m.values, v)
+			end
+		end,
+		Has = function(m: MyMap, k: string): boolean
+			return find(m, k) ~= nil
+		end,
+		Remove = function(m: MyMap, k: string): number?
+			const at = find(m, k)
+			if at == nil then
+				return nil
+			end
+			table.remove(m.keys, at)
+			return table.remove(m.values, at)
+		end,
 		Records = function(m: MyMap): { stl.Record<string, number> }
-			return stl.Arr.Clone(m.recs) :: any
+			const out = {}
+			for at, k in m.keys do
+				out[at] = { key = k, value = m.values[at] }
+			end
+			return out
+		end,
+		Iter = function(m: MyMap)
+			local at = 0
+			return function(): (string, number)
+				at += 1
+				return m.keys[at], m.values[at]
+			end
 		end,
 	}
 	stl.Trait.Impl(stl.Trait.Map, MyMapType, myOps)
-	const mine: MyMap = {
-		__type = MyMapType,
-		recs = stl.Arr.Of<<stl.Record<string, number>?>>({ key = "x", value = 1 }, nil, { key = "y", value = 2 }),
-	} :: any
-	assert(table.concat(stl.Algorithm.Keys(mine), ",") == "x,y", "Keys(사용자 맵, Records 가 Arr)")
+	const mine: MyMap = { __type = MyMapType, keys = {}, values = {} } :: any
+	myOps.Set(mine, "x", 1)
+	myOps.Set(mine, "y", 2)
+	myOps.Set(mine, "w", 3)
+	const myKeys = stl.Algorithm.Keys(mine)
 	const myValues = stl.Algorithm.Values(mine)
-	assert(#myValues == 2 and myValues[1] == 1 and myValues[2] == 2, "Values(Records 가 Arr)")
-
-	-- 결과는 메타 키 없는 평범한 배열이고(2026-10-12 한 번에 도는 판), Records 가 돌려준 테이블과
-	-- 다른 테이블입니다 — 구현이 자기 내부 목록을 그대로 돌려줘도 그걸 키로 덮어쓰지 않습니다.
-	const shared: { stl.Record<string, number> } = { { key = "p", value = 7 }, { key = "q", value = 8 } }
-	const SharedType = stl.Trait.NewType("SharedMap")
-	stl.Trait.Impl(
-		stl.Trait.Map,
-		SharedType,
-		{
-			Get = function(_m: MyMap, _k: string): number?
-				return nil
-			end,
-			Set = function(_m: MyMap, _k: string, _v: number) end,
-			Records = function(_m: MyMap): { stl.Record<string, number> }
-				return shared
-			end,
-		} :: MapOps<MyMap, string, number>
-	)
-	const sharedMap: MyMap = { __type = SharedType } :: any
-	const sharedKeys = stl.Algorithm.Keys(sharedMap)
-	const sharedValues = stl.Algorithm.Values(sharedMap)
-	assert(
-		table.concat(sharedKeys, ",") == "p,q" and table.concat(sharedValues, ",") == "7,8",
-		"내부 목록을 돌려주는 구현"
-	)
-	assert((sharedKeys :: any) ~= shared and (sharedValues :: any) ~= shared, "새 테이블")
-	assert(shared[1].key == "p" and shared[2].value == 8, "Records 가 준 목록은 그대로")
-	for key in sharedKeys :: { [any]: any } do
-		assert(type(key) == "number", "결과에 숫자 아닌 키")
+	assert(table.concat(myKeys, ",") == "x,y,w", "Keys(사용자 맵) 은 순회 순서")
+	assert(table.concat(myValues, ",") == "1,2,3", "Values(사용자 맵) — Keys 와 같은 순서")
+	-- 결과는 메타 키 없는 새 평범한 배열 — 구현의 내부 목록이 아님
+	assert((myKeys :: any) ~= mine.keys and (myValues :: any) ~= mine.values, "새 테이블")
+	for key in myKeys :: { [any]: any } do
+		assert(type(key) == "number", "Keys 결과에 숫자 아닌 키")
 	end
-	-- 앞·뒤 구멍(table.pack 모양)과 빈 맵
-	const packed = table.pack(nil, { key = "m", value = 5 }, nil) :: any
-	const PackedType = stl.Trait.NewType("PackedMap")
-	stl.Trait.Impl(
-		stl.Trait.Map,
-		PackedType,
-		{
-			Get = function(_m: MyMap, _k: string): number?
-				return nil
-			end,
-			Set = function(_m: MyMap, _k: string, _v: number) end,
-			Records = function(_m: MyMap): { stl.Record<string, number> }
-				return packed
-			end,
-		} :: MapOps<MyMap, string, number>
-	)
-	const packedMap: MyMap = { __type = PackedType } :: any
-	const packedKeys, packedValues = stl.Algorithm.Keys(packedMap), stl.Algorithm.Values(packedMap)
-	assert(#packedKeys == 1 and packedKeys[1] == "m" and (packedKeys :: any).n == nil, "앞·뒤 구멍 — Keys")
-	assert(#packedValues == 1 and packedValues[1] == 5, "앞·뒤 구멍 — Values")
+	for key in myValues :: { [any]: any } do
+		assert(type(key) == "number", "Values 결과에 숫자 아닌 키")
+	end
+	assert(#myKeys == 3 and #myValues == 3 and (myValues :: any).n == nil, "개수")
+	-- 이 맵은 `Trait.Collection` 을 구현하지 않음 — 크기를 몰라도 됨(미리 잡지 못할 뿐)
+	assert(stl.Trait.ImplOf(stl.Trait.Collection, mine) == nil, "MyMap 은 Collection 아님")
+	myOps.Remove(mine, "y")
+	assert(table.concat(stl.Algorithm.Keys(mine), ",") == "x,w", "지운 뒤 Keys")
+	const emptyMine: MyMap = { __type = MyMapType, keys = {}, values = {} } :: any
+	assert(#stl.Algorithm.Keys(emptyMine) == 0 and #stl.Algorithm.Values(emptyMine) == 0, "빈 사용자 맵")
 	const emptyHash = stl.HashMap.New<<string, number>>()
 	assert(#stl.Algorithm.Keys(emptyHash) == 0 and #stl.Algorithm.Values(emptyHash) == 0, "빈 맵")
+	-- 내장 두 맵: Keys 와 Values 가 같은 순서로 짝이 맞고, 자기 모듈의 Keys/Values 와 같은 내용
+	const big = stl.HashMap.New<<string, number>>()
+	const bigTree = stl.TreeMap.New<<string, number>>(Common.compareString)
+	for i = 1, 40 do
+		stl.HashMap.Set(big, `k{i * 7}`, i * 100)
+		stl.TreeMap.Set(bigTree, `k{i * 7}`, i * 100)
+	end
+	const bigKeys, bigValues = stl.Algorithm.Keys(big), stl.Algorithm.Values(big)
+	assert(#bigKeys == 40 and #bigValues == 40, "HashMap 40개")
+	for at, key in bigKeys do
+		assert(stl.HashMap.Get(big, key) == bigValues[at], `Keys[{at}] 와 Values[{at}] 가 짝`)
+	end
+	const treeKeys, treeValues = stl.Algorithm.Keys(bigTree), stl.Algorithm.Values(bigTree)
+	assert(
+		table.concat(treeKeys, ",") == table.concat(stl.TreeMap.Keys(bigTree), ","),
+		"TreeMap Keys 는 정렬 순서"
+	)
+	assert(table.concat(treeValues, ",") == table.concat(stl.TreeMap.Values(bigTree), ","), "TreeMap Values")
+
+	-- 함수를 빠뜨린 구현은 **등록할 때** 사용자 줄 에러(2026-10-12 — 예전엔 알고리즘 안에서
+	-- `attempt to call a nil value`: 타입을 안 쓰는 코드, 그리고 계약이 넓어지기 전의 구현)
+	const partial = {
+		Get = myOps.Get,
+		Set = myOps.Set,
+		Records = myOps.Records,
+	}
+	const PartialType = stl.Trait.NewType("PartialMap")
+	local partialLine = 0
+	const okPartial, errPartial = pcall(function()
+		partialLine = debug.info(1, "l") + 1
+		stl.Trait.Impl(stl.Trait.Map, PartialType, partial :: any)
+	end)
+	assert(
+		not okPartial
+			and string.find(tostring(errPartial), "PartialMap is missing Has for Map", 1, true)
+			and string.find(tostring(errPartial), `spec.contracts.luau:{partialLine}:`, 1, true),
+		`빠진 함수: {errPartial}`
+	)
+	assert(stl.Trait.Map.impls[PartialType] == nil, "거절된 등록은 남지 않음")
+	-- 함수가 아닌 값·테이블이 아닌 구현도
+	local badLine = 0
+	for _, bad in
+		{
+			{ impl = { Len = 1, Clear = function() end }, needle = "BadCollection is missing Len for Collection" },
+			{ impl = { Len = function() end }, needle = "BadCollection is missing Clear for Collection" },
+			{ impl = 5, needle = "needs a table of functions for Collection, got number" },
+			{ impl = "impl", needle = "needs a table of functions for Collection, got string" },
+		} :: { { impl: any, needle: string } }
+	do
+		const BadType = stl.Trait.NewType("BadCollection")
+		const okBad, errBad = pcall(function()
+			badLine = debug.info(1, "l") + 1
+			stl.Trait.Impl(stl.Trait.Collection, BadType, bad.impl)
+		end)
+		assert(not okBad and string.find(tostring(errBad), bad.needle, 1, true), `잘못된 구현: {errBad}`)
+		assert(string.find(tostring(errBad), `spec.contracts.luau:{badLine}:`, 1, true), `사용자 줄: {errBad}`)
+		assert(stl.Trait.Collection.impls[BadType] == nil, "거절된 등록은 남지 않음")
+	end
+	-- 필수 목록이 없는 사용자 트레이트는 예전처럼 아무 구현이나 받고, 목록의 모양은 `New` 가 봄
+	const Loose = stl.Trait.New<<{ read Show: (any) -> string }>>("Loose")
+	stl.Trait.Impl(Loose, stl.Trait.NewType("LooseKind"), {} :: any)
+	const names = { "Show" }
+	const Strict = stl.Trait.New<<{ read Show: (any) -> string }>>("Strict", names)
+	names[1] = "Other" -- 넘긴 목록을 나중에 바꿔도 트레이트는 그대로(사본)
+	const StrictKind = stl.Trait.NewType("StrictKind")
+	assert(not pcall(function()
+		stl.Trait.Impl(Strict, StrictKind, { Other = function() end } :: any)
+	end), "필수 목록은 넘긴 때의 것")
+	stl.Trait.Impl(Strict, StrictKind, {
+		Show = function(_: any): string
+			return "s"
+		end,
+	})
+	local newLine = 0
+	for _, badRequired in
+		{
+			{ list = 5, needle = "required function names, got number" },
+			{ list = { 1, 2 }, needle = "required function names, got a number in it" },
+			{ list = { "ok", false }, needle = "required function names, got a boolean in it" },
+		} :: { { list: any, needle: string } }
+	do
+		const okNew, errNew = pcall(function()
+			newLine = debug.info(1, "l") + 1
+			stl.Trait.New("BadRequired", badRequired.list)
+		end)
+		assert(not okNew and string.find(tostring(errNew), badRequired.needle, 1, true), `New 의 목록: {errNew}`)
+		assert(string.find(tostring(errNew), `spec.contracts.luau:{newLine}:`, 1, true), `사용자 줄: {errNew}`)
+	end
 
 	-- SetOps 자리에 모듈을 담아 두고 쓰기
 	const hs = stl.HashSet.Of(1, 2)
@@ -1116,6 +1217,159 @@ do
 			assert(rawget(value, phantom) == nil, `팬텀 {phantom} 이 런타임에 있음`)
 		end
 	end
+end
+print("PASS")
+
+print(
+	"=== 10. 컬렉션 트레이트 — 종류를 모르고 크기·비우기, 넓힌 MapOps (2026-10-12, 질문 AO) ==="
+)
+do
+	const A = stl.Algorithm
+	-- 일곱 컨테이너 전부: Len 은 자기 모듈의 Len 과 같고, Clear 는 **같은 객체**를 비워 돌려줌
+	const cases: { { name: string, make: () -> any, len: (any) -> number } } = {
+		{
+			name = "Arr",
+			make = function()
+				return stl.Arr.Of(10, 20, 30)
+			end,
+			len = stl.Arr.Len,
+		},
+		{
+			name = "Deque",
+			make = function()
+				return stl.Deque.PushFront(stl.Deque.Of(10, 20), 5)
+			end,
+			len = stl.Deque.Len,
+		},
+		{
+			name = "HashMap",
+			make = function()
+				return stl.HashMap.FromTable({ a = 10, b = 20, c = 30 })
+			end,
+			len = stl.HashMap.Len,
+		},
+		{
+			name = "TreeMap",
+			make = function()
+				return stl.TreeMap.FromRecords(
+					{ { key = "a", value = 10 }, { key = "b", value = 20 }, { key = "c", value = 30 } },
+					Common.compareString
+				)
+			end,
+			len = stl.TreeMap.Len,
+		},
+		{
+			name = "HashSet",
+			make = function()
+				return stl.HashSet.Of(10, 20, 30)
+			end,
+			len = stl.HashSet.Len,
+		},
+		{
+			name = "TreeSet",
+			make = function()
+				return stl.TreeSet.FromList({ 30, 10, 20 }, Common.compareNumber)
+			end,
+			len = stl.TreeSet.Len,
+		},
+		{
+			name = "Heap",
+			make = function()
+				return stl.Heap.FromList({ 30, 10, 20 }, function(a: number, b: number): boolean
+					return a < b
+				end)
+			end,
+			len = stl.Heap.Len,
+		},
+	}
+	for _, case in cases do
+		const value = case.make()
+		assert(stl.Trait.Implements(stl.Trait.Collection, value), `{case.name} 은 Collection`)
+		assert(A.Len(value) == 3 and case.len(value) == 3, `{case.name} Len: {A.Len(value)}`)
+		const cleared = A.Clear(value)
+		assert(rawequal(cleared, value), `{case.name} Clear 는 같은 객체`)
+		assert(A.Len(value) == 0 and case.len(value) == 0, `{case.name} Clear 뒤 Len`)
+		assert(A.Clear(value) == value and A.Len(value) == 0, `{case.name} 빈 것을 또 Clear`)
+	end
+	-- Clear 뒤에도 쓸 수 있음(비우고 다시 채우기) — 맵 종류를 모르는 제네릭으로
+	local function refill<K, V>(m: stl.MapMarkerMut<K, V> & stl.CollectionMarkerMut, records: { stl.Record<K, V> })
+		const ops = stl.Trait.ImplOf(stl.Trait.Map, m)
+		assert(ops ~= nil, "Map 구현")
+		A.Clear(m)
+		for _, rec in records do
+			ops.Set(m, rec.key, rec.value)
+		end
+	end
+	const hm = stl.HashMap.FromTable<<string, number>>({ old = 1 })
+	const tm = stl.TreeMap.FromRecords({ { key = "old", value = 1 } }, Common.compareString)
+	const fresh = { { key = "q", value = 70 }, { key = "p", value = 80 } }
+	refill(hm, fresh)
+	refill(tm, fresh)
+	assert(A.Len(hm) == 2 and A.Len(tm) == 2, "다시 채운 크기")
+	assert(stl.HashMap.Get(hm, "old") == nil and stl.TreeMap.Get(tm, "old") == nil, "옛 키는 없음")
+	assert(table.concat(A.Keys(tm), ",") == "p,q" and stl.HashMap.Get(hm, "q") == 70, "다시 채운 내용")
+
+	-- 읽기 전용으로 빌린 참조도 Len 은 됨(타입 쪽 — Clear 는 못 함 — 은 spikes/63)
+	local function lenOfBorrowed(list: stl.ArrRead<number>, dq: stl.DequeRead<number>): number
+		return A.Len(list) + A.Len(dq)
+	end
+	assert(lenOfBorrowed(stl.Arr.Of(1, 2), stl.Deque.Of(1, 2, 3)) == 5, "빌린 참조의 Len")
+
+	-- 컬렉션이 아닌 것: 사용자 줄 에러(토큰은 있지만 구현 없음 / 토큰 없음 / 테이블 아님)
+	local where = 0
+	for _, bad in
+		{
+			{ value = stl.Fut.Resolved(1), needle = "Fut does not implement Collection" },
+			{ value = {}, needle = "needs a Collection" },
+			{ value = 5, needle = "needs a Collection" },
+		} :: { { value: any, needle: string } }
+	do
+		for _, call in { A.Len, A.Clear } :: { (any) -> any } do
+			const ok, err = pcall(function()
+				where = debug.info(1, "l") + 1
+				call(bad.value)
+			end)
+			assert(not ok and string.find(tostring(err), bad.needle, 1, true), `컬렉션 아님: {err}`)
+			assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
+		end
+	end
+
+	-- ⭐ 넓힌 MapOps — 종류를 모르는 코드가 Has·Remove·Iter 까지. 두 맵이 같은 답
+	local function exercise<K, V>(m: stl.MapMarkerMut<K, V>, present: K, absent: K): (boolean, boolean, V?, V?, number)
+		const ops = stl.Trait.ImplOf(stl.Trait.Map, m)
+		assert(ops ~= nil, "Map 구현")
+		const hadPresent, hadAbsent = ops.Has(m, present), ops.Has(m, absent)
+		local seen = 0
+		for key, value in ops.Iter(m) do
+			assert(ops.Get(m, key) == value, "Iter 의 값은 Get 과 같음")
+			seen += 1
+		end
+		const removed = ops.Remove(m, present)
+		const removedAgain = ops.Remove(m, present)
+		assert(not ops.Has(m, present), "지운 뒤 Has")
+		return hadPresent, hadAbsent, removed, removedAgain, seen
+	end
+	const hm2 = stl.HashMap.FromTable<<string, number>>({ a = 10, b = 20, c = 30 })
+	const tm2 = stl.TreeMap.FromRecords(
+		{ { key = "a", value = 10 }, { key = "b", value = 20 }, { key = "c", value = 30 } },
+		Common.compareString
+	)
+	for name, m in { HashMap = hm2, TreeMap = tm2 } :: { [string]: any } do
+		const hadPresent, hadAbsent, removed, removedAgain, seen = exercise(m, "b", "zz")
+		assert(hadPresent and not hadAbsent, `{name} Has`)
+		assert(removed == 20 and removedAgain == nil, `{name} Remove 는 지운 값: {removed}`)
+		assert(seen == 3 and A.Len(m) == 2, `{name} Iter 개수 {seen}, 지운 뒤 크기 {A.Len(m)}`)
+	end
+	-- 모듈 테이블이 넓힌 계약과 컬렉션 계약을 정적으로 만족
+	const _hmOps: MapOps<stl.HashMap<string, number>, string, number> = stl.HashMap
+	const _tmOps: MapOps<stl.TreeMap<string, number>, string, number> = stl.TreeMap
+	const _c1: stl.CollectionOps<stl.Arr<number>> = stl.Arr
+	const _c2: stl.CollectionOps<stl.Deque<number>> = stl.Deque
+	const _c3: stl.CollectionOps<stl.HashMap<string, number>> = stl.HashMap
+	const _c4: stl.CollectionOps<stl.TreeMap<string, number>> = stl.TreeMap
+	const _c5: stl.CollectionOps<stl.HashSet<number>> = stl.HashSet
+	const _c6: stl.CollectionOps<stl.TreeSet<number>> = stl.TreeSet
+	const _c7: stl.CollectionOps<stl.Heap<number>> = stl.Heap
 end
 print("PASS")
 

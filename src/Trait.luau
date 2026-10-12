@@ -36,7 +36,7 @@ local Types = require("./Types")
 -- `Types` — 마커가 토큰을 요구하려고 말단에 둠).
 export type Token<N> = Types.Token<N>
 -- 트레이트. `I` 는 구현 테이블의 타입(팬텀 — `impls` 의 값 타입).
-export type Trait<I> = { read name: string, read impls: { [any]: I } }
+export type Trait<I> = { read name: string, read impls: { [any]: I }, read required: { string }? }
 
 -- 값에 타입 토큰을 싣는 필드 이름. **라이브러리 예약어**입니다. 해시 칸 배치는 이름에 따라
 -- 모양마다 ±5% 엇갈렸고(`__t` 와 `__type` 을 컨테이너 여섯 모양에서 재 봄 — 어느 쪽도 고르게
@@ -61,15 +61,30 @@ const function NewType(name: string): Token<string>
 end
 
 -- 새 트레이트. 구현 테이블의 타입을 알려 주면 `ImplOf` 가 그 타입을 돌려줍니다:
---     local Show = Trait.New<<{ read Show: (any) -> string }>>("Show")
-const function New<I>(name: string): Trait<I>
+--     local Show = Trait.New<<{ read Show: (any) -> string }>>("Show", { "Show" })
+--
+-- `required`(선택)는 구현이 꼭 가져야 하는 함수 이름들입니다 — `Impl` 이 등록할 때 확인합니다
+-- (2026-10-12). 타입을 안 쓰는 코드가 함수 하나를 빠뜨리면 알고리즘 안(라이브러리 줄)에서
+-- `attempt to call a nil value` 로 죽었습니다 — `MapOps` 를 넓히자 예전 구현들이 그렇게 됐습니다.
+const function New<I>(name: string, required: { string }?): Trait<I>
 	if type(name) ~= "string" then
 		Common.raise(`Trait: New needs a name string, got {typeof(name)}`)
+	end
+	if required ~= nil then
+		if type(required) ~= "table" then
+			Common.raise(`Trait: New needs a list of required function names, got {typeof(required)}`)
+		end
+		for _, fnName in required do
+			if type(fnName) ~= "string" then
+				Common.raise(`Trait: New needs a list of required function names, got a {typeof(fnName)} in it`)
+			end
+		end
+		required = table.freeze(table.clone(required))
 	end
 	-- `impls` 는 **약한 키** — 버린 사용자 토큰은 등록했어도 수거됩니다(아무도 그 토큰을 쥐지
 	-- 않으면 조회될 일도 없음). 내장 토큰은 `Trait.Types` 가 붙잡습니다. ⚠️ Luau 의 약한 키는
 	-- ephemeron 이 아니라 구현 테이블이 토큰을 참조하면 남습니다(리뷰 2라운드 실측).
-	const trait = { name = name, impls = setmetatable({}, { __mode = "k" }) }
+	const trait = { name = name, impls = setmetatable({}, { __mode = "k" }), required = required }
 	traits[trait] = true
 	return trait :: any
 end
@@ -91,6 +106,17 @@ const function Impl<I>(trait: Trait<I>, token: Token<any>, impl: I)
 	const impls = trait.impls :: any
 	if impls[token] ~= nil then
 		Common.raise(`Trait: {token.name} already implements {trait.name}`)
+	end
+	const required = trait.required
+	if required then
+		if type(impl) ~= "table" then
+			Common.raise(`Trait: Impl needs a table of functions for {trait.name}, got {typeof(impl)}`)
+		end
+		for _, fnName in required do
+			if type((impl :: any)[fnName]) ~= "function" then
+				Common.raise(`Trait: {token.name} is missing {fnName} for {trait.name}`)
+			end
+		end
 	end
 	impls[token] = impl
 end
@@ -135,9 +161,12 @@ end
 
 --[[ 라이브러리의 트레이트와 타입 토큰 ]]
 
-const List = New<<Types.ListOps<any, any, any>>>("List")
-const Map = New<<Types.MapOps<any, any, any>>>("Map")
-const Set = New<<Types.SetOps<any, any>>>("Set")
+const List = New<<Types.ListOps<any, any, any>>>("List", { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" })
+const Map = New<<Types.MapOps<any, any, any>>>("Map", { "Get", "Set", "Has", "Remove", "Records", "Iter" })
+const Set = New<<Types.SetOps<any, any>>>("Set", { "Add", "Has", "Remove", "Items" })
+-- 원소를 담는 것 전부(리스트·맵·셋·힙) — 크기와 비우기(2026-10-12). 한 종류가 `List` 와 `Collection` 처럼
+-- 여러 트레이트를 구현합니다.
+const Collection = New<<Types.CollectionOps<any>>>("Collection", { "Len", "Clear" })
 
 const BuiltinTypes = table.freeze({
 	Arr = NewType("Arr") :: Token<"Arr">,
@@ -155,6 +184,6 @@ return {
 	TYPE_KEY = TYPE_KEY,
 	NewType = NewType, New = New, Impl = Impl,
 	TokenOf = TokenOf, ImplOf = ImplOf, Implements = Implements, Stamp = Stamp,
-	List = List, Map = Map, Set = Set,
+	List = List, Map = Map, Set = Set, Collection = Collection,
 	Types = BuiltinTypes,
 }

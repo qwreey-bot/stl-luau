@@ -30,6 +30,8 @@ local Trait = require("./Trait")
 
 type ListMarker<E, I> = Types.ListMarker<E, I>
 type MapMarker<K, V> = Types.MapMarker<K, V>
+type CollectionMarker = Types.CollectionMarker
+type CollectionMarkerMut = Types.CollectionMarkerMut
 
 local exports = {}
 
@@ -96,41 +98,53 @@ function exports.Count<E, I>(list: ListMarker<E, I>, pred: ((element: E) -> bool
 	return total
 end
 
--- `ops.Records` 의 결과는 리스트 길이 규약(`Common.listLength` — `n` 우선)으로 읽고 구멍은
--- 건너뜁니다 — 사용자 구현이 `Arr`·`table.pack` 결과를 돌려주면 `pairs` 로 돌던 예전 판이
--- `n`·태그 키를 레코드로 읽어 터졌습니다(M0 7라운드).
--- 한 번에 돕니다(2026-10-12, 사용자 지적): 예전엔 `Common.denseList` 로 조밀한 사본을 만든 뒤 다시
--- 돌며 새 테이블에 옮겨, 테이블 하나와 순회 한 번이 더 들었습니다(0.78~0.88배 — perf 25절).
+-- 맵의 키들·값들. 순서는 구현의 순회 순서(`HashMap` 은 약속 없음, `TreeMap` 은 키 순서)이고 두 함수의
+-- 순서는 서로 맞습니다(맵을 그 사이에 안 바꿨다면).
+--
+-- `ops.Iter` 로 돕니다(2026-10-12, 질문 AO). 예전엔 `ops.Records` 가 만든 레코드 N 개를 거쳐 뽑았습니다 —
+-- 순회로 옮기니 레코드 할당이 사라지고 0.61~0.87배(perf 28절). 결과 테이블은 크기를 알면(`Trait.Collection`
+-- 도 구현하면) 미리 잡습니다 — 작은 맵에서 다시 늘리는 비용이 컸습니다.
+-- ⚠️ 그래도 종류를 아는 코드는 자기 `HashMap.Keys`/`TreeMap.Keys` 가 4~5배 빠릅니다(이 함수는 구현을
+-- 모르는 코드용).
+const function sizedList(map: any): { any }
+	const sized = Trait.Collection.impls[rawget(map, "__type")]
+	return if sized then table.create(sized.Len(map)) else {}
+end
+
 function exports.Keys<K, V>(map: MapMarker<K, V>): { K }
 	const ops = implOf(Trait.Map, map, "Keys")
-	const records: { Types.Record<K, V> } = ops.Records(map)
-	const len = Common.listLength(records)
-	const out: { K } = table.create(len)
+	const out: { K } = sizedList(map)
 	local count = 0
-	for idx = 1, len do
-		const rec = records[idx]
-		if rec ~= nil then
-			count += 1
-			out[count] = rec.key
-		end
+	for key in ops.Iter(map) do
+		count += 1
+		out[count] = key
 	end
 	return out
 end
 
 function exports.Values<K, V>(map: MapMarker<K, V>): { V }
 	const ops = implOf(Trait.Map, map, "Values")
-	const records: { Types.Record<K, V> } = ops.Records(map)
-	const len = Common.listLength(records)
-	const out: { V } = table.create(len)
+	const out: { V } = sizedList(map)
 	local count = 0
-	for idx = 1, len do
-		const rec = records[idx]
-		if rec ~= nil then
-			count += 1
-			out[count] = rec.value
-		end
+	for _, value in ops.Iter(map) do
+		count += 1
+		out[count] = value
 	end
 	return out
+end
+
+-- 알고 있는 크기(O(1)). 리스트·맵·셋·힙 어느 것이든 — `Trait.Collection` 을 구현하는 종류면 됩니다.
+-- 읽기라 빌린 참조(`ArrRead`·`DequeRead`)도 받습니다. 세어서 구하는 것은 `Count`.
+function exports.Len(collection: CollectionMarker): number
+	return implOf(Trait.Collection, collection, "Len").Len(collection)
+end
+
+-- 비우고 **같은 컨테이너를 그 타입 그대로** 돌려줍니다(`HashMap<string, number>` 를 넣으면 그 타입).
+-- 맵 종류를 모르고 "비우고 다시 채우기" 를 쓸 때. 읽기 전용으로 빌린 참조는 못 넣습니다
+-- (`Types.CollectionMarkerMut`).
+function exports.Clear<C>(collection: C & CollectionMarkerMut): C
+	implOf(Trait.Collection, collection, "Clear").Clear(collection)
+	return collection
 end
 
 return exports

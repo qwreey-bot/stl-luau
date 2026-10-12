@@ -8,6 +8,8 @@
 | 무엇 | 어디 |
 |---|---|
 | **AA. Luau 새 솔버 결함 보고** — 10-12 결정: 초안만 다듬어 둠, 올리는 것은 사용자가 | `question.md` AA |
+| **AO. 트레이트 넓히기의 모양**(제가 정함 — `Trait.Collection`, `MapOps` 여섯, `Trait.New` 의 필수 함수 목록) | `question.md` AO |
+| **AP. ❓ ① `HashMap.Iter` 가 `data` 테이블을 돌려주게 할지(순회 9배, 모양이 바뀜) ② 종류를 모르는 코드가 `Get`/`Set` 을 타입 있게 부르는 길** | `question.md` AP |
 | **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
 | **AK. Deque 의 나머지 모양**(`DequeRead` 는 10-12 에 넣음) — 리스트 진입점이 Deque 를 받을지(지금 안 받고 `ToArr`), 이름·칸 수 정책 | `question.md` AK |
 | **AN. 트리의 `nil` 키를 막은 것**(제가 정함 — 빈 트리에 조용히 들어가 나중에 죽어서). 해시 쪽은 10-12 결정대로 그대로 | `question.md` AN |
@@ -35,6 +37,9 @@
 **2026-10-12 오후 — 백로그 둘**: `Algorithm.Keys`/`Values` 를 한 번에 돌게(0.78~0.88배, perf 25절), 맵·셋 `nil`·NaN 키
 전수 점검 — ⚠️ 빈 `TreeMap`/`TreeSet` 에 `nil` 키가 조용히 들어가 이후 연산이 라이브러리 줄에서 죽던 것을 막음
 (NaN 과 같은 정책, `TreeSet` 메시지의 모듈 이름도), 해시 쪽은 비용을 재서 질문 AN(perf 26절).
+같은 날 받은 답으로: `DequeRead`(AK), `HashMap.Iter` 를 `next` 그대로(0.54~0.73배, perf 27절), ⭐ **트레이트 넓히기**
+(AO — `Trait.Collection` 의 `Len`·`Clear`, `MapOps` 에 `Has`·`Remove`·`Iter`, `Algorithm.Len`/`Clear`, `Keys`/`Values` 를
+`Iter` 로 0.62~0.87배, `spikes/63`). 남은 질문은 AP.
 
 **M0(호출 모양을 네임스페이스 하나로, 질문 AB) 끝 — 리뷰 소진(여덟 라운드, 2026-10-01).**
 
@@ -63,7 +68,7 @@ perf 22절. **리뷰 소진(1라운드 — 재현된 결함 0, 돌연변이 51�
 | 게이트 | 상태 |
 |---|---|
 | TypeError 총계 | **0건** |
-| 음성 대조군 배터리 | 스파이크 45개 전부 기대치·에러 줄 일치 (2026-10-12) |
+| 음성 대조군 배터리 | 스파이크 46개 전부 기대치·에러 줄 일치 (2026-10-12) |
 | require 게이트 | 통과 |
 | **포맷 (stylua)** | 통과 (바이너리 없으면 건너뜀) |
 | 테스트 | 12개 스펙 통과 |
@@ -115,7 +120,7 @@ local f = nested:Flat<<number>>()
 | ~~M3~~ | **✅ 2026-10-07** 리뷰 1라운드 소진(결함 0) — `Arr` 빈 조각 — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | ~~M4~~ | **✅ 2026-10-07** 리뷰 소진(3라운드 — 결함 1 → 0 → 0, 2·3라운드는 테스트 공백·성능만). 모양은 질문 AJ(제가 정함, **확인 대기**) **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
 | ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(**확인 대기** — `DequeRead` 공변 여부 포함) **`Deque`**(링 버퍼) — 리스트 진입점이 Deque 를 받을지는 AK 에서 잠정 "안 받음(`ToArr`)", `Algorithm` 은 받음 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
-| **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음, `MapOps` 엔 `Len`/`Has` 가 없음. **같이 할 것(질문 AM 다, 2026-10-12)**: 맵 종류를 모르고 다루는 표면 넓히기 — `Trait.Collection`(`Len`·`Clear`, 시제품에서 `<C>(c: C & Marker): C` 모양이 섬·경유 ~40ns), `MapOps` 에 `Has`/`Remove`/`Iter`, `Algorithm.Clear`/`Len`/`Refill`. 쓰는 알고리즘은 `Mut` 마커로(이미 들어감) | M4 위에 얇게. 부르는 곳이 보이면 |
+| **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음. 맵 종류를 모르고 다루는 표면(`Trait.Collection`, `MapOps` 여섯)은 **2026-10-12 에 앞당겨 넣음**(질문 AO) — 새 컨테이너는 `Collection` 을 구현하고 `__collectionMut` 팬텀을 넣을 것 | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |
 | **마지막** | **문서 사이트** — *"다른거 다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md` | 사용자 결정 |
@@ -133,8 +138,6 @@ C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
 
 ## 백로그 (당장 안 함)
 
-- **`Algorithm.Keys`/`Values` 를 `Iter` 로** — 2026-10-12 에 `denseList` 사본을 걷어 한 번에 돌게 했지만(0.78~0.88배,
-  perf 25절) 남은 비용의 68~75% 는 `Records` 의 레코드 할당입니다. `MapOps` 에 `Iter` 가 생기면(M6, 질문 AM 다) 옮깁니다.
 - **`TreeMap` 의 `GetOrInsert(With)`·`Accumulate`**(AL 4, 사용자: 필요해지면) — 지금은 HashMap 만.
 - **mlua(Rust) 바인딩** — 이 프로젝트가 갈라져 나온 출처. 사용자 판단으로
   *"얹는 구조로 나중에"*. 설계를 여기에 맞추지 않습니다.

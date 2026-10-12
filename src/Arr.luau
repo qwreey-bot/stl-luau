@@ -96,6 +96,8 @@ export type ArrData<T> = {
 	read __list: T,
 	read __listIndex: number,
 	read __listMut: (T, number) -> (T, number),
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	read __collectionMut: true,
 	[number]: T,
 }
 
@@ -2761,5 +2763,6 @@ const ArrModule = {
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
 Trait.Impl(Trait.List, TOKEN, ArrModule)
+Trait.Impl(Trait.Collection, TOKEN, ArrModule)
 
 return ArrModule
