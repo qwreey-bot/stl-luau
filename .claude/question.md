@@ -798,7 +798,7 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 |---|---|---|
 | `HashMap.Merge` | **새 맵** + `MergeInplace`(제자리) 쌍 — `Inplace` 관례. 같은 키는 `other` 가 이김 | W 표는 "`Merge(other)` 덮어 합치기" 만 정함. 제자리 하나만 둘 수도 |
 | `Merge` 의 범위 | **`HashMap` 끼리만**(불변 — 같은 `K, V`) | `TreeMap.Merge`, 트레이트(`Trait.Map`)로 아무 맵이나 받기 — 부르는 곳이 보이면 |
-| 맵 변형의 반환 | `Retain`·`MergeInplace` 는 **`()`** — `Set`/`Clear` 와 같게 | `Arr.Retain` 처럼 자기 자신을 돌려주기(체이닝은 없으니 이득이 작음) |
+| 맵 변형의 반환 | ~~`Retain`·`MergeInplace` 는 `()`~~ → **[2026-10-12] 자기 자신**(`Clear` 를 자기 자신으로 통일한 AM 의 흐름 — `Arr.Retain` 과 같은 이름이 다른 반환이던 것을 맞춤). `Set` 만 `MapOps` 계약대로 `()` | — |
 | `Accumulate(m, k, v, combine)` | 없으면 `v`, 있으면 `combine(old, v)`. **바뀐 값을 `V?` 로** 돌려주고 `nil` 이면 지움(Java `Map.merge`) | 반환 없음 |
 | `GetOrInsert(m, k, default)` | 있으면 그 값(안 바꿈). `default` 가 `nil` 이면 아무것도 안 넣음 | `nil` 이면 에러 |
 | `GetOrInsertWith(m, k, make)` | `make(key)` 를 **없을 때만**. `make` 가 같은 키를 넣었으면(재귀 메모이즈) 크기를 다시 셈 — 결과는 `make` 의 반환이 이김, `make` 가 `nil` 이면 그때 맵에 있는 값 | — |

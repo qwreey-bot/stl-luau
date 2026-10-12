@@ -145,7 +145,8 @@ do
 	assert(TreeMap.Len(m) == 1 and TreeMap.Len(cloned) == 2, "Clone 은 독립적이어야 합니다")
 	assert(TreeMap.Get(m, 7) == "g", "Clone 은 레코드도 새로 만들어야 합니다")
 
-	TreeMap.Clear(m)
+	-- 자기 자신을 돌려줌(2026-10-12, 질문 AM — 일곱 컨테이너가 같게)
+	assert(TreeMap.Clear(m) == m, "Clear 는 자기 자신을 돌려줌")
 	assert(TreeMap.Empty(m) and TreeMap.Get(m, 7) == nil, "Clear")
 	TreeMap.Set(m, 1, "다시")
 	assert(TreeMap.Len(m) == 1, "Clear 후 다시 쓸 수 있어야 합니다")
@@ -292,9 +293,10 @@ do
 	assert(TreeMap.Get(r, 30) == "c" and TreeMap.Get(r, 20) == nil, "Retain 뒤 조회")
 	TreeMap.Set(r, 20, "B")
 	assert(keysOf(r) == "10,20,30", "Retain 뒤 삽입 위치")
-	TreeMap.Retain(r, function(_k: number, _v: string): boolean
+	const retained = TreeMap.Retain(r, function(_k: number, _v: string): boolean
 		return false
 	end)
+	assert(retained == r, "Retain 은 자기 자신을 돌려줌")
 	assert(TreeMap.Empty(r) and rawget(r.records :: any, 1) == nil, "전부 지움")
 
 	-- 콜백 안에서 이 맵에 넣거나 지우는 것은 **정의되지 않은 동작**(2026-10-12 사용자 결정, 질문 AL 1 —

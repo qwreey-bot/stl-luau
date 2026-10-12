@@ -183,9 +183,11 @@ const function Remove<K, V>(self: HashMapData<K, V>, key: K): V?
 	return found
 end
 
-const function Clear<K, V>(self: HashMapData<K, V>): ()
+-- 비우고 **자기 자신을 돌려줍니다**(2026-10-12 사용자 결정, 질문 AM — 일곱 컨테이너가 같게. 반환은 공짜였음).
+const function Clear<K, V>(self: HashMapData<K, V>): HashMap<K, V>
 	table.clear(self.data)
 	self.size = 0
+	return self
 end
 
 -- 얕은 복사. 키와 값 자체는 공유합니다.
@@ -202,7 +204,7 @@ end
 -- ⚠️ 콜백 안에서 이 컨테이너를 바꾸면(넣기·지우기 — 캡처한 변수로) **정의되지 않은 동작**입니다
 -- (2026-10-12 사용자 결정, 질문 AL 1). 관측(계약 아님): 지금 판은 콜백이 `Remove` 로 지운 키를
 -- 다시 세지 않아 지우기는 크기가 맞습니다 — 셈을 맞추는 읽기 하나일 뿐 약속이 아닙니다.
-const function Retain<K, V>(self: HashMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
+const function Retain<K, V>(self: HashMapData<K, V>, fn: (key: K, value: V) -> boolean): HashMap<K, V>
 	const data = self.data
 	for key, value in data do
 		if not fn(key, value) and data[key] ~= nil then
@@ -210,6 +212,7 @@ const function Retain<K, V>(self: HashMapData<K, V>, fn: (key: K, value: V) -> b
 			self.size -= 1
 		end
 	end
+	return self
 end
 
 --#endregion
@@ -289,8 +292,8 @@ const function Merge<K, V>(self: HashMapData<K, V>, other: HashMapData<K, V>): H
 	return tagged({ data = copy, size = count })
 end
 
--- `Merge` 의 제자리 판 — `self` 에 `other` 를 덮어씁니다(Python `dict.update`).
-const function MergeInplace<K, V>(self: HashMapData<K, V>, other: HashMapData<K, V>): ()
+-- `Merge` 의 제자리 판 — `self` 에 `other` 를 덮어쓰고 자기 자신을 돌려줍니다(Python `dict.update`).
+const function MergeInplace<K, V>(self: HashMapData<K, V>, other: HashMapData<K, V>): HashMap<K, V>
 	const data = self.data
 	local count = self.size
 	for key, value in other.data do
@@ -300,6 +303,7 @@ const function MergeInplace<K, V>(self: HashMapData<K, V>, other: HashMapData<K,
 		data[key] = value
 	end
 	self.size = count
+	return self
 end
 
 --#endregion

@@ -57,7 +57,8 @@ do
 	const cloned = TreeSet.Clone(s)
 	TreeSet.Add(cloned, 4)
 	assert(TreeSet.Len(s) == 3 and TreeSet.Len(cloned) == 4, "Clone 은 독립적")
-	TreeSet.Clear(s)
+	-- 자기 자신을 돌려줌(2026-10-12, 질문 AM — 일곱 컨테이너가 같게)
+	assert(TreeSet.Clear(s) == s, "Clear 는 자기 자신을 돌려줌")
 	assert(TreeSet.Empty(s) and not TreeSet.Has(s, 1), "Clear")
 	TreeSet.Add(s, 9)
 	assert(TreeSet.Len(s) == 1, "Clear 후 다시 쓸 수 있어야 합니다")
@@ -236,10 +237,11 @@ do
 
 	const r = setOf(40, 10, 30, 20)
 	local order = {}
-	TreeSet.Retain(r, function(item: number): boolean
+	const retained = TreeSet.Retain(r, function(item: number): boolean
 		table.insert(order, item)
 		return item >= 25
 	end)
+	assert(retained == r, "Retain 은 자기 자신을 돌려줌")
 	assert(table.concat(order, ",") == "10,20,30,40", "정렬 순서로 부름")
 	assert(itemsOf(r) == "30,40" and TreeSet.Len(r) == 2, "Retain")
 	-- 꼬리 칸을 비움 — 안 비우면 지운 원소의 참조가 남아 GC 가 못 거둠(3라운드)

@@ -132,7 +132,8 @@ do
 	assert(Heap.Len(h) == 4 and Heap.Len(cloned) == 5, "Clone 은 독립적")
 	assert(Heap.Peek(cloned) == 0 and Heap.Peek(h) == 1, "Clone 후 꼭대기")
 
-	Heap.Clear(h)
+	-- 자기 자신을 돌려줌(2026-10-12, 질문 AM — 일곱 컨테이너가 같게)
+	assert(Heap.Clear(h) == h, "Clear 는 자기 자신을 돌려줌")
 	assert(Heap.Empty(h) and Heap.Peek(h) == nil, "Clear")
 	Heap.Push(h, 1)
 	assert(Heap.Len(h) == 1, "Clear 후 다시 쓸 수 있어야 합니다")

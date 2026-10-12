@@ -78,7 +78,8 @@ do
 	HashSet.Add(cloned, "d")
 	assert(HashSet.Len(s) == 3 and HashSet.Len(cloned) == 4, "Clone 은 독립적이어야 합니다")
 
-	HashSet.Clear(s)
+	-- 자기 자신을 돌려줌(2026-10-12, 질문 AM)
+	assert(HashSet.Clear(s) == s, "Clear 는 자기 자신을 돌려줌")
 	assert(HashSet.Len(s) == 0 and HashSet.Empty(s), "Clear")
 	assert(not HashSet.Has(s, "a"), "Clear 후 내용이 비어야 합니다")
 	HashSet.Add(s, "z")
@@ -168,9 +169,10 @@ do
 		counted += 1
 	end
 	assert(counted == 2, "실제 원소 수")
-	HashSet.Retain(s, function(_item: number): boolean
+	const retained = HashSet.Retain(s, function(_item: number): boolean
 		return false
 	end)
+	assert(retained == s, "Retain 은 자기 자신을 돌려줌")
 	assert(HashSet.Len(s) == 0 and HashSet.Empty(s), "전부 지움")
 	HashSet.Retain(s, function(_item: number): boolean
 		return true

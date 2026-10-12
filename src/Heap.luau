@@ -203,9 +203,11 @@ const function Replace<T>(self: HeapData<T>, item: T): T?
 	return top
 end
 
-const function Clear<T>(self: HeapData<T>): ()
+-- 비우고 **자기 자신을 돌려줍니다**(2026-10-12 사용자 결정, 질문 AM — 일곱 컨테이너가 같게. 반환은 공짜였음).
+const function Clear<T>(self: HeapData<T>): Heap<T>
 	table.clear(self.items)
 	self.size = 0
+	return self
 end
 
 const function Clone<T>(self: HeapData<T>): Heap<T>

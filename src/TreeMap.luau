@@ -362,7 +362,7 @@ end
 -- 라이브러리 밖 에러로 죽거나 조용히 틀립니다. 지울 것은 `false` 로 돌려주세요. (한때 크기가
 -- 바뀌면 에러로 막았는데 원소마다 검사가 붙어 1.16배였습니다 — perf 23절.) 공유 헬퍼에 클로저를
 -- 끼우면 더 느려 `TreeSet.Retain` 과 몸통을 따로 둡니다.
-const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
+const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): TreeMap<K, V>
 	const records = self.records
 	const size = self.size
 	local kept = 0
@@ -377,11 +377,14 @@ const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> b
 		records[idx] = nil :: any
 	end
 	self.size = kept
+	return self
 end
 
-const function Clear<K, V>(self: TreeMapData<K, V>): ()
+-- 비우고 **자기 자신을 돌려줍니다**(2026-10-12 사용자 결정, 질문 AM — 일곱 컨테이너가 같게. 반환은 공짜였음).
+const function Clear<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
 	table.clear(self.records)
 	self.size = 0
+	return self
 end
 
 -- 얕은 복사. **레코드도 새로 만듭니다** — 같은 레코드 테이블을 공유하면

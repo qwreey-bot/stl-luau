@@ -184,8 +184,10 @@ end
 
 --#region ----------- 변형 -----------
 
-const function Clear<T>(self: TreeSetData<T>): ()
+-- 비우고 **자기 자신을 돌려줍니다**(2026-10-12 사용자 결정, 질문 AM — 일곱 컨테이너가 같게. 반환은 공짜였음).
+const function Clear<T>(self: TreeSetData<T>): TreeSet<T>
 	TreeMap.Clear(self.map)
+	return self
 end
 
 -- 가장 작은 원소를 **꺼냅니다**. 비었으면 `nil`. O(n) 입니다(`TreeMap.PopFirst`).
@@ -203,7 +205,7 @@ end
 -- 조건을 만족하는 원소만 **남깁니다**(제자리, 정렬 순서로 부름). ⚠️ Java `retainAll` 과 달리
 -- 술어를 받습니다(질문 W). 콜백 안에서 이 셋을 바꾸면 정의되지 않은 동작입니다(`TreeMap.Retain`
 -- 과 같음, 질문 AL 1). 자기 맵의 레코드 배열을 직접 훑습니다(집합 연산처럼 — 클로저 한 겹을 아낌).
-const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): ()
+const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): TreeSet<T>
 	const map = self.map
 	const records = map.records
 	const size = map.size
@@ -219,6 +221,7 @@ const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): ()
 		records[idx] = nil :: any
 	end
 	map.size = kept
+	return self
 end
 
 const function Clone<T>(self: TreeSetData<T>): TreeSet<T>

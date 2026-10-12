@@ -55,7 +55,8 @@ do
 	HashMap.Set(cloned, "c", 3)
 	assert(HashMap.Len(m) == 1 and HashMap.Len(cloned) == 2, "Clone 은 독립적이어야 합니다")
 
-	HashMap.Clear(m)
+	-- 자기 자신을 돌려줌(2026-10-12, 질문 AM — 일곱 컨테이너가 같게)
+	assert(HashMap.Clear(m) == m, "Clear 는 자기 자신을 돌려줌")
 	assert(HashMap.Len(m) == 0 and HashMap.Empty(m), "Clear")
 	assert(HashMap.Get(m, "b") == nil, "Clear 후 내용이 비어야 합니다")
 	HashMap.Set(m, "z", 26)
@@ -281,7 +282,7 @@ do
 	size(HashMap.Merge(left, left), 2, "자기 자신과 Merge")
 	size(HashMap.Merge(HashMap.New<<string, number>>(), right), 2, "빈 것과")
 	-- MergeInplace
-	HashMap.MergeInplace(left, right)
+	assert(HashMap.MergeInplace(left, right) == left, "MergeInplace 는 자기 자신을 돌려줌")
 	assert(HashMap.Get(left, "b") == 20 and HashMap.Get(left, "c") == 30, "MergeInplace 덮어씀")
 	size(left, 3, "MergeInplace 크기")
 	HashMap.MergeInplace(left, left)
@@ -303,9 +304,11 @@ do
 		"Retain"
 	)
 	size(r, 2, "Retain 크기")
-	HashMap.Retain(r, function(_k: string, _v: number): boolean
+	-- 자기 자신을 돌려줌(2026-10-12 — `Arr.Retain` 과 같게, 질문 AM)
+	const retained = HashMap.Retain(r, function(_k: string, _v: number): boolean
 		return false
 	end)
+	assert(retained == r, "Retain 은 자기 자신을 돌려줌")
 	size(r, 0, "전부 지움")
 	HashMap.Retain(r, function(_k: string, _v: number): boolean
 		return true

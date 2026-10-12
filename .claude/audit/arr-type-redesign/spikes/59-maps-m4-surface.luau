@@ -6,7 +6,7 @@
 	약속(`V`), 합치기는 **같은 맵 타입**만, `GroupBy`/`CountBy`/`KeyBy` 는 키·원소 타입을 정확히 옮김,
 	`Retain`·`make`·`combine` 콜백은 키·값 타입으로 검사됨.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 14 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 16 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, HashSet, TreeMap, TreeSet, Common =
@@ -45,6 +45,8 @@ local popped = TreeMap.PopFirst(tm)
 local poppedValue: string? = if popped then popped.value else nil
 local item: number? = TreeSet.PopLast(ts)
 local higher: number? = TreeSet.HigherItem(ts, 3)
+local cleared: HashMap<string, number> = HashMap.Clear(HashMap.Clone(m)) -- 자기 자신(질문 AM)
+local clearedSet: stl.HashSet<number> = HashSet.Clear(HashSet.Clone(hs))
 local groups: HashMap<string, Arr<string>> = Arr.GroupBy(words, first)
 local counts: HashMap<string, number> = Arr.CountBy(words, first)
 local keyed: HashMap<string, string> = Arr.KeyBy(words, first)
@@ -56,6 +58,10 @@ end)
 local negLower: number = TreeMap.LowerKey(tm, 3)
 local negPopSet: number = TreeSet.PopFirst(ts)
 local negPopMap = TreeMap.PopLast(tm).key
+
+--[[ NEG — Clear 는 같은 타입의 자기 자신 ]]
+local negClear: HashMap<string, string> = HashMap.Clear(m)
+local negClearTree: stl.TreeMap<string, number> = TreeMap.Clear(tm)
 
 --[[ NEG — 합치기는 같은 맵 타입만 ]]
 local negMerge = HashMap.Merge(m, other)
@@ -97,6 +103,10 @@ return {
 	groups,
 	counts,
 	keyed,
+	cleared,
+	clearedSet,
+	negClear,
+	negClearTree,
 	negAcc,
 	negLower,
 	negPopSet,

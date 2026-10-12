@@ -268,6 +268,11 @@ do
 		FromRecords = HashMap.FromRecords({ { key = "x", value = 1 } }),
 		Adopt = HashMap.Adopt({ x = 1 }, 1),
 		Clone = HashMap.Clone(hm),
+		Clear = HashMap.Clear(HashMap.Clone(hm)),
+		Retain = HashMap.Retain(HashMap.Clone(hm), function(_k: string, _v: number): boolean
+			return true
+		end),
+		MergeInplace = HashMap.MergeInplace(HashMap.Clone(hm), hm),
 		Merge = HashMap.Merge(hm, hm),
 		GroupBy = Arr.GroupBy(a(), id),
 		CountBy = Arr.CountBy(a(), id),
@@ -283,6 +288,7 @@ do
 		Of = hs,
 		FromList = HashSet.FromList({ 1, 2 }),
 		Clone = HashSet.Clone(hs),
+		Clear = HashSet.Clear(HashSet.Clone(hs)),
 		Union = HashSet.Union(hs, hs),
 		Intersect = HashSet.Intersect(hs, hs),
 		Difference = HashSet.Difference(hs, hs),
@@ -298,6 +304,7 @@ do
 		FromRecords = TreeMap.FromRecords({ { key = 1, value = 1 } }, Common.compareNumber),
 		Adopt = TreeMap.Adopt({ { key = 1, value = 1 } }, 1, Common.compareNumber),
 		Clone = TreeMap.Clone(tm),
+		Clear = TreeMap.Clear(TreeMap.Clone(tm)),
 	}
 	for name, result in treeMapResults do
 		assert(stl.isTreeMap(result), `TreeMap.{name} 결과에 태그가 없습니다`)
@@ -308,6 +315,7 @@ do
 		New = TreeSet.New<<number>>(Common.compareNumber),
 		FromList = ts,
 		Clone = TreeSet.Clone(ts),
+		Clear = TreeSet.Clear(TreeSet.Clone(ts)),
 		Union = TreeSet.Union(ts, ts),
 		Intersect = TreeSet.Intersect(ts, ts),
 		Difference = TreeSet.Difference(ts, ts),
@@ -322,6 +330,7 @@ do
 		New = Heap.New(lt),
 		FromList = hp,
 		Clone = Heap.Clone(hp),
+		Clear = Heap.Clear(Heap.Clone(hp)),
 	}
 	for name, result in heapResults do
 		assert(stl.isHeap(result), `Heap.{name} 결과에 태그가 없습니다`)
