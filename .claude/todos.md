@@ -9,7 +9,8 @@
 |---|---|
 | **AA. Luau 새 솔버 결함을 업스트림에 보고할지**(초안 있음, 공개 저장소라 사용자 판단 — 10-02 보강) | `question.md` AA |
 | **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
-| **AL. 밤 작업 전체를 가로지른 리뷰의 일관성 다섯**(결함 0 — 맞출지 여쭘) | `question.md` AL |
+| **AM. `Clear` 자기 자신 반환·Collection 트레이트 시제품 결과 + ⚠️ 마커를 받아 쓰는 제네릭의 건전성 구멍(지금 저장소에서 재현) — 불변 마커를 넣을지** | `question.md` AM |
+| AL. 가로지른 리뷰의 일관성 다섯 — **1~4 답 받음(2026-10-12)**, 1 의 적용(Tree `Retain` 검사 걷기)만 확인 대기, 5 는 AM 으로 | `question.md` AL |
 | **AK. Deque 의 모양** — 특히 ⭐ 읽기 함수를 `DequeRead`(공변)로 넓힐지(리뷰어·저 모두 "넓히자"), 리스트 진입점이 Deque 를 받을지(지금 안 받음) | `question.md` AK |
 
 ## ☀️ 자고 일어나서 볼 것 (2026-10-07 밤 자율 작업)
@@ -124,6 +125,9 @@ C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
 
 ## 백로그 (당장 안 함)
 
+- **`Algorithm.Keys`/`Values` 의 테이블 하나 더** (2026-10-12 사용자) — `Common.denseList` 가 만들어 준 목록을 그대로
+  돌며 제자리에서 키·값으로 바꿔(캐스트) 돌려주면 테이블 하나를 아낍니다. 실측과 함께, 천천히.
+- **`TreeMap` 의 `GetOrInsert(With)`·`Accumulate`**(AL 4, 사용자: 필요해지면) — 지금은 HashMap 만.
 - **맵·셋에 `nil`·NaN 키** (2026-10-07 M4 리뷰 중 범위 밖으로 봄) — `HashMap.Set`·`GetOrInsert(With)`·
   `Accumulate`·`HashSet.Add` 에 `nil`·NaN 키를 넣으면 Lua 의 원시 에러(`table index is nil/NaN`)가 **라이브러리
   줄**을 가리킵니다(에러 규약 밖). 고치려면 핫 경로(`Set`)에 검사가 붙으니 실측과 함께. 아래 항목과 같이.

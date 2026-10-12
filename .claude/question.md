@@ -830,6 +830,10 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 
 ### AL. 모듈 사이 어긋남 — 맞출까
 
+> **[2026-10-12 사용자 답]** 1: *"이런 종류의 재진입이나 검사는 없는걸로. UB로 둔다."* 2: 동의. 3: *"의미 달라서
+> 그게 맞고."* 4: *"백로깅 상 두고 필요해지면 꺼내 넣어보자."* 5: Clear 트레이트 + 자기 자신 반환을 더 파 보기로 →
+> 아래 **AM**. (1 의 적용 — Tree `Retain` 의 크기 검사를 걷을지 — 는 확인 뒤.)
+
 | # | 어긋남 | 제 추천 |
 |---|---|---|
 | 1 | **콜백이 같은 컨테이너를 바꿀 때**: Tree 는 에러, Hash 는 지우기만 안전, **`Arr`(Retain·`*Inplace`·Map …)은 아무 말 없이 틀릴 수 있음**(`Retain` 콜백이 `PopBack` 하면 `Arr<number>` 에 구멍, 리뷰 재현) | **문서로 "약속 없음"**(conventions 에 지금 적어 둠). 검사를 넣으면 원소마다 `n` 읽기 — 핫 루프라 안 넣음 |
@@ -837,6 +841,55 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | 3 | **양끝 엿보기 이름이 넷**: `Arr.At(1)`/`At(-1)`, `Deque.Front`/`Back`, `TreeMap.First`/`Last`, `Heap.Peek` | 정렬 구조의 `First`/`Last`(Java `TreeMap`)와 덱의 `Front`/`Back`(Rust·C++)은 뜻이 달라 **그대로**. 갈아 끼우기를 원하시면 `Deque` 를 `First`/`Last` 로 |
 | 4 | `TreeMap` 에 `GetOrInsert(With)`·`Accumulate` 가 없음(HashMap 만) | **부르는 곳이 보이면**(정렬 맵에서 넣기는 O(n) 이라 쓰임이 다름) |
 | 5 | `Clear` 반환: `Arr`·`Deque` 는 자기 자신, 맵·셋·`Heap` 은 `()`(Heap 은 `Push` 는 자기 자신인데 `Clear` 는 `()` — 원래 있던 것) | 리스트 계열 = 자기 자신, 맵·셋 = `()` 로 **그대로**. `Heap.Clear` 만 자기 자신으로 맞출지는 취향 |
+
+### AM. `Clear` 를 트레이트로, 자기 자신을 돌려주게 — 시제품 결과 (2026-10-12, AL 5 에서)
+
+사본에서 시제품을 만들어 쟀습니다(저장소는 그대로). 사용자 생각: *"Clear trait 을 두고 … tree map 이든 hash map
+이든 clear 이후 재빌딩 하는게 가능해지는 느낌 … 타입도 공짜고(바깥에서 타이핑을 하니까) self 돌려줘도 되지 않나"*.
+
+**1. 자기 자신 반환은 공짜입니다.** 맵·셋·힙의 `Clear` 를 `(): ()` 에서 자기 자신으로 바꿔도 `src`·`tests` 타입 에러
+0건, 테스트 통과, 속도 같음(HashMap `Set`×2 + `Clear` 30만 번: 21.2ms → 21.1ms). 다른 타입으로 받으면 에러.
+
+**2. 트레이트로 올리는 것도 섭니다.** `Trait.Collection = { Len, Clear }`(Java `Collection` 결)를 일곱 컨테이너가
+구현하게 하고 `Algorithm.Clear(c)`·`Algorithm.Len(c)` 를 두었습니다. 타입은 세 모양을 비교:
+
+| 모양 | 같은 타입을 돌려줌 | 컨테이너 아닌 것을 막음 |
+|---|---|---|
+| **`<C>(c: C & CollectionMarker): C`** | ✅ `HashMap<string, number>` 그대로 | ✅ 리터럴·숫자 (Fut 처럼 토큰은 있고 구현이 없는 것은 런타임 에러) |
+| `<C>(c: C): C` | ✅ | ❌ 아무거나 통과 |
+| `(c: CollectionMarker): ()` | — | ✅ |
+
+비용: 트레이트 경유는 호출당 ~40ns(작은 맵에서 직접 호출의 1.6배 — perf 21절의 `IndexOf` 36ns 와 같은 크기).
+`todos` M6 메모("`MapOps` 엔 `Len`/`Has` 가 없음")도 이 트레이트가 받습니다.
+
+**3. ⚠️ 그런데 "비우고 다시 채우기" 를 쓰다가 기존 구멍을 찾았습니다 — 마커를 받아 *쓰는* 제네릭은 건전하지 않습니다.**
+트레이트 마커가 `read`(공변)라, 마커를 받아 `Set`/`Add` 하는 사용자 제네릭 함수에서 값 타입이 조용히 넓어집니다.
+**지금 저장소에서 재현**(10-06 트레이트 설계부터 — conventions 가 권하는 바로 그 모양):
+
+```lua
+local function put<K, V>(m: stl.MapMarker<K, V>, k: K, v: V)
+	const ops = Trait.ImplOf(Trait.Map, m)
+	if ops then ops.Set(m, k, v) end
+end
+put(hm, "x", "bad")              -- hm: HashMap<string, number> — 진단 0건
+local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
+```
+
+`HashSet<number>` 에 문자열을 넣는 `add<T>(s: SetMarker<T>, item: T)` 도 같습니다. AC 에서 본 것(공변으로 빌린
+참조가 쓰기를 얻음)과 같은 메커니즘이고, 라이브러리 자신의 `Algorithm` 은 읽기만 해서 지금은 사용자 코드에서만 납니다.
+
+**막는 법(시제품으로 확인)**: 쓰는 알고리즘용 **불변 마커**를 따로 둡니다 — 데이터 타입에 함수 타입 팬텀을 하나 더
+(`read __mapMut: (K, V) -> (K, V)` — 인자·반환 양쪽에 나와 불변, tbox 식), `MapMarkerMut<K, V>`/`SetMarkerMut<T>`
+가 그것을 요구. 넣으니 위 넷(`put` 값·키, `add`, `Refill` 을 감싼 사용자 제네릭)이 전부 에러, 읽는 알고리즘의
+공변(`Algorithm.Keys<<string | number, number>>(hm)`)은 그대로. (팬텀을 읽기·쓰기로 선언하는 길도 막긴 하는데
+사용자가 팬텀 필드에 쓰는 것이 통과해 버려 함수 타입 쪽이 낫습니다.)
+
+**제 추천**
+- (가) 일곱 컨테이너의 `Clear` 를 **자기 자신 반환으로 통일** — 공짜이고 AL 5 의 어긋남이 사라집니다.
+- (나) **불변 마커는 Clear 와 무관하게 넣기** — 지금도 있는 구멍이고, 쓰는 공용 알고리즘을 하나라도 두려면 먼저 필요.
+- (다) `Trait.Collection`(`Len`·`Clear`) + `Algorithm.Clear`/`Len`/`Refill` 은 **부르는 곳이 보이면** — 타입은 서지만
+  지금 부르는 코드가 없고, 넣으면 일곱 모듈이 트레이트 둘씩 등록합니다. 다만 M6(`Multiset`·`OrderedMap`)가 이
+  트레이트를 쓰게 될 가능성이 커서 "M6 때 같이" 가 자연스럽습니다.
 
 ---
 
