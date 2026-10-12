@@ -128,8 +128,8 @@ C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
 
 ## 백로그 (당장 안 함)
 
-- **`Algorithm.Keys`/`Values` 의 테이블 하나 더** (2026-10-12 사용자) — `Common.denseList` 가 만들어 준 목록을 그대로
-  돌며 제자리에서 키·값으로 바꿔(캐스트) 돌려주면 테이블 하나를 아낍니다. 실측과 함께, 천천히.
+- **`Algorithm.Keys`/`Values` 를 `Iter` 로** — 2026-10-12 에 `denseList` 사본을 걷어 한 번에 돌게 했지만(0.75~0.88배,
+  perf 25절) 남은 비용의 60~75% 는 `Records` 의 레코드 할당입니다. `MapOps` 에 `Iter` 가 생기면(M6, 질문 AM 다) 옮깁니다.
 - **`TreeMap` 의 `GetOrInsert(With)`·`Accumulate`**(AL 4, 사용자: 필요해지면) — 지금은 HashMap 만.
 - **맵·셋에 `nil`·NaN 키** (2026-10-07 M4 리뷰 중 범위 밖으로 봄) — `HashMap.Set`·`GetOrInsert(With)`·
   `Accumulate`·`HashSet.Add` 에 `nil`·NaN 키를 넣으면 Lua 의 원시 에러(`table index is nil/NaN`)가 **라이브러리

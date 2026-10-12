@@ -914,6 +914,58 @@ do
 	const myValues = stl.Algorithm.Values(mine)
 	assert(#myValues == 2 and myValues[1] == 1 and myValues[2] == 2, "Values(Records 가 Arr)")
 
+	-- 결과는 메타 키 없는 평범한 배열이고(2026-10-12 한 번에 도는 판), Records 가 돌려준 테이블과
+	-- 다른 테이블입니다 — 구현이 자기 내부 목록을 그대로 돌려줘도 그걸 키로 덮어쓰지 않습니다.
+	const shared: { stl.Record<string, number> } = { { key = "p", value = 7 }, { key = "q", value = 8 } }
+	const SharedType = stl.Trait.NewType("SharedMap")
+	stl.Trait.Impl(
+		stl.Trait.Map,
+		SharedType,
+		{
+			Get = function(_m: MyMap, _k: string): number?
+				return nil
+			end,
+			Set = function(_m: MyMap, _k: string, _v: number) end,
+			Records = function(_m: MyMap): { stl.Record<string, number> }
+				return shared
+			end,
+		} :: MapOps<MyMap, string, number>
+	)
+	const sharedMap: MyMap = { __type = SharedType } :: any
+	const sharedKeys = stl.Algorithm.Keys(sharedMap)
+	const sharedValues = stl.Algorithm.Values(sharedMap)
+	assert(
+		table.concat(sharedKeys, ",") == "p,q" and table.concat(sharedValues, ",") == "7,8",
+		"내부 목록을 돌려주는 구현"
+	)
+	assert((sharedKeys :: any) ~= shared and (sharedValues :: any) ~= shared, "새 테이블")
+	assert(shared[1].key == "p" and shared[2].value == 8, "Records 가 준 목록은 그대로")
+	for key in sharedKeys :: { [any]: any } do
+		assert(type(key) == "number", "결과에 숫자 아닌 키")
+	end
+	-- 앞·뒤 구멍(table.pack 모양)과 빈 맵
+	const packed = table.pack(nil, { key = "m", value = 5 }, nil) :: any
+	const PackedType = stl.Trait.NewType("PackedMap")
+	stl.Trait.Impl(
+		stl.Trait.Map,
+		PackedType,
+		{
+			Get = function(_m: MyMap, _k: string): number?
+				return nil
+			end,
+			Set = function(_m: MyMap, _k: string, _v: number) end,
+			Records = function(_m: MyMap): { stl.Record<string, number> }
+				return packed
+			end,
+		} :: MapOps<MyMap, string, number>
+	)
+	const packedMap: MyMap = { __type = PackedType } :: any
+	const packedKeys, packedValues = stl.Algorithm.Keys(packedMap), stl.Algorithm.Values(packedMap)
+	assert(#packedKeys == 1 and packedKeys[1] == "m" and (packedKeys :: any).n == nil, "앞·뒤 구멍 — Keys")
+	assert(#packedValues == 1 and packedValues[1] == 5, "앞·뒤 구멍 — Values")
+	const emptyHash = stl.HashMap.New<<string, number>>()
+	assert(#stl.Algorithm.Keys(emptyHash) == 0 and #stl.Algorithm.Values(emptyHash) == 0, "빈 맵")
+
 	-- SetOps 자리에 모듈을 담아 두고 쓰기
 	const hs = stl.HashSet.Of(1, 2)
 	const setOps: SetOps<stl.HashSet<number>, number> = stl.HashSet

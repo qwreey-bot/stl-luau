@@ -96,25 +96,39 @@ function exports.Count<E, I>(list: ListMarker<E, I>, pred: ((element: E) -> bool
 	return total
 end
 
--- `ops.Records` 의 결과는 `Common.denseList`(`n` 우선, 구멍은 건너뜀)로 읽습니다 —
--- 사용자 구현이 `Arr`·`table.pack` 결과를 돌려주면 `pairs` 로 돌던 예전 판이
+-- `ops.Records` 의 결과는 리스트 길이 규약(`Common.listLength` — `n` 우선)으로 읽고 구멍은
+-- 건너뜁니다 — 사용자 구현이 `Arr`·`table.pack` 결과를 돌려주면 `pairs` 로 돌던 예전 판이
 -- `n`·태그 키를 레코드로 읽어 터졌습니다(M0 7라운드).
+-- 한 번에 돕니다(2026-10-12, 사용자 지적): 예전엔 `Common.denseList` 로 조밀한 사본을 만든 뒤 다시
+-- 돌며 새 테이블에 옮겨, 테이블 하나와 순회 한 번이 더 들었습니다(0.75~0.88배 — perf 25절).
 function exports.Keys<K, V>(map: MapMarker<K, V>): { K }
 	const ops = implOf(Trait.Map, map, "Keys")
-	const records, count = Common.denseList(ops.Records(map))
-	const out: { K } = table.create(count)
-	for i = 1, count do
-		out[i] = records[i].key
+	const records: { Types.Record<K, V> } = ops.Records(map)
+	const len = Common.listLength(records)
+	const out: { K } = table.create(len)
+	local count = 0
+	for idx = 1, len do
+		const rec = records[idx]
+		if rec ~= nil then
+			count += 1
+			out[count] = rec.key
+		end
 	end
 	return out
 end
 
 function exports.Values<K, V>(map: MapMarker<K, V>): { V }
 	const ops = implOf(Trait.Map, map, "Values")
-	const records, count = Common.denseList(ops.Records(map))
-	const out: { V } = table.create(count)
-	for i = 1, count do
-		out[i] = records[i].value
+	const records: { Types.Record<K, V> } = ops.Records(map)
+	const len = Common.listLength(records)
+	const out: { V } = table.create(len)
+	local count = 0
+	for idx = 1, len do
+		const rec = records[idx]
+		if rec ~= nil then
+			count += 1
+			out[count] = rec.value
+		end
 	end
 	return out
 end
