@@ -95,5 +95,11 @@ local function unsoundPut<K, V>(m: stl.MapMarker<K, V>, k: K, v: V)
 	end
 end
 unsoundPut(HashMap.New<<string, number>>(), "x", "bad")
+-- 키를 넘기는 조회도(런타임: 비교자가 `attempt to compare string < number`)
+local function unsoundLookup<K, V>(m: stl.MapMarker<K, V>, k: K): V?
+	const ops = Trait.ImplOf(Trait.Map, m)
+	return if ops then ops.Get(m, k) else nil
+end
+local unsoundGot = unsoundLookup(tm, 1)
 
-return { keys, wideKeys, wideIndex, looked, negKeys, negLookup, borrow, canary }
+return { keys, wideKeys, wideIndex, looked, negKeys, negLookup, borrow, canary, unsoundGot }

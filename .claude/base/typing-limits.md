@@ -20,10 +20,14 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 원소·키·값을 추론합니다 — `Algorithm.Keys(m)` 가 타입 인자 없이 `{ K }`(`spikes/55`).
 > 아래 두 문단은 **함수 묶음을 직접 받는** 함수에 여전히 해당합니다.
 >
-> ⭐ **2026-10-12 쓰는 제네릭은 불변 마커(질문 AM, `spikes/61`)**: 읽기 마커는 `read` 필드라 공변 —
+> ⭐ **2026-10-12 키·위치·값을 넘기는 제네릭은 불변 마커(질문 AM, `spikes/61`)**: 읽기 마커는 `read` 필드라 공변 —
 > `put<K, V>(m: MapMarker<K, V>, k: K, v: V)` 가 `HashMap<string, number>` 에 `"bad"` 를 넣어도 진단
-> 0건이었습니다(`V` 가 `number | string` 으로 넓어지고 맵은 그 읽기 마커의 서브타입). 쓰는 제네릭은
-> `MapMarkerMut` 등(함수 타입 팬텀 `(K, V) -> (K, V)` — 인자·반환 양쪽이라 불변)을 받습니다. 팬텀을
+> 0건이었습니다(`V` 가 `number | string` 으로 넓어지고 맵은 그 읽기 마커의 서브타입). 쓰기만이 아닙니다 —
+> 키를 넘기는 조회(`lookup<K, V>(m: MapMarker<K, V>, k: K)`)도 `TreeMap<string, …>` 에 숫자 키를 0건으로
+> 넘겨 비교자가 터졌습니다. 타입 **변수**로 받은 키·위치·값을 컨테이너에 **넘기는** 제네릭은
+> `MapMarkerMut` 등(함수 타입 팬텀 `(K, V) -> (K, V)`, 리스트는 `(E, I) -> (E, I)` — 인자 자리가 불변을
+> 만듦)을 받습니다. `==` 비교만 하는 값(`Algorithm.IndexOf(list, item)`)과, 위치를 타입 변수로 두지 않은
+> 조회(`ListMarker<E, number>`, `idx: number`)는 넓어질 변수가 없어 읽기 마커로 건전합니다. 팬텀을
 > 읽기·쓰기 필드로 선언해도 불변이 되지만 `m.__mapKey = "x"` 같은 코드가 통과해 함수 타입 쪽을 골랐습니다.
 >
 > ⚠️ **함수 묶음 계약을 받는 사용자 제네릭 함수**(`put<C, V>(ops: MapOps<C,
