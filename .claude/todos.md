@@ -40,7 +40,10 @@
 같은 날 받은 답으로: `DequeRead`(AK), `HashMap.Iter` 를 `next` 그대로(0.54~0.73배, perf 27절), ⭐ **트레이트 넓히기**
 (AO — `Trait.Collection` 의 `Len`·`Clear`, `MapOps` 에 `Has`·`Remove`·`Iter`, `Algorithm.Len`/`Clear`, `Keys`/`Values` 를
 `Iter` 로 0.62~0.87배, `spikes/63`). AP 답으로 `HashMap.Iter` 가 안쪽 테이블을 돌려줌(순회 9배, `Algorithm.Keys` 가
-HashMap 에서 자기 `Keys` 와 같은 속도).
+HashMap 에서 자기 `Keys` 와 같은 속도). **리뷰 소진**(opus 하나씩 순차 — 백로그 수정분 1라운드 결함 0, 트레이트·
+`DequeRead`·`Iter` 네 라운드 1 → 2+경계 3 → 1 → 0: 결함은 전부 "계약 타입의 `any`" 와 "`Arr.FromIter` 가 테이블을
+받음" 두 자리에서 — 뒤쪽은 라운드마다 한 겹씩 깊어져(`"__type"` 키 → `__call` → 잠긴 메타테이블) 4라운드에 "현실적인
+입력에서 틀린 결과만 결함" 으로 경계를 줌).
 
 **M0(호출 모양을 네임스페이스 하나로, 질문 AB) 끝 — 리뷰 소진(여덟 라운드, 2026-10-01).**
 
