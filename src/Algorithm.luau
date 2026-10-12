@@ -100,7 +100,7 @@ end
 -- 건너뜁니다 — 사용자 구현이 `Arr`·`table.pack` 결과를 돌려주면 `pairs` 로 돌던 예전 판이
 -- `n`·태그 키를 레코드로 읽어 터졌습니다(M0 7라운드).
 -- 한 번에 돕니다(2026-10-12, 사용자 지적): 예전엔 `Common.denseList` 로 조밀한 사본을 만든 뒤 다시
--- 돌며 새 테이블에 옮겨, 테이블 하나와 순회 한 번이 더 들었습니다(0.75~0.88배 — perf 25절).
+-- 돌며 새 테이블에 옮겨, 테이블 하나와 순회 한 번이 더 들었습니다(0.78~0.88배 — perf 25절).
 function exports.Keys<K, V>(map: MapMarker<K, V>): { K }
 	const ops = implOf(Trait.Map, map, "Keys")
 	const records: { Types.Record<K, V> } = ops.Records(map)

@@ -83,7 +83,7 @@ end
 --
 -- `nil` 도 같습니다(2026-10-12): **빈 맵**에서는 비교가 한 번도 일어나지 않아 `Set(m, nil, v)` 가
 -- 조용히 들어갔고, 그 뒤 모든 연산이 비교자 안(라이브러리 줄)에서 죽었습니다. `nil` 을 아는
--- 비교자를 주면 담을 수는 있었겠지만 `FirstKey`·`FloorKey` … 의 `K?` 가 "없음" 과 구분되지 않고
+-- 비교자를 주면 담을 수는 있었겠지만 `FloorKey`·`LowerKey` … 의 `K?` 가 "없음" 과 구분되지 않고
 -- `HashMap` 도 못 담습니다. 타입 없는 데이터(`t.id` 가 런타임에 `nil`)가 들어오는 길이라 막습니다.
 const function unusable(key: any): boolean
 	return key == nil or key ~= key

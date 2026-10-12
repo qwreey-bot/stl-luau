@@ -357,6 +357,13 @@ do
 
 	-- 조회·삭제는 "없음"(HashMap.Get(m, nil) 과 같음) — 비교자를 부르지 않음
 	assert(TreeMap.Get(empty, nilKey) == nil and not TreeMap.Has(empty, nilKey), "nil 로 조회")
+	-- `GetOr` 도(리뷰 1라운드 — 검사를 지워도 통과했음: nil 은 비교자에서 죽고, NaN 은 compareNumber 가
+	-- 0 을 돌려줘 **첫 키의 값**이 나옴). 빼기 비교자 맵에서는 우연히 맞아 compareNumber 맵으로 봅니다.
+	assert(TreeMap.GetOr(empty, nilKey, "fb") == "fb", "GetOr nil 은 fallback")
+	assert(TreeMap.GetOr(empty, 0 / 0, "fb") == "fb", "GetOr NaN 은 fallback")
+	assert(TreeMap.GetOr(empty, 3, "fb") == "three", "GetOr 있는 키")
+	assert(TreeMap.FloorKey(empty, 0 / 0) == nil and TreeMap.CeilingKey(empty, 0 / 0) == nil, "Floor/Ceiling NaN")
+	assert(TreeMap.Get(empty, 0 / 0) == nil and not TreeMap.Has(empty, 0 / 0), "compareNumber 맵의 NaN 조회")
 	assert(TreeMap.Remove(empty, nilKey) == nil and TreeMap.Len(empty) == 2, "nil 로 삭제")
 	assert(TreeMap.FloorKey(empty, nilKey) == nil and TreeMap.CeilingKey(empty, nilKey) == nil, "Floor/Ceiling nil")
 	assert(TreeMap.LowerKey(empty, nilKey) == nil and TreeMap.HigherKey(empty, nilKey) == nil, "Lower/Higher nil")

@@ -939,7 +939,7 @@ local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
 | `Get`·`Has`·`Remove`·`Floor`·`Ceiling`·`Lower`·`Higher`·`Range…` | — | "없음"(비교자를 부르지 않음) — `HashMap.Get(m, nil)` 과 같음 |
 | `TreeSet.FromList` 의 `nil` | 구멍이라 건너뜀(리스트 진입점 규약 — 그대로) | — |
 
-잃는 것: `nil` 을 아는 비교자를 주고 `TreeMap<K?, V>` 에 `nil` 키를 담는 쓰임(전엔 우연히 됐음). `FirstKey`·
+잃는 것: `nil` 을 아는 비교자를 주고 `TreeMap<K?, V>` 에 `nil` 키를 담는 쓰임(전엔 우연히 됐음). `LowerKey`·
 `FloorKey` 의 `K?` 가 "없음" 과 구분되지 않고 `HashMap` 도 못 담아 막는 쪽으로 정했습니다. 비용은 잡음 안(perf 26절).
 `Heap` 은 그대로 둡니다 — 비교자가 사용자 것이라 에러가 사용자 코드에서 나고, `Deque` 처럼 `nil` 을 아는 `less` 로
 `Heap<T?>` 를 쓸 수 있습니다.

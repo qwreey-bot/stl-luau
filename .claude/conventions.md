@@ -183,7 +183,7 @@
   `HashMap<string, …>` 에서 `Set("size", v)` 가 그걸 덮어씁니다.
 
 - **맵·셋의 `nil`·NaN 키**(2026-10-12 전수 점검, 질문 AN): **넣기는 에러, 조회·삭제는 "없음"**. 트리 계열은
-  `Common.raise`(`TreeMap: nil key`, `TreeSet: NaN item` — 사용자 줄)로, 조회는 비교자를 부르지 않고 `nil`/`false`.
+  `Common.raise`(`TreeMap: nil key`, `TreeSet: NaN item` — 사용자 줄)로, 조회는 비교자를 부르지 않고 "없음"(`nil`/`false`, `GetOr` 는 fallback, 구간은 빈 목록).
   빈 트리에서는 비교가 일어나지 않아 `nil` 키가 조용히 들어가고 나중에 다른 곳에서 터졌습니다 — 정렬 구조에 키를
   받는 함수를 더하면 **비교 전에** 거르세요. 해시 계열은 Lua 의 원시 에러(`table index is nil`)가 라이브러리 줄을
   가리키는 채로 둡니다(**에러 규약의 알려진 예외 — 사용자 결정**: 검사는 `Set` 에 1.09~1.10배라 넣지 않음). 리스트 진입점
