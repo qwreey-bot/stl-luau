@@ -74,12 +74,16 @@ const function New<I>(name: string, required: { string }?): Trait<I>
 		if type(required) ~= "table" then
 			Common.raise(`Trait: New needs a list of required function names, got {typeof(required)}`)
 		end
+		-- 사본을 손으로 만듭니다 — 넘긴 목록을 나중에 바꿔도 트레이트는 그대로이고, `table.clone` 은
+		-- 보호된 메타테이블을 단 목록에서 라이브러리 줄 에러였습니다(리뷰).
+		const names: { string } = {}
 		for _, fnName in required do
 			if type(fnName) ~= "string" then
 				Common.raise(`Trait: New needs a list of required function names, got a {typeof(fnName)} in it`)
 			end
+			table.insert(names, fnName)
 		end
-		required = table.freeze(table.clone(required))
+		required = table.freeze(names)
 	end
 	-- `impls` 는 **약한 키** — 버린 사용자 토큰은 등록했어도 수거됩니다(아무도 그 토큰을 쥐지
 	-- 않으면 조회될 일도 없음). 내장 토큰은 `Trait.Types` 가 붙잡습니다. ⚠️ Luau 의 약한 키는

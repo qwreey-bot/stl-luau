@@ -32,7 +32,7 @@
 **2026-10-12 — AL·AM 반영**: 콜백이 같은 컨테이너를 바꾸는 것은 **UB**(Tree `Retain` 검사 걷음), `Clear`·
 `Retain`·`MergeInplace` 가 **자기 자신 반환**(일곱 컨테이너 같게), ⭐ **쓰는 제네릭용 불변 마커**
 (`MapMarkerMut` 등 — 읽기 마커로 쓰면 `HashMap<string, number>` 에 문자열이 0건으로 들어가던 10-06
-트레이트의 구멍, `spikes/61`). 남은 확인: AJ·AK(특히 `DequeRead`), AA.
+트레이트의 구멍, `spikes/61`). 남은 확인(그날 오전 기준 — 오후에 `DequeRead`·AA 는 끝냄): AJ·AK 의 나머지.
 
 **2026-10-12 오후 — 백로그 둘**: `Algorithm.Keys`/`Values` 를 한 번에 돌게(0.78~0.88배, perf 25절), 맵·셋 `nil`·NaN 키
 전수 점검 — ⚠️ 빈 `TreeMap`/`TreeSet` 에 `nil` 키가 조용히 들어가 이후 연산이 라이브러리 줄에서 죽던 것을 막음
@@ -120,7 +120,7 @@ local f = nested:Flat<<number>>()
 | ~~M2~~ | **✅ 2026-09-30** 정렬 가족(`spikes/51`, perf 15-2) — `StableSort`(+Inplace), `SortBy`(+Inplace, 키 한 번 계산), `NthElement`, `PartialSort`(+Inplace), `MergeSorted`, `IsSorted` 노출 | 사용자가 짚은 것. 실측 근거가 가장 확실(perf 15절) |
 | ~~M3~~ | **✅ 2026-10-07** 리뷰 1라운드 소진(결함 0) — `Arr` 빈 조각 — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | ~~M4~~ | **✅ 2026-10-07** 리뷰 소진(3라운드 — 결함 1 → 0 → 0, 2·3라운드는 테스트 공백·성능만). 모양은 질문 AJ(제가 정함, **확인 대기**) **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
-| ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(**확인 대기** — `DequeRead` 공변 여부 포함) **`Deque`**(링 버퍼) — 리스트 진입점이 Deque 를 받을지는 AK 에서 잠정 "안 받음(`ToArr`)", `Algorithm` 은 받음 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
+| ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(`DequeRead` 는 10-12 에 넣음, 나머지 확인 대기) **`Deque`**(링 버퍼) — 리스트 진입점이 Deque 를 받을지는 AK 에서 잠정 "안 받음(`ToArr`)", `Algorithm` 은 받음 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
 | **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음. 맵 종류를 모르고 다루는 표면(`Trait.Collection`, `MapOps` 여섯)은 **2026-10-12 에 앞당겨 넣음**(질문 AO) — 새 컨테이너는 `Collection` 을 구현하고 `__collectionMut` 팬텀을 넣을 것 | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |

@@ -8,7 +8,8 @@
 	  빌린 참조가 진단 0건으로 지워졌습니다(AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결).
 	- `Algorithm.Len` 은 읽기라 빌린 참조도 받고, 토큰 없는 것(리터럴·숫자·`Optional`)은 막습니다.
 	- 모듈 테이블이 `CollectionOps`·넓힌 `MapOps`(`Has`·`Remove`·`Iter`)를 만족하고, 함수가 빠진 구현·다른
-	  종류의 모듈은 그 타입 자리에 못 들어갑니다. **모듈의 `Iter` 를 직접** 돌면 루프 변수는 `K`, `V`.
+	  종류의 모듈은 그 타입 자리에 못 들어갑니다(리터럴이든 모듈이든). **모듈의 `Iter` 를 직접** 돌면 루프
+	  변수는 `K`, `V`.
 
 	⚠️ 알려진 경계(맨 아래, 0건):
 	- `Len` 의 마커는 토큰만 봐서 토큰은 있지만 컬렉션이 아닌 `Fut` 이 타입을 지납니다 — 런타임에
@@ -17,7 +18,7 @@
 	  "테이블 또는 함수" 유니온이 되면서(2026-10-12, 질문 AP 1) 새 솔버가 유니온을 `for … in` 에 넣으면 변수
 	  타입을 잃습니다. 루프 변수에 주석을 달거나(`for key: K, value: V in ops.Iter(m)`) 모듈의 `Iter` 를 직접.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 16 줄 · 17건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 20 줄 · 21건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
 ]]
 local stl = require("../../../../src")
 local Algorithm, Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Heap, Common =
@@ -100,12 +101,31 @@ end
 --[[ NEG — 컨테이너가 아닌 것 ]]
 Algorithm.Clear({ n = 0 })
 Algorithm.Clear(5)
+-- 팬텀은 있고 **토큰만 없는** 꼴 — 이 줄만 토큰 때문에 에러(리뷰: 위 둘은 팬텀 때문에도 에러라
+-- `CollectionMarkerMut` 에서 토큰을 빼도 통과했음 — spikes/60 의 같은 교훈)
+Algorithm.Clear({ __collectionMut = true :: true })
 local negLenLiteral = Algorithm.Len({ size = 0 })
 local negLenOptional = Algorithm.Len(stl.Optional.Present(1))
 
 --[[ NEG — 계약 ]]
 local negColOps: stl.CollectionOps<stl.Arr<number>> = HashMap
-local negMapOps: stl.MapOps<stl.HashSet<number>, number, number> = HashSet
+-- 맵이 아닌 모듈·함수가 빠진 **모듈**(리터럴 아님)도 계약 자리에 못 들어감. 키·값 타입은 그 모듈에
+-- 맞게 적어 "빠진 함수" 만 이유가 되게(리뷰: `Iter` 의 타입에 `(...any) -> …` 가 있던 때는 `Iter` 필드만
+-- 있으면 **나머지가 없어도 0건**이었고, 예전 줄은 `Remove` 반환 타입이 우연히 어긋나서 에러였음)
+local negMapOps: stl.MapOps<stl.HashSet<number>, number, boolean> = HashSet
+local negMapOpsList: stl.MapOps<stl.Arr<number>, number, number> = Arr
+local noRemove = {
+	Get = HashMap.Get,
+	Set = HashMap.Set,
+	Has = HashMap.Has,
+	Records = HashMap.Records,
+	Iter = HashMap.Iter,
+}
+local negNoRemove: stl.MapOps<stl.HashMap<string, number>, string, number> = noRemove
+local function putVia<C, K, V>(ops: stl.MapOps<C, K, V>, map: C, key: K, value: V)
+	ops.Set(map, key, value)
+end
+putVia<<stl.HashSet<number>, number, boolean>>(HashSet, hs, 3, true)
 local negPartial: stl.MapOps<stl.HashMap<string, number>, string, number> = {
 	Get = HashMap.Get,
 	Set = HashMap.Set,
@@ -151,6 +171,8 @@ return {
 	negLenOptional,
 	negColOps,
 	negMapOps,
+	negMapOpsList,
+	negNoRemove,
 	negPartial,
 	negRemoved,
 	canary,

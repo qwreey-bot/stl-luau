@@ -62,7 +62,7 @@
     을 주면 `Impl` 이 등록 때 빠진 함수를 사용자 줄 에러로 알립니다.
     값의 토큰은 `Trait.TokenOf(v)` — `type…` 이름은 Lua 내장 `type`/`typeof` 와 겹쳐 피합니다
     (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewType`, `Trait.Types`)은
-    트레이트를 구현하지 않는 종류(`Heap`·`Fut`)도 쓰는 바탕이지만 `Trait` 밑에 둡니다.
+    트레이트를 구현하지 않는 종류(`Fut` — `Heap` 은 `Collection` 만 구현)도 쓰는 바탕이지만 `Trait` 밑에 둡니다.
     모듈을 불러올 때 `Trait.Impl(Trait.List, TOKEN, ArrModule)` 한 줄. 한 종류가 여러
     트레이트를, 바깥 트레이트를 우리 종류에, 바깥 종류를 우리 트레이트에 — 이름이 아니라
     정체성(테이블)으로 구분합니다.

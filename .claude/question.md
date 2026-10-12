@@ -836,7 +836,7 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | 표현 | **링 버퍼**(perf 24절 — 길이 유지 큐에서 두 인덱스보다 3배 빠름). 길이 필드는 `n` 이 아니라 **`size`**(물리 칸이 감겨 있어 `{n, [1..n]}` 로 읽히면 틀림) | — |
 | 이름 | `PushBack`/`PushFront`/`PopBack`/`PopFront`(Arr 와 같음), 엿보기 **`Front`/`Back`**(Rust·C++), `At`(Arr 규약), `ToArr` | Java `peekFirst`/`peekLast` |
 | 반환 | 넣기·`Clear` 는 자기 자신(`Arr` 처럼), 꺼내기는 `T?`(비면 `nil` — 질문 AI) | — |
-| 읽기 함수의 공변(`ArrRead` 같은 `DequeRead`) | **안 둠** — 전부 `DequeData`(불변). 맵·셋과 같음 | 질문 AC 를 Deque 에도 넓히기. ⚠️ **리뷰어 의견(1라운드): 넓히자** — `Deque<number>` 를 `Deque<number?>` 받는 함수에 못 넘김(재현). AC 의 근거(읽기는 원소에 공변)가 맵·셋보다 같은 리스트인 Deque 에 더 직접 들어맞고, 사용자 코드가 없는 지금이 가장 쌈. 저도 동의 쪽입니다 — 정해 주시면 적용(`At`/`Front`/`Back`/`Len`/`Empty`/`Iter`/`ToArr`/`Clone`/계약 함수) |
+| 읽기 함수의 공변(`ArrRead` 같은 `DequeRead`) | ~~안 둠 — 전부 `DequeData`(불변). 맵·셋과 같음~~ → **[2026-10-12 사용자 결정] 둠**(위 결정문) | 질문 AC 를 Deque 에도 넓히기. ⚠️ **리뷰어 의견(1라운드): 넓히자** — `Deque<number>` 를 `Deque<number?>` 받는 함수에 못 넘김(재현). AC 의 근거(읽기는 원소에 공변)가 맵·셋보다 같은 리스트인 Deque 에 더 직접 들어맞고, 사용자 코드가 없는 지금이 가장 쌈. 저도 동의 쪽입니다 — 정해 주시면 적용(`At`/`Front`/`Back`/`Len`/`Empty`/`Iter`/`ToArr`/`Clone`/계약 함수) |
 | 칸 수 | `New(capacity?)`(최소 4, `Arr` 길이 정책), 두 배로 늘리고 **줄이지 않음**(Rust 와 같음 — `Clone` 이 원소 수에 맞춤) | `ShrinkToFit` |
 | 안 넣은 것 | 위치에 쓰기(`SetAt`), `Insert`/`Remove`(가운데), `Rotate`, 스트림(`Map` 등) — 부르는 곳이 보이면 | — |
 
@@ -967,7 +967,7 @@ local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
 |---|---|---|
 | **`Trait.Collection`** = `CollectionOps<C>` `{ Len, Clear }` | 일곱 컨테이너 전부(`Arr`·`Deque`·`HashMap`·`TreeMap`·`HashSet`·`TreeSet`·`Heap`) 구현. `Algorithm.Len(c)`, `Algorithm.Clear(c)`(넣은 타입 그대로 반환 — `<C>(c: C & CollectionMarkerMut): C`) | `Empty` 도 넣기(= `Len == 0` 이라 뺌) |
 | ⚠️ **`Clear` 의 마커** | **`CollectionMarkerMut`** — 데이터 타입에 팬텀 `read __collectionMut: true` 하나 더. 시제품(AM)의 "토큰만 요구" 로는 **읽기 전용으로 빌린 `ArrRead`·`DequeRead` 가 진단 0건으로 지워졌습니다**(재현 — AC 의 구멍과 같은 결) | — |
-| `Len` 의 마커 | **토큰만**(`CollectionMarker`). 빌린 참조도 받음. `Fut` 처럼 토큰은 있고 컬렉션이 아닌 것은 타입을 지나 런타임 에러(사용자 줄) | 읽기 팬텀(`__collection`)을 열 타입에 하나씩 더 두면 정적으로 막힘 — 에러 메시지가 길어지는 값을 못 한다고 봄 |
+| `Len` 의 마커 | **토큰만**(`CollectionMarker`). 빌린 참조도 받음. `Fut` 처럼 토큰은 있고 컬렉션이 아닌 것은 타입을 지나 런타임 에러(사용자 줄) | 읽기 팬텀(`__collection`)을 열 타입(데이터 타입 일곱 + `ArrRead`·`ArrConsumed`·`DequeRead`)에 하나씩 더 두면 정적으로 막힘 — 에러 메시지가 길어지는 값을 못 한다고 봄 |
 | **`MapOps`** 에 `Has`·`Remove`·`Iter` | 여섯(`Get`·`Set`·`Has`·`Remove`·`Records`·`Iter`). `Iter` 의 타입은 `(map) -> ((...any) -> (K, V), ...any)` — 함수 하나(TreeMap)든 삼중항(HashMap)이든 `for k, v in ops.Iter(m)` 로 돎 | `Records` 를 빼고 `Iter` 에서 유도 — 사용자 구현이 다섯으로 줄지만 지금 쓰는 곳이 있어 둠 |
 | `Algorithm.Keys`/`Values` | **`ops.Iter` 로**(레코드 할당 없음, 0.62~0.87배 — perf 28절). 크기는 `Collection` 도 구현하면 미리 잡음 | — |
 | **`Trait.New(name, required?)`** | 구현이 꼭 가져야 할 함수 이름 목록(선택). `Trait.Impl` 이 **등록할 때** 확인해 사용자 줄 에러(`MyMap is missing Iter for Map`). 계약을 넓히자 예전 구현(셋만 있던 것)이 알고리즘 안에서 `attempt to call a nil value` 로 죽어서 | 검사 없음(타입 쓰는 코드는 정적으로 잡힘) |

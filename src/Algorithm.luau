@@ -108,7 +108,15 @@ end
 -- **순회 함수**를 돌려주는 구현(`TreeMap`)에서는 원소마다 호출이 붙어 자기 `Keys` 의 4배쯤입니다.
 const function sizedList(map: any): { any }
 	const sized = Trait.Collection.impls[rawget(map, "__type")]
-	return if sized then table.create(sized.Len(map)) else {}
+	if sized then
+		-- 사용자 구현의 `Len` 은 힌트로만 — 음수·NaN·너무 큰 값·숫자 아닌 값이면 `table.create` 가
+		-- 라이브러리 줄에서 죽었습니다(리뷰). 그럴 땐 미리 잡지 않습니다.
+		const len = sized.Len(map)
+		if type(len) == "number" and len >= 0 and len <= 2 ^ 26 then
+			return table.create(len)
+		end
+	end
+	return {}
 end
 
 function exports.Keys<K, V>(map: MapMarker<K, V>): { K }

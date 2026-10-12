@@ -146,8 +146,8 @@ export type MapMarkerMut<K, V> = {
 export type SetMarkerMut<T> = { read __type: Token<any>, read __setItem: T, read __setMut: (T) -> T }
 
 -- 컬렉션(`Trait.Collection`). 읽는 쪽(`Algorithm.Len`)은 **타입 토큰만** 요구합니다 — 토큰은 있지만
--- 컬렉션이 아닌 것(`Fut`)은 타입을 지나 런타임에 `Common.raise` 로 걸립니다(마커 필드를 일곱 타입에 하나
--- 더 두는 값을 못 해서).
+-- 컬렉션이 아닌 것(`Fut`)은 타입을 지나 런타임에 `Common.raise` 로 걸립니다(읽기 마커 필드를 데이터
+-- 타입 일곱과 읽기 타입 셋에 하나씩 더 두는 값을 못 해서).
 export type CollectionMarker = { read __type: Token<any> }
 -- **바꾸는 쪽**(`Algorithm.Clear`)은 이 팬텀을 요구합니다 — 원소 타입이 흘러들지 않아 불변일 필요는
 -- 없지만, **읽기 전용으로 빌린 참조**(`ArrRead`·`DequeRead`)가 `Clear` 를 얻으면 안 됩니다(토큰만 요구하니

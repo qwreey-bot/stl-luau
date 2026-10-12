@@ -1373,6 +1373,157 @@ do
 end
 print("PASS")
 
+print(
+	"=== 11. 트레이트 넓히기 리뷰 1라운드 — 필수 함수 목록 전수, 사용자 컬렉션 (2026-10-12) ==="
+)
+do
+	const T = stl.Trait
+	const A = stl.Algorithm
+	-- ⭐ 내장 트레이트의 필수 목록을 **전수로**: 함수를 하나씩 뺀 구현은 등록할 때 그 이름으로 거절.
+	-- (리뷰: 목록에서 항목을 빼도 대부분 통과했음 — `Iter` 를 뺀 사본에서는 `Iter` 없는 맵이 등록되고
+	-- `Algorithm.Keys` 가 라이브러리 줄에서 `attempt to call a nil value`)
+	const builtins: { { trait: any, name: string, full: { [string]: any } } } = {
+		{
+			trait = T.List,
+			name = "List",
+			full = {
+				Get = stl.Arr.Get,
+				FirstIndex = stl.Arr.FirstIndex,
+				LastIndex = stl.Arr.LastIndex,
+				NextIndex = stl.Arr.NextIndex,
+				PrevIndex = stl.Arr.PrevIndex,
+			},
+		},
+		{
+			trait = T.Map,
+			name = "Map",
+			full = {
+				Get = stl.HashMap.Get,
+				Set = stl.HashMap.Set,
+				Has = stl.HashMap.Has,
+				Remove = stl.HashMap.Remove,
+				Records = stl.HashMap.Records,
+				Iter = stl.HashMap.Iter,
+			},
+		},
+		{
+			trait = T.Set,
+			name = "Set",
+			full = {
+				Add = stl.HashSet.Add,
+				Has = stl.HashSet.Has,
+				Remove = stl.HashSet.Remove,
+				Items = stl.HashSet.Items,
+			},
+		},
+		{ trait = T.Collection, name = "Collection", full = { Len = stl.Arr.Len, Clear = stl.Arr.Clear } },
+	}
+	local where = 0
+	for _, builtin in builtins do
+		local fnCount = 0
+		for missing in builtin.full do
+			fnCount += 1
+			const partial = table.clone(builtin.full)
+			partial[missing] = nil
+			const Kind = T.NewType("Partial")
+			const ok, err = pcall(function()
+				where = debug.info(1, "l") + 1
+				T.Impl(builtin.trait, Kind, partial)
+			end)
+			const want = `Partial is missing {missing} for {builtin.name}`
+			assert(
+				not ok and string.find(tostring(err), want, 1, true),
+				`{builtin.name} 에서 {missing} 누락: {err}`
+			)
+			assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
+			assert(builtin.trait.impls[Kind] == nil, "거절된 등록은 남지 않음")
+		end
+		-- 목록이 계약의 함수 수와 같음(더 많이 요구하지도 않음) — 다 갖춘 구현은 등록됨
+		assert(#builtin.trait.required == fnCount, `{builtin.name} 의 필수 목록 길이`)
+		assert(table.isfrozen(builtin.trait.required), `{builtin.name} 의 필수 목록은 얼어 있음`)
+		T.Impl(builtin.trait, T.NewType("Full"), table.clone(builtin.full))
+	end
+
+	-- ⭐ 사용자 컬렉션(가방) — Len·Clear·(맵이면) 미리 잡기 경로를 사용자 구현으로
+	type Bag = { read __type: stl.TraitToken<string>, read __collectionMut: true, items: { number } }
+	const BagType = T.NewType("Bag")
+	T.Impl(
+		T.Collection,
+		BagType,
+		{
+			Len = function(bag: Bag): number
+				return #bag.items
+			end,
+			-- **아무것도 돌려주지 않는** Clear — `Algorithm.Clear` 는 그래도 넣은 것을 돌려줘야 함
+			-- (리뷰: 구현의 반환을 그대로 돌려주게 바꿔도 통과했음)
+			Clear = function(bag: Bag)
+				table.clear(bag.items)
+			end,
+		} :: any
+	)
+	const bag: Bag = { __type = BagType, items = { 10, 20, 30 } } :: any
+	assert(A.Len(bag) == 3, "사용자 컬렉션의 Len")
+	const clearedBag = A.Clear(bag)
+	assert(
+		rawequal(clearedBag, bag) and A.Len(bag) == 0,
+		"구현이 안 돌려줘도 Clear 는 넣은 것을 돌려줌"
+	)
+
+	-- 맵이면서 컬렉션인 사용자 구현: `Len` 이 엉터리여도(음수·NaN·너무 큼·숫자 아님) Keys/Values 는 됨
+	-- (리뷰: `table.create` 가 라이브러리 줄에서 죽었음). 실제보다 크거나 작아도 결과는 같음.
+	type Sized = { read __type: stl.TraitToken<string>, read __mapKey: string, read __mapValue: number, len: any }
+	const SizedType = T.NewType("SizedMap")
+	const pairsOf = { a = 10, b = 20, c = 30 }
+	T.Impl(
+		T.Map,
+		SizedType,
+		{
+			Get = function(_m: Sized, k: string): number?
+				return pairsOf[k]
+			end,
+			Set = function() end,
+			Has = function(_m: Sized, k: string): boolean
+				return pairsOf[k] ~= nil
+			end,
+			Remove = function(): number?
+				return nil
+			end,
+			Records = function(): { stl.Record<string, number> }
+				return {}
+			end,
+			Iter = function()
+				return pairsOf
+			end,
+		} :: any
+	)
+	T.Impl(
+		T.Collection,
+		SizedType,
+		{
+			Len = function(m: Sized): any
+				return m.len
+			end,
+			Clear = function(m: Sized)
+				return m
+			end,
+		} :: any
+	)
+	for _, len in { 3, 0, 1, 1000, -1, 0 / 0, math.huge, 2 ^ 40, "three", false } :: { any } do
+		const sized: Sized = { __type = SizedType, len = len } :: any
+		const keys = A.Keys(sized)
+		const values = A.Values(sized)
+		table.sort(keys)
+		table.sort(values)
+		assert(table.concat(keys, ",") == "a,b,c", `Len 이 {tostring(len)} 일 때 Keys: {table.concat(keys, ",")}`)
+		assert(table.concat(values, ",") == "10,20,30", `Len 이 {tostring(len)} 일 때 Values`)
+	end
+	-- 보호된 메타테이블을 단 필수 목록도 사본으로 읽음
+	const guarded = setmetatable({ "Show" }, { __metatable = "locked" })
+	const Guarded = T.New<<{ read Show: (any) -> string }>>("Guarded", guarded :: any)
+	assert(Guarded.required ~= nil and Guarded.required[1] == "Show", "보호된 목록")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (계약) ===")
 

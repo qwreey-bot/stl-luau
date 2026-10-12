@@ -9,7 +9,7 @@
 	좁은 덱을 넓은 읽기 자리에 넘길 수 있고, 그렇게 빌린 참조로는 **쓰지 못합니다**(넣기·꺼내기·
 	`Clear`·쓰는 제네릭). `ToArr`·`Clone` 은 새 컨테이너라 넓은 타입으로 받아도 건전합니다.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 26 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 29 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Deque, Arr = stl.Deque, stl.Arr
@@ -83,6 +83,28 @@ local wideIndex: number? = stl.Algorithm.IndexOf<<number?, number>>(d, nil)
 for _, v in Deque.Iter<<number?>>(d) do
 	local _wide: number? = v
 end
+-- 읽기 함수 **열셋 전부**를 빌린 참조로(리뷰: 일곱을 `DequeData` 로 되돌려도 통과했음)
+local function allReads(list: stl.DequeRead<Base>)
+	const first = Deque.FirstIndex(list)
+	const last = Deque.LastIndex(list)
+	const item: Base? = Deque.Get(list, 1)
+	const nextIdx: number? = Deque.NextIndex(list, 1)
+	const prevIdx: number? = Deque.PrevIndex(list, 2)
+	const front: Base? = Deque.Front(list)
+	const back: Base? = Deque.Back(list)
+	const at: Base? = Deque.At(list, -1)
+	const len: number = Deque.Len(list)
+	const empty: boolean = Deque.Empty(list)
+	const asArrBase: stl.Arr<Base> = Deque.ToArr(list)
+	const cloned: Deque<Base> = Deque.Clone(list)
+	for _, each in Deque.Iter(list) do
+		local _each: Base = each
+	end
+	return first, last, item, nextIdx, prevIdx, front, back, at, len, empty, asArrBase, cloned
+end
+allReads(derived)
+-- 모듈이 빌린 참조용 리스트 계약을 만족
+local readOps: stl.ListOps<stl.DequeRead<Base>, Base, number> = Deque
 
 --[[ NEG — 빌린 읽기 참조로는 못 씀 ]]
 local function borrowed(list: stl.DequeRead<number?>, base: stl.DequeRead<Base>)
@@ -93,6 +115,11 @@ local function borrowed(list: stl.DequeRead<number?>, base: stl.DequeRead<Base>)
 	Deque.Clear(list)
 	list.size = 0
 	list[1] = nil
+	list.head = 1
+	list.cap = 0
+	-- `Iter` 가 돌려주는 **상태**로도 쓰기를 못 얻음(리뷰: 반환 상태를 `DequeData` 로 바꾼 사본이 통과했음)
+	const _, state = Deque.Iter(list)
+	Deque.PushBack(state, nil)
 end
 -- 쓰는 제네릭(불변 마커)에도 못 들어감 — 읽는 알고리즘(`IndexOf`)은 받음
 local function touch<E>(_list: stl.ListMarkerMut<E, number>, _item: E) end
@@ -134,6 +161,8 @@ return {
 	wideIndex,
 	borrowed,
 	borrowedGeneric,
+	allReads,
+	readOps,
 	negLiteral,
 	negArr,
 	negNarrow,

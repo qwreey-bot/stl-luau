@@ -753,12 +753,15 @@ Gemini 사냥의 지적("`#` 상한이라 구멍 뒤·큰 키를 못 지움")에
   HashMap 이 0.57~0.62배. `HashMap.Iter` 가 `next` 그대로(27절)가 된 뒤라 이만큼입니다 — 래퍼가 있던 때는 비겼습니다.
 - **크기를 미리 잡기**(`Trait.Collection` 을 구현하면 `table.create(Len)`): 작은 맵에서 큽니다 — N=10 에서 0.45 → 0.33us
   (사본 벤치 `algo-keys-iter.luau`). 큰 맵에선 차이 없음.
-- 그래도 **종류를 아는 코드는 자기 `Keys` 가 4~5배 빠릅니다** — 순회자 호출이 원소마다 붙습니다(`Algorithm` 머리 주석의
+- 그래도 **종류를 아는 코드는 자기 `Keys` 가 3~4.6배 빠릅니다**(표 기준) — 순회자 호출이 원소마다 붙습니다(`Algorithm` 머리 주석의
   "느린 게 정상"). `TreeMap.Iter` 는 클로저 하나를 만들고 원소마다 그것을 부릅니다.
 
 **`HashMap.Iter` 가 테이블을 돌려준 뒤(같은 날, 질문 AP 1)**: `Algorithm.Keys` 가 HashMap 에서 **모듈 자신의 `Keys` 와
 같아졌습니다** — N=10 0.20us(대 0.13), N=1000 7.09us(대 7.00), N=100000 0.84ms(대 0.84). 아침의 원판(0.64us/47us/5.3ms)
 대비 0.15~0.31배. TreeMap 은 클로저 순회라 그대로(37us, 자기 `Keys` 의 4.4배).
+
+(리뷰어 재측정, 같은 날 — `2e37ba1` 대 `e95cab5`: `Algorithm.Keys` HashMap 0.49~0.58배, TreeMap 0.88~0.89배,
+`HashMap.Iter` 0.58~0.74배. 위 표와 한두 자리 어긋나는 것은 실행 간 흔들림.)
 
 **트레이트 경유 비용**: `Algorithm.Len(m)` 대 `HashMap.Len(m)` 100만 번 56.5 대 13.0ms(**호출당 +44ns**),
 `Algorithm.Clear` 대 `HashMap.Clear`(`Set`×2 + `Clear`, 30만 번) 35.8 대 23.2ms(**+42ns**) — 21절의 `IndexOf` 36ns,
