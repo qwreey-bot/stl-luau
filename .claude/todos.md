@@ -143,6 +143,8 @@ C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
   질문 AP 2) — ① `Trait.ImplOf(Trait.Map, m)` 가 `MapOps<any, any, any>` 라 `ops.Set(m, 1, "bad")` 가 안 잡힘
   (후보: 타입 있는 구현 꺼내기 `MapOf(m)` — 다른 맵에 쓰는 구멍, `Algorithm.Get/Set` 래퍼 — 맵·셋 이름 충돌).
   ② 계약 타입을 거친 `ops.Iter(m)` 의 루프 변수가 `any`(유니온 순회). 부르는 곳이 보이면 같이.
+- **`HashSet.Iter` 의 반환 상태가 읽기·쓰기 안쪽 테이블**(기존, 2라운드 리뷰 참고) — `local _, state = HashSet.Iter(s);
+  state[30] = true` 가 0건이고 크기가 틀어집니다. 아래 항목과 같이.
 - **`HashSet.Iter` 도 테이블로?** — `(item, item)` 을 주는 설계(`TreeSet` 과 `for _, item in` 모양을 맞추려고)라 Luau
   래퍼가 남아 있습니다. 테이블을 돌려주면 `for item in HashSet.Iter(s)` 는 같은 9배를 얻지만 `for _, item in` 모양은
   `true` 를 받게 됩니다(타입은 잡음). 모양이 바뀌어 여쭤야 함.

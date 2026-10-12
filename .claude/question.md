@@ -968,7 +968,7 @@ local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
 | **`Trait.Collection`** = `CollectionOps<C>` `{ Len, Clear }` | 일곱 컨테이너 전부(`Arr`·`Deque`·`HashMap`·`TreeMap`·`HashSet`·`TreeSet`·`Heap`) 구현. `Algorithm.Len(c)`, `Algorithm.Clear(c)`(넣은 타입 그대로 반환 — `<C>(c: C & CollectionMarkerMut): C`) | `Empty` 도 넣기(= `Len == 0` 이라 뺌) |
 | ⚠️ **`Clear` 의 마커** | **`CollectionMarkerMut`** — 데이터 타입에 팬텀 `read __collectionMut: true` 하나 더. 시제품(AM)의 "토큰만 요구" 로는 **읽기 전용으로 빌린 `ArrRead`·`DequeRead` 가 진단 0건으로 지워졌습니다**(재현 — AC 의 구멍과 같은 결) | — |
 | `Len` 의 마커 | **토큰만**(`CollectionMarker`). 빌린 참조도 받음. `Fut` 처럼 토큰은 있고 컬렉션이 아닌 것은 타입을 지나 런타임 에러(사용자 줄) | 읽기 팬텀(`__collection`)을 열 타입(데이터 타입 일곱 + `ArrRead`·`ArrConsumed`·`DequeRead`)에 하나씩 더 두면 정적으로 막힘 — 에러 메시지가 길어지는 값을 못 한다고 봄 |
-| **`MapOps`** 에 `Has`·`Remove`·`Iter` | 여섯(`Get`·`Set`·`Has`·`Remove`·`Records`·`Iter`). `Iter` 의 타입은 `(map) -> ((...any) -> (K, V), ...any)` — 함수 하나(TreeMap)든 삼중항(HashMap)이든 `for k, v in ops.Iter(m)` 로 돎 | `Records` 를 빼고 `Iter` 에서 유도 — 사용자 구현이 다섯으로 줄지만 지금 쓰는 곳이 있어 둠 |
+| **`MapOps`** 에 `Has`·`Remove`·`Iter` | 여섯(`Get`·`Set`·`Has`·`Remove`·`Records`·`Iter`). `Iter` 의 타입은 ~~`(map) -> ((...any) -> (K, V), ...any)`~~ → **AP 1 뒤로 `(map) -> ({ read [K]: V } \| (() -> (K, V)))`** — 테이블(HashMap) 또는 인자 없는 순회 함수(TreeMap), `for k, v in ops.Iter(m)` 로 돎. (예전 타입은 `any` 때문에 함수가 빠진 모듈이 계약 자리에 0건으로 들어가는 구멍이 있었음 — 리뷰 1라운드) | `Records` 를 빼고 `Iter` 에서 유도 — 사용자 구현이 다섯으로 줄지만 지금 쓰는 곳이 있어 둠 |
 | `Algorithm.Keys`/`Values` | **`ops.Iter` 로**(레코드 할당 없음, 0.62~0.87배 — perf 28절). 크기는 `Collection` 도 구현하면 미리 잡음 | — |
 | **`Trait.New(name, required?)`** | 구현이 꼭 가져야 할 함수 이름 목록(선택). `Trait.Impl` 이 **등록할 때** 확인해 사용자 줄 에러(`MyMap is missing Iter for Map`). 계약을 넓히자 예전 구현(셋만 있던 것)이 알고리즘 안에서 `attempt to call a nil value` 로 죽어서 | 검사 없음(타입 쓰는 코드는 정적으로 잡힘) |
 | 안 넣은 것 | `SetOps` 의 `Iter`(`Items` 가 있음), `Algorithm.Refill`(위 둘로 세 줄 — `spikes/63` 의 `refill`), 리스트 쪽 쓰기 계약 | 부르는 곳이 보이면 |
@@ -996,6 +996,12 @@ end
 > ⚠️ **대가**: 계약 타입을 거친 `ops.Iter(m)` 의 루프 변수는 타입을 잃습니다(유니온 순회 → `any`). 모듈의 `Iter` 를
 > 직접 돌거나 루프 변수에 주석을. `HashSet.Iter`(`(item, item)` 설계)는 그대로 — 같은 9배가 남아 있습니다.
 > **2 는 백로그**(todos): 종류를 모르는 코드의 타입 있는 `Get`/`Set` + 위 루프 변수 타입을 같이 다듬기.
+>
+> **리뷰 2라운드(같은 날)가 찾은 것** — `FromIter` 가 테이블을 받게 되며 생긴 회귀 둘을 고침: ① 맵에 `"__type"`
+> 이라는 키가 있으면 `FromIter(HashMap.Iter(m))` 이 "컨테이너" 라며 에러 → 검사를 "이 사본의 타입 토큰인가" 로
+> (대가: 다른 사본의 컨테이너는 사전으로 읽힘). ② `__call`·`__iter` 테이블이 사전으로 읽힘 → `for … in` 과 같게.
+> 타입이 못 막는 경계 셋은 `spikes/63` 맨 아래에 0건으로 고정: `any` 인자의 계약 자리(`Trait.Impl`), `Iter` 가
+> `Arr` 같은 테이블을 내주는 것, `table.clear(HashMap.Iter(m))` 같은 내장 쓰기.
 
 **1. `HashMap.Iter` 가 `data` 테이블을 그대로 돌려주면 순회가 9배 빠릅니다** (perf 27절). 지금은 `(next, data, nil)`
 삼중항(오늘 래퍼를 걷어 0.54~0.73배가 됨). `data` 테이블 자체를 돌려주면 `for k, v in HashMap.Iter(m)` 이 Luau 의
@@ -1009,7 +1015,7 @@ end
 
 제 추천은 **(b)** 쪽입니다(성능이 1급이고 `for-in` 이 압도적인 쓰임) — 다만 공개 모양이 바뀌어 여쭙니다.
 미리 본 것(프로브): 반환을 **`{ read [K]: V }`** 로 두면 루프 변수 타입이 정확하고(`k: K`, `v: V`) 돌려받은 테이블에
-쓰는 것은 타입이 막습니다. 계약(`MapOps.Iter`)은 "테이블 또는 함수" 유니온으로 적으니 `TreeMap.Iter` 가 그 자리에 안
+인덱싱으로 쓰는 것은 타입이 막습니다(`table.clear` 같은 내장은 못 막음). 계약(`MapOps.Iter`)은 "테이블 또는 함수" 유니온으로 적으니 `TreeMap.Iter` 가 그 자리에 안
 들어가 한 번 더 다듬어야 합니다(지금의 `(...any) -> (K, V)` 모양을 헐겁게 하거나, 계약용 `Iter` 는 함수로 두고 빠른 길에
 다른 이름을 주거나).
 

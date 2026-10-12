@@ -522,7 +522,7 @@ do
 	end
 	-- API 경계: 토큰이 아닌 것(얼었어도), 트레이트가 아닌 것, 이름이 문자열이 아닌 것, 같은 토큰을
 	-- 두 번 — 전부 사용자 줄 에러(리뷰 1라운드)
-	const boundary: { { name: string, run: () -> () } } = {
+	const boundary: { { name: string, run: () -> (), needle: string? } } = {
 		{
 			name = "얼린 아무 테이블",
 			run = function()
@@ -566,6 +566,15 @@ do
 			end,
 		},
 		{
+			-- 다 갖춘 구현으로도(2라운드 리뷰: 위는 `{}` 라, 중복 검사를 지워도 필수 함수 검사가 대신
+			-- 걸려 통과했음 — 지운 사본에서는 가짜 구현이 Arr 의 List 구현을 덮어 IndexOf 가 틀렸음)
+			name = "같은 토큰을 두 번(다 갖춘 구현)",
+			needle = "Arr already implements List",
+			run = function()
+				T.Impl(T.List, T.Types.Arr, table.clone(stl.Arr) :: any)
+			end,
+		},
+		{
 			name = "구현이 nil",
 			run = function()
 				T.Impl(T.List, MyKind, nil :: any)
@@ -576,6 +585,8 @@ do
 		const ok, err = pcall(case.run)
 		assert(not ok, `{case.name}: 에러가 안 남`)
 		assert(string.find(tostring(err), "Trait:", 1, true) ~= nil, `{case.name}: 규약 메시지가 아님: {err}`)
+		const needle = case.needle
+		assert(needle == nil or string.find(tostring(err), needle, 1, true) ~= nil, `{case.name}: {err}`)
 		assert(
 			string.find(tostring(err), "spec.contracts", 1, true) ~= nil,
 			`{case.name}: 사용자 줄이 아님: {err}`
@@ -1508,7 +1519,7 @@ do
 			end,
 		} :: any
 	)
-	for _, len in { 3, 0, 1, 1000, -1, 0 / 0, math.huge, 2 ^ 40, "three", false } :: { any } do
+	for _, len in { 3, 0, 1, 1000, -1, 0 / 0, math.huge, 2 ^ 26 + 1, 2 ^ 40, "three", false } :: { any } do
 		const sized: Sized = { __type = SizedType, len = len } :: any
 		const keys = A.Keys(sized)
 		const values = A.Values(sized)

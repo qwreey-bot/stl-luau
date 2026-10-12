@@ -106,6 +106,8 @@ do
 	do
 		const iterable, extra = (HashMap.Iter :: any)(m)
 		assert(type(iterable) == "table" and extra == nil, "Iter 는 테이블 하나")
+		-- **같은 테이블**(사본이 아님 — 사본이면 순회마다 O(n) 할당, 2라운드 리뷰)
+		assert(rawequal(HashMap.Iter(m), HashMap.Iter(m)) and rawequal(iterable, m.data), "안쪽 테이블 그대로")
 		local seen = 0
 		const raw = HashMap.Iter(m) :: any
 		local key, value = next(raw)

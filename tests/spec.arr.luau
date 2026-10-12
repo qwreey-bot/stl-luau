@@ -1421,6 +1421,43 @@ do
 	assert(fromDict.n == 2 and Arr.Sum(fromDict) == 150, "FromIter(사전 테이블) 은 값을 모음")
 	assert(Arr.FromIter<<number>>({ 70, 80, 90 }).n == 3, "FromIter(배열 테이블)")
 	assert(Arr.FromIter({}).n == 0, "FromIter(빈 테이블)")
+	-- ⭐ 회귀(2라운드 리뷰): 맵에 `"__type"` 이라는 **키**가 있어도 됨 — 컨테이너 검사가 `__type` 이
+	-- nil 이 아닌지만 봐서 `HashMap` 의 안쪽 테이블(사용자 데이터)에 걸렸음. 거절하는 것은 이 사본의
+	-- **타입 토큰**이 붙은 테이블뿐.
+	const tagged = stl.HashMap.New<<string, any>>()
+	stl.HashMap.Set(tagged, "__type", "user")
+	stl.HashMap.Set(tagged, "id", 7)
+	const taggedValues = Arr.FromIter<<any>>(stl.HashMap.Iter(tagged))
+	assert(taggedValues.n == 2 and Arr.Contains(taggedValues, "user") and Arr.Contains(taggedValues, 7), "__type 키")
+	assert(Arr.FromIter<<any>>({ __type = "user", id = 7 }).n == 2, "__type 문자열 값을 가진 사전")
+	assert(Arr.FromIter<<any>>({ __type = false, id = 7 }).n == 2, "__type = false 인 사전")
+	assert(Arr.FromIter<<any>>({ __type = { name = "Arr" }, id = 7 }).n == 2, "토큰 모양일 뿐인 __type")
+	-- ⭐ 회귀(2라운드 리뷰): 호출 가능한 테이블(`__call`)은 순회 **함수**로 — 사전으로 읽혀 `[x]` 가 됐음.
+	-- `for v in callable` 과 같은 뜻. `__iter` 도 따름.
+	local calls = 0
+	const callable = setmetatable({ tag = "x" }, {
+		__call = function(): number?
+			calls += 1
+			return if calls <= 3 then calls * 10 else nil
+		end,
+	})
+	same(Arr.FromIter<<number>>(callable), { 10, 20, 30 }, "FromIter(__call 테이블)")
+	const iterable = setmetatable({ tag = "x" }, {
+		__iter = function(self: any)
+			return ipairs({ 70, 80, self.tag })
+		end,
+	})
+	same(Arr.FromIter<<any>>(iterable), { 70, 80, "x" }, "FromIter(__iter 테이블)")
+	-- 메타테이블이 있어도 `__iter`·`__call` 이 없으면 사전(raw 키-값)
+	const proxied = setmetatable({ p = 70 }, {
+		__index = function(): number
+			return 99
+		end,
+	})
+	same(Arr.FromIter<<number>>(proxied), { 70 }, "FromIter(__index 만 있는 테이블)")
+	-- 값이 false 여도 담음(값은 nil 일 수 없으니 구멍은 안 생김)
+	const flags = Arr.FromIter<<boolean>>({ a = false, b = false })
+	assert(flags.n == 2 and flags[1] == false and flags[2] == false, "FromIter(false 값들)")
 	-- 컨테이너 자체는 거절(그 종류의 Iter 를 넘겨야 함) — 다른 종류도
 	for _, container in { Arr.Of(1, 2), stl.HashMap.New(), stl.Deque.Of(1) } :: { any } do
 		const okContainer, errContainer = pcall(function()
