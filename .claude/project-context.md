@@ -123,7 +123,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
-| `Types` / `Common` / `Algorithm` / `Trait` | 완성(작음) — 트레이트 2026-10-06 | `spikes/55` |
+| `Types` / `Common` / `Algorithm` / `Trait` | 완성(작음) — 트레이트 2026-10-06, 쓰는 제네릭용 불변 마커 2026-10-12 | `spikes/55`, `61` |
 | `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
 | `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |

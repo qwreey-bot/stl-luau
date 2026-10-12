@@ -842,7 +842,13 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | 4 | `TreeMap` 에 `GetOrInsert(With)`·`Accumulate` 가 없음(HashMap 만) | **부르는 곳이 보이면**(정렬 맵에서 넣기는 O(n) 이라 쓰임이 다름) |
 | 5 | `Clear` 반환: `Arr`·`Deque` 는 자기 자신, 맵·셋·`Heap` 은 `()`(Heap 은 `Push` 는 자기 자신인데 `Clear` 는 `()` — 원래 있던 것) | 리스트 계열 = 자기 자신, 맵·셋 = `()` 로 **그대로**. `Heap.Clear` 만 자기 자신으로 맞출지는 취향 |
 
-### AM. `Clear` 를 트레이트로, 자기 자신을 돌려주게 — 시제품 결과 (2026-10-12, AL 5 에서)
+### AM. `Clear` 를 트레이트로, 자기 자신을 돌려주게 — 시제품 결과 (2026-10-12, AL 5 에서) — **[2026-10-12 사용자 결정] 추천대로**
+
+> 사용자: *"확인 … clear 같은 경우도 확인. 흐름 그대로 따라가면 될 것 같아. al 검사 빼는것도 다 봤어. 전부 동의해"*
+> — **(가) 적용**(`Clear` + 같은 흐름으로 맵·셋 `Retain`·`MergeInplace` 도 자기 자신), **(나) 적용**(불변 마커
+> `MapMarkerMut`/`SetMarkerMut`/`ListMarkerMut`, `spikes/61`), **(다) M6 때 같이**(`Trait.Collection`, 넓은 맵
+> 계약 — 사용자가 *"hash 인지 tree 인지 몰라도 만질 수 있게 하는 Map trait"* 을 물음: `Trait.Map` 은 있지만
+> `Get`/`Set`/`Records` 뿐이라 얇음). AL 1 도 적용(Tree `Retain` 검사 걷음, UB).
 
 사본에서 시제품을 만들어 쟀습니다(저장소는 그대로). 사용자 생각: *"Clear trait 을 두고 … tree map 이든 hash map
 이든 clear 이후 재빌딩 하는게 가능해지는 느낌 … 타입도 공짜고(바깥에서 타이핑을 하니까) self 돌려줘도 되지 않나"*.

@@ -50,6 +50,8 @@ export type HashMapData<K, V> = {
 	read __type: Trait.Token<"HashMap">,
 	read __mapKey: K,
 	read __mapValue: V,
+	-- 쓰는 제네릭용 불변 팬텀(`Types.MapMarkerMut`, 질문 AM) — 타입에만 있습니다.
+	read __mapMut: (K, V) -> (K, V),
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한

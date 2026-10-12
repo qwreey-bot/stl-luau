@@ -1028,6 +1028,45 @@ do
 end
 print("PASS")
 
+print("=== 9. 쓰는 제네릭은 불변 마커로 — 맵·셋 종류와 무관하게 (2026-10-12, 질문 AM) ===")
+do
+	-- 타입 쪽(값 타입이 넓어지지 않음)은 spikes/61 이 지킵니다. 여기는 불변 마커를 받는 제네릭이
+	-- 런타임에 HashMap·TreeMap, HashSet·TreeSet 양쪽에서 같은 답을 내는지.
+	local function put<K, V>(m: stl.MapMarkerMut<K, V>, k: K, v: V)
+		const ops = stl.Trait.ImplOf(stl.Trait.Map, m)
+		assert(ops ~= nil, "Map 구현")
+		ops.Set(m, k, v)
+	end
+	local function add<T>(s: stl.SetMarkerMut<T>, item: T): boolean
+		const ops = stl.Trait.ImplOf(stl.Trait.Set, s)
+		assert(ops ~= nil, "Set 구현")
+		return ops.Add(s, item)
+	end
+	const hm = stl.HashMap.New<<string, number>>()
+	const tm = stl.TreeMap.New<<string, number>>(Common.compareString)
+	for _, key in { "b", "a", "b" } do
+		put(hm, key, #key * 10)
+		put(tm, key, #key * 10)
+	end
+	assert(stl.HashMap.Len(hm) == 2 and stl.TreeMap.Len(tm) == 2, "두 맵 모두 키 둘")
+	assert(stl.HashMap.Get(hm, "a") == 10 and stl.TreeMap.Get(tm, "a") == 10, "같은 값")
+	-- 불변 마커로 받은 값은 읽는 알고리즘에도 그대로 들어감
+	local function keysOf<K, V>(m: stl.MapMarkerMut<K, V>): { K }
+		return stl.Algorithm.Keys(m)
+	end
+	assert(table.concat(keysOf(tm), ",") == "a,b" and #keysOf(hm) == 2, "Mut 마커 → Keys")
+	const hs = stl.HashSet.New<<number>>()
+	const ts = stl.TreeSet.New<<number>>(Common.compareNumber)
+	assert(add(hs, 10) and add(ts, 10) and not add(hs, 10) and not add(ts, 10), "두 셋 모두 Add")
+	-- 팬텀은 타입에만 — 런타임 필드는 없음
+	for _, value in { hm, tm, hs, ts, stl.Arr.Of(1), stl.Deque.Of(1) } :: { any } do
+		for _, phantom in { "__mapMut", "__setMut", "__listMut", "__mapKey", "__setItem", "__list" } do
+			assert(rawget(value, phantom) == nil, `팬텀 {phantom} 이 런타임에 있음`)
+		end
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (계약) ===")
 

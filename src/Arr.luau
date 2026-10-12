@@ -88,11 +88,14 @@ type Optional<T> = Optional.Optional<T>
 -- 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr` 자리에 들어가는 것을
 -- 막습니다(M0 리뷰). `__list`/`__listIndex` 는 **타입에만 있는** 리스트 트레이트 마커입니다
 -- — `Algorithm.IndexOf(a, x)` 가 원소 타입을 여기서 추론합니다(런타임엔 없음).
+-- `__listMut` 는 쓰는 제네릭용 불변 팬텀(`Types.ListMarkerMut`, 질문 AM) — **`ArrData` 에만** 있어
+-- 읽기 전용으로 빌린 `ArrRead` 는 쓰는 제네릭에 못 들어갑니다.
 export type ArrData<T> = {
 	n: number,
 	read __type: Trait.Token<"Arr">,
 	read __list: T,
 	read __listIndex: number,
+	read __listMut: (T) -> T,
 	[number]: T,
 }
 

@@ -104,6 +104,15 @@
   타입 인자도 필요 없습니다(예전 `Algorithm.Keys<<HashMap<…>, K, V>>(HashMap, m)`).
   ⚠️ 함수 묶음을 **직접** 받는 사용자 제네릭 함수(`put<C, V>(ops: MapOps<C, string, V>,
   …)`)는 여전히 타입 인자가 필요합니다 — 트레이트 마커를 받는 모양으로 쓰세요.
+  ⭐ **마커를 받아 쓰는 제네릭은 불변 마커**(2026-10-12 사용자 결정, 질문 AM — `spikes/61`):
+  `MapMarker`/`SetMarker`/`ListMarker` 는 `read`(공변)라 **읽는** 알고리즘용입니다. 마커를 받아
+  `Set`/`Add` 하는 제네릭에 쓰면 값 타입이 조용히 넓어져 `HashMap<string, number>` 에 문자열이
+  들어갔습니다(진단 0건 — AC 의 "공변으로 빌린 참조가 쓰기를 얻음" 과 같은 메커니즘). 쓰는 제네릭은
+  **`MapMarkerMut<K, V>`/`SetMarkerMut<T>`/`ListMarkerMut<E, I>`** 을 받습니다 — 데이터 타입의 함수 타입
+  팬텀(`read __mapMut: (K, V) -> (K, V)`)을 요구해 불변이고, 읽기 마커의 서브타입이라 읽는 알고리즘에도
+  그대로 넘어갑니다. `ArrRead`(빌린 참조)에는 그 팬텀이 없습니다. 새 컨테이너의 데이터 타입에도 같이
+  넣으세요. ⚠️ 읽기 마커로 쓰는 코드를 타입이 막지는 못합니다(구현은 `any` 를 거침) — 규약입니다.
+  라이브러리의 `Algorithm` 에 쓰는 함수를 더할 때도 `Mut` 마커로.
 
 - **제네릭이 안 풀릴 땐 명시적 타입 인자** `f<<T>>(...)` 를 씁니다 —
   `Arr.Of<<number>>()`, `HashMap.New<<string, number>>()`,

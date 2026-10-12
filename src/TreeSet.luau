@@ -56,7 +56,13 @@ type Record<K, V> = Types.Record<K, V>
 type Comparator<T> = Types.Comparator<T>
 type TreeMapType<K, V> = TreeMap.TreeMap<K, V>
 
-export type TreeSetData<T> = { map: TreeMapType<T, true>, read __type: Trait.Token<"TreeSet">, read __setItem: T }
+-- `__setMut` 는 쓰는 제네릭용 불변 팬텀(`Types.SetMarkerMut`, 질문 AM) — 타입에만 있습니다.
+export type TreeSetData<T> = {
+	map: TreeMapType<T, true>,
+	read __type: Trait.Token<"TreeSet">,
+	read __setItem: T,
+	read __setMut: (T) -> T,
+}
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.

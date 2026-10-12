@@ -20,6 +20,12 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 원소·키·값을 추론합니다 — `Algorithm.Keys(m)` 가 타입 인자 없이 `{ K }`(`spikes/55`).
 > 아래 두 문단은 **함수 묶음을 직접 받는** 함수에 여전히 해당합니다.
 >
+> ⭐ **2026-10-12 쓰는 제네릭은 불변 마커(질문 AM, `spikes/61`)**: 읽기 마커는 `read` 필드라 공변 —
+> `put<K, V>(m: MapMarker<K, V>, k: K, v: V)` 가 `HashMap<string, number>` 에 `"bad"` 를 넣어도 진단
+> 0건이었습니다(`V` 가 `number | string` 으로 넓어지고 맵은 그 읽기 마커의 서브타입). 쓰는 제네릭은
+> `MapMarkerMut` 등(함수 타입 팬텀 `(K, V) -> (K, V)` — 인자·반환 양쪽이라 불변)을 받습니다. 팬텀을
+> 읽기·쓰기 필드로 선언해도 불변이 되지만 `m.__mapKey = "x"` 같은 코드가 통과해 함수 타입 쪽을 골랐습니다.
+>
 > ⚠️ **함수 묶음 계약을 받는 사용자 제네릭 함수**(`put<C, V>(ops: MapOps<C,
 > string, V>, map: C, v: V)`, `SetOps` 도 같음)는 **맞는 호출도 타입 인자 없이는
 > 에러**입니다 — 원소 타입을 모듈의 제네릭 함수들에서도 끌어오며 `unknown` 이

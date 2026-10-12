@@ -49,6 +49,8 @@ export type DequeData<T> = {
 	read __type: Trait.Token<"Deque">,
 	read __list: T,
 	read __listIndex: number,
+	-- 쓰는 제네릭용 불변 팬텀(`Types.ListMarkerMut`, 질문 AM) — 타입에만 있습니다.
+	read __listMut: (T) -> T,
 	[number]: T,
 }
 export type Deque<T> = DequeData<T>

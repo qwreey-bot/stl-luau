@@ -9,8 +9,6 @@
 |---|---|
 | **AA. Luau 새 솔버 결함을 업스트림에 보고할지**(초안 있음, 공개 저장소라 사용자 판단 — 10-02 보강) | `question.md` AA |
 | **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
-| **AM. `Clear` 자기 자신 반환·Collection 트레이트 시제품 결과 + ⚠️ 마커를 받아 쓰는 제네릭의 건전성 구멍(지금 저장소에서 재현) — 불변 마커를 넣을지** | `question.md` AM |
-| AL. 가로지른 리뷰의 일관성 다섯 — **1~4 답 받음(2026-10-12)**, 1 의 적용(Tree `Retain` 검사 걷기)만 확인 대기, 5 는 AM 으로 | `question.md` AL |
 | **AK. Deque 의 모양** — 특히 ⭐ 읽기 함수를 `DequeRead`(공변)로 넓힐지(리뷰어·저 모두 "넓히자"), 리스트 진입점이 Deque 를 받을지(지금 안 받음) | `question.md` AK |
 
 ## ☀️ 자고 일어나서 볼 것 (2026-10-07 밤 자율 작업)
@@ -26,7 +24,12 @@
 
 서브에이전트는 요청대로 **opus 하나씩만, 병렬 없이** 썼습니다(리뷰 여덟 번, 모두 순차).
 
-## 📍 지금 여기 (2026-10-07)
+## 📍 지금 여기 (2026-10-12)
+
+**2026-10-12 — AL·AM 반영**: 콜백이 같은 컨테이너를 바꾸는 것은 **UB**(Tree `Retain` 검사 걷음), `Clear`·
+`Retain`·`MergeInplace` 가 **자기 자신 반환**(일곱 컨테이너 같게), ⭐ **쓰는 제네릭용 불변 마커**
+(`MapMarkerMut` 등 — 읽기 마커로 쓰면 `HashMap<string, number>` 에 문자열이 0건으로 들어가던 10-06
+트레이트의 구멍, `spikes/61`). 남은 확인: AJ·AK(특히 `DequeRead`), AA.
 
 **M0(호출 모양을 네임스페이스 하나로, 질문 AB) 끝 — 리뷰 소진(여덟 라운드, 2026-10-01).**
 
@@ -55,7 +58,7 @@ perf 22절. **리뷰 소진(1라운드 — 재현된 결함 0, 돌연변이 51�
 | 게이트 | 상태 |
 |---|---|
 | TypeError 총계 | **0건** |
-| 음성 대조군 배터리 | 스파이크 43개 전부 기대치·에러 줄 일치 (2026-10-07) |
+| 음성 대조군 배터리 | 스파이크 44개 전부 기대치·에러 줄 일치 (2026-10-12) |
 | require 게이트 | 통과 |
 | **포맷 (stylua)** | 통과 (바이너리 없으면 건너뜀) |
 | 테스트 | 12개 스펙 통과 |
@@ -107,7 +110,7 @@ local f = nested:Flat<<number>>()
 | ~~M3~~ | **✅ 2026-10-07** 리뷰 1라운드 소진(결함 0) — `Arr` 빈 조각 — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | ~~M4~~ | **✅ 2026-10-07** 리뷰 소진(3라운드 — 결함 1 → 0 → 0, 2·3라운드는 테스트 공백·성능만). 모양은 질문 AJ(제가 정함, **확인 대기**) **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
 | ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(**확인 대기** — `DequeRead` 공변 여부 포함) **`Deque`**(링 버퍼) — 리스트 진입점이 Deque 를 받을지는 AK 에서 잠정 "안 받음(`ToArr`)", `Algorithm` 은 받음 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
-| **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음, `MapOps` 엔 `Len`/`Has` 가 없음 | M4 위에 얇게. 부르는 곳이 보이면 |
+| **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음, `MapOps` 엔 `Len`/`Has` 가 없음. **같이 할 것(질문 AM 다, 2026-10-12)**: 맵 종류를 모르고 다루는 표면 넓히기 — `Trait.Collection`(`Len`·`Clear`, 시제품에서 `<C>(c: C & Marker): C` 모양이 섬·경유 ~40ns), `MapOps` 에 `Has`/`Remove`/`Iter`, `Algorithm.Clear`/`Len`/`Refill`. 쓰는 알고리즘은 `Mut` 마커로(이미 들어감) | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |
 | **마지막** | **문서 사이트** — *"다른거 다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md` | 사용자 결정 |

@@ -100,4 +100,24 @@ export type MapMarker<K, V> = { read __type: Token<any>, read __mapKey: K, read 
 -- 셋(`Trait.Set`). `T` 는 원소.
 export type SetMarker<T> = { read __type: Token<any>, read __setItem: T }
 
+-- ⭐ **쓰는 제네릭을 위한 불변 마커**(2026-10-12, 질문 AM). 위 읽기 마커는 `read` 라 **공변**입니다 —
+-- 읽는 알고리즘엔 맞지만, 마커를 받아 `Set`/`Add` 하는 제네릭에서는 값 타입이 조용히 넓어져
+-- `HashMap<string, number>` 에 문자열이 들어갔습니다(진단 0건, `spikes/61`). 쓰는 제네릭은 이쪽을
+-- 받으세요. 팬텀이 **함수 타입**이라(인자·반환 양쪽에 타입 변수) 불변이고, 읽기 마커의 필드도 다
+-- 있어 읽는 알고리즘에 그대로 넘어갑니다. 읽기 전용으로 빌린 타입(`ArrRead`)에는 이 팬텀이 없습니다.
+-- (팬텀을 읽기·쓰기 필드로 선언하는 길도 불변이 되지만 사용자가 팬텀에 쓰는 코드가 통과했습니다.)
+export type ListMarkerMut<E, I> = {
+	read __type: Token<any>,
+	read __list: E,
+	read __listIndex: I,
+	read __listMut: (E) -> E,
+}
+export type MapMarkerMut<K, V> = {
+	read __type: Token<any>,
+	read __mapKey: K,
+	read __mapValue: V,
+	read __mapMut: (K, V) -> (K, V),
+}
+export type SetMarkerMut<T> = { read __type: Token<any>, read __setItem: T, read __setMut: (T) -> T }
+
 return {}
