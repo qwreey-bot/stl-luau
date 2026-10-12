@@ -8,12 +8,16 @@
 	  빌린 참조가 진단 0건으로 지워졌습니다(AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결).
 	- `Algorithm.Len` 은 읽기라 빌린 참조도 받고, 토큰 없는 것(리터럴·숫자·`Optional`)은 막습니다.
 	- 모듈 테이블이 `CollectionOps`·넓힌 `MapOps`(`Has`·`Remove`·`Iter`)를 만족하고, 함수가 빠진 구현·다른
-	  종류의 모듈은 그 타입 자리에 못 들어갑니다. `ops.Iter` 의 루프 변수는 `K`, `V`.
+	  종류의 모듈은 그 타입 자리에 못 들어갑니다. **모듈의 `Iter` 를 직접** 돌면 루프 변수는 `K`, `V`.
 
-	⚠️ 알려진 경계(맨 아래, 0건): `Len` 의 마커는 토큰만 봐서 토큰은 있지만 컬렉션이 아닌 `Fut` 이 타입을
-	지납니다 — 런타임에 `Common.raise`(spec.contracts 10절).
+	⚠️ 알려진 경계(맨 아래, 0건):
+	- `Len` 의 마커는 토큰만 봐서 토큰은 있지만 컬렉션이 아닌 `Fut` 이 타입을 지납니다 — 런타임에
+	  `Common.raise`(spec.contracts 10절).
+	- **계약 타입(`MapOps`)을 거친 `ops.Iter(m)` 의 루프 변수는 타입이 없습니다**(`any`) — 계약의 `Iter` 가
+	  "테이블 또는 함수" 유니온이 되면서(2026-10-12, 질문 AP 1) 새 솔버가 유니온을 `for … in` 에 넣으면 변수
+	  타입을 잃습니다. 루프 변수에 주석을 달거나(`for key: K, value: V in ops.Iter(m)`) 모듈의 `Iter` 를 직접.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 14 줄 · 15건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 16 줄 · 17건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
 ]]
 local stl = require("../../../../src")
 local Algorithm, Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Heap, Common =
@@ -56,7 +60,17 @@ local colOps: stl.CollectionOps<stl.HashMap<string, number>> = HashMap
 local mapOps: stl.MapOps<stl.TreeMap<string, number>, string, number> = TreeMap
 local has: boolean = mapOps.Has(tm, "x")
 local removed: number? = mapOps.Remove(tm, "x")
-for key, value in mapOps.Iter(tm) do
+-- 모듈의 Iter 를 직접 돌면 루프 변수 타입이 섬(HashMap 은 테이블, TreeMap 은 함수)
+for key, value in HashMap.Iter(hm) do
+	local _key: string = key
+	local _value: number = value
+end
+for key, value in TreeMap.Iter(tm) do
+	local _key: string = key
+	local _value: number = value
+end
+-- 계약을 거치면 주석으로
+for key: string, value: number in mapOps.Iter(tm) do
 	local _key: string = key
 	local _value: number = value
 end
@@ -98,15 +112,24 @@ local negPartial: stl.MapOps<stl.HashMap<string, number>, string, number> = {
 	Records = HashMap.Records,
 }
 local negRemoved: number = mapOps.Remove(tm, "x")
-for _, value in mapOps.Iter(tm) do
+for _, value in HashMap.Iter(hm) do
 	local _negValue: string = value
 end
+for key in TreeMap.Iter(tm) do
+	local _negKey: number = key
+end
+-- Iter 가 돌려준 테이블은 읽기 전용
+HashMap.Iter(hm).x = 1
 refill(hm, { { key = "a", value = "bad" } })
 
 local canary: string = 42
 
 --[[ 알려진 경계 — 토큰은 있지만 컬렉션이 아닌 것은 `Len` 의 타입을 지남(런타임 에러) ]]
 local futLen = Algorithm.Len(stl.Fut.Resolved(1))
+--[[ 알려진 경계 — 계약을 거친 Iter 의 루프 변수는 any(유니온 순회) ]]
+for _, value in mapOps.Iter(tm) do
+	local _untyped: string = value
+end
 
 return {
 	total,

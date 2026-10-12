@@ -72,16 +72,18 @@ export type ListOps<C, E, I> = {
 -- 몰라도 만질 수 있게"*). 예전의 셋(`Get`·`Set`·`Records`)만으로는 구현을 모르는 코드가 지울 수도,
 -- 할당 없이 돌 수도 없었습니다. 크기와 비우기는 맵만의 것이 아니라 아래 `CollectionOps` 에 있습니다.
 -- - `Remove` 는 지운 값을 돌려줍니다(없었으면 `nil`).
--- - `Iter` 는 `for key, value in ops.Iter(map) do` 에 쓰는 순회자(함수 하나, 또는 함수·상태·처음 값).
---   순서는 구현의 것입니다(해시는 약속 없음, 정렬 맵은 키 순서). 도는 동안 맵을 바꾸면 정의되지 않은
---   동작입니다(conventions).
+-- - `Iter` 는 `for key, value in ops.Iter(map) do` 에 넣는 **값 하나**입니다: 키-값이 그대로 든 **테이블**
+--   (Luau 가 직접 돎 — 가장 빠름, `HashMap`) 또는 **인자 없는 순회 함수**(상태는 클로저에, `TreeMap`).
+--   함수·상태·처음 값 삼중항은 이 타입에 안 들어갑니다 — 클로저로 감싸세요(유니온에 `(...any) -> (K, V)` 를
+--   넣으면 새 솔버가 `() -> (K, V)` 를 못 받았습니다, 실측). 순서는 구현의 것입니다(해시는 약속 없음, 정렬
+--   맵은 키 순서). 도는 동안 맵을 바꾸면 정의되지 않은 동작입니다(conventions).
 export type MapOps<C, K, V> = {
 	read Get: (map: C, key: K) -> V?,
 	read Set: (map: C, key: K, value: V) -> (),
 	read Has: (map: C, key: K) -> boolean,
 	read Remove: (map: C, key: K) -> V?,
 	read Records: (map: C) -> { Record<K, V> },
-	read Iter: (map: C) -> ((...any) -> (K, V), ...any),
+	read Iter: (map: C) -> { read [K]: V } | (() -> (K, V)),
 }
 
 -- 원소의 존재만 다루는 컨테이너. HashSet/TreeSet 이 만족합니다.

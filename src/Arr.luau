@@ -2573,7 +2573,14 @@ end
 -- 호출에서 한 번** 세고, 순회자의 반환 개수가 호출마다 같다고 봅니다.
 -- ⚠️ **구멍이 생깁니다**: `(키, nil)` 을 내는 순회자(`Arr.Iter` 의 구멍)는 그 자리를
 -- 구멍으로 둡니다 — 원소 타입을 `T?` 로 적으세요: `Arr.FromIter<<number?>>(Arr.Iter(a))`.
+--
+-- **테이블을 넘기면** 그 키-값을 `next` 로 돕니다(값을 모음) — `HashMap.Iter` 가 안쪽 테이블을 돌려주게
+-- 되면서(2026-10-12, 질문 AP 1) `Arr.FromIter(HashMap.Iter(m))` 가 그대로 되게. `for … in 테이블` 과 같은
+-- 뜻이지만 `__iter` 메타메소드는 따르지 않습니다.
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
+	if type(iter) == "table" then
+		iter, state, control = next, iter, nil
+	end
 	const result: Arr<T> = newSized(0)
 	local count = 0
 	local key = control

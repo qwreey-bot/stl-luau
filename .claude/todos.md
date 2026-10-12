@@ -9,7 +9,7 @@
 |---|---|
 | **AA. Luau 새 솔버 결함 보고** — 초안 정리 끝(이슈 넷 + 재현 파일). **올리는 것은 사용자가**(또는 지시하실 때) | `.claude/audit/luau-solver-issues/DRAFTS.md` |
 | **AO. 트레이트 넓히기의 모양**(제가 정함 — `Trait.Collection`, `MapOps` 여섯, `Trait.New` 의 필수 함수 목록) | `question.md` AO |
-| **AP. ❓ ① `HashMap.Iter` 가 `data` 테이블을 돌려주게 할지(순회 9배, 모양이 바뀜) ② 종류를 모르는 코드가 `Get`/`Set` 을 타입 있게 부르는 길** | `question.md` AP |
+| **AP 1 을 넣으며 정한 것**(10-12 결정 반영) — `HashMap.Iter` 반환은 읽기 전용 타입(내장 `next`/`pairs` 엔 캐스트), 계약의 `Iter` 는 유니온(계약 경유 루프 변수는 `any`) | `question.md` AP |
 | **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
 | **AK. Deque 의 나머지 모양**(`DequeRead` 는 10-12 에 넣음) — 리스트 진입점이 Deque 를 받을지(지금 안 받고 `ToArr`), 이름·칸 수 정책 | `question.md` AK |
 | **AN. 트리의 `nil` 키를 막은 것**(제가 정함 — 빈 트리에 조용히 들어가 나중에 죽어서). 해시 쪽은 10-12 결정대로 그대로 | `question.md` AN |
@@ -39,7 +39,8 @@
 (NaN 과 같은 정책, `TreeSet` 메시지의 모듈 이름도), 해시 쪽은 비용을 재서 질문 AN(perf 26절).
 같은 날 받은 답으로: `DequeRead`(AK), `HashMap.Iter` 를 `next` 그대로(0.54~0.73배, perf 27절), ⭐ **트레이트 넓히기**
 (AO — `Trait.Collection` 의 `Len`·`Clear`, `MapOps` 에 `Has`·`Remove`·`Iter`, `Algorithm.Len`/`Clear`, `Keys`/`Values` 를
-`Iter` 로 0.62~0.87배, `spikes/63`). 남은 질문은 AP.
+`Iter` 로 0.62~0.87배, `spikes/63`). AP 답으로 `HashMap.Iter` 가 안쪽 테이블을 돌려줌(순회 9배, `Algorithm.Keys` 가
+HashMap 에서 자기 `Keys` 와 같은 속도).
 
 **M0(호출 모양을 네임스페이스 하나로, 질문 AB) 끝 — 리뷰 소진(여덟 라운드, 2026-10-01).**
 
@@ -137,6 +138,14 @@ C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
 질문 Y 타입을 바꾸는 `*Inplace` 는 입력을 소비, 빠진 표면 리서치와 이름 검토(W).
 
 ## 백로그 (당장 안 함)
+
+- **종류를 모르는 코드의 타입 다듬기** (2026-10-12 사용자: *"나중에 타입으로 어떻게 다듬는게 되나 봐야하긴 하겠네"*,
+  질문 AP 2) — ① `Trait.ImplOf(Trait.Map, m)` 가 `MapOps<any, any, any>` 라 `ops.Set(m, 1, "bad")` 가 안 잡힘
+  (후보: 타입 있는 구현 꺼내기 `MapOf(m)` — 다른 맵에 쓰는 구멍, `Algorithm.Get/Set` 래퍼 — 맵·셋 이름 충돌).
+  ② 계약 타입을 거친 `ops.Iter(m)` 의 루프 변수가 `any`(유니온 순회). 부르는 곳이 보이면 같이.
+- **`HashSet.Iter` 도 테이블로?** — `(item, item)` 을 주는 설계(`TreeSet` 과 `for _, item in` 모양을 맞추려고)라 Luau
+  래퍼가 남아 있습니다. 테이블을 돌려주면 `for item in HashSet.Iter(s)` 는 같은 9배를 얻지만 `for _, item in` 모양은
+  `true` 를 받게 됩니다(타입은 잡음). 모양이 바뀌어 여쭤야 함.
 
 - **`TreeMap` 의 `GetOrInsert(With)`·`Accumulate`**(AL 4, 사용자: 필요해지면) — 지금은 HashMap 만.
 - **mlua(Rust) 바인딩** — 이 프로젝트가 갈라져 나온 출처. 사용자 판단으로

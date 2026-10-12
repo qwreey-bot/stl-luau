@@ -100,21 +100,50 @@ do
 
 	const emptyMap = HashMap.New() :: HashMap<string, number>
 	local emptyCount = 0
-	-- 순회 삼중항의 모양(함수, 상태, 처음 키)은 그대로 — 손으로 한 걸음씩 걸어도 됨(2026-10-12:
-	-- 순회 함수를 내장 `next` 로 바꿈)
+	-- ⭐ Iter 는 **테이블 하나**를 돌려줌(2026-10-12 사용자 결정, 질문 AP 1 — Luau 가 직접 돌아 빠름).
+	-- 함수가 아니니 손으로 걸으려면 `next`, 삼중항은 `pairs` 로 — 반환이 읽기 전용 타입이라 캐스트가 듦
+	-- (내장 `next`/`pairs` 가 읽기·쓰기 테이블을 요구).
 	do
-		const step, state, first = HashMap.Iter(m)
-		assert(type(step) == "function" and first == nil, "Iter 는 (함수, 상태, nil)")
+		const iterable, extra = (HashMap.Iter :: any)(m)
+		assert(type(iterable) == "table" and extra == nil, "Iter 는 테이블 하나")
 		local seen = 0
-		local key, value = step(state, first)
+		const raw = HashMap.Iter(m) :: any
+		local key, value = next(raw)
 		while key ~= nil do
 			assert(HashMap.Get(m, key) == value, "손으로 걸은 값")
 			seen += 1
-			key, value = step(state, key)
+			key, value = next(raw, key)
 		end
 		assert(seen == HashMap.Len(m), `손으로 걸은 개수: {seen}`)
-		const viaFromIter = stl.Arr.FromIter(HashMap.Iter(m))
+		local viaPairs = 0
+		for pairKey, pairValue in pairs(raw) do
+			assert(HashMap.Get(m, pairKey) == pairValue, "pairs 로 돈 값")
+			viaPairs += 1
+		end
+		assert(viaPairs == HashMap.Len(m), "pairs(HashMap.Iter)")
+		const viaFromIter = stl.Arr.FromIter<<number>>(HashMap.Iter(m))
 		assert(viaFromIter.n == HashMap.Len(m), "FromIter(HashMap.Iter) 는 값을 모음")
+		assert(stl.Arr.Sum(viaFromIter) == 6, "FromIter 가 모은 값의 합")
+		-- 도는 동안 있는 키의 값을 Set 으로 바꾸는 것은 됨(새 키를 넣는 것은 UB)
+		const doubling = HashMap.FromTable<<string, number>>({ p = 10, q = 20, r = 30 })
+		for dKey, dValue in HashMap.Iter(doubling) do
+			HashMap.Set(doubling, dKey, dValue * 2)
+		end
+		assert(HashMap.Get(doubling, "p") == 20 and HashMap.Get(doubling, "r") == 60, "순회 중 값 덮어쓰기")
+		assert(HashMap.Len(doubling) == 3, "덮어쓰기는 크기를 안 바꿈")
+		-- 숫자 키가 섞여도(배열 부분·해시 부분) 한 번씩
+		const mixed = HashMap.New<<number | string, number>>()
+		for i = 1, 5 do
+			HashMap.Set(mixed, i, i * 100)
+		end
+		HashMap.Set(mixed, "x", 7)
+		HashMap.Set(mixed, 1000, 8)
+		local mixedCount, mixedSum = 0, 0
+		for _, mValue in HashMap.Iter(mixed) do
+			mixedCount += 1
+			mixedSum += mValue
+		end
+		assert(mixedCount == 7 and mixedSum == 1515, `섞인 키: {mixedCount}, {mixedSum}`)
 	end
 	for _k, _v in HashMap.Iter(emptyMap) do
 		emptyCount += 1

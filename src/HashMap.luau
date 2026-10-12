@@ -158,17 +158,19 @@ const function Values<K, V>(self: HashMapData<K, V>): { V }
 end
 
 -- `for key, value in HashMap.Iter(map) do … end`
--- ⭐ `(K, V)` 로 **비옵셔널로** 선언합니다 — 끝에서 `nil` 을 돌려주지만 타입엔
--- 드러내지 않습니다. 드러내면 루프 변수가 옵셔널이 되어 바로 못 씁니다.
--- Luau 자신의 `next`/`ipairs` 도 같은 방식입니다.
 --
--- 순회 함수는 **내장 `next` 그대로**입니다(2026-10-12). 예전엔 타입을 붙이려고 Luau 함수로 한 번
--- 감쌌는데(`return next(data, key)`), 원소마다 Luau 호출이 하나 더 붙어 순회가 1.4~1.8배 느렸습니다
--- (perf 27절). 타입은 캐스트로 붙입니다.
-type IterStep<K, V> = (data: { [K]: V }, key: K?) -> (K, V)
-
-const function Iter<K, V>(self: HashMapData<K, V>): (IterStep<K, V>, { [K]: V }, K?)
-	return next :: any, self.data, nil
+-- ⭐ **안쪽 테이블을 그대로 돌려줍니다**(2026-10-12 사용자 결정, 질문 AP 1). Luau 는 테이블을 `for … in` 에
+-- 바로 넣으면 순회 함수 호출 없이 직접 돕니다(일반화 순회) — 함수 삼중항(`next, data`)을 돌려주던 때보다
+-- 5배, 그 전의 Luau 래퍼보다 9배 빠릅니다(perf 27절). 그래서 반환은 **함수가 아닙니다**:
+-- - `Arr.FromIter(HashMap.Iter(m))` 는 그대로 됩니다(`FromIter` 가 테이블을 받음).
+-- - 타입은 **읽기 전용** `{ read [K]: V }` — 받은 테이블에 쓰면 `size` 가 틀어지니 타입이 막습니다.
+--   도는 동안 있는 키의 값을 바꾸려면 `HashMap.Set(m, key, v)`(새 키를 넣는 것은 정의되지 않은 동작).
+-- - 손으로 한 걸음씩 걷거나(`next`) 삼중항이 필요하면(`pairs`) **캐스트가 듭니다**:
+--   `next(HashMap.Iter(m) :: any, key)`. 내장 `next`/`pairs` 의 타입이 읽기·쓰기 테이블을 요구해서입니다
+--   (읽기·쓰기로 돌려주면 캐스트는 없어지지만 `HashMap.Iter(m).x = 1` 이 통과해 크기가 틀어집니다 — 드문
+--   쪽에 캐스트를 두었습니다).
+const function Iter<K, V>(self: HashMapData<K, V>): { read [K]: V }
+	return self.data
 end
 
 --#endregion

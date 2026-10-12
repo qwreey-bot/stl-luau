@@ -102,10 +102,10 @@ end
 -- 순서는 서로 맞습니다(맵을 그 사이에 안 바꿨다면).
 --
 -- `ops.Iter` 로 돕니다(2026-10-12, 질문 AO). 예전엔 `ops.Records` 가 만든 레코드 N 개를 거쳐 뽑았습니다 —
--- 순회로 옮기니 레코드 할당이 사라지고 0.61~0.87배(perf 28절). 결과 테이블은 크기를 알면(`Trait.Collection`
--- 도 구현하면) 미리 잡습니다 — 작은 맵에서 다시 늘리는 비용이 컸습니다.
--- ⚠️ 그래도 종류를 아는 코드는 자기 `HashMap.Keys`/`TreeMap.Keys` 가 4~5배 빠릅니다(이 함수는 구현을
--- 모르는 코드용).
+-- 순회로 옮기니 레코드 할당이 사라졌습니다(perf 28절). 결과 테이블은 크기를 알면(`Trait.Collection` 도
+-- 구현하면) 미리 잡습니다 — 작은 맵에서 다시 늘리는 비용이 컸습니다.
+-- `Iter` 가 **테이블**을 돌려주는 구현(`HashMap`)에서는 Luau 가 직접 돌아 자기 `HashMap.Keys` 와 같은 속도이고,
+-- **순회 함수**를 돌려주는 구현(`TreeMap`)에서는 원소마다 호출이 붙어 자기 `Keys` 의 4배쯤입니다.
 const function sizedList(map: any): { any }
 	const sized = Trait.Collection.impls[rawget(map, "__type")]
 	return if sized then table.create(sized.Len(map)) else {}
