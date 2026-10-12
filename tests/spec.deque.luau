@@ -260,6 +260,41 @@ do
 end
 print("PASS")
 
+print("=== 읽기 함수는 공변(DequeRead) — 좁은 덱을 넓은 읽기 자리에 (2026-10-12, 질문 AK) ===")
+do
+	-- 타입 쪽(빌린 참조로 못 씀)은 spikes/60 이 지킵니다. 여기는 그 모양의 사용자 함수가 도는지.
+	type Base = { id: number }
+	type Derived = { id: number, name: string }
+	local function sumIds(list: stl.DequeRead<Base>): number
+		local total = 0
+		for _, item in Deque.Iter(list) do
+			total += item.id
+		end
+		return total
+	end
+	local function holes(list: stl.DequeRead<number?>): number
+		local count = 0
+		for i = 1, Deque.Len(list) do
+			if Deque.At(list, i) == nil then
+				count += 1
+			end
+		end
+		return count
+	end
+	const derived = Deque.Of<<Derived>>({ id = 10, name = "a" }, { id = 20, name = "b" })
+	Deque.PushFront(derived, { id = 5, name = "z" })
+	assert(sumIds(derived) == 35, "Deque<Derived> → DequeRead<Base>")
+	const nums = Deque.Of(1, 2, 3)
+	assert(holes(nums) == 0, "Deque<number> → DequeRead<number?>")
+	const holed = Deque.Of<<number?>>(1, nil, 3)
+	assert(holes(holed) == 1, "구멍 든 덱")
+	-- 새 컨테이너를 만드는 읽기(ToArr·Clone)는 넓은 타입으로 받아도 원본과 독립
+	const wide: stl.Deque<number?> = Deque.Clone<<number?>>(nums)
+	Deque.PushBack(wide, nil)
+	assert(Deque.Len(wide) == 4 and Deque.Len(nums) == 3 and Deque.Back(nums) == 3, "Clone 은 독립")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Deque) ===")
 

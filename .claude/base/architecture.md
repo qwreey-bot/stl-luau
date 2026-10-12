@@ -136,7 +136,7 @@ luau-analyze src tests      # 타입 검사 + 린트
 | `TreeMap` | `{ records: { Record }, size, compare, probe }` | 정렬 레코드 배열 + 이분 탐색 |
 | `TreeSet` | `{ map: TreeMap<T, true> }` | 맵 위에 단방향 |
 | `Heap` | `{ items: { T }, size, less }` | 배열에 담은 완전이진트리 |
-| `Deque` | `{ head, size, cap, [1..cap]: T }` | 링 버퍼(2026-10-07 M5). 길이 필드가 **`n` 이 아니라 `size`** — 물리 칸이 감겨 있어 `{ n, [1..n] }` 리스트로 읽히면 틀림. 리스트 진입점은 받지 않음(`Deque.ToArr`) |
+| `Deque` | `{ head, size, cap, [1..cap]: T }` | 링 버퍼(2026-10-07 M5). 길이 필드가 **`n` 이 아니라 `size`** — 물리 칸이 감겨 있어 `{ n, [1..n] }` 리스트로 읽히면 틀림. 리스트 진입점은 받지 않음(`Deque.ToArr`). 읽기 함수의 첫 인자는 `DequeRead<T>`(공변, 2026-10-12) |
 
 **모두 메타테이블 없는 평범한 테이블에 타입 토큰 `__type` 하나**를 더합니다(2026-10-01 M0,
 2026-10-06 트레이트 — `conventions.md` "모듈 패턴", `papers/06`).

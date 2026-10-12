@@ -458,6 +458,9 @@ spikes/50 은 11건 그대로(V 의 구멍은 계속 닫힘), 위 누수 전부 
 
 ### AA. Luau 새 솔버의 결함을 업스트림에 보고할까
 
+> **[2026-10-12 사용자 결정] 초안만 다듬어 둠** — 이슈별 최소 재현과 본문을 저장소 안 문서로 정리하고, 올리는 것은
+> 사용자가 직접 하거나 나중에 지시할 때. 바깥으로 나가는 것은 없습니다.
+
 `arr: ArrView<number>` 를 못 쓰는 뿌리는 **Luau 새 솔버의 결함**이었습니다
 (`base/typing-limits.md` "뿌리" 절, `spikes/52`). 최소 재현은 세 줄이고 옛
 솔버는 잡습니다. 업스트림 트래커에서 같은 보고를 못 찾았습니다.
@@ -820,6 +823,11 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 
 ### AK. `Deque` 의 모양
 
+> **[2026-10-12 사용자 결정] 읽기 함수는 공변으로 넓힘** — `DequeRead<T>`(공개), `Get`·`*Index`·`Front`·`Back`·`At`·
+> `Len`·`Empty`·`Iter`·`ToArr`·`Clone` 의 첫 인자. 쓰기(`Push*`·`Pop*`·`Clear`)는 `DequeData` 그대로.
+> `spikes/60` 에 NEG 12 줄(빌린 참조로 넣기·꺼내기·`Clear`·필드 쓰기·쓰는 제네릭이 전부 에러). 표의 나머지는
+> 그대로 둡니다(리스트 진입점은 `ToArr` 로).
+
 | 무엇 | 정한 것 | 다른 길 |
 |---|---|---|
 | ⭐ **리스트 진입점이 Deque 를 받을까**(todos M5 메모) | **안 받음 — 지금 그대로**. `Arr.FromTable`·`Deque.FromList`·`Fut.All` 등 `Common.listLength` 진입점은 `__type` 이 `Arr` 가 아니면 에러. 넘기려면 `Deque.ToArr(d)`. Deque 는 `Trait.List` 를 구현하니 **`Algorithm`(트레이트를 보는 쪽)은 받음** | 진입점이 `Trait.List` 구현이면 `FirstIndex`/`NextIndex`/`Get` 으로 읽기 — 일반적이지만 진입점마다 느린 갈래가 생김 |
@@ -852,6 +860,8 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 ### AM. `Clear` 를 트레이트로, 자기 자신을 돌려주게 — 시제품 결과 (2026-10-12, AL 5 에서) — **[2026-10-12 사용자 결정] 추천대로**
 
 > 사용자: *"확인 … clear 같은 경우도 확인. 흐름 그대로 따라가면 될 것 같아. al 검사 빼는것도 다 봤어. 전부 동의해"*
+> **[2026-10-12 오후] (다) 를 M6 보다 앞당겨 지금 진행**하기로(사용자) — 아래 **AO**.
+>
 > — **(가) 적용**(`Clear` + 같은 흐름으로 맵·셋 `Retain`·`MergeInplace` 도 자기 자신), **(나) 적용**(불변 마커
 > `MapMarkerMut`/`SetMarkerMut`/`ListMarkerMut`, `spikes/61`), **(다) M6 때 같이**(`Trait.Collection`, 넓은 맵
 > 계약 — 사용자가 *"hash 인지 tree 인지 몰라도 만질 수 있게 하는 Map trait"* 을 물음: `Trait.Map` 은 있지만
@@ -911,7 +921,9 @@ local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
   지금 부르는 코드가 없고, 넣으면 일곱 모듈이 트레이트 둘씩 등록합니다. 다만 M6(`Multiset`·`OrderedMap`)가 이
   트레이트를 쓰게 될 가능성이 커서 "M6 때 같이" 가 자연스럽습니다.
 
-### AN. 맵·셋의 `nil`·NaN 키 (2026-10-12, 백로그 점검) — ❓ 해시 쪽은 여쭙니다
+### AN. 맵·셋의 `nil`·NaN 키 (2026-10-12, 백로그 점검) — **[2026-10-12 사용자 결정] 해시 쪽은 (a) 그대로 + 문서**
+
+> 해시 계열의 `nil`·NaN 키는 Lua 의 원시 에러 그대로 둡니다(에러 규약의 알려진 예외 — conventions). 검사는 넣지 않습니다.
 
 전수로 넣어 봤습니다(`HashMap`·`HashSet`·`TreeMap`·`TreeSet` 의 키를 받는 함수 전부 × `nil`·NaN).
 

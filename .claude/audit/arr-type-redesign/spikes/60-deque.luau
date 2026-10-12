@@ -5,7 +5,11 @@
 	지키는 성질: 꺼내기·조회는 **`?`**, 원소 타입은 넣기·꺼내기·순회·`ToArr` 를 지나며 그대로,
 	**타입 토큰**이 리터럴과 다른 종류(`Arr`)를 막음(서로 바꿔 넣을 수 없음).
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 14 + CANARY 1)
+	⭐ **읽기 함수는 공변**(2026-10-12 사용자 결정, 질문 AK — `DequeRead`, `spikes/56` 의 Deque 판):
+	좁은 덱을 넓은 읽기 자리에 넘길 수 있고, 그렇게 빌린 참조로는 **쓰지 못합니다**(넣기·꺼내기·
+	`Clear`·쓰는 제네릭). `ToArr`·`Clone` 은 새 컨테이너라 넓은 타입으로 받아도 건전합니다.
+
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 26 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Deque, Arr = stl.Deque, stl.Arr
@@ -53,6 +57,58 @@ Deque.PushBack({ head = 0, size = 0, cap = 4, __list = 1, __listIndex = 1 }, 1)
 Deque.PushBack(Arr.Of(1), 2)
 Arr.PushBack(d, 2)
 
+--[[ POS — 읽기는 공변(DequeRead) ]]
+type Base = { id: number }
+type Derived = { id: number, name: string }
+local derived = Deque.Of<<Derived>>({ id = 1, name = "a" })
+local function firstId(list: stl.DequeRead<Base>): number?
+	const head = Deque.Front(list)
+	return if head then head.id else nil
+end
+local function countHoles(list: stl.DequeRead<number?>): number
+	local holes = 0
+	for i = 1, Deque.Len(list) do
+		if Deque.At(list, i) == nil then
+			holes += 1
+		end
+	end
+	return holes
+end
+local baseId: number? = firstId(derived)
+local holeCount: number = countHoles(d)
+local wideAt: (number | string)? = Deque.At<<number | string>>(d, 1)
+local wideArr: stl.Arr<number?> = Deque.ToArr<<number?>>(d)
+local wideClone: Deque<number?> = Deque.Clone<<number?>>(d)
+local wideIndex: number? = stl.Algorithm.IndexOf<<number?, number>>(d, nil)
+for _, v in Deque.Iter<<number?>>(d) do
+	local _wide: number? = v
+end
+
+--[[ NEG — 빌린 읽기 참조로는 못 씀 ]]
+local function borrowed(list: stl.DequeRead<number?>, base: stl.DequeRead<Base>)
+	Deque.PushBack(list, nil)
+	Deque.PushFront(list, 1)
+	local _popFront = Deque.PopFront(base)
+	local _popBack = Deque.PopBack(base)
+	Deque.Clear(list)
+	list.size = 0
+	list[1] = nil
+end
+-- 쓰는 제네릭(불변 마커)에도 못 들어감 — 읽는 알고리즘(`IndexOf`)은 받음
+local function touch<E>(_list: stl.ListMarkerMut<E, number>, _item: E) end
+local function borrowedGeneric(list: stl.DequeRead<number>): number?
+	touch(list, 3)
+	return stl.Algorithm.IndexOf(list, 3)
+end
+touch(d, 3)
+-- 쓰는 함수 자체는 넓어지지 않음(불변)
+Deque.PushBack<<number?>>(d, nil)
+-- 읽기 자리에도 리터럴·다른 종류는 못 들어옴(토큰)
+local negLiteral = Deque.Len({ head = 0, size = 0, cap = 4, __list = 1, __listIndex = 1 })
+local negArr = Deque.Front(Arr.Of(1))
+-- 읽기라도 원소 타입이 어긋나면 안 됨(공변은 좁은 → 넓은 한 방향)
+local negNarrow: number? = firstId(d)
+
 local canary: string = 42
 
 return {
@@ -70,5 +126,16 @@ return {
 	negAt,
 	negToArr,
 	negFromList,
+	baseId,
+	holeCount,
+	wideAt,
+	wideArr,
+	wideClone,
+	wideIndex,
+	borrowed,
+	borrowedGeneric,
+	negLiteral,
+	negArr,
+	negNarrow,
 	canary,
 }

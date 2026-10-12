@@ -62,6 +62,7 @@ export type TreeMap<K, V> = TreeMap.TreeMap<K, V>
 export type TreeSet<T> = TreeSet.TreeSet<T>
 export type Heap<T> = Heap.Heap<T>
 export type Deque<T> = Deque.Deque<T>
+export type DequeRead<T> = Deque.DequeRead<T>
 export type Optional<T> = Optional.Optional<T>
 export type Fut<T...> = Fut.Fut<T...>
 export type FutStatus = Fut.Status

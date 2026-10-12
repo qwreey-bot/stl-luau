@@ -54,6 +54,22 @@ export type DequeData<T> = {
 	[number]: T,
 }
 export type Deque<T> = DequeData<T>
+
+-- ⭐ **읽기만 하는 함수의 첫 인자**(2026-10-12 사용자 결정, 질문 AK — `Arr` 의 `ArrRead`, 질문 AC 와 같은 결).
+-- `read` 인덱서라 원소에 **공변**입니다 — `Deque<number>` 를 `DequeRead<number?>` 자리에, 하위 레코드의
+-- 덱을 상위 레코드 자리에 넘길 수 있습니다(읽기·쓰기 인덱서인 `DequeData` 는 불변이라 안 됐음). 쓰는
+-- 함수(`Push*`·`Pop*`·`Clear`)는 `DequeData` 를 받습니다 — 넓어진 원소로 쓰면 건전하지 않으니까요.
+-- `head`·`size`·`cap` 도 `read` 라 빌린 참조로는 길이를 못 바꾸고, 불변 팬텀(`__listMut`)이 없어 쓰는
+-- 제네릭(`Types.ListMarkerMut`)에도 못 들어갑니다. 사용자 함수도 같은 규칙으로 쓰라고 공개합니다.
+export type DequeRead<T> = {
+	read head: number,
+	read size: number,
+	read cap: number,
+	read __type: Trait.Token<"Deque">,
+	read __list: T,
+	read __listIndex: number,
+	read [number]: T,
+}
 type Arr<T> = Arr.Arr<T>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
@@ -100,13 +116,13 @@ const function grow<T>(self: DequeData<T>)
 end
 
 -- 논리 위치(1..size)의 물리 칸.
-const function slot<T>(self: DequeData<T>, idx: number): number
+const function slot<T>(self: DequeRead<T>, idx: number): number
 	const pos = self.head + idx
 	return if pos > self.cap then pos - self.cap else pos
 end
 
 -- 논리 순서대로 `out` 의 `1..size` 에 복사합니다(감긴 두 조각을 `table.move` 둘로).
-const function copyInto<T>(self: DequeData<T>, out: any)
+const function copyInto<T>(self: DequeRead<T>, out: any)
 	const size = self.size
 	const head = self.head
 	const firstLen = math.min(size, self.cap - head)
@@ -120,23 +136,24 @@ end
 
 --#region ----------- 계약 구현 (Types.ListOps) -----------
 -- 위치는 논리 위치(1..size). 알고리즘이 준 위치만 받는 자리라 검사하지 않습니다(`Arr` 과 같음).
+-- 읽기만 하니 `DequeRead`(공변) — 조회 절의 함수들과 `ToArr`·`Clone`(새 컨테이너를 만듦)도 같습니다.
 
-const function Get<T>(self: DequeData<T>, idx: number): T?
+const function Get<T>(self: DequeRead<T>, idx: number): T?
 	if idx < 1 or idx > self.size then
 		return nil
 	end
 	return self[slot(self, idx)]
 end
-const function FirstIndex<T>(self: DequeData<T>): number?
+const function FirstIndex<T>(self: DequeRead<T>): number?
 	return if self.size > 0 then 1 else nil
 end
-const function LastIndex<T>(self: DequeData<T>): number?
+const function LastIndex<T>(self: DequeRead<T>): number?
 	return if self.size > 0 then self.size else nil
 end
-const function NextIndex<T>(self: DequeData<T>, idx: number): number?
+const function NextIndex<T>(self: DequeRead<T>, idx: number): number?
 	return if idx < self.size then idx + 1 else nil
 end
-const function PrevIndex<T>(self: DequeData<T>, idx: number): number?
+const function PrevIndex<T>(self: DequeRead<T>, idx: number): number?
 	return if idx > 1 then idx - 1 else nil
 end
 
@@ -207,7 +224,7 @@ end
 --#region ----------- 조회 -----------
 
 -- 맨 앞 원소(꺼내지 않음). 비었으면 `nil`.
-const function Front<T>(self: DequeData<T>): T?
+const function Front<T>(self: DequeRead<T>): T?
 	if self.size == 0 then
 		return nil
 	end
@@ -215,7 +232,7 @@ const function Front<T>(self: DequeData<T>): T?
 end
 
 -- 맨 뒤 원소(꺼내지 않음). 비었으면 `nil`.
-const function Back<T>(self: DequeData<T>): T?
+const function Back<T>(self: DequeRead<T>): T?
 	if self.size == 0 then
 		return nil
 	end
@@ -224,7 +241,7 @@ end
 
 -- 논리 위치의 원소. `Arr.At` 과 같은 규약 — 음수는 뒤에서(`-1` = 맨 뒤), 소수는 0 쪽으로,
 -- NaN 은 에러, 범위 밖은 `nil`.
-const function At<T>(self: DequeData<T>, idx: number): T?
+const function At<T>(self: DequeRead<T>, idx: number): T?
 	if idx ~= idx then
 		Common.raise("Deque: At index is NaN")
 	end
@@ -237,17 +254,17 @@ const function At<T>(self: DequeData<T>, idx: number): T?
 	return self[slot(self, pos)]
 end
 
-const function Len<T>(self: DequeData<T>): number
+const function Len<T>(self: DequeRead<T>): number
 	return self.size
 end
 
-const function Empty<T>(self: DequeData<T>): boolean
+const function Empty<T>(self: DequeRead<T>): boolean
 	return self.size == 0
 end
 
 -- `for i, v in Deque.Iter(d) do … end` — 앞에서 뒤로, `i` 는 논리 위치. `(number, T)` 비옵셔널
 -- 선언은 `ipairs`·`Arr.Iter` 와 같은 이유. 도는 동안 넣거나 빼면 순서는 약속하지 않습니다.
-const function iterStep<T>(self: DequeData<T>, idx: number): (number, T)
+const function iterStep<T>(self: DequeRead<T>, idx: number): (number, T)
 	const nextIdx = idx + 1
 	if nextIdx > self.size then
 		return nil :: any, nil :: any
@@ -255,12 +272,12 @@ const function iterStep<T>(self: DequeData<T>, idx: number): (number, T)
 	return nextIdx, self[slot(self, nextIdx)]
 end
 
-const function Iter<T>(self: DequeData<T>): (typeof(iterStep), DequeData<T>, number)
+const function Iter<T>(self: DequeRead<T>): (typeof(iterStep), DequeRead<T>, number)
 	return iterStep, self, 0
 end
 
 -- 앞에서 뒤 순서의 새 `Arr`(구멍은 그대로, 길이는 `size`). 리스트 진입점에 넘길 때.
-const function ToArr<T>(self: DequeData<T>): Arr<T>
+const function ToArr<T>(self: DequeRead<T>): Arr<T>
 	const size = self.size
 	const raw = table.create(size) :: any
 	copyInto(self, raw)
@@ -292,7 +309,7 @@ end
 
 -- 얕은 복사. 감긴 것을 펴서 앞에서부터 담습니다. 칸 수는 원소 수에 맞춥니다(최소 4) — 줄이는
 -- 길이기도 합니다.
-const function Clone<T>(self: DequeData<T>): Deque<T>
+const function Clone<T>(self: DequeRead<T>): Deque<T>
 	const size = self.size
 	const copy = newBuffer(if size < MIN_CAPACITY then MIN_CAPACITY else size)
 	copyInto(self, copy)
