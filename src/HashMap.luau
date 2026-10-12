@@ -159,12 +159,14 @@ end
 -- ⭐ `(K, V)` 로 **비옵셔널로** 선언합니다 — 끝에서 `nil` 을 돌려주지만 타입엔
 -- 드러내지 않습니다. 드러내면 루프 변수가 옵셔널이 되어 바로 못 씁니다.
 -- Luau 자신의 `next`/`ipairs` 도 같은 방식입니다.
-const function iterStep<K, V>(data: { [K]: V }, key: K?): (K, V)
-	return (next :: any)(data, key)
-end
+--
+-- 순회 함수는 **내장 `next` 그대로**입니다(2026-10-12). 예전엔 타입을 붙이려고 Luau 함수로 한 번
+-- 감쌌는데(`return next(data, key)`), 원소마다 Luau 호출이 하나 더 붙어 순회가 1.4~1.8배 느렸습니다
+-- (perf 27절). 타입은 캐스트로 붙입니다.
+type IterStep<K, V> = (data: { [K]: V }, key: K?) -> (K, V)
 
-const function Iter<K, V>(self: HashMapData<K, V>): (typeof(iterStep), { [K]: V }, K?)
-	return iterStep, self.data, nil
+const function Iter<K, V>(self: HashMapData<K, V>): (IterStep<K, V>, { [K]: V }, K?)
+	return next :: any, self.data, nil
 end
 
 --#endregion

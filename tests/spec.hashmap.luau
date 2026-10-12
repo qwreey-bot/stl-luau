@@ -100,6 +100,22 @@ do
 
 	const emptyMap = HashMap.New() :: HashMap<string, number>
 	local emptyCount = 0
+	-- 순회 삼중항의 모양(함수, 상태, 처음 키)은 그대로 — 손으로 한 걸음씩 걸어도 됨(2026-10-12:
+	-- 순회 함수를 내장 `next` 로 바꿈)
+	do
+		const step, state, first = HashMap.Iter(m)
+		assert(type(step) == "function" and first == nil, "Iter 는 (함수, 상태, nil)")
+		local seen = 0
+		local key, value = step(state, first)
+		while key ~= nil do
+			assert(HashMap.Get(m, key) == value, "손으로 걸은 값")
+			seen += 1
+			key, value = step(state, key)
+		end
+		assert(seen == HashMap.Len(m), `손으로 걸은 개수: {seen}`)
+		const viaFromIter = stl.Arr.FromIter(HashMap.Iter(m))
+		assert(viaFromIter.n == HashMap.Len(m), "FromIter(HashMap.Iter) 는 값을 모음")
+	end
 	for _k, _v in HashMap.Iter(emptyMap) do
 		emptyCount += 1
 	end
