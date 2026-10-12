@@ -2576,9 +2576,13 @@ end
 --
 -- **테이블을 넘기면** 그 키-값을 `next` 로 돕니다(값을 모음) — `HashMap.Iter` 가 안쪽 테이블을 돌려주게
 -- 되면서(2026-10-12, 질문 AP 1) `Arr.FromIter(HashMap.Iter(m))` 가 그대로 되게. `for … in 테이블` 과 같은
--- 뜻이지만 `__iter` 메타메소드는 따르지 않습니다.
+-- 뜻이지만 `__iter` 메타메소드는 따르지 않습니다. ⚠️ **컨테이너 자체**(타입 토큰이 있는 테이블)를 넘기면
+-- 에러입니다 — `Arr.FromIter(arr)` 는 `n`·토큰까지 원소로 담았을 것입니다. 그 종류의 `Iter` 를 넘기세요.
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	if type(iter) == "table" then
+		if rawget(iter, TYPE_KEY) ~= nil then
+			Common.raise("Arr: FromIter got a container, not an iterator — pass its Iter (e.g. Arr.Iter(a))")
+		end
 		iter, state, control = next, iter, nil
 	end
 	const result: Arr<T> = newSized(0)

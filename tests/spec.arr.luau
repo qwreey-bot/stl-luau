@@ -1416,6 +1416,21 @@ do
 	-- 빈 순회: 끝 모양이 셋(값 0개 — ipairs, nil 하나 — next/pairs, nil 둘 — Arr.Iter). 6라운드 —
 	-- `firstA == nil` 을 `returned == 0` 으로 바꿔도 ipairs 만으로는 못 갈랐음.
 	assert(Arr.FromIter(pairs({})).n == 0, "빈 pairs")
+	-- 테이블을 그대로(2026-10-12 — `HashMap.Iter` 가 안쪽 테이블을 돌려주게 되면서): 값을 모음
+	const fromDict = Arr.FromIter<<number>>({ p = 70, q = 80 })
+	assert(fromDict.n == 2 and Arr.Sum(fromDict) == 150, "FromIter(사전 테이블) 은 값을 모음")
+	assert(Arr.FromIter<<number>>({ 70, 80, 90 }).n == 3, "FromIter(배열 테이블)")
+	assert(Arr.FromIter({}).n == 0, "FromIter(빈 테이블)")
+	-- 컨테이너 자체는 거절(그 종류의 Iter 를 넘겨야 함) — 다른 종류도
+	for _, container in { Arr.Of(1, 2), stl.HashMap.New(), stl.Deque.Of(1) } :: { any } do
+		const okContainer, errContainer = pcall(function()
+			Arr.FromIter(container)
+		end)
+		assert(
+			not okContainer and string.find(tostring(errContainer), "FromIter got a container", 1, true),
+			`컨테이너를 FromIter 에: {errContainer}`
+		)
+	end
 	assert(Arr.FromIter(Arr.Iter(Arr.Of<<number>>())).n == 0, "빈 Arr.Iter")
 	const words = Arr.FromIter(string.gmatch("ab cd", "%a+"))
 	assert(words.n == 2 and words[1] == "ab" and words[2] == "cd", "gmatch")

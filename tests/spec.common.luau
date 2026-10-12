@@ -256,6 +256,15 @@ do
 			stl.TreeSet.Add(s, nil :: any)
 		end)
 	)
+	-- FromIter 에 컨테이너 자체를 넘김(2026-10-12 — 테이블을 받게 되면서: `n`·토큰까지 원소가 됐을 것)
+	atUserLine(
+		"Arr.FromIter 컨테이너",
+		expectLine("Arr.FromIter 컨테이너", "FromIter got a container", function()
+			const already = Arr.Of(1, 2)
+			where = debug.info(1, "l") + 1
+			Arr.FromIter(already)
+		end)
+	)
 	atUserLine(
 		"Arr.FromTable 이미 Arr",
 		expectLine("Arr.FromTable 이미 Arr", "already a container", function()
