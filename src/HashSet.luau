@@ -123,9 +123,8 @@ const function Clear<T>(self: HashSetData<T>): ()
 end
 
 -- 조건을 만족하는 원소만 **남깁니다**(제자리). ⚠️ Java `retainAll`(다른 컬렉션을 받음)과 달리
--- 술어를 받습니다(질문 W) — 다른 셋과의 교집합은 `Intersect`. 콜백 안에서 이 셋에 원소를 넣으면
--- 순회가 망가집니다(Lua 의 `next` 규칙). 지우기는 안전합니다 — 콜백이 `Remove` 로 지운 원소는
--- 다시 세지 않습니다(`HashMap.Retain` 과 같은 이유, M4 리뷰 1라운드).
+-- 술어를 받습니다(질문 W) — 다른 셋과의 교집합은 `Intersect`. 콜백 안에서 이 셋을 바꾸면
+-- 정의되지 않은 동작입니다(`HashMap.Retain` 과 같음, 질문 AL 1 — 지우기의 크기가 맞는 것은 관측).
 const function Retain<T>(self: HashSetData<T>, fn: (item: T) -> boolean): ()
 	const map = self.map
 	const data = map.data

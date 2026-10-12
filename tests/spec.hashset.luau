@@ -177,7 +177,7 @@ do
 	end)
 	assert(HashSet.Len(s) == 0, "빈 셋")
 
-	-- 콜백 안에서 같은 셋을 지워도 크기가 맞음(M4 리뷰 1라운드)
+	-- 관측 — 계약 아님(질문 AL 1): 콜백 안에서 같은 셋을 지워도 지금 판은 크기가 맞음
 	const evict = HashSet.Of(10, 15, 20, 25)
 	HashSet.Retain(evict, function(item: number): boolean
 		if item % 10 == 0 then

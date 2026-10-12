@@ -297,19 +297,8 @@ do
 	end)
 	assert(TreeMap.Empty(r) and rawget(r.records :: any, 1) == nil, "전부 지움")
 
-	-- 콜백 안에서 이 맵의 크기를 바꾸면 에러(M4 리뷰 1라운드 — 정렬 배열을 당기는 중이라
-	-- 라이브러리 밖 에러 "attempt to index nil" 로 죽었음). 메시지와 줄은 spec.common.
-	const mod = TreeMap.FromRecords({ { key = 10, value = "a" }, { key = 20, value = "b" } }, Common.compareNumber)
-	const ok, err = pcall(function()
-		TreeMap.Retain(mod, function(key: number, _v: string): boolean
-			if key == 10 then
-				TreeMap.Remove(mod, 20)
-			end
-			return true
-		end)
-	end)
-	assert(not ok and string.find(tostring(err), "modified during Retain", 1, true), tostring(err))
-	-- 값만 덮어쓰기(크기 그대로)는 에러가 아님
+	-- 콜백 안에서 이 맵에 넣거나 지우는 것은 **정의되지 않은 동작**(2026-10-12 사용자 결정, 질문 AL 1 —
+	-- 검사 없음)이라 테스트하지 않습니다. 값만 덮어쓰기(구조를 안 바꿈)는 됩니다.
 	const overwrite = TreeMap.FromRecords({ { key = 10, value = "a" } }, Common.compareNumber)
 	TreeMap.Retain(overwrite, function(key: number, _v: string): boolean
 		TreeMap.Set(overwrite, key, "A")

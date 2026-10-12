@@ -312,8 +312,9 @@ do
 	end)
 	size(r, 0, "빈 맵 Retain")
 
-	-- 콜백 안에서 같은 맵을 지워도 크기가 맞음(M4 리뷰 1라운드 — 현재 키를 Remove 하고 false 면
-	-- 두 번 세서 Len 0·실제 2 였음). 지우기는 주석이 약속한 안전한 변경입니다.
+	-- **관측 — 계약 아님**(콜백 안에서 같은 맵을 바꾸는 것은 정의되지 않은 동작, 질문 AL 1): 지금 판은
+	-- 콜백이 지워도 크기가 맞습니다(M4 리뷰 1라운드 — 현재 키를 Remove 하고 false 면 두 번 세서
+	-- Len 0·실제 2 였음). 구현을 바꿔 이 절이 깨지면 테스트를 고치면 됩니다.
 	const cache = HashMap.FromTable<<string, number>>({ a = 1, b = 2, c = 3, d = 4 })
 	HashMap.Retain(cache, function(key: string, value: number): boolean
 		if value % 2 == 0 then

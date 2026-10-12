@@ -199,9 +199,9 @@ end
 
 -- 조건을 만족하는 쌍만 **남깁니다**(제자리, Rust `retain`). 콜백은 `(key, value)` 를 받습니다.
 -- ⚠️ Java `retainAll`(다른 컬렉션을 받음)과 달리 **술어**를 받습니다(질문 W). 순서는 해시 순서.
--- 콜백 안에서 이 맵에 새 키를 넣으면 순회가 망가집니다(Lua 의 `next` 규칙) — 지우기만 안전.
--- 콜백이 `Remove` 로 지운 키(현재 키 포함)는 `Remove` 가 이미 셌으니 다시 세지 않습니다 —
--- 예전엔 현재 키를 지우고 `false` 면 두 번 줄어 `Len` 이 실제보다 작았습니다(M4 리뷰 1라운드).
+-- ⚠️ 콜백 안에서 이 컨테이너를 바꾸면(넣기·지우기 — 캡처한 변수로) **정의되지 않은 동작**입니다
+-- (2026-10-12 사용자 결정, 질문 AL 1). 관측(계약 아님): 지금 판은 콜백이 `Remove` 로 지운 키를
+-- 다시 세지 않아 지우기는 크기가 맞습니다 — 셈을 맞추는 읽기 하나일 뿐 약속이 아닙니다.
 const function Retain<K, V>(self: HashMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
 	const data = self.data
 	for key, value in data do

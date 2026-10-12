@@ -201,8 +201,8 @@ const function PopLast<T>(self: TreeSetData<T>): T?
 end
 
 -- 조건을 만족하는 원소만 **남깁니다**(제자리, 정렬 순서로 부름). ⚠️ Java `retainAll` 과 달리
--- 술어를 받습니다(질문 W). 콜백 안에서 이 셋의 크기를 바꾸면 에러(`TreeMap.Retain` 과 같은 이유).
--- 자기 맵의 레코드 배열을 직접 훑습니다(집합 연산처럼 — 클로저 한 겹을 아낌).
+-- 술어를 받습니다(질문 W). 콜백 안에서 이 셋을 바꾸면 정의되지 않은 동작입니다(`TreeMap.Retain`
+-- 과 같음, 질문 AL 1). 자기 맵의 레코드 배열을 직접 훑습니다(집합 연산처럼 — 클로저 한 겹을 아낌).
 const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): ()
 	const map = self.map
 	const records = map.records
@@ -210,11 +210,7 @@ const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): ()
 	local kept = 0
 	for idx = 1, size do
 		const rec = records[idx]
-		const keep = fn(rec.key)
-		if map.size ~= size then
-			Common.raise("TreeSet: set modified during Retain")
-		end
-		if keep then
+		if fn(rec.key) then
 			kept += 1
 			records[kept] = rec
 		end

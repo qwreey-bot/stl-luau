@@ -357,22 +357,18 @@ end
 
 -- 조건을 만족하는 쌍만 **남깁니다**(제자리, 정렬 순서로 부름). 콜백은 `(key, value)`.
 -- ⚠️ Java `retainAll` 과 달리 술어를 받습니다(질문 W). 한 번 훑고 당겨 O(n).
--- ⚠️ 콜백 안에서 이 맵의 **크기를 바꾸면 에러**입니다(넣기·지우기) — 정렬 배열을 당기는 중이라
--- 위치가 어긋나 라이브러리 밖 에러("attempt to index nil")로 죽거나 조용히 틀렸습니다(M4 리뷰
--- 1라운드). 값만 덮어쓰는 `Set` 은 괜찮습니다. 지울 것은 `false` 로 돌려주세요. (검사는 크기만
--- 봅니다 — 하나 지우고 하나 넣어 크기가 같으면 지나갑니다.) 공유 헬퍼에 클로저를 끼웠더니
--- 1.40배 느려져(perf 23절) `TreeSet.Retain` 과 몸통을 따로 둡니다.
+-- ⚠️ 콜백 안에서 이 컨테이너를 바꾸면(넣기·지우기 — 캡처한 변수로) **정의되지 않은 동작**입니다
+-- (2026-10-12 사용자 결정, 질문 AL 1 — 검사를 두지 않음). 정렬 배열을 당기는 중이라 위치가 어긋나
+-- 라이브러리 밖 에러로 죽거나 조용히 틀립니다. 지울 것은 `false` 로 돌려주세요. (한때 크기가
+-- 바뀌면 에러로 막았는데 원소마다 검사가 붙어 1.16배였습니다 — perf 23절.) 공유 헬퍼에 클로저를
+-- 끼우면 더 느려 `TreeSet.Retain` 과 몸통을 따로 둡니다.
 const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): ()
 	const records = self.records
 	const size = self.size
 	local kept = 0
 	for idx = 1, size do
 		const rec = records[idx]
-		const keep = fn(rec.key, rec.value)
-		if self.size ~= size then
-			Common.raise("TreeMap: map modified during Retain")
-		end
-		if keep then
+		if fn(rec.key, rec.value) then
 			kept += 1
 			records[kept] = rec
 		end

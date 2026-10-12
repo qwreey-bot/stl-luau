@@ -246,17 +246,7 @@ do
 	assert(rawget(r.map.records :: any, 3) == nil and rawget(r.map.records :: any, 4) == nil, "Retain 꼬리")
 	assert(TreeSet.Has(r, 30) and not TreeSet.Has(r, 10), "Retain 뒤 Has")
 
-	-- 콜백 안에서 크기를 바꾸면 에러(M4 리뷰 1라운드 — 크래시였음)
-	const mod = setOf(10, 20, 30)
-	const ok, err = pcall(function()
-		TreeSet.Retain(mod, function(item: number): boolean
-			if item == 10 then
-				TreeSet.Remove(mod, 10)
-			end
-			return true
-		end)
-	end)
-	assert(not ok and string.find(tostring(err), "TreeSet: set modified during Retain", 1, true), tostring(err))
+	-- (콜백 안에서 이 셋을 바꾸는 것은 정의되지 않은 동작 — 질문 AL 1, 테스트하지 않음)
 	-- NaN 은 없음 — 빼기 비교자에서도
 	const sub = TreeSet.FromList({ 10, 20 }, function(a: number, b: number): number
 		return a - b
