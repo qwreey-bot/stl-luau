@@ -63,4 +63,5 @@
 20	.claude/audit/arr-type-redesign/spikes/58-arr-m3-surface.luau	60,61,62,63,64,70,73,76,79,82,88,89,92,93,98,101,104,110,113,117
 17	.claude/audit/arr-type-redesign/spikes/59-maps-m4-surface.luau	55,58,59,60,63,64,67,68,71,72,73,76,79,82,85,88,92
 15	.claude/audit/arr-type-redesign/spikes/60-deque.luau	33,34,35,36,37,40,41,42,43,45,49,52,53,54,56
-9	.claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau	61,62,63,64,65,66,67,71,74
+12	.claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau	72,73,74,75,76,77,78,79,80,81,85,88
+4	.claude/audit/arr-type-redesign/spikes/62-solver-generic-body-and-literal-key.luau	32,34,34,36

@@ -496,6 +496,13 @@ spikes/50 은 11건 그대로(V 의 구멍은 계속 닫힘), 위 누수 전부 
 { G }` + `Map2({ 1, 2 }, function(v) return v end)` 를 `{ string }` 에), 옛 솔버는 잡음. `spikes/57`.
 업스트림에 낸다면 이쪽이 실해가 가장 큽니다(흔한 코드 모양에서 타입이 거짓말).
 
+**2026-10-12 보강(AM 리뷰 — 범위 밖 발견, `spikes/62`)** — 라이브러리 없이 재현되는 조용한 구멍 둘:
+(1) **제네릭 함수의 몸통이 타입 변수로 검사되지 않음** — `local function h<V>(v: V): number return v end` 가
+0건이고 `h("str")` 은 `"str"`(제네릭이 아니면 잡힘). (2) **문자열 키 리터럴을 인덱서 파라미터에** —
+`plain({ x = "bad" })`(`t: { [string]: number }`)가 0건(배열 리터럴은 잡힘). 우리 쪽 영향: 불변 마커는 호출
+자리만 지키고(제네릭 안에서 다시 부르는 것은 0건), `HashMap.FromTable<<string, number>>({ x = "bad" })` 도 0건.
+**옛 솔버(`--solver=old`)는 둘 다 잡습니다**(직접 대조) — 새 솔버의 회귀입니다.
+
 ---
 
 ## ❓ 2026-10-01 — 호출 모양을 하나로
@@ -802,7 +809,7 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 | `Accumulate(m, k, v, combine)` | 없으면 `v`, 있으면 `combine(old, v)`. **바뀐 값을 `V?` 로** 돌려주고 `nil` 이면 지움(Java `Map.merge`) | 반환 없음 |
 | `GetOrInsert(m, k, default)` | 있으면 그 값(안 바꿈). `default` 가 `nil` 이면 아무것도 안 넣음 | `nil` 이면 에러 |
 | `GetOrInsertWith(m, k, make)` | `make(key)` 를 **없을 때만**. `make` 가 같은 키를 넣었으면(재귀 메모이즈) 크기를 다시 셈 — 결과는 `make` 의 반환이 이김, `make` 가 `nil` 이면 그때 맵에 있는 값 | — |
-| `Retain` 콜백 | 맵 `(key, value)`, 셋 `(item)`. TreeMap/TreeSet 은 정렬 순서로 부름. 콜백 안에서 같은 컨테이너를 **지우는 것**은 Hash 쪽은 안전(크기 맞음), Tree 쪽은 **크기를 바꾸면 에러**(넣기·지우기 — 정렬 배열을 당기는 중, 리뷰 1라운드에서 크래시였음. 검사 비용 10~16%, perf 23절) | Tree 쪽도 지우기를 허용하려면 두 번 훑어야 함 |
+| `Retain` 콜백 | 맵 `(key, value)`, 셋 `(item)`. TreeMap/TreeSet 은 정렬 순서로 부름. 콜백 안에서 같은 컨테이너를 바꾸는 것은 ~~Hash 는 지우기 안전, Tree 는 크기를 바꾸면 에러~~ → **[2026-10-12 사용자 결정, AL 1] UB — 검사 없음**(Hash 쪽 지우기의 크기가 맞는 것은 관측) | — |
 | `LowerKey`/`HigherKey` | **엄격**(같은 키는 안 줌) — `FloorKey`/`CeilingKey` 의 짝. 셋은 `LowerItem`/`HigherItem`(셋의 `FloorItem` 어휘) | Java `lowerKey`/`higherKey` 와 같음 |
 | `PopFirst`/`PopLast` | 맵은 **`Record<K, V>?`**(꺼낸 레코드를 그대로 — 이미 빠졌으니 복사 안 함), 셋은 `T?`. `PopFirst` 는 정렬 배열이라 O(n) | `(K?, V?)` 두 값으로 돌려주기 |
 | `Arr.GroupBy`/`CountBy`/`KeyBy` | **`HashMap` 을 돌려줌**(`HashMap<K, Arr<T>>`·`<K, number>`·`<K, T>`) → **`Arr` 가 `HashMap` 을 require**(한 방향, 순환 없음) | 평범한 테이블 `{ [K]: … }` 을 돌려주면 의존이 없음 |
@@ -832,7 +839,7 @@ Gemini 가 이름을 셋 짚었습니다(이 레포의 이름은 Claude 계열�
 
 > **[2026-10-12 사용자 답]** 1: *"이런 종류의 재진입이나 검사는 없는걸로. UB로 둔다."* 2: 동의. 3: *"의미 달라서
 > 그게 맞고."* 4: *"백로깅 상 두고 필요해지면 꺼내 넣어보자."* 5: Clear 트레이트 + 자기 자신 반환을 더 파 보기로 →
-> 아래 **AM**. (1 의 적용 — Tree `Retain` 의 크기 검사를 걷을지 — 는 확인 뒤.)
+> 아래 **AM**. 1 의 적용(Tree `Retain` 의 크기 검사 걷기)도 같은 날 확인받아 넣음(`0576bfe`).
 
 | # | 어긋남 | 제 추천 |
 |---|---|---|

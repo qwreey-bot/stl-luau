@@ -95,7 +95,7 @@ export type ArrData<T> = {
 	read __type: Trait.Token<"Arr">,
 	read __list: T,
 	read __listIndex: number,
-	read __listMut: (T) -> T,
+	read __listMut: (T, number) -> (T, number),
 	[number]: T,
 }
 

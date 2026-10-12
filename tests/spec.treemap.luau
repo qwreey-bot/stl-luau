@@ -300,7 +300,7 @@ do
 	assert(TreeMap.Empty(r) and rawget(r.records :: any, 1) == nil, "전부 지움")
 
 	-- 콜백 안에서 이 맵에 넣거나 지우는 것은 **정의되지 않은 동작**(2026-10-12 사용자 결정, 질문 AL 1 —
-	-- 검사 없음)이라 테스트하지 않습니다. 값만 덮어쓰기(구조를 안 바꿈)는 됩니다.
+	-- 검사 없음)이라 테스트하지 않습니다. 아래 값만 덮어쓰기(구조를 안 바꿈)가 되는 것도 **관측**입니다.
 	const overwrite = TreeMap.FromRecords({ { key = 10, value = "a" } }, Common.compareNumber)
 	TreeMap.Retain(overwrite, function(key: number, _v: string): boolean
 		TreeMap.Set(overwrite, key, "A")

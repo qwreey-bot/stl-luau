@@ -100,17 +100,20 @@ export type MapMarker<K, V> = { read __type: Token<any>, read __mapKey: K, read 
 -- 셋(`Trait.Set`). `T` 는 원소.
 export type SetMarker<T> = { read __type: Token<any>, read __setItem: T }
 
--- ⭐ **쓰는 제네릭을 위한 불변 마커**(2026-10-12, 질문 AM). 위 읽기 마커는 `read` 라 **공변**입니다 —
--- 읽는 알고리즘엔 맞지만, 마커를 받아 `Set`/`Add` 하는 제네릭에서는 값 타입이 조용히 넓어져
--- `HashMap<string, number>` 에 문자열이 들어갔습니다(진단 0건, `spikes/61`). 쓰는 제네릭은 이쪽을
--- 받으세요. 팬텀이 **함수 타입**이라(인자·반환 양쪽에 타입 변수) 불변이고, 읽기 마커의 필드도 다
+-- ⭐ **키·위치·값을 입력으로 받는 제네릭을 위한 불변 마커**(2026-10-12, 질문 AM). 위 읽기 마커는
+-- `read` 라 **공변**입니다 — 컨테이너에서 꺼내기만 하는 알고리즘엔 맞지만(`Keys`, `Count`), 마커와 함께
+-- **값·키·위치를 받아 넘기는** 제네릭에서는 그 타입이 조용히 넓어집니다: `Set`/`Add` 로 쓰면
+-- `HashMap<string, number>` 에 문자열이 들어가고, 조회만 해도 `TreeMap<string, …>` 에 숫자 키를 넘겨
+-- 비교자가 라이브러리 줄에서 터졌습니다(진단 0건, `spikes/61`). 그런 제네릭은 이쪽을 받으세요. 팬텀이 **함수 타입**이라(인자·반환 양쪽에 타입 변수) 불변이고, 읽기 마커의 필드도 다
 -- 있어 읽는 알고리즘에 그대로 넘어갑니다. 읽기 전용으로 빌린 타입(`ArrRead`)에는 이 팬텀이 없습니다.
 -- (팬텀을 읽기·쓰기 필드로 선언하는 길도 불변이 되지만 사용자가 팬텀에 쓰는 코드가 통과했습니다.)
 export type ListMarkerMut<E, I> = {
 	read __type: Token<any>,
 	read __list: E,
 	read __listIndex: I,
-	read __listMut: (E) -> E,
+	-- 위치 `I` 도 같이 — `(E) -> E` 뿐일 땐 위치를 받아 쓰는 제네릭이 `Arr` 에 문자열 키로 썼습니다
+	-- (진단 0건, AM 리뷰 1라운드).
+	read __listMut: (E, I) -> (E, I),
 }
 export type MapMarkerMut<K, V> = {
 	read __type: Token<any>,

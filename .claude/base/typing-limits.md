@@ -404,6 +404,9 @@ Arr.Map(nums, function(v: number) return v * 2 end)          -- ✅ 주석으로
   **않으면**(`return p.name`, `return v`) 진단 0건으로 통과하고 **결과 원소가 아무 타입에나 들어갑니다**
   (`Arr.Map(people, function(p) return p.name end)[1]` 이 `number` 자리에 — 실행하면 문자열).
   라이브러리 없이도 재현되고 옛 솔버는 잡습니다(2026-10-06 AC 리뷰, `spikes/57` 이 HOLE 로 고정).
+  ⚠️ **같은 결의 조용한 구멍 둘 더**(2026-10-12, `spikes/62` — 옛 솔버는 잡음): 제네릭 함수의 **몸통이 타입
+  변수로 검사되지 않고**(`h<V>(v: V): number return v end` 0건), **문자열 키 리터럴을 인덱서 파라미터에**
+  넘기면 값 타입을 안 봅니다(`plain({ x = "bad" })`, `HashMap.FromTable<<string, number>>({ x = "bad" })`).
   **그래서 콜백엔 `<<T>>` 나 파라미터 주석을 항상** 붙입니다. 업스트림 `luau-lang/luau#2168`
   (열림)이 같은 증상이고, 원인 분석이 든 커뮤니티 PR(#2894 등)은 머지되지 않았습니다
   (2026-10-02 확인 — 탐사 B).
