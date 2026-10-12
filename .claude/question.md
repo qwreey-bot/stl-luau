@@ -911,6 +911,40 @@ local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
   지금 부르는 코드가 없고, 넣으면 일곱 모듈이 트레이트 둘씩 등록합니다. 다만 M6(`Multiset`·`OrderedMap`)가 이
   트레이트를 쓰게 될 가능성이 커서 "M6 때 같이" 가 자연스럽습니다.
 
+### AN. 맵·셋의 `nil`·NaN 키 (2026-10-12, 백로그 점검) — ❓ 해시 쪽은 여쭙니다
+
+전수로 넣어 봤습니다(`HashMap`·`HashSet`·`TreeMap`·`TreeSet` 의 키를 받는 함수 전부 × `nil`·NaN).
+
+**🔁 트리 쪽 — 제가 정해서 넣었습니다(되돌리기 쉬움)**: ⚠️ **빈 `TreeMap` 에 `nil` 키가 조용히 들어갔습니다**
+(비교가 한 번도 안 일어나서). 그 뒤 `Get`·`Set`·`Remove` 전부가 비교자 안(`Common.luau` 줄)에서
+`attempt to compare nil < number` 로 죽었고, `TreeSet.Add(s, nil)`·`TreeMap.FromRecords({ { value = 1 } })` 도 같았습니다.
+타입으로는 못 넣지만 타입 없는 데이터(`t.id` 가 런타임에 `nil`)로는 들어옵니다. 이미 있던 NaN 정책과 같게 했습니다:
+
+| | `nil`·NaN 을 넣기 | `nil`·NaN 으로 조회·삭제 |
+|---|---|---|
+| `TreeMap.Set`·`FromRecords` | 에러 `TreeMap: nil key` / `NaN key`(사용자 줄) | — |
+| `TreeSet.Add` | 에러 `TreeSet: nil item` / `NaN item`(예전엔 `TreeMap: NaN key` — 부른 적 없는 모듈 이름) | — |
+| `Get`·`Has`·`Remove`·`Floor`·`Ceiling`·`Lower`·`Higher`·`Range…` | — | "없음"(비교자를 부르지 않음) — `HashMap.Get(m, nil)` 과 같음 |
+| `TreeSet.FromList` 의 `nil` | 구멍이라 건너뜀(리스트 진입점 규약 — 그대로) | — |
+
+잃는 것: `nil` 을 아는 비교자를 주고 `TreeMap<K?, V>` 에 `nil` 키를 담는 쓰임(전엔 우연히 됐음). `FirstKey`·
+`FloorKey` 의 `K?` 가 "없음" 과 구분되지 않고 `HashMap` 도 못 담아 막는 쪽으로 정했습니다. 비용은 잡음 안(perf 26절).
+`Heap` 은 그대로 둡니다 — 비교자가 사용자 것이라 에러가 사용자 코드에서 나고, `Deque` 처럼 `nil` 을 아는 `less` 로
+`Heap<T?>` 를 쓸 수 있습니다.
+
+**❓ 해시 쪽 — 검사를 넣을까요**: `HashMap.Set`·`GetOrInsert(With)`·`Accumulate`·`FromRecords`, `HashSet.Add`·
+`FromList`(NaN)·`Of`(NaN) 는 Lua 의 원시 에러(`table index is nil` / `is NaN`)가 **라이브러리 줄**을 가리킵니다(에러
+규약 밖). 상태는 안 망가집니다(먼저 쓰고 세므로). 조회·삭제는 지금도 "없음".
+
+| 안 | 내용 | 비용 |
+|---|---|---|
+| **(a) 그대로 — 제 추천** | 원시 에러를 둠. conventions 에 "해시 계열의 `nil`·NaN 키는 Lua 의 에러 그대로(규약의 예외)" 로 적음 | 0 |
+| (b) 검사 | `Common.raise("HashMap: nil key")` — 사용자 줄 | `Set` 이 조밀한 숫자 키에서 **1.09~1.10배**, 해시 경로에선 0~7%(perf 26절) |
+
+(a) 를 추천하는 이유: 가장 뜨거운 함수에 원소마다 비용이 붙고(AL 1 에서 "검사 없음" 으로 정하신 것과 같은 결), 메시지
+자체는 이미 분명하며(`table index is nil`), 타입이 `nil` 을 막고, 스택 추적에는 사용자 줄이 같이 나옵니다. 트리와
+다른 점은 **조용히 망가지지 않는다**는 것입니다 — 트리는 넣는 순간엔 아무 일 없다가 나중에 다른 곳에서 터졌습니다.
+
 ---
 
 ### G. mlua 바인딩 — **보류 확정**

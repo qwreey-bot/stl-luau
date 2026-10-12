@@ -257,6 +257,37 @@ do
 end
 print("PASS")
 
+print(
+	"=== nil·NaN 원소 — 넣기는 에러(메시지는 TreeSet 의 것), 조회·삭제는 없음 (2026-10-12) ==="
+)
+do
+	const nilItem = nil :: any
+	const s = TreeSet.New<<number>>(Common.compareNumber)
+	-- 재현: 빈 셋에 nil 이 조용히 들어가고 그 뒤 연산이 비교자 안에서 죽었음
+	const okNil, errNil = pcall(function()
+		TreeSet.Add(s, nilItem)
+	end)
+	assert(not okNil and string.find(tostring(errNil), "TreeSet: nil item", 1, true), `빈 셋에 nil: {errNil}`)
+	assert(TreeSet.Len(s) == 0, "거절 뒤 빈 그대로")
+	assert(TreeSet.Add(s, 20) and TreeSet.Add(s, 10) and TreeSet.Len(s) == 2, "거절 뒤에도 멀쩡")
+	-- 예전엔 `TreeMap: NaN key` — 사용자는 TreeMap 을 부른 적이 없음
+	const okNan, errNan = pcall(function()
+		TreeSet.Add(s, 0 / 0)
+	end)
+	assert(not okNan and string.find(tostring(errNan), "TreeSet: NaN item", 1, true), `NaN 메시지: {errNan}`)
+	assert(not string.find(tostring(errNan), "TreeMap", 1, true), "TreeMap 이름이 새지 않음")
+	assert(
+		not TreeSet.Has(s, nilItem) and not TreeSet.Remove(s, nilItem) and TreeSet.Len(s) == 2,
+		"nil 로 조회·삭제"
+	)
+	assert(TreeSet.FloorItem(s, nilItem) == nil and TreeSet.CeilingItem(s, nilItem) == nil, "Floor/Ceiling nil")
+	assert(TreeSet.LowerItem(s, nilItem) == nil and TreeSet.HigherItem(s, nilItem) == nil, "Lower/Higher nil")
+	-- 리스트의 nil 은 구멍이라 건너뜀(리스트 진입점 규약) — 에러 아님
+	const fromHoles = TreeSet.FromList(table.pack(30, nil, 10) :: any, Common.compareNumber)
+	assert(TreeSet.Len(fromHoles) == 2 and TreeSet.First(fromHoles) == 10, "FromList 의 구멍")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeSet) ===")
 

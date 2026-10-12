@@ -75,13 +75,22 @@ end
 --#region ----------- 계약 구현 (Types.MapOps) -----------
 -- 이 모듈 테이블이 그대로 `Types.MapOps` 구현체입니다(질문 AB).
 
--- ⭐ **NaN 키는 받지 않습니다.** NaN 은 자기 자신과도 같지 않아 어떤 3방향
+-- ⭐ **NaN·`nil` 키는 받지 않습니다.** NaN 은 자기 자신과도 같지 않아 어떤 3방향
 -- 비교자로도 순서가 서지 않고, 조용히 넣으면 **다른 키까지** 못 찾게 되고
 -- 같은 키가 중복으로 들어갔습니다(2026-09-30 리뷰). `HashMap` 은 Lua 가 이미
 -- `table index is NaN` 으로 시끄럽게 거절하므로 같은 태도입니다.
--- 조회·삭제에 NaN 을 주면 "없음" 입니다.
-const function isNaN(key: any): boolean
-	return key ~= key
+-- 조회·삭제에 NaN·`nil` 을 주면 "없음" 입니다.
+--
+-- `nil` 도 같습니다(2026-10-12): **빈 맵**에서는 비교가 한 번도 일어나지 않아 `Set(m, nil, v)` 가
+-- 조용히 들어갔고, 그 뒤 모든 연산이 비교자 안(라이브러리 줄)에서 죽었습니다. `nil` 을 아는
+-- 비교자를 주면 담을 수는 있었겠지만 `FirstKey`·`FloorKey` … 의 `K?` 가 "없음" 과 구분되지 않고
+-- `HashMap` 도 못 담습니다. 타입 없는 데이터(`t.id` 가 런타임에 `nil`)가 들어오는 길이라 막습니다.
+const function unusable(key: any): boolean
+	return key == nil or key ~= key
+end
+
+const function rejectKey(key: any): never
+	return Common.raise(if key == nil then "TreeMap: nil key" else "TreeMap: NaN key")
 end
 
 -- `pos` 의 레코드를 빼고 뒤를 당깁니다. `Set(k, nil)` 과 `Remove` 가 같이 씁니다.
@@ -96,7 +105,7 @@ const function removeAt<K, V>(self: TreeMapData<K, V>, pos: number): V
 end
 
 const function Get<K, V>(self: TreeMapData<K, V>, key: K): V?
-	if isNaN(key) then
+	if unusable(key) then
 		return nil
 	end
 	const pos = BSearch.Find(self.records, self.size, key, self.probe)
@@ -113,8 +122,8 @@ end
 -- `t[k] = nil` 과 같습니다. 예전엔 `nil` 값을 레코드로 저장해서 같은 `MapOps`
 -- 인데 두 맵의 뜻이 달랐습니다(2026-09-30 리뷰).
 const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
-	if isNaN(key) then
-		Common.raise("TreeMap: NaN key")
+	if unusable(key) then
+		rejectKey(key)
 	end
 	const records = self.records
 	const size = self.size
@@ -161,14 +170,14 @@ end
 --#region ----------- 조회 -----------
 
 const function Has<K, V>(self: TreeMapData<K, V>, key: K): boolean
-	if isNaN(key) then
+	if unusable(key) then
 		return false
 	end
 	return BSearch.Find(self.records, self.size, key, self.probe) ~= nil
 end
 
 const function GetOr<K, V>(self: TreeMapData<K, V>, key: K, fallback: V): V
-	if isNaN(key) then
+	if unusable(key) then
 		return fallback
 	end
 	const pos = BSearch.Find(self.records, self.size, key, self.probe)
@@ -246,7 +255,7 @@ end
 
 -- `key` **이하**인 키 중 가장 큰 것. 없으면 `nil`.
 const function FloorKey<K, V>(self: TreeMapData<K, V>, key: K): K?
-	if isNaN(key) then
+	if unusable(key) then
 		return nil
 	end
 	const pos = BSearch.UpperBound(self.records, self.size, key, self.probe)
@@ -258,7 +267,7 @@ end
 
 -- `key` **이상**인 키 중 가장 작은 것. 없으면 `nil`.
 const function CeilingKey<K, V>(self: TreeMapData<K, V>, key: K): K?
-	if isNaN(key) then
+	if unusable(key) then
 		return nil
 	end
 	const pos = BSearch.LowerBound(self.records, self.size, key, self.probe)
@@ -270,7 +279,7 @@ end
 
 -- `key` 보다 **작은** 키 중 가장 큰 것(엄격 — `FloorKey` 는 같은 키도 줌). 없으면 `nil`.
 const function LowerKey<K, V>(self: TreeMapData<K, V>, key: K): K?
-	if isNaN(key) then
+	if unusable(key) then
 		return nil
 	end
 	const pos = BSearch.LowerBound(self.records, self.size, key, self.probe)
@@ -282,7 +291,7 @@ end
 
 -- `key` 보다 **큰** 키 중 가장 작은 것(엄격 — `CeilingKey` 는 같은 키도 줌). 없으면 `nil`.
 const function HigherKey<K, V>(self: TreeMapData<K, V>, key: K): K?
-	if isNaN(key) then
+	if unusable(key) then
 		return nil
 	end
 	const pos = BSearch.UpperBound(self.records, self.size, key, self.probe)
@@ -295,7 +304,7 @@ end
 -- 키 구간 `[fromKey, toKey]` 의 쌍들. **양끝 포함**이고 정렬 순서입니다.
 -- 구간이 뒤집혀 있으면 빈 목록입니다(이 저장소의 구간 규약).
 const function RangeRecords<K, V>(self: TreeMapData<K, V>, fromKey: K, toKey: K): { Record<K, V> }
-	if isNaN(fromKey) or isNaN(toKey) then
+	if unusable(fromKey) or unusable(toKey) then
 		return {}
 	end
 	const records = self.records
@@ -318,7 +327,7 @@ end
 
 -- 키를 지우고 **지워진 값**을 돌려줍니다. 없었으면 `nil`.
 const function Remove<K, V>(self: TreeMapData<K, V>, key: K): V?
-	if isNaN(key) then
+	if unusable(key) then
 		return nil
 	end
 	const pos = BSearch.Find(self.records, self.size, key, self.probe)
@@ -423,7 +432,7 @@ const function makeProbe<K, V>(compare: Comparator<K>): KeyProbe<K, V>
 end
 
 -- ⚠️ **입양**(`TreeMap.Adopt` 로 공개): 이미 만들어 둔 레코드 배열을 그대로
--- 감쌉니다. **키로 정렬돼 있고 중복이 없으며 `size` 가 맞고 NaN 키가 없다**는 것을
+-- 감쌉니다. **키로 정렬돼 있고 중복이 없으며 `size` 가 맞고 NaN·`nil` 키가 없다**는 것을
 -- 검사하지 않습니다 — 호출자 책임입니다(`HashMap.Adopt` 와 같은 문). `TreeSet`
 -- 처럼 위에 얹히는 구현이 중간 배열을 한 번 더 만들지 않게 둔 문이고, 일반
 -- 사용자는 `FromRecords` 를 쓰세요(M0 4라운드 — 계약 문서가 없었음).
@@ -461,8 +470,8 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 	end
 	const order = table.create(count) :: { number }
 	for idx = 1, count do
-		if isNaN(records[idx].key) then
-			Common.raise("TreeMap: NaN key")
+		if unusable(records[idx].key) then
+			rejectKey(records[idx].key)
 		end
 		order[idx] = idx
 	end

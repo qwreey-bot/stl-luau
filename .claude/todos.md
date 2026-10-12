@@ -10,6 +10,7 @@
 | **AA. Luau 새 솔버 결함을 업스트림에 보고할지**(초안 있음, 공개 저장소라 사용자 판단 — 10-02 보강) | `question.md` AA |
 | **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
 | **AK. Deque 의 모양** — 특히 ⭐ 읽기 함수를 `DequeRead`(공변)로 넓힐지(리뷰어·저 모두 "넓히자"), 리스트 진입점이 Deque 를 받을지(지금 안 받음) | `question.md` AK |
+| **AN. 해시 맵·셋의 `nil`·NaN 키에 검사를 넣을지** — 지금은 Lua 원시 에러가 라이브러리 줄(에러 규약 밖). 검사는 `Set` 1.09~1.10배. 제 추천은 그대로 + 문서. (트리 쪽 `nil` 키는 조용히 망가져서 제가 막음 — 확인 부탁) | `question.md` AN |
 
 ## ☀️ 자고 일어나서 볼 것 (2026-10-07 밤 자율 작업)
 
@@ -30,6 +31,10 @@
 `Retain`·`MergeInplace` 가 **자기 자신 반환**(일곱 컨테이너 같게), ⭐ **쓰는 제네릭용 불변 마커**
 (`MapMarkerMut` 등 — 읽기 마커로 쓰면 `HashMap<string, number>` 에 문자열이 0건으로 들어가던 10-06
 트레이트의 구멍, `spikes/61`). 남은 확인: AJ·AK(특히 `DequeRead`), AA.
+
+**2026-10-12 오후 — 백로그 둘**: `Algorithm.Keys`/`Values` 를 한 번에 돌게(0.75~0.88배, perf 25절), 맵·셋 `nil`·NaN 키
+전수 점검 — ⚠️ 빈 `TreeMap`/`TreeSet` 에 `nil` 키가 조용히 들어가 이후 연산이 라이브러리 줄에서 죽던 것을 막음
+(NaN 과 같은 정책, `TreeSet` 메시지의 모듈 이름도), 해시 쪽은 비용을 재서 질문 AN(perf 26절).
 
 **M0(호출 모양을 네임스페이스 하나로, 질문 AB) 끝 — 리뷰 소진(여덟 라운드, 2026-10-01).**
 
@@ -131,13 +136,6 @@ C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
 - **`Algorithm.Keys`/`Values` 를 `Iter` 로** — 2026-10-12 에 `denseList` 사본을 걷어 한 번에 돌게 했지만(0.75~0.88배,
   perf 25절) 남은 비용의 60~75% 는 `Records` 의 레코드 할당입니다. `MapOps` 에 `Iter` 가 생기면(M6, 질문 AM 다) 옮깁니다.
 - **`TreeMap` 의 `GetOrInsert(With)`·`Accumulate`**(AL 4, 사용자: 필요해지면) — 지금은 HashMap 만.
-- **맵·셋에 `nil`·NaN 키** (2026-10-07 M4 리뷰 중 범위 밖으로 봄) — `HashMap.Set`·`GetOrInsert(With)`·
-  `Accumulate`·`HashSet.Add` 에 `nil`·NaN 키를 넣으면 Lua 의 원시 에러(`table index is nil/NaN`)가 **라이브러리
-  줄**을 가리킵니다(에러 규약 밖). 고치려면 핫 경로(`Set`)에 검사가 붙으니 실측과 함께. 아래 항목과 같이.
-- **`TreeSet` 의 NaN 에러 모듈 이름** — `TreeSet.Add(s, 0/0)` 의 메시지가
-  `TreeMap: NaN key` 입니다. (줄은 2026-10-02 `Common.raise` 로 사용자 줄이 됨.)
-  맵·셋 계열 숫자 정책 전수 점검 때 같이.
-
 - **mlua(Rust) 바인딩** — 이 프로젝트가 갈라져 나온 출처. 사용자 판단으로
   *"얹는 구조로 나중에"*. 설계를 여기에 맞추지 않습니다.
 - **구간 인자를 받는 스트림**: 옛 스크래치의 `rangefilter`/`rangefind`/

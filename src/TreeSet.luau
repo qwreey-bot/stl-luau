@@ -85,7 +85,13 @@ end
 -- 이 모듈 테이블이 그대로 `Types.SetOps` 구현체입니다(질문 AB).
 
 -- 원소를 넣습니다. **새로 들어갔으면 `true`**, 이미 있었으면 `false`.
+--
+-- NaN·`nil` 은 받지 않습니다(`TreeMap` 의 키와 같은 이유). 여기서 먼저 봅니다 — 맡기면 메시지가
+-- `TreeMap: NaN key` 로 나와, 사용자가 부른 적 없는 모듈 이름이 나왔습니다(2026-10-12).
 const function Add<T>(self: TreeSetData<T>, item: T): boolean
+	if item == nil or item ~= item then
+		Common.raise(if item == nil then "TreeSet: nil item" else "TreeSet: NaN item")
+	end
 	const map = self.map
 	const before = map.size
 	TreeMap.Set(map, item, true :: true)

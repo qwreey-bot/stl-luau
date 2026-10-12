@@ -216,6 +216,46 @@ do
 			stl.TreeMap.FromRecords({ { key = 0 / 0, value = 1 } }, Common.compareNumber)
 		end)
 	)
+	-- nil·NaN 키(2026-10-12 — `TreeMap.Set` 의 raise 자리는 줄 단언이 없었음)
+	atUserLine(
+		"TreeMap.Set NaN",
+		expectLine("TreeMap.Set NaN", "TreeMap: NaN key", function()
+			const m = stl.TreeMap.New<<number, number>>(Common.compareNumber)
+			where = debug.info(1, "l") + 1
+			stl.TreeMap.Set(m, 0 / 0, 1)
+		end)
+	)
+	atUserLine(
+		"TreeMap.Set nil",
+		expectLine("TreeMap.Set nil", "TreeMap: nil key", function()
+			const m = stl.TreeMap.New<<number, number>>(Common.compareNumber)
+			where = debug.info(1, "l") + 1
+			stl.TreeMap.Set(m, nil :: any, 1)
+		end)
+	)
+	atUserLine(
+		"TreeMap.FromRecords nil",
+		expectLine("TreeMap.FromRecords nil", "TreeMap: nil key", function()
+			where = debug.info(1, "l") + 1
+			stl.TreeMap.FromRecords({ { value = 1 } :: any }, Common.compareNumber)
+		end)
+	)
+	atUserLine(
+		"TreeSet.Add NaN",
+		expectLine("TreeSet.Add NaN", "TreeSet: NaN item", function()
+			const s = stl.TreeSet.New<<number>>(Common.compareNumber)
+			where = debug.info(1, "l") + 1
+			stl.TreeSet.Add(s, 0 / 0)
+		end)
+	)
+	atUserLine(
+		"TreeSet.Add nil",
+		expectLine("TreeSet.Add nil", "TreeSet: nil item", function()
+			const s = stl.TreeSet.New<<number>>(Common.compareNumber)
+			where = debug.info(1, "l") + 1
+			stl.TreeSet.Add(s, nil :: any)
+		end)
+	)
 	atUserLine(
 		"Arr.FromTable 이미 Arr",
 		expectLine("Arr.FromTable 이미 Arr", "already a container", function()

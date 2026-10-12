@@ -325,6 +325,63 @@ do
 end
 print("PASS")
 
+print("=== 8. nil 키는 NaN 과 같은 태도 — 넣기는 에러, 조회·삭제는 없음 (2026-10-12) ===")
+do
+	-- 재현: 빈 맵에서는 비교가 한 번도 안 일어나 `Set(m, nil, v)` 가 조용히 들어갔고, 그 뒤 모든
+	-- 연산이 비교자 안(라이브러리 줄)에서 `attempt to compare nil < number` 로 죽었습니다. 타입으로는
+	-- 못 넣지만(`K` 가 `number`) 타입 없는 데이터(`t.id` 가 런타임에 nil)로는 들어옵니다.
+	const nilKey = nil :: any
+	const empty = TreeMap.New<<number, string>>(Common.compareNumber)
+	const okEmpty, errEmpty = pcall(function()
+		TreeMap.Set(empty, nilKey, "boom")
+	end)
+	assert(
+		not okEmpty and string.find(tostring(errEmpty), "TreeMap: nil key", 1, true),
+		`빈 맵에 nil 키: {errEmpty}`
+	)
+	assert(TreeMap.Len(empty) == 0 and #TreeMap.Records(empty) == 0, "거절 뒤 빈 그대로")
+	TreeMap.Set(empty, 5, "five")
+	TreeMap.Set(empty, 3, "three")
+	assert(TreeMap.Len(empty) == 2 and TreeMap.Get(empty, 3) == "three", "거절 뒤에도 멀쩡")
+
+	-- 원소가 있을 때도 비교자 에러가 아니라 같은 메시지
+	const okFull, errFull = pcall(function()
+		TreeMap.Set(empty, nilKey, "boom")
+	end)
+	assert(not okFull and string.find(tostring(errFull), "TreeMap: nil key", 1, true), `찬 맵에 nil 키: {errFull}`)
+	-- 값이 nil(삭제)이어도 키가 nil 이면 에러 — HashMap 의 `data[nil] = nil` 과 같음
+	assert(not pcall(function()
+		TreeMap.Set(empty :: any, nilKey, nil)
+	end), "Set(nil, nil) 도 에러")
+	assert(TreeMap.Len(empty) == 2, "크기 그대로")
+
+	-- 조회·삭제는 "없음"(HashMap.Get(m, nil) 과 같음) — 비교자를 부르지 않음
+	assert(TreeMap.Get(empty, nilKey) == nil and not TreeMap.Has(empty, nilKey), "nil 로 조회")
+	assert(TreeMap.Remove(empty, nilKey) == nil and TreeMap.Len(empty) == 2, "nil 로 삭제")
+	assert(TreeMap.FloorKey(empty, nilKey) == nil and TreeMap.CeilingKey(empty, nilKey) == nil, "Floor/Ceiling nil")
+	assert(TreeMap.LowerKey(empty, nilKey) == nil and TreeMap.HigherKey(empty, nilKey) == nil, "Lower/Higher nil")
+	assert(#TreeMap.RangeRecords(empty, nilKey, 9) == 0 and #TreeMap.RangeRecords(empty, 1, nilKey) == 0, "구간 nil")
+
+	-- FromRecords: 키 없는 레코드(`{ value = 1 }`)도 거절
+	const okFrom, errFrom = pcall(function()
+		TreeMap.FromRecords({ { key = 2, value = "b" }, { value = "x" } :: any }, Common.compareNumber)
+	end)
+	assert(not okFrom and string.find(tostring(errFrom), "TreeMap: nil key", 1, true), `FromRecords nil 키: {errFrom}`)
+	const okOne, errOne = pcall(function()
+		TreeMap.FromRecords({ { value = "x" } :: any }, Common.compareNumber)
+	end)
+	assert(
+		not okOne and string.find(tostring(errOne), "TreeMap: nil key", 1, true),
+		`FromRecords 하나뿐인 nil 키: {errOne}`
+	)
+	-- NaN 메시지는 그대로
+	const okNan, errNan = pcall(function()
+		TreeMap.Set(empty, 0 / 0, "nan")
+	end)
+	assert(not okNan and string.find(tostring(errNan), "TreeMap: NaN key", 1, true), `NaN 키 메시지: {errNan}`)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeMap) ===")
 
