@@ -1448,6 +1448,61 @@ do
 		end,
 	})
 	same(Arr.FromIter<<any>>(iterable), { 70, 80, "x" }, "FromIter(__iter 테이블)")
+	-- 값을 **하나만** 내는 `__iter` — 함수 순회자와 같은 값 규칙(하나면 그것). `__iter` 분기를 지우고
+	-- `for _, v in 테이블` 에 맡기면 전부 nil 이 됨(3라운드 리뷰: 위 테스트는 값 둘짜리라 못 가렸음)
+	const single = setmetatable({ items = { "p", "q", "r" } }, {
+		__iter = function(self: any)
+			local at = 0
+			return function(): string?
+				at += 1
+				return self.items[at]
+			end
+		end,
+	})
+	same(Arr.FromIter<<string>>(single), { "p", "q", "r" }, "FromIter(값 하나짜리 __iter)")
+	-- 둘 다 있으면 Luau 의 for-in 처럼 `__iter` 쪽
+	const both = setmetatable({}, {
+		__iter = function()
+			return ipairs({ "from-iter" })
+		end,
+		__call = function(): string?
+			return nil
+		end,
+	})
+	same(Arr.FromIter<<string>>(both), { "from-iter" }, "FromIter(__iter 와 __call 둘 다)")
+	-- ⭐ 보호된 메타테이블(`__metatable`) — 들여다볼 수 없으니 **예전처럼 함수로** 부름(3라운드 리뷰:
+	-- 사전으로 읽는 갈래로 떨어졌는데 그 `for … in` 이 숨은 `__call` 을 따라가 값 하나짜리는 전부 nil,
+	-- state·control 은 버려졌음 — 테이블을 받기 전에는 됐던 것)
+	for _, lock in { "The metatable is locked", false, 5 } :: { any } do
+		const locked = setmetatable({ tag = "x" }, {
+			__metatable = lock,
+			__call = function(_self: any, limit: number, at: number): number?
+				return if at < limit then at + 1 else nil
+			end,
+		})
+		same(Arr.FromIter<<number>>(locked, 3, 0), { 1, 2, 3 }, `FromIter(잠근 __call, {tostring(lock)})`)
+		const lockedPairs = setmetatable({}, {
+			__metatable = lock,
+			__call = function(_self: any, limit: number, at: number): (number?, number?)
+				if at < limit then
+					return at + 1, (at + 1) * 100
+				end
+				return nil, nil
+			end,
+		})
+		same(Arr.FromIter<<number>>(lockedPairs, 3, 0), { 100, 200, 300 }, "FromIter(잠근 __call, 값 둘)")
+	end
+	-- `__metatable` 이 **테이블**이면 진짜 메타테이블과 구분할 수 없음 — 사전으로(raw 키-값) 읽음.
+	-- 숨은 `__iter` 를 따라가지 않음(따라가면 값 하나짜리가 nil 로 찬 배열이 됐음). 관측.
+	const disguised = setmetatable({ p = 70 }, {
+		__metatable = {},
+		__iter = function()
+			return function(): string?
+				return nil
+			end
+		end,
+	})
+	same(Arr.FromIter<<number>>(disguised), { 70 }, "FromIter(테이블로 가린 메타테이블) 은 raw 사전")
 	-- 메타테이블이 있어도 `__iter`·`__call` 이 없으면 사전(raw 키-값)
 	const proxied = setmetatable({ p = 70 }, {
 		__index = function(): number
@@ -1459,7 +1514,23 @@ do
 	const flags = Arr.FromIter<<boolean>>({ a = false, b = false })
 	assert(flags.n == 2 and flags[1] == false and flags[2] == false, "FromIter(false 값들)")
 	-- 컨테이너 자체는 거절(그 종류의 Iter 를 넘겨야 함) — 다른 종류도
-	for _, container in { Arr.Of(1, 2), stl.HashMap.New(), stl.Deque.Of(1) } :: { any } do
+	const userKind = stl.Trait.Stamp({ items = {} }, stl.Trait.NewType("UserKind"))
+	const lockedArr = setmetatable(Arr.Of(1, 2) :: any, { __metatable = "locked" })
+	const callableArr = setmetatable(Arr.Of(1, 2) :: any, { __call = function() end })
+	for _, container in
+		{
+			Arr.Of(1, 2),
+			stl.HashMap.New(),
+			stl.Deque.Of(1),
+			stl.Heap.New(function(a: number, b: number): boolean
+				return a < b
+			end),
+			stl.Fut.Resolved(1),
+			userKind,
+			lockedArr,
+			callableArr,
+		} :: { any }
+	do
 		const okContainer, errContainer = pcall(function()
 			Arr.FromIter(container)
 		end)

@@ -762,7 +762,10 @@ Gemini 사냥의 지적("`#` 상한이라 구멍 뒤·큰 키를 못 지움")에
 
 **`Arr.FromIter(HashMap.Iter(m))`**(`bench-ignoreme/fromiter-table.luau`): 테이블을 `next` 로 원소마다 부르던 첫 판은
 `HashMap.Values` 의 3.3~5.5배(리뷰어 실측)였고, 평범한 테이블을 직접 도는 판으로 바꾼 뒤 N=1000 8.1 대 6.8us(1.18배),
-N=100000 0.89 대 0.83ms(1.07배), N=10 은 0.52 대 0.13us(4배 — 크기를 몰라 미리 못 잡음).
+N=100000 0.89 대 0.83ms(1.07배), N=10 은 0.52 대 0.13us(4배 — 크기를 몰라 미리 못 잡음). 그 루프는 `for _, v in
+next, t`(raw — 숨은 `__iter`/`__call` 을 안 따르게, 3라운드 리뷰)로 적습니다: 컴파일러가 `in next, t` 를 알아봐
+`for _, v in t` 와 같은 속도입니다(바꾼 뒤 8.06us·0.95ms). 느린 것은 `next` 를 **값으로 넘겨** 부르는 쪽(27절의
+"`next` 그대로" 열, `FromIter(pairs(t))` 27~32us).
 
 (리뷰어 재측정, 같은 날 — `2e37ba1` 대 `e95cab5`: `Algorithm.Keys` HashMap 0.49~0.58배, TreeMap 0.88~0.89배,
 `HashMap.Iter` 0.58~0.74배. 위 표와 한두 자리 어긋나는 것은 실행 간 흔들림.)

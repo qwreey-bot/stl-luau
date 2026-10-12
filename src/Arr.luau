@@ -2574,35 +2574,41 @@ end
 -- ⚠️ **구멍이 생깁니다**: `(키, nil)` 을 내는 순회자(`Arr.Iter` 의 구멍)는 그 자리를
 -- 구멍으로 둡니다 — 원소 타입을 `T?` 로 적으세요: `Arr.FromIter<<number?>>(Arr.Iter(a))`.
 --
--- **테이블을 넘기면** `for _, v in 테이블` 과 같은 뜻입니다(2026-10-12, 질문 AP 1 — `HashMap.Iter` 가 안쪽
--- 테이블을 돌려주게 되면서 `Arr.FromIter(HashMap.Iter(m))` 가 그대로 되게):
--- - 평범한 테이블은 그 **값들**을 모읍니다(순서는 테이블의 순회 순서).
--- - `__iter` 가 있으면 그것이 돌려준 순회자를, `__call` 이 있으면 그 테이블을 순회 함수로 씁니다
---   (처음엔 이 둘도 사전으로 읽어 조용히 다른 결과였습니다 — 2라운드 리뷰).
+-- **테이블도 받습니다**(2026-10-12, 질문 AP 1 — `HashMap.Iter` 가 안쪽 테이블을 돌려주게 되면서
+-- `Arr.FromIter(HashMap.Iter(m))` 가 그대로 되게):
+-- - **평범한 테이블**은 그 **값들**을 모읍니다(raw 로 — 순서는 테이블의 순회 순서).
+-- - **`__iter`** 가 있으면 그것이 돌려준 순회자를, **`__call`** 이 있으면 그 테이블을 순회 함수로 쓰고,
+--   위의 값 규칙(하나면 그것, 둘 이상이면 둘째)을 그대로 따릅니다. 둘 다 있으면 `for … in` 처럼 `__iter`.
+--   (처음엔 이 둘도 사전으로 읽어 조용히 다른 결과였습니다 — 2라운드 리뷰.)
+-- - **보호된 메타테이블**(`__metatable`)은 들여다볼 수 없어 **함수로 부릅니다** — 테이블을 받기 전과 같은
+--   동작입니다(`__call` 이 있으면 돌고, 없으면 Lua 의 `attempt to call a table value`). 숨은 `__iter` 는
+--   못 따릅니다. `__metatable` 이 테이블이면 진짜 메타테이블과 구분할 수 없어 raw 사전으로 읽습니다.
 -- - ⚠️ **컨테이너 자체**(이 라이브러리의 타입 토큰이 붙은 테이블)는 에러입니다 — `Arr.FromIter(arr)` 는
 --   `n`·토큰까지 원소로 담았을 것입니다. 그 종류의 `Iter` 를 넘기세요. 검사는 **토큰인지**를 봅니다 —
 --   `"__type"` 이라는 키를 가진 사용자 사전(`HashMap` 의 안쪽 테이블 포함)은 그냥 사전입니다(`__type` 이
 --   nil 이 아닌지만 봤더니 그 맵의 `FromIter(HashMap.Iter(m))` 이 에러였습니다 — 2라운드 리뷰). 그래서
 --   다른 사본의 라이브러리가 만든 컨테이너는 못 거릅니다(사전으로 읽힘).
 -- - 맵의 값만 필요하면 `HashMap.Values(m)` 가 낫습니다 — 큰 맵에선 비슷하지만(1.1~1.2배) 작은 맵(10개)에선
---   4배 빠릅니다(크기를 알아 미리 잡음, perf 27절). 이쪽은 `Arr` 로 받고 싶을 때.
+--   4배 빠릅니다(크기를 알아 미리 잡음, perf 28절). 이쪽은 `Arr` 로 받고 싶을 때.
 const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 	if type(iter) == "table" then
+		if Trait.TokenOf(iter) ~= nil then
+			Common.raise("Arr: FromIter got a container, not an iterator — pass its Iter (e.g. Arr.Iter(a))")
+		end
 		const meta: any = getmetatable(iter)
 		if type(meta) == "table" and rawget(meta, "__iter") ~= nil then
 			const makeIter: any = rawget(meta, "__iter")
 			iter, state, control = makeIter(iter)
-		elseif type(meta) == "table" and rawget(meta, "__call") ~= nil then
-			-- 호출 가능한 테이블 — 아래의 함수 경로가 그대로 부릅니다.
+		elseif meta ~= nil and (type(meta) ~= "table" or rawget(meta, "__call") ~= nil) then
+			-- 호출 가능한 테이블이거나 보호된 메타테이블(들여다볼 수 없음) — 아래의 함수 경로가 부릅니다.
 		else
-			if Trait.TokenOf(iter) ~= nil then
-				Common.raise("Arr: FromIter got a container, not an iterator — pass its Iter (e.g. Arr.Iter(a))")
-			end
-			-- 값은 nil 일 수 없으니 구멍 처리가 필요 없습니다 — 직접 돕니다(`next` 를 원소마다 부르는
-			-- 것보다 빠름, perf 27절).
+			-- 사전으로 읽습니다. **`next` 를 적어 raw 로** 돕니다 — `for _, v in iter` 로 쓰면 Luau 가 숨은
+			-- `__iter`/`__call`(테이블로 가린 메타테이블)을 따라가, 값 하나짜리 순회자에서 전부 nil 이
+			-- 됐습니다(3라운드 리뷰). 컴파일러가 `in next, t` 를 알아봐 속도는 같습니다(perf 28절). raw
+			-- 값은 nil 일 수 없으니 구멍 처리가 필요 없습니다.
 			const values: Arr<T> = newSized(0)
 			local valueCount = 0
-			for _, value in iter do
+			for _, value in next, iter do
 				valueCount += 1
 				values[valueCount] = value
 			end
