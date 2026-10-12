@@ -7,7 +7,7 @@
 
 | 무엇 | 어디 |
 |---|---|
-| **AA. Luau 새 솔버 결함 보고** — 10-12 결정: 초안만 다듬어 둠, 올리는 것은 사용자가 | `question.md` AA |
+| **AA. Luau 새 솔버 결함 보고** — 초안 정리 끝(이슈 넷 + 재현 파일). **올리는 것은 사용자가**(또는 지시하실 때) | `.claude/audit/luau-solver-issues/DRAFTS.md` |
 | **AO. 트레이트 넓히기의 모양**(제가 정함 — `Trait.Collection`, `MapOps` 여섯, `Trait.New` 의 필수 함수 목록) | `question.md` AO |
 | **AP. ❓ ① `HashMap.Iter` 가 `data` 테이블을 돌려주게 할지(순회 9배, 모양이 바뀜) ② 종류를 모르는 코드가 `Get`/`Set` 을 타입 있게 부르는 길** | `question.md` AP |
 | **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
