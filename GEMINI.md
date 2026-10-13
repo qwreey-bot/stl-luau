@@ -16,7 +16,7 @@
 Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너·알고리즘 모음. `src/` 에
 `Arr`(배열, 연산 103 + 생성자 8), `HashMap`/`HashSet`, `TreeMap`/`TreeSet`(정렬 배열 + 이분 탐색),
 `Heap`, `CircularDeque`(링 버퍼), `Optional`, `Fut`(코루틴 프로미스), 트레이트 `List`/`Map`/`Set`/`Collection`(계약 + 기본 구현 + 종류를 모르는 코드의 진입점), `Common`.
-구조: `src/Trait.luau`(트레이트 시스템만), `src/Traits/`(트레이트별 파일), `src/Collections/`(컨테이너 — 덱은 `CircularDeque`·`LinkedDeque` 둘, `Deque` 는 트레이트), `src/Node/`(1층 — 노드단 도구: 단방향·양방향·이진), `src/Trees/`(2층 — 그 도구로 짠 균형 방식 `RedBlack`·`Avl`, 컨테이너가 아니라 뿌리 노드를 받는 함수들. 3층 조립은 `Collections/`), `src/Algorithms/`(`BSearch`).
+구조: `src/Trait.luau`(트레이트 시스템만), `src/Traits/`(트레이트별 파일), `src/Collections/`(컨테이너 — 덱은 `CircularDeque`·`LinkedDeque` 둘, `Deque` 는 트레이트), `src/Node/`(1층 — 노드단 도구: 단방향·양방향·이진. **노드는 전부 번호 칸**이고 타입은 종류별 불투명 핸들, 칸 배치는 각 파일의 계약 — 값은 1번 칸), `src/Trees/`(2층 — 그 도구로 짠 균형 방식 `RedBlack`·`Avl`, 컨테이너가 아니라 뿌리 노드를 받는 함수들. 3층 조립은 `Collections/`), `src/Algorithms/`(`BSearch`).
 1인 프로젝트, 아직 게시 전. **성능이 1급 관심사**이고 모든 성능 주장은 실측입니다
 (`.claude/base/perf-measurements.md`).
 

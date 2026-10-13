@@ -299,12 +299,12 @@ do
 			if node == nil then
 				return
 			end
-			assert(node[3] == parent, `{label}: {node.key} 의 부모 칸`)
-			walk(node[1], node)
-			assert(last == nil or last < node.key, `{label}: 순서`)
-			last = node.key
-			count += 1
+			assert(node[4] == parent, `{label}: {node[5]} 의 부모 칸`)
 			walk(node[2], node)
+			assert(last == nil or last < node[5], `{label}: 순서`)
+			last = node[5]
+			count += 1
+			walk(node[3], node)
 		end
 		walk(set.map.root, nil)
 		assert(count == TreeSet.Len(set), `{label}: 크기 {TreeSet.Len(set)} ~= 노드 수 {count}`)

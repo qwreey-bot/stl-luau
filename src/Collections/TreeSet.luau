@@ -46,8 +46,11 @@ export type TreeSet<T> = TreeSetData<T>
 const TYPE_KEY = "__type"
 const TOKEN = Trait.NewType("TreeSet") :: Trait.Token<"TreeSet">
 
-const firstOf, lastOf, nextOf = Node.Binary.First, Node.Binary.Last, Node.Binary.Next
-const lowerBound = Search.LowerBound
+-- 노드의 칸 배치(`Trees/Search` 머리 — `5` = 키. 지역 상수라 접힘)와 도구(이 모듈 안에서는 칸으로 직접 읽음).
+const KEY = 5
+const binary: any, search: any = Node.Binary, Search
+const firstOf: (any) -> any, lastOf: (any) -> any, nextOf: (any) -> any = binary.First, binary.Last, binary.Next
+const lowerBound: (any, any, any) -> any = search.LowerBound
 
 const function wrap<T>(map: TreeMapType<T, true>): TreeSet<T>
 	return { map = map, [TYPE_KEY] = TOKEN } :: any
@@ -110,14 +113,14 @@ const function Iter<T>(self: TreeSetData<T>): () -> (T, T)
 			return nil :: any, nil :: any
 		end
 		cursor = nextOf(node)
-		return node.key, node.key
+		return node[KEY], node[KEY]
 	end
 end
 
 -- 가장 작은 원소. 비어 있으면 `nil`.
 const function First<T>(self: TreeSetData<T>): T?
 	const node = firstNode(self.map)
-	return if node ~= nil then node.key else nil
+	return if node ~= nil then node[KEY] else nil
 end
 
 -- 가장 큰 원소. 비어 있으면 `nil`.
@@ -127,7 +130,7 @@ const function Last<T>(self: TreeSetData<T>): T?
 		return nil
 	end
 	const node: any = lastOf(root)
-	return node.key
+	return node[KEY]
 end
 
 -- `item` **이하**인 원소 중 가장 큰 것.
@@ -159,9 +162,9 @@ const function RangeItems<T>(self: TreeSetData<T>, from: T, to: T): { T }
 	const map = self.map
 	const compare = map.compare
 	local at, node: any = 0, lowerBound(map.root, from, compare)
-	while node ~= nil and compare(node.key, to) <= 0 do
+	while node ~= nil and compare(node[KEY], to) <= 0 do
 		at += 1
-		out[at] = node.key
+		out[at] = node[KEY]
 		node = nextOf(node)
 	end
 	return out
@@ -198,7 +201,7 @@ const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): TreeSe
 	while node ~= nil do
 		-- 지우기가 회전으로 길을 바꾸니 다음 노드를 먼저 읽습니다
 		const after = nextOf(node)
-		if not fn(node.key) then
+		if not fn(node[KEY]) then
 			map.root = map.balance.Remove(map.root, node)
 			map.size -= 1
 		end
@@ -238,28 +241,28 @@ const function Union<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
 	const out = table.create(self.map.size + other.map.size) :: { T }
 	local count, a: any, b: any = 0, firstNode(self.map), firstNode(other.map)
 	while a ~= nil and b ~= nil do
-		const diff = compare(a.key, b.key)
+		const diff = compare(a[KEY], b[KEY])
 		count += 1
 		if diff < 0 then
-			out[count] = a.key
+			out[count] = a[KEY]
 			a = nextOf(a)
 		elseif diff > 0 then
-			out[count] = b.key
+			out[count] = b[KEY]
 			b = nextOf(b)
 		else
-			out[count] = a.key
+			out[count] = a[KEY]
 			a = nextOf(a)
 			b = nextOf(b)
 		end
 	end
 	while a ~= nil do
 		count += 1
-		out[count] = a.key
+		out[count] = a[KEY]
 		a = nextOf(a)
 	end
 	while b ~= nil do
 		count += 1
-		out[count] = b.key
+		out[count] = b[KEY]
 		b = nextOf(b)
 	end
 	return fromSortedItems(self, out, count)
@@ -272,14 +275,14 @@ const function Intersect<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSe
 	const out: { T } = {}
 	local count, a: any, b: any = 0, firstNode(self.map), firstNode(other.map)
 	while a ~= nil and b ~= nil do
-		const diff = compare(a.key, b.key)
+		const diff = compare(a[KEY], b[KEY])
 		if diff < 0 then
 			a = nextOf(a)
 		elseif diff > 0 then
 			b = nextOf(b)
 		else
 			count += 1
-			out[count] = a.key
+			out[count] = a[KEY]
 			a = nextOf(a)
 			b = nextOf(b)
 		end
@@ -296,13 +299,13 @@ const function Difference<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeS
 	while a ~= nil do
 		if b == nil then
 			count += 1
-			out[count] = a.key
+			out[count] = a[KEY]
 			a = nextOf(a)
 		else
-			const diff = compare(a.key, b.key)
+			const diff = compare(a[KEY], b[KEY])
 			if diff < 0 then
 				count += 1
-				out[count] = a.key
+				out[count] = a[KEY]
 				a = nextOf(a)
 			elseif diff > 0 then
 				b = nextOf(b)
@@ -322,14 +325,14 @@ const function SymmetricDifference<T>(self: TreeSetData<T>, other: TreeSetData<T
 	const out: { T } = {}
 	local count, a: any, b: any = 0, firstNode(self.map), firstNode(other.map)
 	while a ~= nil and b ~= nil do
-		const diff = compare(a.key, b.key)
+		const diff = compare(a[KEY], b[KEY])
 		if diff < 0 then
 			count += 1
-			out[count] = a.key
+			out[count] = a[KEY]
 			a = nextOf(a)
 		elseif diff > 0 then
 			count += 1
-			out[count] = b.key
+			out[count] = b[KEY]
 			b = nextOf(b)
 		else
 			a = nextOf(a)
@@ -338,12 +341,12 @@ const function SymmetricDifference<T>(self: TreeSetData<T>, other: TreeSetData<T
 	end
 	while a ~= nil do
 		count += 1
-		out[count] = a.key
+		out[count] = a[KEY]
 		a = nextOf(a)
 	end
 	while b ~= nil do
 		count += 1
-		out[count] = b.key
+		out[count] = b[KEY]
 		b = nextOf(b)
 	end
 	return fromSortedItems(self, out, count)
@@ -361,7 +364,7 @@ const function IsSubsetOf<T>(self: TreeSetData<T>, other: TreeSetData<T>): boole
 		if b == nil then
 			return false
 		end
-		const diff = compare(a.key, b.key)
+		const diff = compare(a[KEY], b[KEY])
 		if diff < 0 then
 			return false -- a 의 이 원소는 b 에 없다
 		elseif diff > 0 then
@@ -380,7 +383,7 @@ const function IsDisjointFrom<T>(self: TreeSetData<T>, other: TreeSetData<T>): b
 	const compare = self.map.compare
 	local a: any, b: any = firstNode(self.map), firstNode(other.map)
 	while a ~= nil and b ~= nil do
-		const diff = compare(a.key, b.key)
+		const diff = compare(a[KEY], b[KEY])
 		if diff < 0 then
 			a = nextOf(a)
 		elseif diff > 0 then
@@ -401,7 +404,7 @@ const function Equal<T>(self: TreeSetData<T>, other: TreeSetData<T>): boolean
 	const compare = self.map.compare
 	local a: any, b: any = firstNode(self.map), firstNode(other.map)
 	while a ~= nil do
-		if compare(a.key, b.key) ~= 0 then
+		if compare(a[KEY], b[KEY]) ~= 0 then
 			return false
 		end
 		a = nextOf(a)

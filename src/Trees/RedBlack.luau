@@ -3,12 +3,13 @@
 	RedBlack — 레드블랙 트리의 구조 제어(2층 트리부, 2026-10-13 — `papers/07` 9-4).
 
 	컨테이너가 **아닙니다**: 뿌리 노드와 비교자를 받아 트리를 고치고 **새 뿌리**를 돌려주는 함수들입니다.
-	크기·타입 토큰·키 검사는 이것을 조립하는 쪽(`FlatMap` 등)이 가집니다. 노드는 1층 `Node` 의 모양에
-	키와 색을 더한 것이고, 연결은 `Node.Binary` 의 규칙 그대로입니다(칸 1 = 왼쪽, 2 = 오른쪽, 3 = 부모).
+	크기·타입 토큰·키 검사는 이것을 조립하는 쪽(`TreeMap` 등)이 가집니다.
 
-	```lua
-	{ key: K, value: V, red: boolean, [1]: 왼쪽, [2]: 오른쪽, [3]: 부모 }
-	```
+	## 노드의 칸 배치 (계약)
+
+	`{ [1] = 값, [2] = 왼쪽, [3] = 오른쪽, [4] = 부모, [5] = 키, [6] = 빨강인가 }` — 앞의 넷은 `Node.Binary`,
+	다섯째는 `Trees/Search`, 여섯째(균형 정보)가 이 방식의 것입니다. 타입은 불투명 핸들(`RbNode`·`RbNodeRead`)
+	이라 값·키는 `Search.Value(node)`·`Search.Key(node)` 로, 순서는 `Search.Next`·`Prev` 로 읽습니다.
 
 	## 왜 레드블랙인가
 
@@ -16,7 +17,7 @@
 	(높이 ≤ 2·log₂(n+1)) 넣기·지우기의 회전이 적습니다 — 넣기는 최대 2번, 지우기는 최대 3번. 넣고 빼기가
 	잦은 쓰임에 맞습니다. 실측은 perf 37절.
 
-	## 불변식 (`tests/spec.redblack.luau` 가 연산마다 검사)
+	## 불변식 (`tests/spec.trees.luau` 가 연산마다 검사)
 
 	1. 뿌리는 검정. 2. 빨강의 자식은 빨강이 아님. 3. 어느 노드에서든 잎까지의 검정 수가 같음.
 	4. 중위 순서가 비교자의 순서. 5. 자식의 부모 칸이 그 부모를 가리키고 뿌리의 부모는 `nil`.
@@ -26,8 +27,8 @@
 	- 비교자는 3방향(`Comparator`). 비교자가 던지면 트리는 그대로입니다(넣기는 자리를 찾은 뒤에만 고침).
 	- 위치는 노드입니다. `Remove` 는 **이 트리의 노드**를 받습니다 — 다른 트리의 노드나 이미 뗀 노드는 정의되지
 	  않은 동작입니다(조립하는 쪽이 키로 찾아 넘기는 것이 보통).
-	- 떼어 낸 노드는 연결이 끊깁니다(세 칸이 `nil`). 순회 중에 지우려면 다음 노드를 **먼저** 읽어 두세요
-	  (`Node.Binary.Next`) — 지우기가 회전으로 길을 바꿉니다. 다음 노드 자체는 남아 있습니다.
+	- 떼어 낸 노드는 연결이 끊깁니다(왼쪽·오른쪽·부모 칸이 `nil`). 순회 중에 지우려면 다음 노드를 **먼저** 읽어
+	  두세요(`Search.Next`) — 지우기가 회전으로 길을 바꿉니다. 다음 노드 자체는 남아 있습니다.
 ]]
 local Types = require("../Types")
 local Common = require("../Common")
@@ -37,19 +38,30 @@ local Search = require("./Search")
 
 type Comparator<T> = Types.Comparator<T>
 
--- 레드블랙 노드. `Node<V>` 의 모양에 키와 색이 더해진 것.
-export type RbNode<K, V> = { key: K, value: V, red: boolean, [number]: RbNode<K, V>? }
--- 읽기만 하는 노드(밖으로 내주는 위치).
-export type RbNodeRead<K, V> = { read key: K, read value: V, read red: boolean, read [number]: RbNodeRead<K, V>? }
+-- 레드블랙 노드(불투명 핸들 — 칸 배치는 머리 주석). 고칠 수 있는 쪽은 불변 팬텀이 더 있습니다.
+export type RbNode<K, V> = {
+	read __links: "binary",
+	read __value: V,
+	read __key: K,
+	read __balance: "redblack",
+	read __keyMut: (K, V) -> (K, V),
+}
+-- 읽기만 하는 노드(밖으로 내주는 위치). 키·값에 공변.
+export type RbNodeRead<K, V> = { read __links: "binary", read __value: V, read __key: K, read __balance: "redblack" }
 
--- `Node.Binary` 의 칸 규칙(지역 상수라 접힘).
-const LEFT, RIGHT, PARENT = 1, 2, 3
-const rotateLeft, rotateRight, replace = Node.Binary.RotateLeft, Node.Binary.RotateRight, Node.Binary.Replace
+-- 칸 배치(`Node.Binary` 의 넷 + `Trees/Search` 의 키 + 이 방식의 색). 지역 상수라 접힙니다.
+const VALUE, LEFT, RIGHT, PARENT, KEY, RED = 1, 2, 3, 4, 5, 6
+-- 노드 도구. 이 모듈 안에서는 노드를 칸으로 직접 다루니 느슨한 타입으로 받습니다(불투명 핸들은 밖을 위한 것).
+const binary: any = Node.Binary
+const rotateLeft: (any) -> any = binary.RotateLeft
+const rotateRight: (any) -> any = binary.RotateRight
+const replace: (any, any) -> boolean = binary.Replace
 
 --#region ----------- 읽기 — 균형 방식과 무관한 공유 조각(`Trees/Search`)을 이 노드 타입으로 -----------
 
-type FindFn = <K, V>(root: RbNodeRead<K, V>?, key: K, compare: Comparator<K>) -> RbNodeRead<K, V>?
-type CloneFn = <K, V>(root: RbNodeRead<K, V>?) -> RbNode<K, V>?
+-- (옵셔널 자리는 `읽기 | 쓰기 | nil` 로 — `RbNodeRead<K, V>?` 하나로 적으면 `RbNode` 를 넘길 때 `K`·`V` 를 못 풀었습니다)
+type FindFn = <K, V>(root: RbNodeRead<K, V> | RbNode<K, V> | nil, key: K, compare: Comparator<K>) -> RbNodeRead<K, V>?
+type CloneFn = <K, V>(root: RbNodeRead<K, V> | RbNode<K, V> | nil) -> RbNode<K, V>?
 const shared: any = Search
 -- 키가 같은 노드 / 키가 `key` 이상인 첫 노드 / 초과인 첫 노드(없으면 `nil`).
 const Find: FindFn = shared.Find
@@ -73,18 +85,18 @@ const function Insert<K, V>(
 	local parent: any, cursor: any = nil, root
 	local order = 0
 	while cursor ~= nil do
-		order = compare(key, cursor.key)
+		order = compare(key, cursor[KEY])
 		if order == 0 then
-			cursor.value = value
+			cursor[VALUE] = value
 			return root :: any, cursor, false
 		end
 		parent = cursor
 		cursor = if order < 0 then cursor[LEFT] else cursor[RIGHT]
 	end
 	-- 연결 칸을 생성자에 같이 적습니다(perf 34절)
-	const fresh: any = { nil, nil, parent, key = key, value = value, red = true }
+	const fresh: any = { value, nil, nil, parent, key, true }
 	if parent == nil then
-		fresh.red = false
+		fresh[RED] = false
 		return fresh, fresh, true
 	end
 	if order < 0 then
@@ -97,24 +109,24 @@ const function Insert<K, V>(
 	local node: any = fresh
 	while true do
 		local above = node[PARENT]
-		if above == nil or not above.red then
+		if above == nil or not above[RED] then
 			break
 		end
 		const grand = above[PARENT] -- 빨강은 뿌리가 아니니 조부모가 있음
 		if grand[LEFT] == above then
 			const uncle = grand[RIGHT]
-			if uncle ~= nil and uncle.red then
-				above.red = false
-				uncle.red = false
-				grand.red = true
+			if uncle ~= nil and uncle[RED] then
+				above[RED] = false
+				uncle[RED] = false
+				grand[RED] = true
 				node = grand
 			else
 				if above[RIGHT] == node then
 					rotateLeft(above)
 					above = node
 				end
-				above.red = false
-				grand.red = true
+				above[RED] = false
+				grand[RED] = true
 				const raised = rotateRight(grand)
 				if raised[PARENT] == nil then
 					top = raised
@@ -123,18 +135,18 @@ const function Insert<K, V>(
 			end
 		else
 			const uncle = grand[LEFT]
-			if uncle ~= nil and uncle.red then
-				above.red = false
-				uncle.red = false
-				grand.red = true
+			if uncle ~= nil and uncle[RED] then
+				above[RED] = false
+				uncle[RED] = false
+				grand[RED] = true
 				node = grand
 			else
 				if above[LEFT] == node then
 					rotateRight(above)
 					above = node
 				end
-				above.red = false
-				grand.red = true
+				above[RED] = false
+				grand[RED] = true
 				const raised = rotateLeft(grand)
 				if raised[PARENT] == nil then
 					top = raised
@@ -143,7 +155,7 @@ const function Insert<K, V>(
 			end
 		end
 	end
-	top.red = false
+	top[RED] = false
 	return top, fresh, true
 end
 
@@ -153,13 +165,13 @@ end
 
 -- 검정 하나가 빠진 자리(`node` — `nil` 일 수 있어 부모를 따로 받음)에서 위로 올라가며 검정 수를 맞춥니다.
 const function removeFixup(top: any, node: any, parent: any): any
-	while node ~= top and (node == nil or not node.red) do
+	while node ~= top and (node == nil or not node[RED]) do
 		-- `node` 가 `nil` 이어도 어느 쪽인지 갈립니다: 검정이 빠진 쪽의 형제는 반드시 있습니다(검정 수)
 		if parent[LEFT] == node then
 			local sibling = parent[RIGHT]
-			if sibling.red then
-				sibling.red = false
-				parent.red = true
+			if sibling[RED] then
+				sibling[RED] = false
+				parent[RED] = true
 				const raised = rotateLeft(parent)
 				if raised[PARENT] == nil then
 					top = raised
@@ -167,20 +179,20 @@ const function removeFixup(top: any, node: any, parent: any): any
 				sibling = parent[RIGHT]
 			end
 			const near, far = sibling[LEFT], sibling[RIGHT]
-			if (near == nil or not near.red) and (far == nil or not far.red) then
-				sibling.red = true
+			if (near == nil or not near[RED]) and (far == nil or not far[RED]) then
+				sibling[RED] = true
 				node = parent
 				parent = node[PARENT]
 			else
-				if far == nil or not far.red then
-					near.red = false
-					sibling.red = true
+				if far == nil or not far[RED] then
+					near[RED] = false
+					sibling[RED] = true
 					rotateRight(sibling)
 					sibling = parent[RIGHT]
 				end
-				sibling.red = parent.red
-				parent.red = false
-				sibling[RIGHT].red = false
+				sibling[RED] = parent[RED]
+				parent[RED] = false
+				sibling[RIGHT][RED] = false
 				const raised = rotateLeft(parent)
 				if raised[PARENT] == nil then
 					top = raised
@@ -190,9 +202,9 @@ const function removeFixup(top: any, node: any, parent: any): any
 			end
 		else
 			local sibling = parent[LEFT]
-			if sibling.red then
-				sibling.red = false
-				parent.red = true
+			if sibling[RED] then
+				sibling[RED] = false
+				parent[RED] = true
 				const raised = rotateRight(parent)
 				if raised[PARENT] == nil then
 					top = raised
@@ -200,20 +212,20 @@ const function removeFixup(top: any, node: any, parent: any): any
 				sibling = parent[LEFT]
 			end
 			const near, far = sibling[RIGHT], sibling[LEFT]
-			if (near == nil or not near.red) and (far == nil or not far.red) then
-				sibling.red = true
+			if (near == nil or not near[RED]) and (far == nil or not far[RED]) then
+				sibling[RED] = true
 				node = parent
 				parent = node[PARENT]
 			else
-				if far == nil or not far.red then
-					near.red = false
-					sibling.red = true
+				if far == nil or not far[RED] then
+					near[RED] = false
+					sibling[RED] = true
 					rotateLeft(sibling)
 					sibling = parent[LEFT]
 				end
-				sibling.red = parent.red
-				parent.red = false
-				sibling[LEFT].red = false
+				sibling[RED] = parent[RED]
+				parent[RED] = false
+				sibling[LEFT][RED] = false
 				const raised = rotateRight(parent)
 				if raised[PARENT] == nil then
 					top = raised
@@ -224,7 +236,7 @@ const function removeFixup(top: any, node: any, parent: any): any
 		end
 	end
 	if node ~= nil then
-		node.red = false
+		node[RED] = false
 	end
 	return top
 end
@@ -234,7 +246,7 @@ end
 const function Remove<K, V>(root: RbNode<K, V>, target: RbNodeRead<K, V>): RbNode<K, V>?
 	local top: any = root
 	const gone: any = target
-	local lostRed: boolean = gone.red
+	local lostRed: boolean = gone[RED]
 	local hole: any, holeParent: any
 	const left, right = gone[LEFT], gone[RIGHT]
 	if left == nil then
@@ -254,7 +266,7 @@ const function Remove<K, V>(root: RbNode<K, V>, target: RbNodeRead<K, V>): RbNod
 		while heir[LEFT] ~= nil do
 			heir = heir[LEFT]
 		end
-		lostRed = heir.red
+		lostRed = heir[RED]
 		hole = heir[RIGHT]
 		if heir[PARENT] == gone then
 			holeParent = heir
@@ -269,7 +281,7 @@ const function Remove<K, V>(root: RbNode<K, V>, target: RbNodeRead<K, V>): RbNod
 		end
 		heir[LEFT] = left
 		left[PARENT] = heir
-		heir.red = gone.red
+		heir[RED] = gone[RED]
 	end
 	if not lostRed then
 		top = removeFixup(top, hole, holeParent)
@@ -300,7 +312,7 @@ const function FromSorted<K, V>(keys: { K }, values: { V }, count: number): RbNo
 			return nil
 		end
 		const mid = (first + last + 1) // 2
-		const node: any = { nil, nil, parent, key = keys[mid], value = values[mid], red = depth > fullLevels }
+		const node: any = { values[mid], nil, nil, parent, keys[mid], depth > fullLevels }
 		node[LEFT] = build(first, mid - 1, depth + 1, node)
 		node[RIGHT] = build(mid + 1, last, depth + 1, node)
 		return node

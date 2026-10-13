@@ -5,11 +5,11 @@
 	`RedBlack` 과 **같은 표면**입니다(뿌리 노드와 비교자를 받아 고치고 새 뿌리를 돌려줌 — `Find`·`LowerBound`·
 	`UpperBound`·`Insert`·`Remove`·`FromSorted`·`Clone`). 제품의 `FlatMap` 은 레드블랙으로 조립하고, 이것은
 	구현체로 둡니다(사용자: *"AVL 도 있어도 되긴 해. 버리진 말고 추출해서 Trees 안에 넣어도"*).
-	노드는 `Node.Binary` 의 규칙(칸 1 = 왼쪽, 2 = 오른쪽, 3 = 부모)에 키와 높이를 더한 것:
 
-	```lua
-	{ key: K, value: V, height: number, [1]: 왼쪽, [2]: 오른쪽, [3]: 부모 }
-	```
+	## 노드의 칸 배치 (계약)
+
+	`{ [1] = 값, [2] = 왼쪽, [3] = 오른쪽, [4] = 부모, [5] = 키, [6] = 높이(잎 = 1) }` — 앞의 넷은 `Node.Binary`,
+	다섯째는 `Trees/Search`, 여섯째(균형 정보)가 이 방식의 것입니다.
 
 	## 레드블랙과 견주어 (perf 37절)
 
@@ -18,7 +18,7 @@
 
 	## 불변식 (`tests/spec.trees.luau` 가 연산마다 검사)
 
-	1. 모든 노드에서 두 부분 트리의 높이 차가 1 이하. 2. `height` 가 실제 높이. 3. 중위 순서가 비교자의 순서.
+	1. 모든 노드에서 두 부분 트리의 높이 차가 1 이하. 2. 높이 칸이 실제 높이. 3. 중위 순서가 비교자의 순서.
 	4. 자식의 부모 칸이 그 부모를 가리키고 뿌리의 부모는 `nil`.
 
 	규칙(비교자, 위치는 노드, 떼어 낸 노드, 순회 중 지우기)은 `RedBlack` 과 같습니다.
@@ -31,24 +31,33 @@ local Search = require("./Search")
 
 type Comparator<T> = Types.Comparator<T>
 
--- AVL 노드. `Node<V>` 의 모양에 키와 높이(잎 = 1)가 더해진 것.
-export type AvlNode<K, V> = { key: K, value: V, height: number, [number]: AvlNode<K, V>? }
--- 읽기만 하는 노드(밖으로 내주는 위치).
-export type AvlNodeRead<K, V> = {
-	read key: K,
-	read value: V,
-	read height: number,
-	read [number]: AvlNodeRead<K, V>?,
+-- AVL 노드(불투명 핸들 — 칸 배치는 머리 주석). 고칠 수 있는 쪽은 불변 팬텀이 더 있습니다.
+export type AvlNode<K, V> = {
+	read __links: "binary",
+	read __value: V,
+	read __key: K,
+	read __balance: "avl",
+	read __keyMut: (K, V) -> (K, V),
 }
+-- 읽기만 하는 노드(밖으로 내주는 위치). 키·값에 공변.
+export type AvlNodeRead<K, V> = { read __links: "binary", read __value: V, read __key: K, read __balance: "avl" }
 
--- `Node.Binary` 의 칸 규칙(지역 상수라 접힘).
-const LEFT, RIGHT, PARENT = 1, 2, 3
-const rotateLeft, rotateRight, replace = Node.Binary.RotateLeft, Node.Binary.RotateRight, Node.Binary.Replace
+-- 칸 배치(`Node.Binary` 의 넷 + `Trees/Search` 의 키 + 이 방식의 높이). 지역 상수라 접힙니다.
+const VALUE, LEFT, RIGHT, PARENT, KEY, HEIGHT = 1, 2, 3, 4, 5, 6
+-- 노드 도구. 이 모듈 안에서는 노드를 칸으로 직접 다루니 느슨한 타입으로 받습니다(불투명 핸들은 밖을 위한 것).
+const binary: any = Node.Binary
+const rotateLeft: (any) -> any = binary.RotateLeft
+const rotateRight: (any) -> any = binary.RotateRight
+const replace: (any, any) -> boolean = binary.Replace
 
 --#region ----------- 읽기 — 균형 방식과 무관한 공유 조각(`Trees/Search`)을 이 노드 타입으로 -----------
 
-type FindFn = <K, V>(root: AvlNodeRead<K, V>?, key: K, compare: Comparator<K>) -> AvlNodeRead<K, V>?
-type CloneFn = <K, V>(root: AvlNodeRead<K, V>?) -> AvlNode<K, V>?
+type FindFn = <K, V>(
+	root: AvlNodeRead<K, V> | AvlNode<K, V> | nil,
+	key: K,
+	compare: Comparator<K>
+) -> AvlNodeRead<K, V>?
+type CloneFn = <K, V>(root: AvlNodeRead<K, V> | AvlNode<K, V> | nil) -> AvlNode<K, V>?
 const shared: any = Search
 -- 키가 같은 노드 / 키가 `key` 이상인 첫 노드 / 초과인 첫 노드(없으면 `nil`).
 const Find: FindFn = shared.Find
@@ -62,20 +71,20 @@ const Clone: CloneFn = shared.Clone
 --#region ----------- 균형 맞추기 -----------
 
 const function heightOf(node: any): number
-	return if node ~= nil then node.height else 0
+	return if node ~= nil then node[HEIGHT] else 0
 end
 
 -- 자식들의 높이로 이 노드의 높이를 다시 셉니다.
 const function refresh(node: any)
 	const left, right = heightOf(node[LEFT]), heightOf(node[RIGHT])
-	node.height = (if left > right then left else right) + 1
+	node[HEIGHT] = (if left > right then left else right) + 1
 end
 
 -- `node` 에서 뿌리 쪽으로 올라가며 높이를 고치고, 차가 2 가 된 자리를 회전으로 맞춥니다. 새 뿌리를 돌려줍니다.
 -- 부분 트리의 높이가 **바뀌지 않은** 자리에서 멈춥니다(그 위는 영향이 없음 — 넣기는 보통 한두 걸음).
 const function rebalance(top: any, node: any): any
 	while node ~= nil do
-		const before: number = node.height
+		const before: number = node[HEIGHT]
 		const left, right = heightOf(node[LEFT]), heightOf(node[RIGHT])
 		local raised = node
 		if left > right + 1 then
@@ -98,13 +107,13 @@ const function rebalance(top: any, node: any): any
 			refresh(node)
 			refresh(raised)
 		else
-			node.height = (if left > right then left else right) + 1
+			node[HEIGHT] = (if left > right then left else right) + 1
 		end
 		const above = raised[PARENT]
 		if above == nil then
 			return raised
 		end
-		if raised.height == before then
+		if raised[HEIGHT] == before then
 			return top
 		end
 		node = above
@@ -126,16 +135,16 @@ const function Insert<K, V>(
 	local parent: any, cursor: any = nil, root
 	local order = 0
 	while cursor ~= nil do
-		order = compare(key, cursor.key)
+		order = compare(key, cursor[KEY])
 		if order == 0 then
-			cursor.value = value
+			cursor[VALUE] = value
 			return root :: any, cursor, false
 		end
 		parent = cursor
 		cursor = if order < 0 then cursor[LEFT] else cursor[RIGHT]
 	end
 	-- 연결 칸을 생성자에 같이 적습니다(perf 34절)
-	const fresh: any = { nil, nil, parent, key = key, value = value, height = 1 }
+	const fresh: any = { value, nil, nil, parent, key, 1 }
 	if parent == nil then
 		return fresh, fresh, true
 	end
@@ -179,7 +188,7 @@ const function Remove<K, V>(root: AvlNode<K, V>, target: AvlNodeRead<K, V>): Avl
 		end
 		heir[LEFT] = left
 		left[PARENT] = heir
-		heir.height = gone.height
+		heir[HEIGHT] = gone[HEIGHT]
 	end
 	gone[LEFT] = nil
 	gone[RIGHT] = nil
@@ -205,7 +214,7 @@ const function FromSorted<K, V>(keys: { K }, values: { V }, count: number): AvlN
 			return nil
 		end
 		const mid = (first + last + 1) // 2
-		const node: any = { nil, nil, parent, key = keys[mid], value = values[mid], height = 1 }
+		const node: any = { values[mid], nil, nil, parent, keys[mid], 1 }
 		node[LEFT] = build(first, mid - 1, node)
 		node[RIGHT] = build(mid + 1, last, node)
 		refresh(node)

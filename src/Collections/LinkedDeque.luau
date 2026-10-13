@@ -15,13 +15,14 @@
 	{ head: Node<T>?, tail: Node<T>?, size: number }
 	```
 
-	노드는 컨테이너 밖의 조각 `Node`(`src/Node/`) — `{ value, [1] = 앞 노드, [2] = 뒤 노드 }`. 양끝은
-	`nil` 로 끝납니다(고리로 잇지 않음 — 리스트 계약의 "다음이 없으면 `nil`" 이 그대로 나옴).
+	노드는 컨테이너 밖의 조각 `Node.Double`(`src/Node/Double.luau`) — `{ [1] = 값, [2] = 앞 노드, [3] = 뒤 노드 }`.
+	양끝은 `nil` 로 끝납니다(고리로 잇지 않음 — 리스트 계약의 "다음이 없으면 `nil`" 이 그대로 나옴).
 
 	## 위치(노드)를 다루는 규칙
 
-	- 밖으로 내주는 위치는 **읽기 노드**(`NodeRead<T>`)입니다 — 값과 이웃을 읽을 수 있지만 연결을 고치는
-	  것은 이 모듈의 함수로만(`InsertAfter`·`InsertBefore`·`Remove`).
+	- 밖으로 내주는 위치는 **읽기 노드**(`Node.Double.NodeRead<T>` — 불투명 핸들)입니다. 값은 `LinkedDeque.Get(d,
+	  node)` 나 `Node.Double.Value(node)`, 이웃은 `NextIndex`·`PrevIndex`(또는 `Node.Double.Next`·`Prev`)로 읽고,
+	  연결을 고치는 것은 이 모듈의 함수로만(`InsertAfter`·`InsertBefore`·`Remove`).
 	- 떼어 낸 노드는 **연결이 끊깁니다**(두 칸이 `nil`). 쥐고 있던 위치로 다시 `Remove`·`Insert*` 하면
 	  에러입니다(끝 쪽 칸이 `nil` 인데 그 덱의 머리·꼬리가 아닌 노드 — 두 번 지우기와 떼어 낸 노드를
 	  잡습니다. 비교 둘이라 비용이 없습니다).
@@ -38,14 +39,14 @@
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
-local Node = require("../Node")
+local Double = require("../Node/Double")
 local List = require("../Traits/List")
 local Deque = require("../Traits/Deque")
 local Collection = require("../Traits/Collection")
 local Arr = require("./Arr")
 
-type Node<T> = Node.Node<T>
-type NodeRead<T> = Node.NodeRead<T>
+type Node<T> = Double.Node<T>
+type NodeRead<T> = Double.NodeRead<T>
 type Arr<T> = Arr.Arr<T>
 
 export type LinkedDequeData<T> = {
@@ -81,13 +82,14 @@ export type LinkedDequeRead<T> = {
 const TYPE_KEY = "__type"
 const TOKEN = Trait.NewType("LinkedDeque") :: Trait.Token<"LinkedDeque">
 
--- 노드의 연결 칸. 지역 상수라 접힙니다.
-const PREV, NEXT = 1, 2
+-- 노드의 칸 배치(`Node.Double` 의 계약 — `1` = 값, `2` = 앞, `3` = 뒤). 지역 상수로 다시 적어 접히게 합니다.
+-- 이 모듈 안에서는 노드를 칸으로 직접 읽고 씁니다(불투명 핸들 타입은 밖을 위한 것 — 안에서는 `any` 로).
+const VALUE, PREV, NEXT = 1, 2, 3
 
 --#region ----------- 계약 구현 (List.Ops) — 위치는 노드 -----------
 
 const function Get<T>(_self: LinkedDequeRead<T>, node: NodeRead<T>): T?
-	return node.value
+	return (node :: any)[VALUE]
 end
 
 const function FirstIndex<T>(self: LinkedDequeRead<T>): NodeRead<T>?
@@ -99,11 +101,11 @@ const function LastIndex<T>(self: LinkedDequeRead<T>): NodeRead<T>?
 end
 
 const function NextIndex<T>(_self: LinkedDequeRead<T>, node: NodeRead<T>): NodeRead<T>?
-	return node[NEXT]
+	return (node :: any)[NEXT]
 end
 
 const function PrevIndex<T>(_self: LinkedDequeRead<T>, node: NodeRead<T>): NodeRead<T>?
-	return node[PREV]
+	return (node :: any)[PREV]
 end
 
 --#endregion
@@ -112,36 +114,39 @@ end
 
 -- 맨 뒤에 넣습니다. O(1). 자기 자신을 돌려줍니다(`Arr.PushBack` 과 같음) — 새 노드가 필요하면 `LastIndex`.
 const function PushBack<T>(self: LinkedDequeData<T>, item: T): LinkedDeque<T>
-	const tail = self.tail
-	-- 연결 칸을 생성자에 같이 적습니다(나중에 대입하면 배열 부분을 다시 잡아 3배 — perf 34절)
-	const node: Node<T> = { tail, nil, value = item } :: any
+	const deque: any = self
+	const tail = deque.tail
+	-- 칸을 생성자에 다 적습니다(나중에 대입하면 배열 부분을 다시 잡아 3배 — perf 34절)
+	const node = { item, tail, nil }
 	if tail then
 		tail[NEXT] = node
 	else
-		self.head = node
+		deque.head = node
 	end
-	self.tail = node
-	self.size += 1
+	deque.tail = node
+	deque.size += 1
 	return self :: any
 end
 
 -- 맨 앞에 넣습니다. O(1).
 const function PushFront<T>(self: LinkedDequeData<T>, item: T): LinkedDeque<T>
-	const head = self.head
-	const node: Node<T> = { nil, head, value = item } :: any
+	const deque: any = self
+	const head = deque.head
+	const node = { item, nil, head }
 	if head then
 		head[PREV] = node
 	else
-		self.tail = node
+		deque.tail = node
 	end
-	self.head = node
-	self.size += 1
+	deque.head = node
+	deque.size += 1
 	return self :: any
 end
 
 -- 맨 앞을 꺼냅니다. 비었으면 `nil`. O(1). 꺼낸 노드는 연결이 끊깁니다.
 const function PopFront<T>(self: LinkedDequeData<T>): T?
-	const head = self.head
+	const deque: any = self
+	const head = deque.head
 	if head == nil then
 		return nil
 	end
@@ -150,16 +155,17 @@ const function PopFront<T>(self: LinkedDequeData<T>): T?
 		after[PREV] = nil
 		head[NEXT] = nil
 	else
-		self.tail = nil
+		deque.tail = nil
 	end
-	self.head = after
-	self.size -= 1
-	return head.value
+	deque.head = after
+	deque.size -= 1
+	return head[VALUE]
 end
 
 -- 맨 뒤를 꺼냅니다. 비었으면 `nil`. O(1).
 const function PopBack<T>(self: LinkedDequeData<T>): T?
-	const tail = self.tail
+	const deque: any = self
+	const tail = deque.tail
 	if tail == nil then
 		return nil
 	end
@@ -168,23 +174,23 @@ const function PopBack<T>(self: LinkedDequeData<T>): T?
 		before[NEXT] = nil
 		tail[PREV] = nil
 	else
-		self.head = nil
+		deque.head = nil
 	end
-	self.tail = before
-	self.size -= 1
-	return tail.value
+	deque.tail = before
+	deque.size -= 1
+	return tail[VALUE]
 end
 
 -- 맨 앞을 봅니다(꺼내지 않음). 비었으면 `nil`.
 const function Front<T>(self: LinkedDequeRead<T>): T?
-	const head = self.head
-	return if head then head.value else nil
+	const head: any = self.head
+	return if head then head[VALUE] else nil
 end
 
 -- 맨 뒤를 봅니다. 비었으면 `nil`.
 const function Back<T>(self: LinkedDequeRead<T>): T?
-	const tail = self.tail
-	return if tail then tail.value else nil
+	const tail: any = self.tail
+	return if tail then tail[VALUE] else nil
 end
 
 --#endregion
@@ -193,7 +199,7 @@ end
 
 -- `node` 가 이 덱에 이어져 있지 않으면 에러. 끝 쪽 칸이 `nil` 인 노드만 가릴 수 있습니다(머리·꼬리와 견줌) —
 -- 떼어 낸 노드, 두 번 지우기, 다른 덱의 머리·꼬리·외톨이 노드가 걸립니다(머리 주석).
-const function checkLinked<T>(self: LinkedDequeRead<T>, node: NodeRead<T>, who: string)
+const function checkLinked(self: any, node: any, who: string)
 	-- 위치를 돌려주는 함수가 전부 옵셔널이라(`List.IndexOf` 가 못 찾음, 빈 덱의 `LastIndex`) 타입 없는 코드에서
 	-- 가장 흔한 비노드 값이 `nil` 입니다 — 라이브러리 줄의 `attempt to index nil` 이었습니다(리뷰).
 	if type(node) ~= "table" then
@@ -209,55 +215,55 @@ end
 -- `node` 바로 뒤에 넣고 **새 노드**를 돌려줍니다. O(1).
 const function InsertAfter<T>(self: LinkedDequeData<T>, node: NodeRead<T>, item: T): NodeRead<T>
 	checkLinked(self, node, "InsertAfter")
-	const at = node :: any
-	const after: Node<T>? = at[NEXT]
-	const fresh: Node<T> = { at, after, value = item } :: any
+	const deque: any, at: any = self, node
+	const after = at[NEXT]
+	const fresh = { item, at, after }
 	at[NEXT] = fresh
 	if after then
 		after[PREV] = fresh
 	else
-		self.tail = fresh
+		deque.tail = fresh
 	end
-	self.size += 1
-	return fresh
+	deque.size += 1
+	return fresh :: any
 end
 
 -- `node` 바로 앞에 넣고 새 노드를 돌려줍니다. O(1).
 const function InsertBefore<T>(self: LinkedDequeData<T>, node: NodeRead<T>, item: T): NodeRead<T>
 	checkLinked(self, node, "InsertBefore")
-	const at = node :: any
-	const before: Node<T>? = at[PREV]
-	const fresh: Node<T> = { before, at, value = item } :: any
+	const deque: any, at: any = self, node
+	const before = at[PREV]
+	const fresh = { item, before, at }
 	at[PREV] = fresh
 	if before then
 		before[NEXT] = fresh
 	else
-		self.head = fresh
+		deque.head = fresh
 	end
-	self.size += 1
-	return fresh
+	deque.size += 1
+	return fresh :: any
 end
 
 -- `node` 를 떼어 내고 그 값을 돌려줍니다. O(1). 떼어 낸 노드는 연결이 끊깁니다 — 같은 노드를 다시 넘기면 에러.
 const function Remove<T>(self: LinkedDequeData<T>, node: NodeRead<T>): T
 	checkLinked(self, node, "Remove")
-	const at = node :: any
-	const before: Node<T>? = at[PREV]
-	const after: Node<T>? = at[NEXT]
+	const deque: any, at: any = self, node
+	const before = at[PREV]
+	const after = at[NEXT]
 	if before then
 		before[NEXT] = after
 	else
-		self.head = after
+		deque.head = after
 	end
 	if after then
 		after[PREV] = before
 	else
-		self.tail = before
+		deque.tail = before
 	end
 	at[PREV] = nil
 	at[NEXT] = nil
-	self.size -= 1
-	return at.value
+	deque.size -= 1
+	return at[VALUE]
 end
 
 --#endregion
@@ -275,14 +281,14 @@ end
 -- 앞에서부터 `(노드, 값)`: `for node, value in LinkedDeque.Iter(d) do`. 구멍(`nil` 값)에서도 멈추지 않습니다
 -- (첫 변수가 노드). 다음 노드를 미리 읽어 두므로 **지금 노드를 `Remove` 해도** 이어서 돕니다.
 const function Iter<T>(self: LinkedDequeRead<T>): () -> (NodeRead<T>, T)
-	local cursor = self.head
+	local cursor: any = self.head
 	return function(): (NodeRead<T>, T)
 		const node = cursor
 		if node == nil then
 			return nil :: any, nil :: any
 		end
 		cursor = node[NEXT]
-		return node, node.value
+		return node, node[VALUE]
 	end
 end
 
@@ -290,10 +296,10 @@ end
 const function ToArr<T>(self: LinkedDequeRead<T>): Arr<T>
 	const size = self.size
 	const raw = table.create(size) :: any
-	local at, node = 0, self.head
+	local at, node: any = 0, self.head
 	while node ~= nil do
 		at += 1
-		raw[at] = node.value
+		raw[at] = node[VALUE]
 		node = node[NEXT]
 	end
 	raw.n = size
@@ -320,9 +326,9 @@ end
 -- 얕은 복사(노드는 새로 만들고 값은 같은 것).
 const function Clone<T>(self: LinkedDequeRead<T>): LinkedDeque<T>
 	const copy = newEmpty() :: LinkedDeque<T>
-	local node = self.head
+	local node: any = self.head
 	while node ~= nil do
-		PushBack(copy, node.value)
+		PushBack(copy, node[VALUE])
 		node = node[NEXT]
 	end
 	return copy

@@ -11,7 +11,8 @@ local stl = require("../src")
 local LinkedDeque, CircularDeque, Node, Deque = stl.LinkedDeque, stl.CircularDeque, stl.Node, stl.Deque
 
 type LinkedDeque<T> = stl.LinkedDeque<T>
-type NodeRead<T> = stl.NodeRead<T>
+type NodeRead<T> = stl.DoubleNodeRead<T>
+local Double = Node.Double
 
 -- 내용이 기대한 목록과 같고 **불변식이 전부 서는지**: 크기, 머리·꼬리, 앞→뒤와 뒤→앞 연결, 양끝의 nil.
 local function same<T>(d: LinkedDeque<T>, expected: { T }, count: number, label: string)
@@ -22,7 +23,7 @@ local function same<T>(d: LinkedDeque<T>, expected: { T }, count: number, label:
 	while node ~= nil do
 		at += 1
 		assert(at <= count, `{label}: 앞→뒤가 크기를 넘음`)
-		assert(LinkedDeque.Get(d, node) == expected[at], `{label}: 앞→뒤 {at} = {tostring(node.value)}`)
+		assert(LinkedDeque.Get(d, node) == expected[at], `{label}: 앞→뒤 {at} = {tostring(Double.Value(node))}`)
 		assert(LinkedDeque.PrevIndex(d, node) == last, `{label}: {at} 의 앞 연결`)
 		last = node
 		node = LinkedDeque.NextIndex(d, node)
@@ -32,7 +33,7 @@ local function same<T>(d: LinkedDeque<T>, expected: { T }, count: number, label:
 	-- 뒤 → 앞
 	at, node = count, LinkedDeque.LastIndex(d)
 	while node ~= nil do
-		assert(at >= 1 and node.value == expected[at], `{label}: 뒤→앞 {at}`)
+		assert(at >= 1 and Double.Value(node) == expected[at], `{label}: 뒤→앞 {at}`)
 		at -= 1
 		node = LinkedDeque.PrevIndex(d, node)
 	end
@@ -50,7 +51,7 @@ local function same<T>(d: LinkedDeque<T>, expected: { T }, count: number, label:
 	local seen = 0
 	for iterNode, value in LinkedDeque.Iter(d) do
 		seen += 1
-		assert(value == expected[seen] and iterNode.value == value, `{label}: Iter {seen}`)
+		assert(value == expected[seen] and Double.Value(iterNode) == value, `{label}: Iter {seen}`)
 	end
 	assert(seen == count, `{label}: Iter 수 {seen}`)
 	const arr = LinkedDeque.ToArr(d)
@@ -122,7 +123,10 @@ do
 	const first = LinkedDeque.FirstIndex(d) :: NodeRead<number>
 	const last = LinkedDeque.LastIndex(d) :: NodeRead<number>
 	const mid = LinkedDeque.InsertAfter(d, first, 20)
-	assert(mid.value == 20 and mid[1] == first and mid[2] == last, "InsertAfter 가 돌려준 노드")
+	assert(
+		Double.Value(mid) == 20 and Double.Prev(mid) == first and Double.Next(mid) == last,
+		"InsertAfter 가 돌려준 노드"
+	)
 	same(d, { 10, 20, 30 }, 3, "가운데에 InsertAfter")
 	const tailNode = LinkedDeque.InsertAfter(d, last, 40)
 	assert(LinkedDeque.LastIndex(d) == tailNode, "꼬리 뒤에 넣으면 새 꼬리")
@@ -135,7 +139,10 @@ do
 
 	assert(LinkedDeque.Remove(d, mid) == 20, "Remove 는 값을 돌려줌")
 	same(d, { 5, 10, 25, 30, 40 }, 5, "가운데 Remove")
-	assert(mid[1] == nil and mid[2] == nil, "떼어 낸 노드는 연결이 끊김")
+	assert(
+		Double.Prev(mid) == nil and Double.Next(mid) == nil and Double.Value(mid) == 20,
+		"떼어 낸 노드는 연결이 끊김(값은 남음)"
+	)
 	assert(LinkedDeque.Remove(d, headNode) == 5, "머리 Remove")
 	same(d, { 10, 25, 30, 40 }, 4, "머리 Remove 뒤")
 	assert(LinkedDeque.Remove(d, tailNode) == 40, "꼬리 Remove")
@@ -153,7 +160,7 @@ do
 	const poppedTail = LinkedDeque.LastIndex(popped) :: NodeRead<number>
 	LinkedDeque.PopFront(popped)
 	LinkedDeque.PopBack(popped)
-	assert(poppedHead[2] == nil and poppedTail[1] == nil, "꺼낸 노드의 연결")
+	assert(Double.Next(poppedHead) == nil and Double.Prev(poppedTail) == nil, "꺼낸 노드의 연결")
 	same(popped, { 20 }, 1, "양끝을 꺼낸 뒤")
 
 	-- ⭐ 이 덱에 이어져 있지 않은 노드: 사용자 줄 에러(두 번 지우기, 떼어 낸 노드에 넣기, 다른 덱의 머리·꼬리)
@@ -275,7 +282,7 @@ do
 		"Remove 가 false 를 돌려줌"
 	)
 	assert(
-		LinkedDeque.PopFront(flags) == false and LinkedDeque.Len(flags) == 1 and mid.value == true,
+		LinkedDeque.PopFront(flags) == false and LinkedDeque.Len(flags) == 1 and Double.Value(mid) == true,
 		"PopFront 가 false"
 	)
 	const ring = CircularDeque.Of(false, true, false)
@@ -334,63 +341,39 @@ do
 end
 print("PASS")
 
-print("=== 5. Node 조각 ===")
+print(
+	"=== 5. 덱의 노드는 Node.Double — 계약의 칸 배치와 도구 (일반 도구의 테스트는 spec.trees 5절) ==="
+)
 do
-	const node = Node.New(10)
-	assert(node.value == 10 and node[1] == nil and node[2] == nil and getmetatable(node :: any) == nil, "Node.New")
-	const wide = Node.New("root", 4)
-	assert(wide.value == "root" and wide[4] == nil, "연결 칸 수를 미리")
-	-- 손으로 이은 사슬을 Walk·Count 로
-	const a, b, c = Node.New(10), Node.New(20), Node.New(30)
-	a[2], b[2] = b, c
-	c[1], b[1] = b, a
-	const forward: { number } = {}
-	for at in Node.Walk(a, 2) do
-		table.insert(forward, at.value)
-	end
-	assert(table.concat(forward, ",") == "10,20,30", "Walk 앞으로")
-	const backward: { number } = {}
-	for at in Node.Walk(c, 1) do
-		table.insert(backward, at.value)
-	end
-	assert(table.concat(backward, ",") == "30,20,10", "Walk 뒤로")
-	assert(Node.Count(a, 2) == 3 and Node.Count(b, 2) == 2 and Node.Count(c, 2) == 1, "Count")
-	assert(
-		Node.Count(c, 1) == 3 and Node.Count(b, 1) == 2 and Node.Count(a, 1) == 1,
-		"Count 는 그 칸을 따라감(뒤로)"
-	)
-	-- New 의 연결 칸 수: 숫자 인자 정책(소수는 자름, NaN·음수·너무 큼·숫자 아님은 사용자 줄 에러)
-	assert(Node.New(1, 2.7).value == 1 and Node.New(1, 0).value == 1, "소수·0")
-	local newWhere = 0
-	for _, bad in { -1, 0 / 0, 2 ^ 26 + 1, math.huge, "x" :: any } do
-		const ok, err = pcall(function()
-			newWhere = debug.info(1, "l") + 1
-			Node.New(1, bad)
-		end)
-		assert(
-			not ok and string.find(tostring(err), "Node: New links must be a number in", 1, true),
-			`links {tostring(bad)}: {err}`
-		)
-		assert(string.find(tostring(err), `spec.linkeddeque.luau:{newWhere}:`, 1, true), `links 사용자 줄: {err}`)
-	end
-	assert(Node.Count(nil :: stl.NodeRead<number>?, 2) == 0, "Count(nil)")
-	local never = 0
-	for _ in Node.Walk(nil :: stl.NodeRead<number>?, 2) do
-		never += 1
-	end
-	assert(never == 0, "Walk(nil) 은 돌지 않음")
-	-- Walk 는 도는 동안 지금 노드의 그 칸을 고쳐도 됨(다음을 미리 읽음)
-	local cut = 0
-	for at in Node.Walk(a, 2) do
-		cut += 1
-		(at :: any)[2] = nil
-	end
-	assert(cut == 3 and a[2] == nil and b[2] == nil, "끊으면서 돌기")
-	-- LinkedDeque 의 노드가 이 모양(값 필드 + 번호 칸)
-	const d = LinkedDeque.Of(10, 20)
+	const d = LinkedDeque.Of(10, 20, 30)
 	const head = LinkedDeque.FirstIndex(d) :: NodeRead<number>
-	assert(head.value == 10 and head[1] == nil and (head[2] :: NodeRead<number>).value == 20, "덱의 노드 모양")
-	assert(Node.Count(head, 2) == 2, "덱의 노드를 Node 도구로")
+	const tail = LinkedDeque.LastIndex(d) :: NodeRead<number>
+	const mid = Double.Next(head) :: NodeRead<number>
+	assert(Double.Value(head) == 10 and Double.Prev(head) == nil and Double.Value(mid) == 20, "접근 함수")
+	assert(Double.Next(mid) == tail and Double.Prev(mid) == head and Double.Next(tail) == nil, "이웃")
+	-- 계약의 칸 그대로: 1 = 값, 2 = 앞, 3 = 뒤. 전부 번호 칸(이름 필드 없음), 메타테이블 없음
+	const raw: any = mid
+	assert(raw[Double.VALUE] == 20 and raw[Double.PREV] == head and raw[Double.NEXT] == tail, "칸 배치")
+	assert(getmetatable(raw) == nil, "메타테이블 없음")
+	for key in raw do
+		assert(type(key) == "number", `이름 필드가 있음: {tostring(key)}`)
+	end
+	-- 덱의 노드를 Node.Double 의 읽기 도구로
+	assert(Double.Count(head) == 3 and Double.Count(mid) == 2, "Count")
+	const forward: { number } = {}
+	for node in Double.Walk(head) do
+		table.insert(forward, Double.Value(node))
+	end
+	const back: { number } = {}
+	for node in Double.WalkBack(tail) do
+		table.insert(back, Double.Value(node))
+	end
+	assert(table.concat(forward, ",") == "10,20,30" and table.concat(back, ",") == "30,20,10", "Walk·WalkBack")
+	-- 구멍(값이 nil)인 노드도 칸이 잡혀 있고 이웃으로 이어짐
+	const holed = LinkedDeque.Of<<number?>>(nil, 20, nil)
+	const first = LinkedDeque.FirstIndex(holed) :: stl.DoubleNodeRead<number?>
+	assert(Double.Value(first) == nil and Double.Count(first) == 3, "구멍 노드")
+	assert(Double.Value(Double.Next(first) :: stl.DoubleNodeRead<number?>) == 20, "구멍 뒤의 이웃")
 end
 print("PASS")
 
@@ -582,7 +565,7 @@ do
 		end
 		same(linked, model, #model, "무작위 뒤 전체 불변식")
 		for pos, node in nodes do
-			assert(node.value == model[pos], "쥐고 있던 노드가 제자리")
+			assert(Double.Value(node) == model[pos], "쥐고 있던 노드가 제자리")
 		end
 	end
 end

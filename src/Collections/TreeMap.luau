@@ -75,10 +75,13 @@ export type TreeMap<K, V> = TreeMapData<K, V>
 const TYPE_KEY = "__type"
 const TOKEN = Trait.NewType("TreeMap") :: Trait.Token<"TreeMap">
 
--- `Node.Binary` 의 칸 규칙(지역 상수라 접힘)과 도구.
-const LEFT, RIGHT = 1, 2
-const firstOf, lastOf, nextOf, prevOf = Node.Binary.First, Node.Binary.Last, Node.Binary.Next, Node.Binary.Prev
-const lowerBound, upperBound = Search.LowerBound, Search.UpperBound
+-- 노드의 칸 배치(`Trees/Search` 머리 — `1` = 값, `2` = 왼쪽, `3` = 오른쪽, `5` = 키. 지역 상수라 접힘)와 도구.
+-- 이 모듈 안에서는 노드를 칸으로 직접 읽으니 도구를 느슨한 타입으로 받습니다.
+const VALUE, LEFT, RIGHT, KEY = 1, 2, 3, 5
+const binary: any, search: any = Node.Binary, Search
+const firstOf: (any) -> any, lastOf: (any) -> any = binary.First, binary.Last
+const nextOf: (any) -> any, prevOf: (any) -> any = binary.Next, binary.Prev
+const lowerBound: (any, any, any) -> any, upperBound: (any, any, any) -> any = search.LowerBound, search.UpperBound
 
 const function unusable(key: any): boolean
 	return key == nil or key ~= key
@@ -92,11 +95,11 @@ end
 -- 이 모듈 테이블이 그대로 `Map.Ops` 구현체입니다(질문 AB).
 
 -- 키의 노드. 없으면 `nil`. 뜨거운 길이라 `Search.Find` 를 거치지 않고 여기서 따라갑니다(호출 하나).
-const function nodeOf<K, V>(self: TreeMapData<K, V>, key: K): KeyNode<K, V>?
+const function nodeOf<K, V>(self: TreeMapData<K, V>, key: K): any
 	const compare = self.compare
-	local cursor = self.root
+	local cursor: any = self.root
 	while cursor ~= nil do
-		const order = compare(key, cursor.key)
+		const order = compare(key, cursor[KEY])
 		if order == 0 then
 			return cursor
 		end
@@ -110,14 +113,14 @@ const function Get<K, V>(self: TreeMapData<K, V>, key: K): V?
 		return nil
 	end
 	const node = nodeOf(self, key)
-	return if node ~= nil then node.value else nil
+	return if node ~= nil then node[VALUE] else nil
 end
 
 -- 지우고 값을 돌려줍니다(키 검사는 부른 쪽이).
-const function removeNode<K, V>(self: TreeMapData<K, V>, node: KeyNode<K, V>): V
+const function removeNode<K, V>(self: TreeMapData<K, V>, node: any): V
 	self.root = self.balance.Remove(self.root, node)
 	self.size -= 1
-	return node.value
+	return node[VALUE]
 end
 
 -- 값을 넣습니다. 이미 있으면 덮어씁니다. O(log n).
@@ -167,7 +170,7 @@ const function Iter<K, V>(self: TreeMapData<K, V>): () -> (K, V)
 			return nil :: any, nil :: any
 		end
 		cursor = nextOf(node)
-		return node.key, node.value
+		return node[KEY], node[VALUE]
 	end
 end
 
@@ -195,7 +198,7 @@ const function Records<K, V>(self: TreeMapData<K, V>): { Record<K, V> }
 	local at, node: any = 0, if root ~= nil then firstOf(root :: any) else nil
 	while node ~= nil do
 		at += 1
-		out[at] = { key = node.key, value = node.value }
+		out[at] = { key = node[KEY], value = node[VALUE] }
 		node = nextOf(node)
 	end
 	return out
@@ -208,7 +211,7 @@ const function Keys<K, V>(self: TreeMapData<K, V>): { K }
 	local at, node: any = 0, if root ~= nil then firstOf(root :: any) else nil
 	while node ~= nil do
 		at += 1
-		out[at] = node.key
+		out[at] = node[KEY]
 		node = nextOf(node)
 	end
 	return out
@@ -221,7 +224,7 @@ const function Values<K, V>(self: TreeMapData<K, V>): { V }
 	local at, node: any = 0, if root ~= nil then firstOf(root :: any) else nil
 	while node ~= nil do
 		at += 1
-		out[at] = node.value
+		out[at] = node[VALUE]
 		node = nextOf(node)
 	end
 	return out
@@ -234,7 +237,7 @@ const function First<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 		return nil
 	end
 	const node: any = firstOf(root :: any)
-	return { key = node.key, value = node.value }
+	return { key = node[KEY], value = node[VALUE] }
 end
 
 -- 가장 큰 키의 쌍. 비어 있으면 `nil`.
@@ -244,7 +247,7 @@ const function Last<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 		return nil
 	end
 	const node: any = lastOf(root :: any)
-	return { key = node.key, value = node.value }
+	return { key = node[KEY], value = node[VALUE] }
 end
 
 -- `key` **이상**인 키 중 가장 작은 것. 없으면 `nil`.
@@ -253,7 +256,7 @@ const function CeilingKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 		return nil
 	end
 	const node = lowerBound(self.root, key, self.compare)
-	return if node ~= nil then node.key else nil
+	return if node ~= nil then node[KEY] else nil
 end
 
 -- `key` 보다 **큰** 키 중 가장 작은 것(엄격). 없으면 `nil`.
@@ -262,17 +265,17 @@ const function HigherKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 		return nil
 	end
 	const node = upperBound(self.root, key, self.compare)
-	return if node ~= nil then node.key else nil
+	return if node ~= nil then node[KEY] else nil
 end
 
 -- `bound`(어떤 경계의 첫 노드 — 없으면 끝을 넘은 것)의 바로 앞 노드의 키.
-const function keyBefore<K, V>(self: TreeMapData<K, V>, bound: KeyNode<K, V>?): K?
+const function keyBefore<K, V>(self: TreeMapData<K, V>, bound: any): K?
 	const root = self.root
 	if root == nil then
 		return nil
 	end
 	const node: any = if bound ~= nil then prevOf(bound :: any) else lastOf(root :: any)
-	return if node ~= nil then node.key else nil
+	return if node ~= nil then node[KEY] else nil
 end
 
 -- `key` **이하**인 키 중 가장 큰 것. 없으면 `nil`.
@@ -300,9 +303,9 @@ const function RangeRecords<K, V>(self: TreeMapData<K, V>, fromKey: K, toKey: K)
 	end
 	const compare = self.compare
 	local at, node: any = 0, lowerBound(self.root, fromKey, compare)
-	while node ~= nil and compare(node.key, toKey) <= 0 do
+	while node ~= nil and compare(node[KEY], toKey) <= 0 do
 		at += 1
-		out[at] = { key = node.key, value = node.value }
+		out[at] = { key = node[KEY], value = node[VALUE] }
 		node = nextOf(node)
 	end
 	return out
@@ -319,7 +322,7 @@ const function PopFirst<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 		return nil
 	end
 	const node: any = firstOf(root :: any)
-	const record = { key = node.key, value = node.value }
+	const record = { key = node[KEY], value = node[VALUE] }
 	removeNode(self, node)
 	return record
 end
@@ -331,7 +334,7 @@ const function PopLast<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 		return nil
 	end
 	const node: any = lastOf(root :: any)
-	const record = { key = node.key, value = node.value }
+	const record = { key = node[KEY], value = node[VALUE] }
 	removeNode(self, node)
 	return record
 end
@@ -345,7 +348,7 @@ const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> b
 	while node ~= nil do
 		-- 지우기가 회전으로 길을 바꾸니 다음 노드를 먼저 읽습니다(다음 노드 자체는 남음)
 		const after = nextOf(node)
-		if not fn(node.key, node.value) then
+		if not fn(node[KEY], node[VALUE]) then
 			removeNode(self, node)
 		end
 		node = after

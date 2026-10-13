@@ -399,12 +399,12 @@ do
 			if node == nil then
 				return
 			end
-			assert(node[3] == parent, `{label}: {node.key} 의 부모 칸`)
-			walk(node[1], node)
-			assert(last == nil or last < node.key, `{label}: 순서`)
-			last = node.key
-			count += 1
+			assert(node[4] == parent, `{label}: {node[5]} 의 부모 칸`)
 			walk(node[2], node)
+			assert(last == nil or last < node[5], `{label}: 순서`)
+			last = node[5]
+			count += 1
+			walk(node[3], node)
 		end
 		walk(m.root, nil)
 		assert(count == m.size and TreeMap.Len(m) == count, `{label}: size {m.size} ~= 노드 수 {count}`)
@@ -420,7 +420,7 @@ do
 	end
 	sound(rb, "레드블랙 오름차순 200")
 	sound(avl, "AVL 오름차순 200")
-	assert((rb.root :: any).red == false and (avl.root :: any).height ~= nil, "노드가 그 방식의 것")
+	assert((rb.root :: any)[6] == false and type((avl.root :: any)[6]) == "number", "노드가 그 방식의 것")
 	assert(TreeMap.Get(rb, 990) == 991 and TreeMap.Get(avl, 990) == 991, "둘 다 조회")
 	-- Clone·FromRecords 는 균형 방식을 물려받고 구조가 온전
 	const avlCopy = TreeMap.Clone(avl)

@@ -3,16 +3,16 @@
 	65 — LinkedDeque·Node·Deque 트레이트의 음성 대조군 (2026-10-13).
 
 	지키는 성질: 꺼내기·보기는 옵셔널 / 원소 타입 / 토큰 없는 리터럴은 덱이 아님 / **위치는 노드**(숫자가
-	아님)이고 밖으로 나온 노드는 **읽기 전용** / 읽기로 빌린 참조(`LinkedDequeRead`)는 넣기·꺼내기·비우기를
+	아님)이고 밖으로 나온 노드는 **읽기 전용인 불투명 핸들**(옵셔널 자리에서도 원소 타입·노드 종류를 지킴) / 읽기로 빌린 참조(`LinkedDequeRead`)는 넣기·꺼내기·비우기를
 	못 얻음(모듈 함수로도, 트레이트 진입점으로도) / `Deque` 진입점은 원소 타입을 지키고 넣은 타입 그대로
 	돌려주며 덱이 아닌 것을 안 받음 / 두 구현은 서로 다른 타입.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 29 줄 + CANARY 1 — 빌린 참조의 `PopFront` 줄은 다섯 건. "알려진 구멍" 줄은 0건이어야 함)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 34 줄 + CANARY 1 — 빌린 참조의 `PopFront` 줄은 여러 건)
 ]]
 local stl = require("../../../../src")
 local LinkedDeque, CircularDeque, Deque, Arr = stl.LinkedDeque, stl.CircularDeque, stl.Deque, stl.Arr
 type LinkedDeque<T> = stl.LinkedDeque<T>
-type NodeRead<T> = stl.NodeRead<T>
+type NodeRead<T> = stl.DoubleNodeRead<T>
 
 local d = LinkedDeque.Of(10, 20, 30)
 local ring = CircularDeque.Of(10, 20, 30)
@@ -81,10 +81,16 @@ local inserted = LinkedDeque.InsertAfter(d, head :: NodeRead<number>, 7)
 inserted.value = 8
 local words = LinkedDeque.Of("a", "b")
 local negForeign = LinkedDeque.Remove(d, LinkedDeque.FirstIndex(words) :: NodeRead<string>)
--- ⚠️ **알려진 구멍**(기대 0건 — 새 솔버 결함, `audit/luau-solver-issues` 5번): 재귀 별칭이 **옵셔널(유니온)의
--- 갈래**이면 타입 인자를 안 봅니다. 문자열 덱의 위치가 `NodeRead<number>?` 자리에 들어갑니다. 솔버가 고쳐지면
--- 이 줄이 에러가 되어 배터리가 알려 줍니다 — 그때 NEG 로 옮기세요.
-local knownHole: NodeRead<number>? = LinkedDeque.FirstIndex(words)
+-- ⭐ 옵셔널 자리에서도 원소 타입을 지킴(2026-10-13 — 노드를 불투명 핸들로 바꾸며 닫힘. 노드 타입이 재귀 별칭이던
+-- 때는 새 솔버 결함(`audit/luau-solver-issues` 5번)으로 이 세 줄이 0건이었고, 다른 덱에 다른 타입의 원소가 들어갔음)
+local negOptional: NodeRead<number>? = LinkedDeque.FirstIndex(words)
+local negOptionalFound: NodeRead<number>? = stl.List.IndexOf(words, "b")
+local function takesOptional(_at: NodeRead<number>?) end
+takesOptional(LinkedDeque.LastIndex(words))
+-- 다른 종류의 노드(이진)는 덱의 위치가 아님 / 노드의 안쪽은 타입에 드러나지 않음(값은 함수로)
+local negKindOfNode = LinkedDeque.Remove(d, stl.Node.Binary.New(1))
+local okValue: number = stl.Node.Double.Value(head :: NodeRead<number>)
+local negValue: string = stl.Node.Double.Value(head :: NodeRead<number>)
 
 local canary: string = 42
 
@@ -116,6 +122,10 @@ return {
 	negTraitPopBack,
 	negTraitBack,
 	negForeign,
-	knownHole,
+	negOptional,
+	negOptionalFound,
+	negKindOfNode,
+	okValue,
+	negValue,
 	canary,
 }

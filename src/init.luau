@@ -27,6 +27,9 @@ local Set = require("@self/Traits/Set")
 local Collection = require("@self/Traits/Collection")
 local Deque = require("@self/Traits/Deque")
 local Node = require("@self/Node")
+local NodeSingle = require("@self/Node/Single")
+local NodeDouble = require("@self/Node/Double")
+local NodeBinary = require("@self/Node/Binary")
 local RedBlack = require("@self/Trees/RedBlack")
 local Avl = require("@self/Trees/Avl")
 local Search = require("@self/Trees/Search")
@@ -66,8 +69,13 @@ export type CollectionMarkerMut = Collection.MarkerMut
 export type DequeOps<C, T> = Deque.Ops<C, T>
 export type DequeMarker<T> = Deque.Marker<T>
 export type DequeMarkerMut<T> = Deque.MarkerMut<T>
-export type Node<T> = Node.Node<T>
-export type NodeRead<T> = Node.NodeRead<T>
+-- 노드(종류별 불투명 핸들 — `src/Node/` 머리). 읽기 타입은 컨테이너가 밖으로 내주는 위치.
+export type SingleNode<T> = NodeSingle.Node<T>
+export type SingleNodeRead<T> = NodeSingle.NodeRead<T>
+export type DoubleNode<T> = NodeDouble.Node<T>
+export type DoubleNodeRead<T> = NodeDouble.NodeRead<T>
+export type BinaryNode<T> = NodeBinary.Node<T>
+export type BinaryNodeRead<T> = NodeBinary.NodeRead<T>
 export type RbNode<K, V> = RedBlack.RbNode<K, V>
 export type RbNodeRead<K, V> = RedBlack.RbNodeRead<K, V>
 export type AvlNode<K, V> = Avl.AvlNode<K, V>
@@ -120,6 +128,8 @@ return {
 	-- 트리부 — 노드 도구로 짠 균형 방식(컨테이너가 아니라 뿌리 노드를 받는 함수들). `FlatMap` 등이 조립해 씀
 	RedBlack = RedBlack,
 	Avl = Avl,
+	-- 균형 방식과 무관한 공유 조각(찾기·경계·베끼기)과 탐색 트리 노드의 칸 배치·접근 함수
+	Search = Search,
 
 	-- 컨테이너 네임스페이스. **순수 테이블입니다** — 콜러블로 만들면 제네릭
 	-- 생성자가 타입 인자를 잃고 모듈 오타도 못 잡습니다(실측).
