@@ -15,13 +15,13 @@
 	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 11 + CANARY 1)
 ]]
 local stl = require("../../../../src")
-local Arr, CircularDeque, HashMap, HashSet, TreeMap, TreeSet, Trait, Common =
-	stl.Arr, stl.CircularDeque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Trait, stl.Common
+local Arr, CircularDeque, HashMap, HashSet, FlatMap, FlatSet, Trait, Common =
+	stl.Arr, stl.CircularDeque, stl.HashMap, stl.HashSet, stl.FlatMap, stl.FlatSet, stl.Trait, stl.Common
 
 local hm = HashMap.New<<string, number>>()
-local tm = TreeMap.New<<string, number>>(Common.compareString)
+local tm = FlatMap.New<<string, number>>(Common.compareString)
 local hs = HashSet.Of(1, 2)
-local ts = TreeSet.New<<number>>(Common.compareNumber)
+local ts = FlatSet.New<<number>>(Common.compareNumber)
 local arr = Arr.Of(1, 2)
 local dq = CircularDeque.Of(1, 2)
 
@@ -41,7 +41,7 @@ end
 local function touch<E>(_list: stl.ListMarkerMut<E, number>, _item: E) end
 -- 위치도 받는 쓰기(1라운드 — 팬텀이 `(E) -> E` 뿐일 땐 위치 타입이 넓어져 `Arr` 에 문자열 키로 썼음)
 local function setAt<E, I>(_list: stl.ListMarkerMut<E, I>, _idx: I, _item: E) end
--- 키를 **입력으로 받는 조회**도 불변 마커로(읽기 마커면 `TreeMap<string, …>` 에 숫자 키가 0건으로
+-- 키를 **입력으로 받는 조회**도 불변 마커로(읽기 마커면 `FlatMap<string, …>` 에 숫자 키가 0건으로
 -- 들어가 비교자가 라이브러리 줄에서 터짐 — 아래 "알려진 구멍")
 local function lookup<K, V>(m: stl.MapMarkerMut<K, V>, k: K): V?
 	const ops = Trait.ImplOf(stl.Map, m)

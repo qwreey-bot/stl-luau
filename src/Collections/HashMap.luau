@@ -82,7 +82,7 @@ end
 --
 -- ⭐ **값이 `nil` 이면 삭제입니다** — Lua 의 `t[k] = nil` 과 같습니다. 예전엔
 -- 크기만 올리고 실제로는 아무것도 안 들어가 `size` 가 틀어졌습니다
--- (2026-09-30 리뷰). `TreeMap` 도 같은 규칙입니다.
+-- (2026-09-30 리뷰). `FlatMap` 도 같은 규칙입니다.
 --
 -- **먼저 쓰고 나서 셉니다.** 키가 NaN 이나 `nil` 이면 Lua 가 쓰기에서
 -- 에러를 내는데, 세는 게 먼저면 실패한 쓰기가 크기만 올렸습니다.
@@ -100,7 +100,7 @@ const function Set<K, V>(self: HashMapData<K, V>, key: K, value: V): ()
 end
 
 -- 키-값 쌍의 목록. **순서는 보장하지 않습니다**(해시 순서).
--- 순서가 필요하면 `TreeMap` 을 쓰세요.
+-- 순서가 필요하면 `FlatMap` 을 쓰세요.
 const function Records<K, V>(self: HashMapData<K, V>): { Record<K, V> }
 	const out = table.create(self.size) :: { Record<K, V> }
 	local count = 0

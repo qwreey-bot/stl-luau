@@ -1,11 +1,11 @@
 --!strict
 --[[
-	TreeSet — **정렬을 유지하는** 셋.
+	FlatSet — **정렬을 유지하는** 셋.
 
-	## TreeMap 위에 단방향으로 얹혀 있습니다
+	## FlatMap 위에 단방향으로 얹혀 있습니다
 
 	```lua
-	{ map: TreeMap<T, true> }
+	{ map: FlatMap<T, true> }
 	```
 
 	`HashSet` 이 `HashMap` 을 감싸는 것과 같은 구조이고, 어휘도 같습니다 —
@@ -30,7 +30,7 @@
 	계산하지 않는 O(n + m) 입니다. 교과서대로라면 이겨야 하는데, **실측은
 	반대입니다**(원소 10만, `.claude/base/perf-measurements.md` 9절):
 
-	| | HashSet | TreeSet | |
+	| | HashSet | FlatSet | |
 	|---|---|---|---|
 	| `Union` | 0.0028s | 0.0163s | **5.9배 느림** |
 	| `Intersect` | 0.0043s | 0.0049s | 1.2배 |
@@ -40,14 +40,14 @@
 	이유는 단순합니다. **Luau 의 테이블 해싱은 C 안에서 돌고, 우리 병합은
 	Lua 클로저로 비교자를 부릅니다.** 알고리즘 차수가 아니라 상수가 이깁니다.
 
-	**그러니 `TreeSet` 은 순서를 위한 것이지 속도를 위한 게 아닙니다.**
+	**그러니 `FlatSet` 은 순서를 위한 것이지 속도를 위한 게 아닙니다.**
 	순서가 필요 없으면 `HashSet` 을 쓰세요 — 모든 축에서 빠릅니다.
 
 	⚠️ **두 셋의 비교자가 같아야 합니다.** 다르면 병합이 뜻을 잃습니다 —
 	검사하지 않으니 호출자가 맞춰 주세요.
 ]]
 local Types = require("../Types")
-local TreeMap = require("./TreeMap")
+local FlatMap = require("./FlatMap")
 local Common = require("../Common")
 local Trait = require("../Trait")
 local Set = require("../Traits/Set")
@@ -56,12 +56,12 @@ Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
 type Comparator<T> = Types.Comparator<T>
-type TreeMapType<K, V> = TreeMap.TreeMap<K, V>
+type FlatMapType<K, V> = FlatMap.FlatMap<K, V>
 
 -- `__setMut` 는 쓰는 제네릭용 불변 팬텀(`Set.MarkerMut`, 질문 AM) — 타입에만 있습니다.
-export type TreeSetData<T> = {
-	map: TreeMapType<T, true>,
-	read __type: Trait.Token<"TreeSet">,
+export type FlatSetData<T> = {
+	map: FlatMapType<T, true>,
+	read __type: Trait.Token<"FlatSet">,
 	read __setItem: T,
 	read __setMut: (T) -> T,
 	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
@@ -72,7 +72,7 @@ export type TreeSetData<T> = {
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("TreeSet") :: Trait.Token<"TreeSet">
+const TOKEN = Trait.NewType("FlatSet") :: Trait.Token<"FlatSet">
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
 const function tagged(raw: any): any
@@ -80,8 +80,8 @@ const function tagged(raw: any): any
 	return raw
 end
 
-const function adopt<T>(records: { Record<T, true> }, size: number, compare: Comparator<T>): TreeSet<T>
-	const map: TreeMapType<T, true> = TreeMap.Adopt(records, size, compare)
+const function adopt<T>(records: { Record<T, true> }, size: number, compare: Comparator<T>): FlatSet<T>
+	const map: FlatMapType<T, true> = FlatMap.Adopt(records, size, compare)
 	return tagged({ map = map })
 end
 
@@ -90,50 +90,50 @@ end
 
 -- 원소를 넣습니다. **새로 들어갔으면 `true`**, 이미 있었으면 `false`.
 --
--- NaN·`nil` 은 받지 않습니다(`TreeMap` 의 키와 같은 이유). 여기서 먼저 봅니다 — 맡기면 메시지가
--- `TreeMap: NaN key` 로 나와, 사용자가 부른 적 없는 모듈 이름이 나왔습니다(2026-10-12).
-const function Add<T>(self: TreeSetData<T>, item: T): boolean
+-- NaN·`nil` 은 받지 않습니다(`FlatMap` 의 키와 같은 이유). 여기서 먼저 봅니다 — 맡기면 메시지가
+-- `FlatMap: NaN key` 로 나와, 사용자가 부른 적 없는 모듈 이름이 나왔습니다(2026-10-12).
+const function Add<T>(self: FlatSetData<T>, item: T): boolean
 	if item == nil or item ~= item then
-		Common.raise(if item == nil then "TreeSet: nil item" else "TreeSet: NaN item")
+		Common.raise(if item == nil then "FlatSet: nil item" else "FlatSet: NaN item")
 	end
 	const map = self.map
 	const before = map.size
-	TreeMap.Set(map, item, true :: true)
+	FlatMap.Set(map, item, true :: true)
 	return map.size > before
 end
 
-const function Has<T>(self: TreeSetData<T>, item: T): boolean
-	return TreeMap.Has(self.map, item)
+const function Has<T>(self: FlatSetData<T>, item: T): boolean
+	return FlatMap.Has(self.map, item)
 end
 
-const function Remove<T>(self: TreeSetData<T>, item: T): boolean
-	return TreeMap.Remove(self.map, item) ~= nil
+const function Remove<T>(self: FlatSetData<T>, item: T): boolean
+	return FlatMap.Remove(self.map, item) ~= nil
 end
 
 -- 원소를 모은 배열. **정렬 순서입니다.**
-const function Items<T>(self: TreeSetData<T>): { T }
-	return TreeMap.Keys(self.map)
+const function Items<T>(self: FlatSetData<T>): { T }
+	return FlatMap.Keys(self.map)
 end
 
 --#endregion
 
 --#region ----------- 조회 -----------
 
-const function Len<T>(self: TreeSetData<T>): number
+const function Len<T>(self: FlatSetData<T>): number
 	return self.map.size
 end
 
-const function Empty<T>(self: TreeSetData<T>): boolean
+const function Empty<T>(self: FlatSetData<T>): boolean
 	return self.map.size == 0
 end
 
--- `for item in TreeSet.Iter(set) do … end` 또는 `for _, item in …` — **정렬 순서로**.
+-- `for item in FlatSet.Iter(set) do … end` 또는 `for _, item in …` — **정렬 순서로**.
 --
 -- ⭐ **원소를 두 자리 모두에 돌려주고, 상태는 클로저에 담습니다.** 그래서 두
 -- 형태가 다 되고 `HashSet` 과 바꿔 끼울 수 있습니다. 예전엔 `(인덱스, 원소)` 를
 -- 돌려줘서 `for item in` 이 **인덱스**를 받았고(주석과 반대, 2026-09-30 리뷰),
 -- 원소 타입이 number 면 타입 검사도 그걸 못 잡았습니다.
-const function Iter<T>(self: TreeSetData<T>): () -> (T, T)
+const function Iter<T>(self: FlatSetData<T>): () -> (T, T)
 	const map = self.map
 	local idx = 0
 	return function(): (T, T)
@@ -150,16 +150,16 @@ end
 
 --#region ----------- 정렬이 있어야만 되는 것들 -----------
 
-const function First<T>(self: TreeSetData<T>): T?
-	const rec = TreeMap.First(self.map)
+const function First<T>(self: FlatSetData<T>): T?
+	const rec = FlatMap.First(self.map)
 	if rec == nil then
 		return nil
 	end
 	return rec.key
 end
 
-const function Last<T>(self: TreeSetData<T>): T?
-	const rec = TreeMap.Last(self.map)
+const function Last<T>(self: FlatSetData<T>): T?
+	const rec = FlatMap.Last(self.map)
 	if rec == nil then
 		return nil
 	end
@@ -167,28 +167,28 @@ const function Last<T>(self: TreeSetData<T>): T?
 end
 
 -- `item` **이하**인 원소 중 가장 큰 것.
-const function FloorItem<T>(self: TreeSetData<T>, item: T): T?
-	return TreeMap.FloorKey(self.map, item)
+const function FloorItem<T>(self: FlatSetData<T>, item: T): T?
+	return FlatMap.FloorKey(self.map, item)
 end
 
 -- `item` **이상**인 원소 중 가장 작은 것.
-const function CeilingItem<T>(self: TreeSetData<T>, item: T): T?
-	return TreeMap.CeilingKey(self.map, item)
+const function CeilingItem<T>(self: FlatSetData<T>, item: T): T?
+	return FlatMap.CeilingKey(self.map, item)
 end
 
 -- `item` 보다 **작은** 원소 중 가장 큰 것(엄격 — `FloorItem` 은 같은 원소도 줌).
-const function LowerItem<T>(self: TreeSetData<T>, item: T): T?
-	return TreeMap.LowerKey(self.map, item)
+const function LowerItem<T>(self: FlatSetData<T>, item: T): T?
+	return FlatMap.LowerKey(self.map, item)
 end
 
 -- `item` 보다 **큰** 원소 중 가장 작은 것(엄격 — `CeilingItem` 은 같은 원소도 줌).
-const function HigherItem<T>(self: TreeSetData<T>, item: T): T?
-	return TreeMap.HigherKey(self.map, item)
+const function HigherItem<T>(self: FlatSetData<T>, item: T): T?
+	return FlatMap.HigherKey(self.map, item)
 end
 
 -- 구간 `[from, to]` 의 원소들. **양끝 포함**, 정렬 순서. 뒤집히면 빈 목록.
-const function RangeItems<T>(self: TreeSetData<T>, from: T, to: T): { T }
-	const recs = TreeMap.RangeRecords(self.map, from, to)
+const function RangeItems<T>(self: FlatSetData<T>, from: T, to: T): { T }
+	const recs = FlatMap.RangeRecords(self.map, from, to)
 	const out = table.create(#recs) :: { T }
 	for idx, rec in recs do
 		out[idx] = rec.key
@@ -201,27 +201,27 @@ end
 --#region ----------- 변형 -----------
 
 -- 비우고 **자기 자신을 돌려줍니다**(2026-10-12 사용자 결정, 질문 AM — 일곱 컨테이너가 같게. 반환은 공짜였음).
-const function Clear<T>(self: TreeSetData<T>): TreeSet<T>
-	TreeMap.Clear(self.map)
+const function Clear<T>(self: FlatSetData<T>): FlatSet<T>
+	FlatMap.Clear(self.map)
 	return self
 end
 
--- 가장 작은 원소를 **꺼냅니다**. 비었으면 `nil`. O(n) 입니다(`TreeMap.PopFirst`).
-const function PopFirst<T>(self: TreeSetData<T>): T?
-	const rec = TreeMap.PopFirst(self.map)
+-- 가장 작은 원소를 **꺼냅니다**. 비었으면 `nil`. O(n) 입니다(`FlatMap.PopFirst`).
+const function PopFirst<T>(self: FlatSetData<T>): T?
+	const rec = FlatMap.PopFirst(self.map)
 	return if rec == nil then nil else rec.key
 end
 
 -- 가장 큰 원소를 꺼냅니다. O(1).
-const function PopLast<T>(self: TreeSetData<T>): T?
-	const rec = TreeMap.PopLast(self.map)
+const function PopLast<T>(self: FlatSetData<T>): T?
+	const rec = FlatMap.PopLast(self.map)
 	return if rec == nil then nil else rec.key
 end
 
 -- 조건을 만족하는 원소만 **남깁니다**(제자리, 정렬 순서로 부름). ⚠️ Java `retainAll` 과 달리
--- 술어를 받습니다(질문 W). 콜백 안에서 이 셋을 바꾸면 정의되지 않은 동작입니다(`TreeMap.Retain`
+-- 술어를 받습니다(질문 W). 콜백 안에서 이 셋을 바꾸면 정의되지 않은 동작입니다(`FlatMap.Retain`
 -- 과 같음, 질문 AL 1). 자기 맵의 레코드 배열을 직접 훑습니다(집합 연산처럼 — 클로저 한 겹을 아낌).
-const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): TreeSet<T>
+const function Retain<T>(self: FlatSetData<T>, fn: (item: T) -> boolean): FlatSet<T>
 	const map = self.map
 	const records = map.records
 	const size = map.size
@@ -240,8 +240,8 @@ const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): TreeSe
 	return self
 end
 
-const function Clone<T>(self: TreeSetData<T>): TreeSet<T>
-	return tagged({ map = TreeMap.Clone(self.map) })
+const function Clone<T>(self: FlatSetData<T>): FlatSet<T>
+	return tagged({ map = FlatMap.Clone(self.map) })
 end
 
 --#endregion
@@ -259,9 +259,9 @@ end
 -- (2026-09-30 리뷰). 같은지 한 번 보는 값은 거의 0 이라 막습니다 — 뜻이 같은
 -- 비교자라도 **다른 함수 값**이면 에러이니 `Common.compareNumber` 처럼 같은
 -- 함수를 나눠 쓰세요.
-const function sameOrder<T>(a: TreeSetData<T>, b: TreeSetData<T>)
+const function sameOrder<T>(a: FlatSetData<T>, b: FlatSetData<T>)
 	if a.map.compare ~= b.map.compare then
-		Common.raise("TreeSet: sets use different comparators")
+		Common.raise("FlatSet: sets use different comparators")
 	end
 end
 
@@ -270,7 +270,7 @@ const function rec<T>(key: T): Record<T, true>
 end
 
 -- 합집합. O(n + m).
-const function Union<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+const function Union<T>(self: FlatSetData<T>, other: FlatSetData<T>): FlatSet<T>
 	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
@@ -304,7 +304,7 @@ const function Union<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
 end
 
 -- 교집합. O(n + m).
-const function Intersect<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+const function Intersect<T>(self: FlatSetData<T>, other: FlatSetData<T>): FlatSet<T>
 	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
@@ -327,7 +327,7 @@ const function Intersect<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSe
 end
 
 -- 차집합. 이쪽에는 있고 저쪽에는 없는 것. O(n + m).
-const function Difference<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+const function Difference<T>(self: FlatSetData<T>, other: FlatSetData<T>): FlatSet<T>
 	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
@@ -354,7 +354,7 @@ const function Difference<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeS
 end
 
 -- 대칭차. 한쪽에만 있는 것. O(n + m).
-const function SymmetricDifference<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+const function SymmetricDifference<T>(self: FlatSetData<T>, other: FlatSetData<T>): FlatSet<T>
 	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
@@ -387,7 +387,7 @@ const function SymmetricDifference<T>(self: TreeSetData<T>, other: TreeSetData<T
 end
 
 -- 이쪽이 저쪽에 통째로 들어가는가. 크기를 먼저 보고 걸러냅니다.
-const function IsSubsetOf<T>(self: TreeSetData<T>, other: TreeSetData<T>): boolean
+const function IsSubsetOf<T>(self: FlatSetData<T>, other: FlatSetData<T>): boolean
 	sameOrder(self, other)
 	const a, b = self.map, other.map
 	if a.size > b.size then
@@ -412,7 +412,7 @@ const function IsSubsetOf<T>(self: TreeSetData<T>, other: TreeSetData<T>): boole
 	return true
 end
 
-const function IsDisjointFrom<T>(self: TreeSetData<T>, other: TreeSetData<T>): boolean
+const function IsDisjointFrom<T>(self: FlatSetData<T>, other: FlatSetData<T>): boolean
 	sameOrder(self, other)
 	const a, b = self.map, other.map
 	const compare = a.compare
@@ -431,7 +431,7 @@ const function IsDisjointFrom<T>(self: TreeSetData<T>, other: TreeSetData<T>): b
 end
 
 -- 원소가 완전히 같은가. 정렬돼 있으니 **나란히 대조**하면 됩니다.
-const function Equal<T>(self: TreeSetData<T>, other: TreeSetData<T>): boolean
+const function Equal<T>(self: FlatSetData<T>, other: FlatSetData<T>): boolean
 	sameOrder(self, other)
 	const a, b = self.map, other.map
 	if a.size ~= b.size then
@@ -450,13 +450,13 @@ end
 
 --#region ----------- 타입 -----------
 -- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
-export type TreeSet<T> = TreeSetData<T>
+export type FlatSet<T> = FlatSetData<T>
 
 --#endregion
 
 --#region ----------- 생성자 -----------
 
-const function New<T>(compare: Comparator<T>): TreeSet<T>
+const function New<T>(compare: Comparator<T>): FlatSet<T>
 	return adopt({} :: { Record<T, true> }, 0, compare)
 end
 
@@ -464,7 +464,7 @@ end
 --
 -- ⚠️ 한 번에 정렬해서 담습니다(O(n log n)). `Add` 를 n 번 부르면 삽입마다
 -- 뒤를 밀어 **O(n^2)** 이 됩니다.
-const function FromList<T>(source: { T }, compare: Comparator<T>): TreeSet<T>
+const function FromList<T>(source: { T }, compare: Comparator<T>): FlatSet<T>
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드).
 	const list, count = Common.denseList(source)
 	if count == 0 then
@@ -473,7 +473,7 @@ const function FromList<T>(source: { T }, compare: Comparator<T>): TreeSet<T>
 	for idx = 1, count do
 		const item = list[idx]
 		if item ~= item then
-			Common.raise("TreeSet: NaN item")
+			Common.raise("FlatSet: NaN item")
 		end
 	end
 	const sorted = table.create(count) :: { T }
@@ -493,21 +493,21 @@ const function FromList<T>(source: { T }, compare: Comparator<T>): TreeSet<T>
 	return adopt(out, size, compare)
 end
 
-const function isTreeSet(value: any): boolean
+const function isFlatSet(value: any): boolean
 	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
 
 --#endregion
 
 -- stylua: ignore
-const TreeSetModule = {
+const FlatSetModule = {
 	New = New,
 	FromList = FromList,
-	isTreeSet = isTreeSet,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, TreeSet.Token, impl)`
+	isFlatSet = isFlatSet,
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, FlatSet.Token, impl)`
 	Token = TOKEN,
 
-	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`TreeSet.X(v, …)`) — 콜론 호출은
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`FlatSet.X(v, …)`) — 콜론 호출은
 	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Len = Len, Empty = Empty, Iter = Iter, First = First, Last = Last, FloorItem = FloorItem,
 	CeilingItem = CeilingItem, RangeItems = RangeItems, Clear = Clear, Clone = Clone, Union = Union,
@@ -518,7 +518,7 @@ const TreeSetModule = {
 }
 
 -- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.
-Trait.Impl(Set, TOKEN, TreeSetModule)
-Trait.Impl(Collection, TOKEN, TreeSetModule)
+Trait.Impl(Set, TOKEN, FlatSetModule)
+Trait.Impl(Collection, TOKEN, FlatSetModule)
 
-return TreeSetModule
+return FlatSetModule

@@ -54,7 +54,7 @@ do
 	end
 	assert(#joined == 3, "Items 가 전부 나와야 합니다")
 
-	-- ⭐ 두 형태가 다 되어야 합니다 — TreeSet 과 바꿔 끼울 수 있어야 하므로
+	-- ⭐ 두 형태가 다 되어야 합니다 — FlatSet 과 바꿔 끼울 수 있어야 하므로
 	-- `for _, item in` 이 되고, 셋다운 `for item in` 도 됩니다.
 	local iterCount, iterJoined = 0, ""
 	for _, item in HashSet.Iter(s) do

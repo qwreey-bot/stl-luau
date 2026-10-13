@@ -3,7 +3,7 @@
 	Avl — AVL 트리의 구조 제어(2층 트리부, 2026-10-13 — `papers/07` 9-4).
 
 	`RedBlack` 과 **같은 표면**입니다(뿌리 노드와 비교자를 받아 고치고 새 뿌리를 돌려줌 — `Find`·`LowerBound`·
-	`UpperBound`·`Insert`·`Remove`·`FromSorted`·`Clone`). 제품의 `TreeMap` 은 레드블랙으로 조립하고, 이것은
+	`UpperBound`·`Insert`·`Remove`·`FromSorted`·`Clone`). 제품의 `FlatMap` 은 레드블랙으로 조립하고, 이것은
 	구현체로 둡니다(사용자: *"AVL 도 있어도 되긴 해. 버리진 말고 추출해서 Trees 안에 넣어도"*).
 	노드는 `Node.Binary` 의 규칙(칸 1 = 왼쪽, 2 = 오른쪽, 3 = 부모)에 키와 높이를 더한 것:
 

@@ -34,8 +34,8 @@ local BSearch = require("@self/Algorithms/BSearch")
 local Arr = require("@self/Collections/Arr")
 local HashMap = require("@self/Collections/HashMap")
 local HashSet = require("@self/Collections/HashSet")
-local TreeMap = require("@self/Collections/TreeMap")
-local TreeSet = require("@self/Collections/TreeSet")
+local FlatMap = require("@self/Collections/FlatMap")
+local FlatSet = require("@self/Collections/FlatSet")
 local Heap = require("@self/Collections/Heap")
 local CircularDeque = require("@self/Collections/CircularDeque")
 local LinkedDeque = require("@self/Collections/LinkedDeque")
@@ -85,8 +85,8 @@ export type ArrRead<T> = Arr.ArrRead<T>
 export type Pair<T, U> = Arr.Pair<T, U>
 export type HashMap<K, V> = HashMap.HashMap<K, V>
 export type HashSet<T> = HashSet.HashSet<T>
-export type TreeMap<K, V> = TreeMap.TreeMap<K, V>
-export type TreeSet<T> = TreeSet.TreeSet<T>
+export type FlatMap<K, V> = FlatMap.FlatMap<K, V>
+export type FlatSet<T> = FlatSet.FlatSet<T>
 export type Heap<T> = Heap.Heap<T>
 export type CircularDeque<T> = CircularDeque.CircularDeque<T>
 export type CircularDequeRead<T> = CircularDeque.CircularDequeRead<T>
@@ -113,7 +113,7 @@ return {
 
 	-- 컨테이너 밖의 노드 조각(연결 리스트·트리가 조립해 씀)
 	Node = Node,
-	-- 트리부 — 노드 도구로 짠 균형 방식(컨테이너가 아니라 뿌리 노드를 받는 함수들). `TreeMap` 등이 조립해 씀
+	-- 트리부 — 노드 도구로 짠 균형 방식(컨테이너가 아니라 뿌리 노드를 받는 함수들). `FlatMap` 등이 조립해 씀
 	RedBlack = RedBlack,
 	Avl = Avl,
 
@@ -122,8 +122,8 @@ return {
 	Arr = Arr,
 	HashMap = HashMap,
 	HashSet = HashSet,
-	TreeMap = TreeMap,
-	TreeSet = TreeSet,
+	FlatMap = FlatMap,
+	FlatSet = FlatSet,
 	Heap = Heap,
 	CircularDeque = CircularDeque,
 	LinkedDeque = LinkedDeque,
@@ -134,8 +134,8 @@ return {
 	isArr = Arr.isArr,
 	isHashMap = HashMap.isHashMap,
 	isHashSet = HashSet.isHashSet,
-	isTreeMap = TreeMap.isTreeMap,
-	isTreeSet = TreeSet.isTreeSet,
+	isFlatMap = FlatMap.isFlatMap,
+	isFlatSet = FlatSet.isFlatSet,
 	isHeap = Heap.isHeap,
 	isCircularDeque = CircularDeque.isCircularDeque,
 	isLinkedDeque = LinkedDeque.isLinkedDeque,

@@ -9,7 +9,7 @@
 
 	⭐ 여기서 가장 중요한 것은 **런타임이 아니라 타입**입니다. 이 파일이
 	`--!strict` 로 진단 0건이라는 사실 자체가 "계약이 정말 섰다" 는 증거입니다.
-	같은 함수에 `HashMap` 과 `TreeMap` 을 넣었을 때 타입 에러가 나면 계약이
+	같은 함수에 `HashMap` 과 `FlatMap` 을 넣었을 때 타입 에러가 나면 계약이
 	선 게 아닙니다.
 ]]
 local stl = require("../src")
@@ -68,19 +68,19 @@ do
 end
 print("PASS")
 
-print("=== 2. ⭐ MapOps — HashMap 과 TreeMap 을 바꿔 끼울 수 있는가 ===")
+print("=== 2. ⭐ MapOps — HashMap 과 FlatMap 을 바꿔 끼울 수 있는가 ===")
 do
 	-- **같은 함수**에 두 구현을 넣습니다. 타입이 갈리면 여기서 진단이 납니다.
 	type H = stl.HashMap<string, number>
-	type T = stl.TreeMap<string, number>
+	type T = stl.FlatMap<string, number>
 	const hash = stl.HashMap.New<<string, number>>()
-	const tree = stl.TreeMap.New<<string, number>>(Common.compareString)
+	const tree = stl.FlatMap.New<<string, number>>(Common.compareString)
 
 	-- ⚠️ 계약을 받는 함수는 **타입 인자를 알려줍니다** — 원소 타입을 함수 묶음
 	-- (제네릭 함수들)에서도 끌어오며 `unknown` 이 섞입니다(typing-limits).
 	assert(fillAndCount<<H, number>>(stl.HashMap, hash, 1) == 2, "HashMap 을 계약으로")
-	assert(fillAndCount<<T, number>>(stl.TreeMap, tree, 1) == 2, "TreeMap 을 계약으로")
-	assert(stl.HashMap.Len(hash) == stl.TreeMap.Len(tree), "둘의 크기가 같아야 합니다")
+	assert(fillAndCount<<T, number>>(stl.FlatMap, tree, 1) == 2, "FlatMap 을 계약으로")
+	assert(stl.HashMap.Len(hash) == stl.FlatMap.Len(tree), "둘의 크기가 같아야 합니다")
 
 	-- 공용 알고리즘도 양쪽에서 같아야 합니다
 	assert(#stl.Map.Keys(hash) == #stl.Map.Keys(tree), "Map.Keys")
@@ -88,7 +88,7 @@ do
 
 	-- 계약 자리에 모듈을 담아 두고 나중에 쓰는 것도 돼야 합니다
 	const hashOps: MapOps<H, string, number> = stl.HashMap
-	const treeOps: MapOps<T, string, number> = stl.TreeMap
+	const treeOps: MapOps<T, string, number> = stl.FlatMap
 	assert(
 		hashOps.Get(hash, "하나") == 1 and treeOps.Get(tree, "하나") == 1,
 		"계약 자리에 담긴 뒤에도 동작"
@@ -96,13 +96,13 @@ do
 end
 print("PASS")
 
-print("=== 3. ⭐ SetOps — HashSet 과 TreeSet 을 바꿔 끼울 수 있는가 ===")
+print("=== 3. ⭐ SetOps — HashSet 과 FlatSet 을 바꿔 끼울 수 있는가 ===")
 do
 	const hash = stl.HashSet.New<<number>>()
-	const tree = stl.TreeSet.New<<number>>(Common.compareNumber)
+	const tree = stl.FlatSet.New<<number>>(Common.compareNumber)
 
 	const hashResult = exerciseSet<<stl.HashSet<number>, number>>(stl.HashSet, hash, 10, 20)
-	const treeResult = exerciseSet<<stl.TreeSet<number>, number>>(stl.TreeSet, tree, 10, 20)
+	const treeResult = exerciseSet<<stl.FlatSet<number>, number>>(stl.FlatSet, tree, 10, 20)
 	assert(hashResult == "true,false,true,true,false,1", `HashSet 결과: {hashResult}`)
 	-- **두 구현이 글자 하나까지 같은 답을 내야 합니다**
 	assert(hashResult == treeResult, `구현마다 답이 다릅니다: {hashResult} vs {treeResult}`)
@@ -117,8 +117,8 @@ do
 		{ name = "Arr", instance = stl.Arr.Of(1), is = stl.isArr },
 		{ name = "HashMap", instance = stl.HashMap.New(), is = stl.isHashMap },
 		{ name = "HashSet", instance = stl.HashSet.New(), is = stl.isHashSet },
-		{ name = "TreeMap", instance = stl.TreeMap.New(Common.compareNumber), is = stl.isTreeMap },
-		{ name = "TreeSet", instance = stl.TreeSet.New(Common.compareNumber), is = stl.isTreeSet },
+		{ name = "FlatMap", instance = stl.FlatMap.New(Common.compareNumber), is = stl.isFlatMap },
+		{ name = "FlatSet", instance = stl.FlatSet.New(Common.compareNumber), is = stl.isFlatSet },
 		{
 			name = "Heap",
 			instance = stl.Heap.New(function(a: number, b: number)
@@ -153,8 +153,8 @@ do
 	-- 태그가 빠진 결과는 술어가 거짓이고, `Arr.Flat` 은 그 배열을 펼치지 않고,
 	-- `Fut.Chain`/`Fut.All` 은 그 Fut 을 거부합니다. 반환 경로 **전부**를 봅니다
 	-- (예전 "네임스페이스와 메소드는 같은 함수" 절의 새 구조 짝).
-	const Arr, HashMap, HashSet, TreeMap, TreeSet, Heap, Fut =
-		stl.Arr, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap, stl.Fut
+	const Arr, HashMap, HashSet, FlatMap, FlatSet, Heap, Fut =
+		stl.Arr, stl.HashMap, stl.HashSet, stl.FlatMap, stl.FlatSet, stl.Heap, stl.Fut
 	local function a(): stl.Arr<number>
 		return Arr.Of(30, 10, 20)
 	end
@@ -306,31 +306,31 @@ do
 		assert(stl.isHashSet(result), `HashSet.{name} 결과에 태그가 없습니다`)
 	end
 
-	const tm = TreeMap.New<<number, number>>(Common.compareNumber)
+	const tm = FlatMap.New<<number, number>>(Common.compareNumber)
 	const treeMapResults: { [string]: any } = {
 		New = tm,
-		FromRecords = TreeMap.FromRecords({ { key = 1, value = 1 } }, Common.compareNumber),
-		Adopt = TreeMap.Adopt({ { key = 1, value = 1 } }, 1, Common.compareNumber),
-		Clone = TreeMap.Clone(tm),
-		Clear = TreeMap.Clear(TreeMap.Clone(tm)),
+		FromRecords = FlatMap.FromRecords({ { key = 1, value = 1 } }, Common.compareNumber),
+		Adopt = FlatMap.Adopt({ { key = 1, value = 1 } }, 1, Common.compareNumber),
+		Clone = FlatMap.Clone(tm),
+		Clear = FlatMap.Clear(FlatMap.Clone(tm)),
 	}
 	for name, result in treeMapResults do
-		assert(stl.isTreeMap(result), `TreeMap.{name} 결과에 태그가 없습니다`)
+		assert(stl.isFlatMap(result), `FlatMap.{name} 결과에 태그가 없습니다`)
 	end
 
-	const ts = TreeSet.FromList({ 1, 2 }, Common.compareNumber)
+	const ts = FlatSet.FromList({ 1, 2 }, Common.compareNumber)
 	const treeSetResults: { [string]: any } = {
-		New = TreeSet.New<<number>>(Common.compareNumber),
+		New = FlatSet.New<<number>>(Common.compareNumber),
 		FromList = ts,
-		Clone = TreeSet.Clone(ts),
-		Clear = TreeSet.Clear(TreeSet.Clone(ts)),
-		Union = TreeSet.Union(ts, ts),
-		Intersect = TreeSet.Intersect(ts, ts),
-		Difference = TreeSet.Difference(ts, ts),
-		SymmetricDifference = TreeSet.SymmetricDifference(ts, ts),
+		Clone = FlatSet.Clone(ts),
+		Clear = FlatSet.Clear(FlatSet.Clone(ts)),
+		Union = FlatSet.Union(ts, ts),
+		Intersect = FlatSet.Intersect(ts, ts),
+		Difference = FlatSet.Difference(ts, ts),
+		SymmetricDifference = FlatSet.SymmetricDifference(ts, ts),
 	}
 	for name, result in treeSetResults do
-		assert(stl.isTreeSet(result), `TreeSet.{name} 결과에 태그가 없습니다`)
+		assert(stl.isFlatSet(result), `FlatSet.{name} 결과에 태그가 없습니다`)
 	end
 
 	const hp = Heap.FromList({ 3, 1 }, lt)
@@ -429,8 +429,8 @@ do
 		{ name = "Arr", is = stl.isArr, token = stl.Arr.Token },
 		{ name = "HashMap", is = stl.isHashMap, token = stl.HashMap.Token },
 		{ name = "HashSet", is = stl.isHashSet, token = stl.HashSet.Token },
-		{ name = "TreeMap", is = stl.isTreeMap, token = stl.TreeMap.Token },
-		{ name = "TreeSet", is = stl.isTreeSet, token = stl.TreeSet.Token },
+		{ name = "FlatMap", is = stl.isFlatMap, token = stl.FlatMap.Token },
+		{ name = "FlatSet", is = stl.isFlatSet, token = stl.FlatSet.Token },
 		{ name = "Heap", is = stl.isHeap, token = stl.Heap.Token },
 		{ name = "Fut", is = stl.isFut, token = stl.Fut.Token },
 		{ name = "CircularDeque", is = stl.isCircularDeque, token = stl.CircularDeque.Token },
@@ -516,9 +516,9 @@ do
 	const samples: { { name: string, value: any, list: any, map: any, set: any } } = {
 		{ name = "Arr", value = stl.Arr.Of(1), list = stl.Arr, map = nil, set = nil },
 		{ name = "HashMap", value = stl.HashMap.New(), list = nil, map = stl.HashMap, set = nil },
-		{ name = "TreeMap", value = stl.TreeMap.New(Common.compareNumber), list = nil, map = stl.TreeMap, set = nil },
+		{ name = "FlatMap", value = stl.FlatMap.New(Common.compareNumber), list = nil, map = stl.FlatMap, set = nil },
 		{ name = "HashSet", value = stl.HashSet.New(), list = nil, map = nil, set = stl.HashSet },
-		{ name = "TreeSet", value = stl.TreeSet.New(Common.compareNumber), list = nil, map = nil, set = stl.TreeSet },
+		{ name = "FlatSet", value = stl.FlatSet.New(Common.compareNumber), list = nil, map = nil, set = stl.FlatSet },
 		{
 			name = "Heap",
 			value = stl.Heap.New(function(a: number, b: number): boolean
@@ -655,9 +655,9 @@ do
 			end,
 		},
 		{
-			name = "Arr.CloneFromTable(TreeSet)",
+			name = "Arr.CloneFromTable(FlatSet)",
 			run = function()
-				stl.Arr.CloneFromTable(stl.TreeSet.New(Common.compareNumber) :: any)
+				stl.Arr.CloneFromTable(stl.FlatSet.New(Common.compareNumber) :: any)
 			end,
 		},
 		{
@@ -745,7 +745,7 @@ do
 	negZero.n = -0
 	for _, empty in { emptyArr, negZero } :: { any } do
 		assert(stl.HashSet.Len(stl.HashSet.FromList(empty)) == 0, "빈 Arr → HashSet")
-		assert(stl.TreeSet.Len(stl.TreeSet.FromList(empty, Common.compareNumber)) == 0, "빈 Arr → TreeSet")
+		assert(stl.FlatSet.Len(stl.FlatSet.FromList(empty, Common.compareNumber)) == 0, "빈 Arr → FlatSet")
 		assert(stl.Arr.CloneFromTable(empty).n == 0, "빈 Arr → CloneFromTable")
 		assert(stl.Fut.Status(stl.Fut.All(empty)) == "Resolved", "빈 Arr → Fut.All")
 	end
@@ -950,8 +950,8 @@ do
 	assert(ops.Get(s, 3) == "z" and ops.FirstIndex(s) == 1 and ops.NextIndex(s, 1) == 2, "문자열 배열의 ListOps")
 
 	-- Keys/Values 는 개수가 아니라 **내용**을 봅니다(키와 값을 바꿔 돌려줘도 통과했음)
-	const m = stl.TreeMap.FromRecords({ { key = "b", value = 20 }, { key = "a", value = 10 } }, Common.compareString)
-	type T = stl.TreeMap<string, number>
+	const m = stl.FlatMap.FromRecords({ { key = "b", value = 20 }, { key = "a", value = 10 } }, Common.compareString)
+	type T = stl.FlatMap<string, number>
 	const keys = stl.Map.Keys(m)
 	const values = stl.Map.Values(m)
 	assert(table.concat(keys, ",") == "a,b", "Map.Keys 내용")
@@ -1042,10 +1042,10 @@ do
 	assert(#stl.Map.Keys(emptyHash) == 0 and #stl.Map.Values(emptyHash) == 0, "빈 맵")
 	-- 내장 두 맵: Keys 와 Values 가 같은 순서로 짝이 맞고, 자기 모듈의 Keys/Values 와 같은 내용
 	const big = stl.HashMap.New<<string, number>>()
-	const bigTree = stl.TreeMap.New<<string, number>>(Common.compareString)
+	const bigTree = stl.FlatMap.New<<string, number>>(Common.compareString)
 	for i = 1, 40 do
 		stl.HashMap.Set(big, `k{i * 7}`, i * 100)
-		stl.TreeMap.Set(bigTree, `k{i * 7}`, i * 100)
+		stl.FlatMap.Set(bigTree, `k{i * 7}`, i * 100)
 	end
 	const bigKeys, bigValues = stl.Map.Keys(big), stl.Map.Values(big)
 	assert(#bigKeys == 40 and #bigValues == 40, "HashMap 40개")
@@ -1059,19 +1059,19 @@ do
 		assert(stl.HashMap.Get(big, rec.key) == rec.value, "Map.Records(HashMap) 의 키-값")
 	end
 	const treeRecords = stl.Map.Records(bigTree)
-	const ownRecords = stl.TreeMap.Records(bigTree)
-	assert(#treeRecords == #ownRecords and #treeRecords == 40, "Map.Records(TreeMap) 개수")
+	const ownRecords = stl.FlatMap.Records(bigTree)
+	assert(#treeRecords == #ownRecords and #treeRecords == 40, "Map.Records(FlatMap) 개수")
 	for at, rec in treeRecords do
 		assert(
 			rec.key == ownRecords[at].key and rec.value == ownRecords[at].value,
-			`TreeMap 레코드 {at} 은 정렬 순서`
+			`FlatMap 레코드 {at} 은 정렬 순서`
 		)
 	end
 	treeRecords[1].key = "zzz"
 	treeRecords[1].value = -1
 	assert(
-		stl.TreeMap.Records(bigTree)[1].key == ownRecords[1].key,
-		"받은 레코드를 고쳐도 TreeMap 은 그대로"
+		stl.FlatMap.Records(bigTree)[1].key == ownRecords[1].key,
+		"받은 레코드를 고쳐도 FlatMap 은 그대로"
 	)
 	assert(#stl.Map.Records(emptyHash) == 0, "빈 맵의 Records")
 	assert(not pcall(function()
@@ -1079,10 +1079,10 @@ do
 	end), "맵이 아닌 것의 Records 는 에러")
 	const treeKeys, treeValues = stl.Map.Keys(bigTree), stl.Map.Values(bigTree)
 	assert(
-		table.concat(treeKeys, ",") == table.concat(stl.TreeMap.Keys(bigTree), ","),
-		"TreeMap Keys 는 정렬 순서"
+		table.concat(treeKeys, ",") == table.concat(stl.FlatMap.Keys(bigTree), ","),
+		"FlatMap Keys 는 정렬 순서"
 	)
-	assert(table.concat(treeValues, ",") == table.concat(stl.TreeMap.Values(bigTree), ","), "TreeMap Values")
+	assert(table.concat(treeValues, ",") == table.concat(stl.FlatMap.Values(bigTree), ","), "FlatMap Values")
 
 	-- 함수를 빠뜨린 구현은 **등록할 때** 사용자 줄 에러(2026-10-12 — 예전엔 알고리즘 안에서
 	-- `attempt to call a nil value`: 타입을 안 쓰는 코드, 그리고 계약이 넓어지기 전의 구현)
@@ -1166,8 +1166,8 @@ do
 	-- `{ T }` 를 받는 생성자들이 `#`/`pairs` 로 읽어 `Arr` 의 `n` 과 태그 키까지
 	-- 원소로 담거나(HashSet 크기 4), 구멍 뒤를 잃었습니다(CloneFromTable). 규약:
 	-- **`n` 이 숫자로 있으면 그 길이로 숫자 루프**(구멍은 건너뜀), 없으면 `#`.
-	const Arr, HashMap, HashSet, TreeMap, TreeSet, Heap =
-		stl.Arr, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap
+	const Arr, HashMap, HashSet, FlatMap, FlatSet, Heap =
+		stl.Arr, stl.HashMap, stl.HashSet, stl.FlatMap, stl.FlatSet, stl.Heap
 	local function lt(a: number, b: number): boolean
 		return a < b
 	end
@@ -1181,8 +1181,8 @@ do
 	assert(HashSet.Len(holed) == 2, "HashSet.FromList 는 구멍을 건너뜀")
 	assert(HashSet.Len(HashSet.FromList(table.pack(1, nil, 3) :: any)) == 2, "table.pack 결과도 n 을 따름")
 	assert(
-		table.concat(TreeSet.Items(TreeSet.FromList(nums, Common.compareNumber)), ",") == "10,30",
-		"TreeSet.FromList(Arr)"
+		table.concat(FlatSet.Items(FlatSet.FromList(nums, Common.compareNumber)), ",") == "10,30",
+		"FlatSet.FromList(Arr)"
 	)
 	const heap = Heap.FromList(nums, lt)
 	assert(Heap.Len(heap) == 2 and Heap.Peek(heap) == 10, "Heap.FromList(Arr)")
@@ -1193,8 +1193,8 @@ do
 	end)
 	const hm = HashMap.FromRecords(records)
 	assert(HashMap.Len(hm) == 2 and HashMap.Get(hm, "b") == 20, "HashMap.FromRecords(Arr)")
-	const tm = TreeMap.FromRecords(records, Common.compareString)
-	assert(TreeMap.Len(tm) == 2 and table.concat(TreeMap.Keys(tm), ",") == "a,b", "TreeMap.FromRecords(Arr)")
+	const tm = FlatMap.FromRecords(records, Common.compareString)
+	assert(FlatMap.Len(tm) == 2 and table.concat(FlatMap.Keys(tm), ",") == "a,b", "FlatMap.FromRecords(Arr)")
 	-- 사전을 받는 FromTable 은 Arr 를 "위치 → 값" 으로 읽습니다(n·태그 키는 원소가 아님)
 	const byIndex = HashMap.FromTable(nums :: any)
 	assert(HashMap.Len(byIndex) == 2 and HashMap.Get(byIndex, 1) == 30, "HashMap.FromTable(Arr) 는 위치 → 값")
@@ -1211,14 +1211,14 @@ do
 	const packed = table.pack(30, nil, 10) :: any
 	assert(HashSet.Len(HashSet.FromList(packed)) == 2, "HashSet.FromList(pack)")
 	assert(
-		table.concat(TreeSet.Items(TreeSet.FromList(packed, Common.compareNumber)), ",") == "10,30",
-		"TreeSet.FromList(pack)"
+		table.concat(FlatSet.Items(FlatSet.FromList(packed, Common.compareNumber)), ",") == "10,30",
+		"FlatSet.FromList(pack)"
 	)
 	const packedHeap = Heap.FromList(packed, lt)
 	assert(Heap.Len(packedHeap) == 2 and Heap.Peek(packedHeap) == 10, "Heap.FromList(pack)")
 	const packedRecords = table.pack({ key = "a", value = 1 }, nil, { key = "c", value = 3 }) :: any
 	assert(HashMap.Len(HashMap.FromRecords(packedRecords)) == 2, "HashMap.FromRecords(pack)")
-	assert(TreeMap.Len(TreeMap.FromRecords(packedRecords, Common.compareString)) == 2, "TreeMap.FromRecords(pack)")
+	assert(FlatMap.Len(FlatMap.FromRecords(packedRecords, Common.compareString)) == 2, "FlatMap.FromRecords(pack)")
 	const holedArr = Arr.Of<<number?>>(10, nil, 30)
 	const byIndexHoled = HashMap.FromTable(holedArr :: any)
 	assert(HashMap.Len(byIndexHoled) == 2 and HashMap.Get(byIndexHoled, 3) == 30, "HashMap.FromTable(구멍 Arr)")
@@ -1271,7 +1271,7 @@ print("PASS")
 print("=== 9. 쓰는 제네릭은 불변 마커로 — 맵·셋 종류와 무관하게 (2026-10-12, 질문 AM) ===")
 do
 	-- 타입 쪽(값 타입이 넓어지지 않음)은 spikes/61 이 지킵니다. 여기는 불변 마커를 받는 제네릭이
-	-- 런타임에 HashMap·TreeMap, HashSet·TreeSet 양쪽에서 같은 답을 내는지.
+	-- 런타임에 HashMap·FlatMap, HashSet·FlatSet 양쪽에서 같은 답을 내는지.
 	local function put<K, V>(m: stl.MapMarkerMut<K, V>, k: K, v: V)
 		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
@@ -1283,20 +1283,20 @@ do
 		return ops.Add(s, item)
 	end
 	const hm = stl.HashMap.New<<string, number>>()
-	const tm = stl.TreeMap.New<<string, number>>(Common.compareString)
+	const tm = stl.FlatMap.New<<string, number>>(Common.compareString)
 	for _, key in { "b", "a", "b" } do
 		put(hm, key, #key * 10)
 		put(tm, key, #key * 10)
 	end
-	assert(stl.HashMap.Len(hm) == 2 and stl.TreeMap.Len(tm) == 2, "두 맵 모두 키 둘")
-	assert(stl.HashMap.Get(hm, "a") == 10 and stl.TreeMap.Get(tm, "a") == 10, "같은 값")
+	assert(stl.HashMap.Len(hm) == 2 and stl.FlatMap.Len(tm) == 2, "두 맵 모두 키 둘")
+	assert(stl.HashMap.Get(hm, "a") == 10 and stl.FlatMap.Get(tm, "a") == 10, "같은 값")
 	-- 불변 마커로 받은 값은 읽는 알고리즘에도 그대로 들어감
 	local function keysOf<K, V>(m: stl.MapMarkerMut<K, V>): { K }
 		return stl.Map.Keys(m)
 	end
 	assert(table.concat(keysOf(tm), ",") == "a,b" and #keysOf(hm) == 2, "Mut 마커 → Keys")
 	const hs = stl.HashSet.New<<number>>()
-	const ts = stl.TreeSet.New<<number>>(Common.compareNumber)
+	const ts = stl.FlatSet.New<<number>>(Common.compareNumber)
 	assert(add(hs, 10) and add(ts, 10) and not add(hs, 10) and not add(ts, 10), "두 셋 모두 Add")
 	-- 팬텀은 타입에만 — 런타임 필드는 없음
 	for _, value in { hm, tm, hs, ts, stl.Arr.Of(1), stl.CircularDeque.Of(1) } :: { any } do
@@ -1342,14 +1342,14 @@ do
 			len = stl.HashMap.Len,
 		},
 		{
-			name = "TreeMap",
+			name = "FlatMap",
 			make = function()
-				return stl.TreeMap.FromRecords(
+				return stl.FlatMap.FromRecords(
 					{ { key = "a", value = 10 }, { key = "b", value = 20 }, { key = "c", value = 30 } },
 					Common.compareString
 				)
 			end,
-			len = stl.TreeMap.Len,
+			len = stl.FlatMap.Len,
 		},
 		{
 			name = "HashSet",
@@ -1359,11 +1359,11 @@ do
 			len = stl.HashSet.Len,
 		},
 		{
-			name = "TreeSet",
+			name = "FlatSet",
 			make = function()
-				return stl.TreeSet.FromList({ 30, 10, 20 }, Common.compareNumber)
+				return stl.FlatSet.FromList({ 30, 10, 20 }, Common.compareNumber)
 			end,
-			len = stl.TreeSet.Len,
+			len = stl.FlatSet.Len,
 		},
 		{
 			name = "Heap",
@@ -1397,12 +1397,12 @@ do
 		end
 	end
 	const hm = stl.HashMap.FromTable<<string, number>>({ old = 1 })
-	const tm = stl.TreeMap.FromRecords({ { key = "old", value = 1 } }, Common.compareString)
+	const tm = stl.FlatMap.FromRecords({ { key = "old", value = 1 } }, Common.compareString)
 	const fresh = { { key = "q", value = 70 }, { key = "p", value = 80 } }
 	refill(hm, fresh)
 	refill(tm, fresh)
 	assert(stl.Collection.Len(hm) == 2 and stl.Collection.Len(tm) == 2, "다시 채운 크기")
-	assert(stl.HashMap.Get(hm, "old") == nil and stl.TreeMap.Get(tm, "old") == nil, "옛 키는 없음")
+	assert(stl.HashMap.Get(hm, "old") == nil and stl.FlatMap.Get(tm, "old") == nil, "옛 키는 없음")
 	assert(table.concat(stl.Map.Keys(tm), ",") == "p,q" and stl.HashMap.Get(hm, "q") == 70, "다시 채운 내용")
 
 	-- 읽기 전용으로 빌린 참조도 Len 은 됨(타입 쪽 — Clear 는 못 함 — 은 spikes/63)
@@ -1446,11 +1446,11 @@ do
 		return hadPresent, hadAbsent, removed, removedAgain, seen
 	end
 	const hm2 = stl.HashMap.FromTable<<string, number>>({ a = 10, b = 20, c = 30 })
-	const tm2 = stl.TreeMap.FromRecords(
+	const tm2 = stl.FlatMap.FromRecords(
 		{ { key = "a", value = 10 }, { key = "b", value = 20 }, { key = "c", value = 30 } },
 		Common.compareString
 	)
-	for name, m in { HashMap = hm2, TreeMap = tm2 } :: { [string]: any } do
+	for name, m in { HashMap = hm2, FlatMap = tm2 } :: { [string]: any } do
 		const hadPresent, hadAbsent, removed, removedAgain, seen = exercise(m, "b", "zz")
 		assert(hadPresent and not hadAbsent, `{name} Has`)
 		assert(removed == 20 and removedAgain == nil, `{name} Remove 는 지운 값: {removed}`)
@@ -1461,13 +1461,13 @@ do
 	end
 	-- 모듈 테이블이 넓힌 계약과 컬렉션 계약을 정적으로 만족
 	const _hmOps: MapOps<stl.HashMap<string, number>, string, number> = stl.HashMap
-	const _tmOps: MapOps<stl.TreeMap<string, number>, string, number> = stl.TreeMap
+	const _tmOps: MapOps<stl.FlatMap<string, number>, string, number> = stl.FlatMap
 	const _c1: stl.CollectionOps<stl.Arr<number>> = stl.Arr
 	const _c2: stl.CollectionOps<stl.CircularDeque<number>> = stl.CircularDeque
 	const _c3: stl.CollectionOps<stl.HashMap<string, number>> = stl.HashMap
-	const _c4: stl.CollectionOps<stl.TreeMap<string, number>> = stl.TreeMap
+	const _c4: stl.CollectionOps<stl.FlatMap<string, number>> = stl.FlatMap
 	const _c5: stl.CollectionOps<stl.HashSet<number>> = stl.HashSet
-	const _c6: stl.CollectionOps<stl.TreeSet<number>> = stl.TreeSet
+	const _c6: stl.CollectionOps<stl.FlatSet<number>> = stl.FlatSet
 	const _c7: stl.CollectionOps<stl.Heap<number>> = stl.Heap
 end
 print("PASS")

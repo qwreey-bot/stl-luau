@@ -52,8 +52,8 @@ do
 	const roundTrip = Common.lessFrom(Common.compareFrom(less))
 	assert(roundTrip(1, 2) == true and roundTrip(2, 2) == false, "왕복")
 	-- 그리고 정렬된 구조에 실제로 꽂혀야 합니다
-	const tree = stl.TreeSet.FromList({ 3, 1, 2 }, Common.compareFrom(less))
-	assert(table.concat(stl.TreeSet.Items(tree), ",") == "1,2,3", "compareFrom 으로 TreeSet")
+	const tree = stl.FlatSet.FromList({ 3, 1, 2 }, Common.compareFrom(less))
+	assert(table.concat(stl.FlatSet.Items(tree), ",") == "1,2,3", "compareFrom 으로 FlatSet")
 end
 print("PASS")
 
@@ -105,13 +105,13 @@ do
 			Arr.NthElement(Arr.Of(10, 20), 0 / 0)
 		end)
 	)
-	-- 2. 다른 모듈을 거쳐 던짐(TreeSet → TreeMap). 예전엔 TreeMap 의 줄이었습니다(백로그)
+	-- 2. 다른 모듈을 거쳐 던짐(FlatSet → FlatMap). 예전엔 FlatMap 의 줄이었습니다(백로그)
 	atUserLine(
-		"TreeSet.Add",
-		expectLine("TreeSet.Add", "NaN", function()
-			const s = stl.TreeSet.New(Common.compareNumber) :: stl.TreeSet<number>
+		"FlatSet.Add",
+		expectLine("FlatSet.Add", "NaN", function()
+			const s = stl.FlatSet.New(Common.compareNumber) :: stl.FlatSet<number>
 			where = debug.info(1, "l") + 1
-			stl.TreeSet.Add(s, 0 / 0)
+			stl.FlatSet.Add(s, 0 / 0)
 		end)
 	)
 	-- 3. 콜백 안의 라이브러리 호출은 **콜백 줄**을 가리킴
@@ -194,66 +194,66 @@ do
 		return b - a
 	end
 	atUserLine(
-		"TreeSet 비교자 불일치",
-		expectLine("TreeSet 비교자 불일치", "different comparators", function()
-			const a = stl.TreeSet.FromList({ 1 }, Common.compareNumber)
-			const b = stl.TreeSet.FromList({ 2 }, desc)
+		"FlatSet 비교자 불일치",
+		expectLine("FlatSet 비교자 불일치", "different comparators", function()
+			const a = stl.FlatSet.FromList({ 1 }, Common.compareNumber)
+			const b = stl.FlatSet.FromList({ 2 }, desc)
 			where = debug.info(1, "l") + 1
-			stl.TreeSet.Union(a, b)
+			stl.FlatSet.Union(a, b)
 		end)
 	)
 	atUserLine(
-		"TreeSet.FromList NaN",
-		expectLine("TreeSet.FromList NaN", "NaN item", function()
+		"FlatSet.FromList NaN",
+		expectLine("FlatSet.FromList NaN", "NaN item", function()
 			where = debug.info(1, "l") + 1
-			stl.TreeSet.FromList({ 3, 0 / 0 }, Common.compareNumber)
+			stl.FlatSet.FromList({ 3, 0 / 0 }, Common.compareNumber)
 		end)
 	)
 	atUserLine(
-		"TreeMap.FromRecords NaN",
-		expectLine("TreeMap.FromRecords NaN", "NaN key", function()
+		"FlatMap.FromRecords NaN",
+		expectLine("FlatMap.FromRecords NaN", "NaN key", function()
 			where = debug.info(1, "l") + 1
-			stl.TreeMap.FromRecords({ { key = 0 / 0, value = 1 } }, Common.compareNumber)
+			stl.FlatMap.FromRecords({ { key = 0 / 0, value = 1 } }, Common.compareNumber)
 		end)
 	)
-	-- nil·NaN 키(2026-10-12 — `TreeMap.Set` 의 raise 자리는 줄 단언이 없었음)
+	-- nil·NaN 키(2026-10-12 — `FlatMap.Set` 의 raise 자리는 줄 단언이 없었음)
 	atUserLine(
-		"TreeMap.Set NaN",
-		expectLine("TreeMap.Set NaN", "TreeMap: NaN key", function()
-			const m = stl.TreeMap.New<<number, number>>(Common.compareNumber)
+		"FlatMap.Set NaN",
+		expectLine("FlatMap.Set NaN", "FlatMap: NaN key", function()
+			const m = stl.FlatMap.New<<number, number>>(Common.compareNumber)
 			where = debug.info(1, "l") + 1
-			stl.TreeMap.Set(m, 0 / 0, 1)
-		end)
-	)
-	atUserLine(
-		"TreeMap.Set nil",
-		expectLine("TreeMap.Set nil", "TreeMap: nil key", function()
-			const m = stl.TreeMap.New<<number, number>>(Common.compareNumber)
-			where = debug.info(1, "l") + 1
-			stl.TreeMap.Set(m, nil :: any, 1)
+			stl.FlatMap.Set(m, 0 / 0, 1)
 		end)
 	)
 	atUserLine(
-		"TreeMap.FromRecords nil",
-		expectLine("TreeMap.FromRecords nil", "TreeMap: nil key", function()
+		"FlatMap.Set nil",
+		expectLine("FlatMap.Set nil", "FlatMap: nil key", function()
+			const m = stl.FlatMap.New<<number, number>>(Common.compareNumber)
 			where = debug.info(1, "l") + 1
-			stl.TreeMap.FromRecords({ { value = 1 } :: any }, Common.compareNumber)
+			stl.FlatMap.Set(m, nil :: any, 1)
 		end)
 	)
 	atUserLine(
-		"TreeSet.Add NaN",
-		expectLine("TreeSet.Add NaN", "TreeSet: NaN item", function()
-			const s = stl.TreeSet.New<<number>>(Common.compareNumber)
+		"FlatMap.FromRecords nil",
+		expectLine("FlatMap.FromRecords nil", "FlatMap: nil key", function()
 			where = debug.info(1, "l") + 1
-			stl.TreeSet.Add(s, 0 / 0)
+			stl.FlatMap.FromRecords({ { value = 1 } :: any }, Common.compareNumber)
 		end)
 	)
 	atUserLine(
-		"TreeSet.Add nil",
-		expectLine("TreeSet.Add nil", "TreeSet: nil item", function()
-			const s = stl.TreeSet.New<<number>>(Common.compareNumber)
+		"FlatSet.Add NaN",
+		expectLine("FlatSet.Add NaN", "FlatSet: NaN item", function()
+			const s = stl.FlatSet.New<<number>>(Common.compareNumber)
 			where = debug.info(1, "l") + 1
-			stl.TreeSet.Add(s, nil :: any)
+			stl.FlatSet.Add(s, 0 / 0)
+		end)
+	)
+	atUserLine(
+		"FlatSet.Add nil",
+		expectLine("FlatSet.Add nil", "FlatSet: nil item", function()
+			const s = stl.FlatSet.New<<number>>(Common.compareNumber)
+			where = debug.info(1, "l") + 1
+			stl.FlatSet.Add(s, nil :: any)
 		end)
 	)
 	-- FromIter 에 컨테이너 자체를 넘김(2026-10-12 — 테이블을 받게 되면서: `n`·토큰까지 원소가 됐을 것)
@@ -319,7 +319,7 @@ do
 			where = debug.info(1, "l") + 1
 			Arr.GroupBy(Arr.Of(10, 20), function(_v: number): any
 				return nil
-			end, stl.TreeMap.New(stl.Common.compareNumber) :: any)
+			end, stl.FlatMap.New(stl.Common.compareNumber) :: any)
 		end)
 	)
 	-- NaN 쪽(1라운드: `not pcall` 만 보면 Lua 의 "table index is NaN" 도 통과 — 메시지·줄이 규약 위반)
@@ -339,7 +339,7 @@ do
 			where = debug.info(1, "l") + 1
 			Arr.CountBy(Arr.Of(10, 20), function(_v: number): number
 				return 0 / 0
-			end, stl.TreeMap.New(stl.Common.compareNumber) :: any)
+			end, stl.FlatMap.New(stl.Common.compareNumber) :: any)
 		end)
 	)
 	-- M5(2026-10-07) — CircularDeque 의 raise 자리 둘
@@ -375,7 +375,7 @@ do
 			where = debug.info(1, "l") + 1
 			Arr.KeyBy(Arr.Of(10, 20), function(_v: number): any
 				return nil
-			end, stl.TreeMap.New(stl.Common.compareNumber) :: any)
+			end, stl.FlatMap.New(stl.Common.compareNumber) :: any)
 		end)
 	)
 	-- 10. 스택이 끝까지 라이브러리면(라이브러리 함수를 스레드 본문으로 바로 넘김 — Roblox 의

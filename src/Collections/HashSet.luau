@@ -15,7 +15,7 @@
 
 	⭐ 더미 `true` 가 아니라 **원소 자신**을 값으로 두는 이유(2026-10-13 사용자 결정): 안쪽 테이블을
 	`Iter` 가 그대로 돌려줘도 순회가 `(item, item)` 을 냅니다 — Luau 가 테이블을 직접 돌아 순회 함수보다
-	10배 빠르고(perf 29절), `for item in`·`for _, item in`(`TreeSet` 과 같은 모양)·
+	10배 빠르고(perf 29절), `for item in`·`for _, item in`(`FlatSet` 과 같은 모양)·
 	`Arr.FromIter(HashSet.Iter(s))` 가 전부 그대로 됩니다. `true` 였다면 둘째 값과 `FromIter` 가 `true` 를
 	받았을 것입니다. 메모리는 같습니다(값 한 칸). **모든 쓰기 자리가 `out[item] = item`** 이어야 합니다
 	(`spec.hashset` 이 생성·변형 경로 전수로 지킴 — 타입은 `out[item] = true` 를 못 잡습니다).
@@ -121,7 +121,7 @@ const function Empty<T>(self: HashSetData<T>): boolean
 	return self.map.size == 0
 end
 
--- `for item in HashSet.Iter(set) do … end`  (또는 `for _, item in …` — `TreeSet.Iter` 와 같은 모양)
+-- `for item in HashSet.Iter(set) do … end`  (또는 `for _, item in …` — `FlatSet.Iter` 와 같은 모양)
 --
 -- ⭐ **안쪽 테이블을 그대로 돌려줍니다**(2026-10-13 사용자 결정 — `HashMap.Iter` 와 같은 결). 안쪽이
 -- `원소 → 원소` 라 순회가 `(item, item)` 을 내고, Luau 가 테이블을 직접 돌아 예전의 순회 함수(원소마다

@@ -87,7 +87,7 @@ print("PASS")
 
 print("=== 5. 원소 타입과 찾는 값의 타입이 달라도 되는가 ===")
 do
-	-- TreeMap 이 이렇게 씁니다 — 레코드 배열에서 키로 찾기
+	-- FlatMap 이 이렇게 씁니다 — 레코드 배열에서 키로 찾기
 	type Rec = { key: string, value: number }
 	const recs: { Rec } = {
 		{ key = "a", value = 1 },

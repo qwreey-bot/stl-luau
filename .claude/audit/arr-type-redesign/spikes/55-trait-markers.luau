@@ -10,13 +10,13 @@
 	기대 진단: 21건 (NEG 열아홉이 20건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
-local Arr, HashMap, TreeMap, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Trait
+local Arr, HashMap, FlatMap, Trait = stl.Arr, stl.HashMap, stl.FlatMap, stl.Trait
 type Arr<T> = stl.Arr<T>
 
 local nums = Arr.Of(10, 20, 30)
 local words = Arr.Of("a", "b")
 local ages = HashMap.New<<string, number>>()
-local ranks = TreeMap.New<<number, string>>(stl.Common.compareNumber)
+local ranks = FlatMap.New<<number, string>>(stl.Common.compareNumber)
 
 --[[ POS — 타입 인자 없이 ]]
 local pos: number? = stl.List.IndexOf(nums, 20)

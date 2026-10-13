@@ -18,7 +18,7 @@
 	  "테이블 또는 함수" 유니온이 되면서(2026-10-12, 질문 AP 1) 새 솔버가 유니온을 `for … in` 에 넣으면 변수
 	  타입을 잃습니다. 루프 변수에 주석을 달거나(`for key: K, value: V in ops.Iter(m)`) 모듈의 `Iter` 를 직접.
 	- **타입 인자가 `any` 인 계약 자리**(`MapOps<any, any, any>` — 곧 `Trait.Impl(stl.Map, …)` 의 자리)는
-	  이름이 맞는 제네릭 함수 필드가 하나만 있어도 통과합니다(`Trait.Impl(stl.Map, K, TreeSet)` 0건, 2라운드
+	  이름이 맞는 제네릭 함수 필드가 하나만 있어도 통과합니다(`Trait.Impl(stl.Map, K, FlatSet)` 0건, 2라운드
 	  리뷰 — 넓히기 전에도 같았음). 그물은 런타임의 필수 함수 검사(`Trait.New` 의 `required`)뿐입니다.
 	- **`Iter` 가 돌려주는 테이블은 "키-값만 든" 테이블이어야 하지만 타입이 그걸 못 봅니다** — `{ read [K]: V }`
 	  는 폭 서브타이핑이라 `Arr<V>`·`CircularDeque<V>`·`table.pack` 결과도 받고, 그러면 `Map.Keys` 가 `"n"`·
@@ -29,16 +29,16 @@
 	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 24 줄 · 25건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
 ]]
 local stl = require("../../../../src")
-local Arr, CircularDeque, HashMap, HashSet, TreeMap, TreeSet, Heap, Common =
-	stl.Arr, stl.CircularDeque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap, stl.Common
+local Arr, CircularDeque, HashMap, HashSet, FlatMap, FlatSet, Heap, Common =
+	stl.Arr, stl.CircularDeque, stl.HashMap, stl.HashSet, stl.FlatMap, stl.FlatSet, stl.Heap, stl.Common
 type Record<K, V> = stl.Record<K, V>
 
 local arr = Arr.Of(1, 2)
 local dq = CircularDeque.Of(1, 2)
 local hm = HashMap.New<<string, number>>()
-local tm = TreeMap.New<<string, number>>(Common.compareString)
+local tm = FlatMap.New<<string, number>>(Common.compareString)
 local hs = HashSet.Of(1, 2)
-local ts = TreeSet.New<<number>>(Common.compareNumber)
+local ts = FlatSet.New<<number>>(Common.compareNumber)
 local heap = Heap.New<<number>>(function(a: number, b: number): boolean
 	return a < b
 end)
@@ -54,9 +54,9 @@ local total: number = stl.Collection.Len(arr)
 local clearedArr: stl.Arr<number> = stl.Collection.Clear(arr)
 local clearedDq: stl.CircularDeque<number> = stl.Collection.Clear(dq)
 local clearedHm: stl.HashMap<string, number> = stl.Collection.Clear(hm)
-local clearedTm: stl.TreeMap<string, number> = stl.Collection.Clear(tm)
+local clearedTm: stl.FlatMap<string, number> = stl.Collection.Clear(tm)
 local clearedHs: stl.HashSet<number> = stl.Collection.Clear(hs)
-local clearedTs: stl.TreeSet<number> = stl.Collection.Clear(ts)
+local clearedTs: stl.FlatSet<number> = stl.Collection.Clear(ts)
 local clearedHeap: stl.Heap<number> = stl.Collection.Clear(heap)
 -- 돌려받은 것을 그 종류의 함수에 바로
 HashMap.Set(stl.Collection.Clear(hm), "x", 1)
@@ -66,17 +66,17 @@ local function borrowedLen(list: stl.ArrRead<number?>, queue: stl.CircularDequeR
 end
 -- 모듈 테이블이 계약을 만족
 local colOps: stl.CollectionOps<stl.HashMap<string, number>> = HashMap
-local mapOps: stl.MapOps<stl.TreeMap<string, number>, string, number> = TreeMap
+local mapOps: stl.MapOps<stl.FlatMap<string, number>, string, number> = FlatMap
 -- 레코드 목록은 계약이 아니라 알고리즘으로(2026-10-13 — `Records` 를 계약에서 뺌)
 local recs: { Record<string, number> } = stl.Map.Records(tm)
 local has: boolean = mapOps.Has(tm, "x")
 local removed: number? = mapOps.Remove(tm, "x")
--- 모듈의 Iter 를 직접 돌면 루프 변수 타입이 섬(HashMap 은 테이블, TreeMap 은 함수)
+-- 모듈의 Iter 를 직접 돌면 루프 변수 타입이 섬(HashMap 은 테이블, FlatMap 은 함수)
 for key, value in HashMap.Iter(hm) do
 	local _key: string = key
 	local _value: number = value
 end
-for key, value in TreeMap.Iter(tm) do
+for key, value in FlatMap.Iter(tm) do
 	local _key: string = key
 	local _value: number = value
 end
@@ -148,7 +148,7 @@ local negOldContract = mapOps.Records(tm) -- 계약에는 더 없음
 for _, value in HashMap.Iter(hm) do
 	local _negValue: string = value
 end
-for key in TreeMap.Iter(tm) do
+for key in FlatMap.Iter(tm) do
 	local _negKey: number = key
 end
 -- Iter 가 돌려준 테이블은 읽기 전용
@@ -164,9 +164,9 @@ for _, value in mapOps.Iter(tm) do
 	local _untyped: string = value
 end
 --[[ 알려진 경계 — 타입 인자가 any 인 계약 자리는 헐거움(런타임의 필수 함수 검사가 그물) ]]
-local looseOps: stl.MapOps<any, any, any> = TreeSet
+local looseOps: stl.MapOps<any, any, any> = FlatSet
 local function looseImpl()
-	stl.Trait.Impl(stl.Map, stl.Trait.NewType("Loose"), TreeSet)
+	stl.Trait.Impl(stl.Map, stl.Trait.NewType("Loose"), FlatSet)
 end
 --[[ 알려진 경계 — Iter 가 이름 붙은 필드가 섞인 테이블(Arr)을 돌려줘도 계약 타입은 받음 ]]
 type VecMap = { read __type: stl.TraitToken<string>, items: stl.Arr<number> }

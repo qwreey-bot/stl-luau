@@ -2114,7 +2114,7 @@ print(
 	"=== 23. 묶기 — GroupBy / CountBy / KeyBy, 목적지 맵을 셋째 인자로 (M4 → 2026-10-13 질문 AR) ==="
 )
 do
-	const HashMap, TreeMap = stl.HashMap, stl.TreeMap
+	const HashMap, FlatMap = stl.HashMap, stl.FlatMap
 	type ArrOf<T> = stl.Arr<T>
 	const words = Arr.Of("apple", "bob", "avocado", "cat", "banana")
 	local keyCalls = 0
@@ -2182,17 +2182,17 @@ do
 	assert(keyByCalls == 2, `구멍엔 key 를 안 부름: {keyByCalls}`)
 
 	-- ⭐ 목적지가 정렬 맵: 묶음끼리의 순서는 맵의 것, 타입도 넣은 그대로
-	const sorted = Arr.GroupBy(words, first, TreeMap.New<<string, ArrOf<string>>>(stl.Common.compareString))
-	assert(stl.isTreeMap(sorted), "TreeMap 에 모음")
-	assert(table.concat(TreeMap.Keys(sorted), ",") == "a,b,c", "키 순서")
-	same(TreeMap.Get(sorted, "a") :: any, { "apple", "avocado" }, "TreeMap 무리 a")
-	const sortedCounts = Arr.CountBy(words, first, TreeMap.New<<string, number>>(stl.Common.compareString))
+	const sorted = Arr.GroupBy(words, first, FlatMap.New<<string, ArrOf<string>>>(stl.Common.compareString))
+	assert(stl.isFlatMap(sorted), "FlatMap 에 모음")
+	assert(table.concat(FlatMap.Keys(sorted), ",") == "a,b,c", "키 순서")
+	same(FlatMap.Get(sorted, "a") :: any, { "apple", "avocado" }, "FlatMap 무리 a")
+	const sortedCounts = Arr.CountBy(words, first, FlatMap.New<<string, number>>(stl.Common.compareString))
 	assert(
-		TreeMap.Get(sortedCounts, "a") == 2 and TreeMap.Get(sortedCounts, "c") == 1 and TreeMap.Len(sortedCounts) == 3,
-		"TreeMap CountBy"
+		FlatMap.Get(sortedCounts, "a") == 2 and FlatMap.Get(sortedCounts, "c") == 1 and FlatMap.Len(sortedCounts) == 3,
+		"FlatMap CountBy"
 	)
-	const sortedKeyed = Arr.KeyBy(words, first, TreeMap.New<<string, string>>(stl.Common.compareString))
-	assert(TreeMap.Get(sortedKeyed, "b") == "banana" and TreeMap.Len(sortedKeyed) == 3, "TreeMap KeyBy")
+	const sortedKeyed = Arr.KeyBy(words, first, FlatMap.New<<string, string>>(stl.Common.compareString))
+	assert(FlatMap.Get(sortedKeyed, "b") == "banana" and FlatMap.Len(sortedKeyed) == 3, "FlatMap KeyBy")
 
 	-- ⭐ "두 키가 같은가" 는 목적지 맵이 정함: 대소문자를 무시하는 비교자의 맵에서는 한 묶음(AR — 알고리즘이
 	-- 임시 사전에 `==` 로 모았다 옮기는 안은 여기서 묶음 넷·중복 키가 됐음)
@@ -2203,12 +2203,12 @@ do
 		return w
 	end
 	const mixed = Arr.Of("Apple", "apple", "banana", "APPLE")
-	const folded = Arr.GroupBy(mixed, whole, TreeMap.New<<string, ArrOf<string>>>(foldCase))
-	assert(TreeMap.Len(folded) == 2, `대소문자 무시 묶음 수 {TreeMap.Len(folded)}`)
-	same(TreeMap.Get(folded, "apple") :: any, { "Apple", "apple", "APPLE" }, "비교자상 같은 키는 한 묶음")
-	assert(TreeMap.Get(Arr.CountBy(mixed, whole, TreeMap.New<<string, number>>(foldCase)), "aPPle") == 3, "CountBy 도")
-	const foldedKeyed = Arr.KeyBy(mixed, whole, TreeMap.New<<string, string>>(foldCase))
-	assert(TreeMap.Len(foldedKeyed) == 2 and TreeMap.Get(foldedKeyed, "apple") == "APPLE", "KeyBy 도 — 나중 것")
+	const folded = Arr.GroupBy(mixed, whole, FlatMap.New<<string, ArrOf<string>>>(foldCase))
+	assert(FlatMap.Len(folded) == 2, `대소문자 무시 묶음 수 {FlatMap.Len(folded)}`)
+	same(FlatMap.Get(folded, "apple") :: any, { "Apple", "apple", "APPLE" }, "비교자상 같은 키는 한 묶음")
+	assert(FlatMap.Get(Arr.CountBy(mixed, whole, FlatMap.New<<string, number>>(foldCase)), "aPPle") == 3, "CountBy 도")
+	const foldedKeyed = Arr.KeyBy(mixed, whole, FlatMap.New<<string, string>>(foldCase))
+	assert(FlatMap.Len(foldedKeyed) == 2 and FlatMap.Get(foldedKeyed, "apple") == "APPLE", "KeyBy 도 — 나중 것")
 
 	-- ⭐ 사용자 맵(Map 트레이트만 구현 — Collection 도 아님)도 목적지가 됨
 	type Bag<V> = {
@@ -2342,7 +2342,7 @@ do
 		)
 	end
 
-	-- 무작위 대조: 무리를 이으면 원본 다중집합, CountBy = 무리 길이, 그리고 **목적지 셋(HashMap·TreeMap·사용자 맵)이 같은 답**
+	-- 무작위 대조: 무리를 이으면 원본 다중집합, CountBy = 무리 길이, 그리고 **목적지 셋(HashMap·FlatMap·사용자 맵)이 같은 답**
 	math.randomseed(4)
 	for _round = 1, 100 do
 		const len = math.random(0, 15)
@@ -2354,15 +2354,15 @@ do
 		end
 		const groups = Arr.GroupBy(a, byTens, HashMap.New<<number, ArrOf<number>>>())
 		const counts = Arr.CountBy(a, byTens, HashMap.New<<number, number>>())
-		const treeGroups = Arr.GroupBy(a, byTens, TreeMap.New<<number, ArrOf<number>>>(stl.Common.compareNumber))
-		const treeCounts = Arr.CountBy(a, byTens, TreeMap.New<<number, number>>(stl.Common.compareNumber))
-		const treeKeyed = Arr.KeyBy(a, byTens, TreeMap.New<<number, number>>(stl.Common.compareNumber))
+		const treeGroups = Arr.GroupBy(a, byTens, FlatMap.New<<number, ArrOf<number>>>(stl.Common.compareNumber))
+		const treeCounts = Arr.CountBy(a, byTens, FlatMap.New<<number, number>>(stl.Common.compareNumber))
+		const treeKeyed = Arr.KeyBy(a, byTens, FlatMap.New<<number, number>>(stl.Common.compareNumber))
 		const bagGroups = Arr.GroupBy(a, byTens :: any, newBag<<any>>())
 		local total = 0
 		for key, group in HashMap.Iter(groups) do
 			assert(HashMap.Get(counts, key) == group.n, "CountBy = 무리 길이")
-			assert(TreeMap.Get(treeCounts, key) == group.n, "TreeMap CountBy 가 같음")
-			const treeGroup = TreeMap.Get(treeGroups, key) :: any
+			assert(FlatMap.Get(treeCounts, key) == group.n, "FlatMap CountBy 가 같음")
+			const treeGroup = FlatMap.Get(treeGroups, key) :: any
 			const bagGroup = (bagGroups.slots :: any)[key]
 			assert(treeGroup.n == group.n and bagGroup.n == group.n, "목적지가 달라도 무리 크기가 같음")
 			for idx = 1, group.n do
@@ -2375,15 +2375,15 @@ do
 			total += group.n
 		end
 		assert(total == len and HashMap.Len(groups) == HashMap.Len(counts), "무리 합 = 길이")
-		assert(TreeMap.Len(treeGroups) == HashMap.Len(groups), "TreeMap 묶음 수가 같음")
+		assert(FlatMap.Len(treeGroups) == HashMap.Len(groups), "FlatMap 묶음 수가 같음")
 		const keyed = Arr.KeyBy(a, byTens, HashMap.New<<number, number>>())
-		assert(TreeMap.Len(treeKeyed) == HashMap.Len(keyed), "KeyBy 크기가 같음")
+		assert(FlatMap.Len(treeKeyed) == HashMap.Len(keyed), "KeyBy 크기가 같음")
 		for key, item in HashMap.Iter(keyed) do
 			const _, lastIdx = Arr.FindLast(a, function(v: number): boolean
 				return byTens(v) == key
 			end)
 			assert(a[lastIdx :: number] == item, "KeyBy 는 마지막")
-			assert(TreeMap.Get(treeKeyed, key) == item, "TreeMap KeyBy 가 같음")
+			assert(FlatMap.Get(treeKeyed, key) == item, "FlatMap KeyBy 가 같음")
 		end
 	end
 end

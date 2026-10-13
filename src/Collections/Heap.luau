@@ -30,7 +30,7 @@
 
 	`Items()` 는 **힙 순서**(배열에 담긴 그대로)이지 정렬 순서가 아닙니다.
 	정렬된 것이 필요하면 `Sorted()` 를 쓰세요 — 복사해서 전부 꺼내므로
-	O(n log n) 입니다. 순회가 자주 필요하면 애초에 `TreeSet` 이 맞습니다.
+	O(n log n) 입니다. 순회가 자주 필요하면 애초에 `FlatSet` 이 맞습니다.
 ]]
 local Types = require("../Types")
 local Common = require("../Common")

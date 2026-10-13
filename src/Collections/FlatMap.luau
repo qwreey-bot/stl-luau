@@ -1,6 +1,6 @@
 --!strict
 --[[
-	TreeMap — **정렬을 유지하는** 맵.
+	FlatMap — **정렬을 유지하는** 맵.
 
 	## 표현 — 트리가 아니라 정렬 배열입니다
 
@@ -8,7 +8,7 @@
 	{ records: { Record<K, V> }, size: number, compare: Comparator<K>, probe: … }
 	```
 
-	이름은 `TreeMap` 이지만 안은 **정렬된 레코드 배열 + 이분 탐색**입니다.
+	이름은 `FlatMap` 이지만 안은 **정렬된 레코드 배열 + 이분 탐색**입니다.
 	Luau 에서 붉은검은나무를 굴리면 노드마다 테이블이 하나씩 생기는데, 그
 	테이블 하나하나가 메타테이블 없이도 96바이트짜리이고 GC 압력이 됩니다.
 	정렬 배열은 조회가 같은 O(log n) 이고 메모리가 훨씬 촘촘합니다.
@@ -46,7 +46,7 @@ type Record<K, V> = Types.Record<K, V>
 type Comparator<K> = Types.Comparator<K>
 type KeyProbe<K, V> = BSearch.Probe<Record<K, V>, K>
 
-export type TreeMapData<K, V> = {
+export type FlatMapData<K, V> = {
 	records: { Record<K, V> },
 	size: number,
 	compare: Comparator<K>,
@@ -55,7 +55,7 @@ export type TreeMapData<K, V> = {
 	probe: KeyProbe<K, V>,
 	-- 타입에만 드러난 태그(생성자가 붙이는 실제 필드) — 리터럴이 맵 자리에 들어가는
 	-- 것을 막습니다(M0 리뷰).
-	read __type: Trait.Token<"TreeMap">,
+	read __type: Trait.Token<"FlatMap">,
 	read __mapKey: K,
 	read __mapValue: V,
 	-- 쓰는 제네릭용 불변 팬텀(`Map.MarkerMut`, 질문 AM) — 타입에만 있습니다.
@@ -68,7 +68,7 @@ export type TreeMapData<K, V> = {
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("TreeMap") :: Trait.Token<"TreeMap">
+const TOKEN = Trait.NewType("FlatMap") :: Trait.Token<"FlatMap">
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
 const function tagged(raw: any): any
@@ -94,11 +94,11 @@ const function unusable(key: any): boolean
 end
 
 const function rejectKey(key: any): never
-	return Common.raise(if key == nil then "TreeMap: nil key" else "TreeMap: NaN key")
+	return Common.raise(if key == nil then "FlatMap: nil key" else "FlatMap: NaN key")
 end
 
 -- `pos` 의 레코드를 빼고 뒤를 당깁니다. `Set(k, nil)` 과 `Remove` 가 같이 씁니다.
-const function removeAt<K, V>(self: TreeMapData<K, V>, pos: number): V
+const function removeAt<K, V>(self: FlatMapData<K, V>, pos: number): V
 	const records = self.records
 	const size = self.size
 	const removed = records[pos].value
@@ -108,7 +108,7 @@ const function removeAt<K, V>(self: TreeMapData<K, V>, pos: number): V
 	return removed
 end
 
-const function Get<K, V>(self: TreeMapData<K, V>, key: K): V?
+const function Get<K, V>(self: FlatMapData<K, V>, key: K): V?
 	if unusable(key) then
 		return nil
 	end
@@ -125,7 +125,7 @@ end
 -- ⭐ **값이 `nil` 이면 삭제입니다** — `HashMap` 과 같은 규칙이고 Lua 의
 -- `t[k] = nil` 과 같습니다. 예전엔 `nil` 값을 레코드로 저장해서 같은 `MapOps`
 -- 인데 두 맵의 뜻이 달랐습니다(2026-09-30 리뷰).
-const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
+const function Set<K, V>(self: FlatMapData<K, V>, key: K, value: V): ()
 	if unusable(key) then
 		rejectKey(key)
 	end
@@ -159,7 +159,7 @@ const function copyRecord<K, V>(rec: Record<K, V>): Record<K, V>
 end
 
 -- 키-값 쌍의 목록. **정렬 순서이고, 레코드까지 복사본입니다.**
-const function Records<K, V>(self: TreeMapData<K, V>): { Record<K, V> }
+const function Records<K, V>(self: FlatMapData<K, V>): { Record<K, V> }
 	const size = self.size
 	const records = self.records
 	const out = table.create(size) :: { Record<K, V> }
@@ -173,14 +173,14 @@ end
 
 --#region ----------- 조회 -----------
 
-const function Has<K, V>(self: TreeMapData<K, V>, key: K): boolean
+const function Has<K, V>(self: FlatMapData<K, V>, key: K): boolean
 	if unusable(key) then
 		return false
 	end
 	return BSearch.Find(self.records, self.size, key, self.probe) ~= nil
 end
 
-const function GetOr<K, V>(self: TreeMapData<K, V>, key: K, fallback: V): V
+const function GetOr<K, V>(self: FlatMapData<K, V>, key: K, fallback: V): V
 	if unusable(key) then
 		return fallback
 	end
@@ -191,16 +191,16 @@ const function GetOr<K, V>(self: TreeMapData<K, V>, key: K, fallback: V): V
 	return self.records[pos].value
 end
 
-const function Len<K, V>(self: TreeMapData<K, V>): number
+const function Len<K, V>(self: FlatMapData<K, V>): number
 	return self.size
 end
 
-const function Empty<K, V>(self: TreeMapData<K, V>): boolean
+const function Empty<K, V>(self: FlatMapData<K, V>): boolean
 	return self.size == 0
 end
 
 -- 키만, **정렬 순서로**.
-const function Keys<K, V>(self: TreeMapData<K, V>): { K }
+const function Keys<K, V>(self: FlatMapData<K, V>): { K }
 	const out = table.create(self.size) :: { K }
 	const records = self.records
 	for idx = 1, self.size do
@@ -209,7 +209,7 @@ const function Keys<K, V>(self: TreeMapData<K, V>): { K }
 	return out
 end
 
-const function Values<K, V>(self: TreeMapData<K, V>): { V }
+const function Values<K, V>(self: FlatMapData<K, V>): { V }
 	const out = table.create(self.size) :: { V }
 	const records = self.records
 	for idx = 1, self.size do
@@ -218,7 +218,7 @@ const function Values<K, V>(self: TreeMapData<K, V>): { V }
 	return out
 end
 
--- `for key, value in TreeMap.Iter(map) do … end` — **정렬 순서로** 돕니다.
+-- `for key, value in FlatMap.Iter(map) do … end` — **정렬 순서로** 돕니다.
 --
 -- ⭐ **상태를 클로저에 담습니다.** 예전엔 인덱스를 제어 변수로 쓰면서 첫
 -- 반환값으로 **키**를 돌려줘서, generic for 가 키를 다음 인덱스로 넘겼습니다.
@@ -226,7 +226,7 @@ end
 -- 멈추고 문자열이면 크래시했습니다(2026-09-30 발견). `Iter()` 한 번에 클로저
 -- 하나가 들고 원소마다 드는 비용은 없습니다.
 -- `(K, V)` 비옵셔널 선언인 것은 `ipairs` 와 같은 이유입니다.
-const function Iter<K, V>(self: TreeMapData<K, V>): () -> (K, V)
+const function Iter<K, V>(self: FlatMapData<K, V>): () -> (K, V)
 	local idx = 0
 	return function(): (K, V)
 		idx += 1
@@ -243,14 +243,14 @@ end
 --#region ----------- 정렬이 있어야만 되는 것들 -----------
 
 -- 가장 작은 키의 쌍. 비어 있으면 `nil`.
-const function First<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+const function First<K, V>(self: FlatMapData<K, V>): Record<K, V>?
 	if self.size == 0 then
 		return nil
 	end
 	return copyRecord(self.records[1])
 end
 
-const function Last<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+const function Last<K, V>(self: FlatMapData<K, V>): Record<K, V>?
 	if self.size == 0 then
 		return nil
 	end
@@ -258,7 +258,7 @@ const function Last<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 end
 
 -- `key` **이하**인 키 중 가장 큰 것. 없으면 `nil`.
-const function FloorKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+const function FloorKey<K, V>(self: FlatMapData<K, V>, key: K): K?
 	if unusable(key) then
 		return nil
 	end
@@ -270,7 +270,7 @@ const function FloorKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 end
 
 -- `key` **이상**인 키 중 가장 작은 것. 없으면 `nil`.
-const function CeilingKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+const function CeilingKey<K, V>(self: FlatMapData<K, V>, key: K): K?
 	if unusable(key) then
 		return nil
 	end
@@ -282,7 +282,7 @@ const function CeilingKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 end
 
 -- `key` 보다 **작은** 키 중 가장 큰 것(엄격 — `FloorKey` 는 같은 키도 줌). 없으면 `nil`.
-const function LowerKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+const function LowerKey<K, V>(self: FlatMapData<K, V>, key: K): K?
 	if unusable(key) then
 		return nil
 	end
@@ -294,7 +294,7 @@ const function LowerKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 end
 
 -- `key` 보다 **큰** 키 중 가장 작은 것(엄격 — `CeilingKey` 는 같은 키도 줌). 없으면 `nil`.
-const function HigherKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+const function HigherKey<K, V>(self: FlatMapData<K, V>, key: K): K?
 	if unusable(key) then
 		return nil
 	end
@@ -307,7 +307,7 @@ end
 
 -- 키 구간 `[fromKey, toKey]` 의 쌍들. **양끝 포함**이고 정렬 순서입니다.
 -- 구간이 뒤집혀 있으면 빈 목록입니다(이 저장소의 구간 규약).
-const function RangeRecords<K, V>(self: TreeMapData<K, V>, fromKey: K, toKey: K): { Record<K, V> }
+const function RangeRecords<K, V>(self: FlatMapData<K, V>, fromKey: K, toKey: K): { Record<K, V> }
 	if unusable(fromKey) or unusable(toKey) then
 		return {}
 	end
@@ -330,7 +330,7 @@ end
 --#region ----------- 변형 -----------
 
 -- 키를 지우고 **지워진 값**을 돌려줍니다. 없었으면 `nil`.
-const function Remove<K, V>(self: TreeMapData<K, V>, key: K): V?
+const function Remove<K, V>(self: FlatMapData<K, V>, key: K): V?
 	if unusable(key) then
 		return nil
 	end
@@ -344,7 +344,7 @@ end
 -- 가장 작은 키의 쌍을 **꺼냅니다**. 비었으면 `nil`. 정렬 배열이라 뒤를 당기는 **O(n)**
 -- (`table.move`) — 양끝을 자주 꺼내는 용도면 `Heap` 이 맞습니다. 꺼낸 레코드는 맵과 공유하지
 -- 않으니(이미 빠짐) 복사하지 않습니다.
-const function PopFirst<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+const function PopFirst<K, V>(self: FlatMapData<K, V>): Record<K, V>?
 	const size = self.size
 	if size == 0 then
 		return nil
@@ -358,7 +358,7 @@ const function PopFirst<K, V>(self: TreeMapData<K, V>): Record<K, V>?
 end
 
 -- 가장 큰 키의 쌍을 꺼냅니다. O(1).
-const function PopLast<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+const function PopLast<K, V>(self: FlatMapData<K, V>): Record<K, V>?
 	const size = self.size
 	if size == 0 then
 		return nil
@@ -376,8 +376,8 @@ end
 -- (2026-10-12 사용자 결정, 질문 AL 1 — 검사를 두지 않음). 정렬 배열을 당기는 중이라 위치가 어긋나
 -- 라이브러리 밖 에러로 죽거나 조용히 틀립니다. 지울 것은 `false` 로 돌려주세요. (한때 크기가
 -- 바뀌면 에러로 막았는데 원소마다 검사가 붙어 1.16배였습니다 — perf 23절.) 공유 헬퍼에 클로저를
--- 끼우면 더 느려 `TreeSet.Retain` 과 몸통을 따로 둡니다.
-const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): TreeMap<K, V>
+-- 끼우면 더 느려 `FlatSet.Retain` 과 몸통을 따로 둡니다.
+const function Retain<K, V>(self: FlatMapData<K, V>, fn: (key: K, value: V) -> boolean): FlatMap<K, V>
 	const records = self.records
 	const size = self.size
 	local kept = 0
@@ -396,7 +396,7 @@ const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> b
 end
 
 -- 비우고 **자기 자신을 돌려줍니다**(2026-10-12 사용자 결정, 질문 AM — 일곱 컨테이너가 같게. 반환은 공짜였음).
-const function Clear<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
+const function Clear<K, V>(self: FlatMapData<K, V>): FlatMap<K, V>
 	table.clear(self.records)
 	self.size = 0
 	return self
@@ -404,7 +404,7 @@ end
 
 -- 얕은 복사. **레코드도 새로 만듭니다** — 같은 레코드 테이블을 공유하면
 -- 한쪽에서 `Set` 으로 값을 덮어쓸 때 다른 쪽까지 바뀝니다.
-const function Clone<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
+const function Clone<K, V>(self: FlatMapData<K, V>): FlatMap<K, V>
 	const records = table.create(self.size) :: { Record<K, V> }
 	const source = self.records
 	for idx = 1, self.size do
@@ -423,7 +423,7 @@ end
 
 --#region ----------- 타입 -----------
 -- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
-export type TreeMap<K, V> = TreeMapData<K, V>
+export type FlatMap<K, V> = FlatMapData<K, V>
 
 --#endregion
 
@@ -435,12 +435,12 @@ const function makeProbe<K, V>(compare: Comparator<K>): KeyProbe<K, V>
 	end
 end
 
--- ⚠️ **입양**(`TreeMap.Adopt` 로 공개): 이미 만들어 둔 레코드 배열을 그대로
+-- ⚠️ **입양**(`FlatMap.Adopt` 로 공개): 이미 만들어 둔 레코드 배열을 그대로
 -- 감쌉니다. **키로 정렬돼 있고 중복이 없으며 `size` 가 맞고 NaN·`nil` 키가 없다**는 것을
--- 검사하지 않습니다 — 호출자 책임입니다(`HashMap.Adopt` 와 같은 문). `TreeSet`
+-- 검사하지 않습니다 — 호출자 책임입니다(`HashMap.Adopt` 와 같은 문). `FlatSet`
 -- 처럼 위에 얹히는 구현이 중간 배열을 한 번 더 만들지 않게 둔 문이고, 일반
 -- 사용자는 `FromRecords` 를 쓰세요(M0 4라운드 — 계약 문서가 없었음).
-const function adopt<K, V>(records: { Record<K, V> }, size: number, compare: Comparator<K>): TreeMap<K, V>
+const function adopt<K, V>(records: { Record<K, V> }, size: number, compare: Comparator<K>): FlatMap<K, V>
 	return tagged({
 		records = records,
 		size = size,
@@ -452,9 +452,9 @@ end
 -- ⚠️ **값 타입을 직접 알려줘야 합니다.** 비교자에서 `K` 는 뽑히지만 `V` 는
 -- 나올 자리가 없습니다.
 --
---     local m = TreeMap.New<<number, string>>(Common.compareNumber)   -- 권장
---     local m = TreeMap.New(Common.compareNumber) :: TreeMap<number, string>
-const function New<K, V>(compare: Comparator<K>): TreeMap<K, V>
+--     local m = FlatMap.New<<number, string>>(Common.compareNumber)   -- 권장
+--     local m = FlatMap.New(Common.compareNumber) :: FlatMap<number, string>
+const function New<K, V>(compare: Comparator<K>): FlatMap<K, V>
 	return adopt({} :: { Record<K, V> }, 0, compare)
 end
 
@@ -466,7 +466,7 @@ end
 -- 동점(비교자가 0 을 돌려주는 두 키)에서 어느 쪽이 이길지를 정해두려고
 -- 원래 위치를 타이브레이커로 씁니다. `table.sort` 는 안정 정렬이 아니라서
 -- 이걸 안 하면 "뒤엣것이 이긴다" 가 보장되지 않습니다.
-const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>): TreeMap<K, V>
+const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>): FlatMap<K, V>
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드).
 	const records, count = Common.denseList(source)
 	if count == 0 then
@@ -513,7 +513,7 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 	return adopt(out, kept, compare)
 end
 
-const function isTreeMap(value: any): boolean
+const function isFlatMap(value: any): boolean
 	-- 타입 토큰 하나만 봅니다(2026-10-06 — 위조는 막지 않음, `Trait.luau` 머리).
 	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
@@ -521,15 +521,15 @@ end
 --#endregion
 
 -- stylua: ignore
-const TreeMapModule = {
+const FlatMapModule = {
 	New = New,
 	FromRecords = FromRecords,
 	Adopt = adopt,
-	isTreeMap = isTreeMap,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, TreeMap.Token, impl)`
+	isFlatMap = isFlatMap,
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, FlatMap.Token, impl)`
 	Token = TOKEN,
 
-	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`TreeMap.X(v, …)`) — 콜론 호출은
+	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`FlatMap.X(v, …)`) — 콜론 호출은
 	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
 	First = First, Last = Last, FloorKey = FloorKey, CeilingKey = CeilingKey,
@@ -539,7 +539,7 @@ const TreeMapModule = {
 }
 
 -- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.
-Trait.Impl(Map, TOKEN, TreeMapModule)
-Trait.Impl(Collection, TOKEN, TreeMapModule)
+Trait.Impl(Map, TOKEN, FlatMapModule)
+Trait.Impl(Collection, TOKEN, FlatMapModule)
 
-return TreeMapModule
+return FlatMapModule

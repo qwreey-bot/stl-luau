@@ -24,7 +24,7 @@ local Arr = stl.Arr
 local Heap = stl.Heap
 local HashSet = stl.HashSet
 local HashMap = stl.HashMap
-local TreeMap = stl.TreeMap
+local FlatMap = stl.FlatMap
 type Arr<T> = stl.Arr<T>
 type ArrView<T> = stl.ArrView<T>
 
@@ -68,9 +68,9 @@ local okHsU = HashSet.Union(hs, hs)
 local hm = stl.HashMap.New<<string, number?>>()
 HashMap.Set(hm, "a", nil :: any)
 local okHm: number? = HashMap.GetOr(hm, "a", 0)
-local tm = stl.TreeMap.New<<number, string | boolean>>(stl.Common.compareNumber)
-TreeMap.Set(tm, 1, true)
-local okTm = TreeMap.Get(tm, 1)
+local tm = stl.FlatMap.New<<number, string | boolean>>(stl.Common.compareNumber)
+FlatMap.Set(tm, 1, true)
+local okTm = FlatMap.Get(tm, 1)
 local hp = stl.Heap.New<<number | string>>(function(a: number | string, b: number | string)
 	return tostring(a) < tostring(b)
 end)
@@ -84,7 +84,7 @@ local neg4 = Arr.NoSuch(maybe)
 local neg5: Arr<number> = okChain                -- 체인 결과는 Arr<string>
 local neg6 = Arr.PushBack(mixed, true)                -- number | string 에 boolean
 local neg7 = HashSet.Add(hs, true)
-local neg8: number = TreeMap.GetOr(tm, 1, false)          -- 값은 string | boolean
+local neg8: number = FlatMap.GetOr(tm, 1, false)          -- 값은 string | boolean
 local neg9 = Heap.Push(hp, true)
 --[[ 캐비엇(한계 — 지금은 에러, M0 3라운드): 원소가 유니온이면 함수 묶음 계약에
 	모듈을 담을 수 없습니다. 계약의 `Get: (C, I) -> E?` 에서 `E` 가 이미 `number?`

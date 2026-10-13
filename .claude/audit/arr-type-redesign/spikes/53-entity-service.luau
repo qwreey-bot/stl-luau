@@ -19,16 +19,16 @@
 	기대 진단: 23건 (NEG 22 + CANARY 1)
 ]]
 local stl = require("../../../../src")
-local Arr, HashMap, HashSet, TreeMap, TreeSet, Heap, Fut =
-	stl.Arr, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap, stl.Fut
+local Arr, HashMap, HashSet, FlatMap, FlatSet, Heap, Fut =
+	stl.Arr, stl.HashMap, stl.HashSet, stl.FlatMap, stl.FlatSet, stl.Heap, stl.Fut
 type Arr<T> = stl.Arr<T>
 
 local nums = Arr.Of(10, 20)
 local anys = Arr.Of<<any>>(1, "a")
 local hm = HashMap.New<<string, number>>()
 local hs = HashSet.Of(1, 2)
-local tm = TreeMap.New<<string, number>>(stl.Common.compareString)
-local ts = TreeSet.FromList({ 1, 2 }, stl.Common.compareNumber)
+local tm = FlatMap.New<<string, number>>(stl.Common.compareString)
+local ts = FlatSet.FromList({ 1, 2 }, stl.Common.compareNumber)
 local hp = Heap.New(function(a: number, b: number): boolean
 	return a < b
 end)
@@ -37,7 +37,7 @@ local f = Fut.Resolved(1)
 --[[ POS — 생성자를 거친 것은 전부 통과 ]]
 local okLen: number = Arr.Len(nums)
 local okHas: boolean = HashSet.Has(hs, 1)
-local okGet: number? = TreeMap.Get(tm, "x")
+local okGet: number? = FlatMap.Get(tm, "x")
 local okPacked: Arr<number> = Arr.Of(1, 2)
 
 --[[ NEG 1 — 리터럴은 컨테이너가 아니다 ]]
@@ -48,8 +48,8 @@ local neg4: stl.Heap<number> = { items = {}, size = 0, less = function(a: number
 	return a < b
 end }
 local neg16: stl.HashSet<number> = { map = HashMap.New<<number, number>>() }
-local neg17: stl.TreeSet<number> = { map = TreeMap.New<<number, true>>(stl.Common.compareNumber) }
-local neg18 = TreeMap.Clone({ records = {}, size = 0, compare = stl.Common.compareString, probe = (nil :: any) })
+local neg17: stl.FlatSet<number> = { map = FlatMap.New<<number, true>>(stl.Common.compareNumber) }
+local neg18 = FlatMap.Clone({ records = {}, size = 0, compare = stl.Common.compareString, probe = (nil :: any) })
 -- ArrRead self 우회로 — 리터럴·table.pack·읽기 전용 뷰가 Arr 로 둔갑하면 안 됨
 local neg19: Arr<number> = Arr.CompactInplace({ n = 2, 10, 20 })
 local neg20 = Arr.CompactInplace(table.pack(1, nil, 3))
@@ -80,7 +80,7 @@ local neg8 = f:Await()
 local neg9 = HashSet.Has(ts, 1)
 local neg10 = HashMap.Get(tm, "x")
 local neg11 = Heap.Len(hm)
-local neg12 = TreeSet.Len(hs)
+local neg12 = FlatSet.Len(hs)
 local neg13 = Arr.Len(hp)
 local neg14 = HashMap.Len(hs)
 local neg15 = Fut.Status(nums)
