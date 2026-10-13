@@ -14,6 +14,15 @@
 ]]
 local stl = require("../src")
 local Common = stl.Common
+-- `Arr` 의 리스트 프리미티브 다섯만 든 표 — 다른 토큰에 `List` 를 등록해 보는 테스트들이 씁니다. 모듈 테이블을
+-- 통째로 넘기면 에러입니다(트레이트가 모르는 이름 — 2026-10-13, 질문 AS).
+local arrListCore: any = {
+	Get = stl.Arr.Get,
+	FirstIndex = stl.Arr.FirstIndex,
+	LastIndex = stl.Arr.LastIndex,
+	NextIndex = stl.Arr.NextIndex,
+	PrevIndex = stl.Arr.PrevIndex,
+}
 
 type ListCore<C, E, I> = stl.ListCore<C, E, I>
 type MapCore<C, K, V> = stl.MapCore<C, K, V>
@@ -557,8 +566,24 @@ do
 				`{case.name} 의 기본 구현`
 			)
 		end
-		assert(T.ImplOf(stl.Map, case.value) == case.map, `{case.name} 의 Map 구현`)
-		assert(T.ImplOf(stl.Set, case.value) == case.set, `{case.name} 의 Set 구현`)
+		-- 구현 표는 **넘긴 것만 든 표**입니다(2026-10-13, 질문 AS) — 모듈 테이블이 아니라 그 트레이트의 함수만.
+		const mapImpl: any, setImpl: any = T.ImplOf(stl.Map, case.value), T.ImplOf(stl.Set, case.value)
+		assert((mapImpl ~= nil) == (case.map ~= nil), `{case.name} 의 Map 구현 여부`)
+		if mapImpl ~= nil then
+			assert(mapImpl.Get == case.map.Get and mapImpl.Iter == case.map.Iter, `{case.name} 의 Map 구현`)
+			assert(
+				mapImpl ~= case.map and mapImpl.Len == nil and mapImpl.Keys == nil,
+				`{case.name}: Map 표에 다른 함수가 섞임`
+			)
+		end
+		assert((setImpl ~= nil) == (case.set ~= nil), `{case.name} 의 Set 구현 여부`)
+		if setImpl ~= nil then
+			assert(setImpl.Add == case.set.Add and setImpl.Items == case.set.Items, `{case.name} 의 Set 구현`)
+			assert(
+				setImpl ~= case.set and setImpl.Len == nil and setImpl.Union == nil,
+				`{case.name}: Set 표에 다른 함수가 섞임`
+			)
+		end
 		assert(T.Implements(stl.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
 		assert(T.TokenOf(case.value) == (stl :: any)[case.name].Token, `{case.name} 의 TokenOf`)
 	end
@@ -925,7 +950,7 @@ do
 	local registered = 0
 	for _ = 1, 50 do
 		const tok = T.NewToken("Temp")
-		T.Impl(stl.List, tok, stl.Arr)
+		T.Impl(stl.List, tok, arrListCore)
 		registered += 1
 	end
 	fullGc("collect")
@@ -1845,8 +1870,20 @@ do
 	assert((T.ImplOf(LoudTrait, fresh) :: any).Loud(fresh) == "quiet!!", "의존의 재정의가 위로 전해짐")
 
 	-- 기본 구현도 의존도 없는 트레이트는 예전 그대로: 넘긴 표가 곧 구현, 저절로 따라오지 않음
-	assert(T.ImplOf(stl.Collection, stl.Arr.Of(1)) == stl.Arr, "내장 Collection 은 모듈 테이블 그대로")
-	assert(T.ImplOf(stl.Map, stl.HashMap.New()) == stl.HashMap, "내장 Map 도")
+	-- 내장 종류의 구현 표는 그 트레이트의 함수만 든 표(모듈 테이블이 아님 — 질문 AS)
+	do
+		const arrCollection: any = T.ImplOf(stl.Collection, stl.Arr.Of(1))
+		local keys = 0
+		for _ in arrCollection do
+			keys += 1
+		end
+		assert(
+			keys == 2 and arrCollection.Len == stl.Arr.Len and arrCollection.Clear == stl.Arr.Clear,
+			"내장 Collection 은 Len·Clear 만"
+		)
+		const hashMap: any = T.ImplOf(stl.Map, stl.HashMap.New())
+		assert(hashMap.Set == stl.HashMap.Set and hashMap.Keys == nil and hashMap ~= stl.HashMap, "내장 Map 도")
+	end
 	const Bare = T.New<<{ read X: () -> number }>>("Bare")
 	assert(
 		T.ImplOf(Bare, plain) == nil and not T.Implements(Bare, plain),
@@ -1980,11 +2017,7 @@ do
 			return "inherited-extra"
 		end,
 	}
-	const child = setmetatable({
-		Own = function(): string
-			return "own"
-		end,
-	}, { __index = parent })
+	const child = setmetatable({}, { __index = parent })
 	const InheritKind = T.NewToken("InheritKind")
 	T.Impl(Shaped, InheritKind, child)
 	const shaped = T.ImplOf(Shaped, { __type = InheritKind })
@@ -1994,7 +2027,28 @@ do
 		shaped.Show({}) == "<inherited-get/inherited-extra>",
 		`기본 구현이 그것들을 부름: {shaped.Show({})}`
 	)
-	assert((shaped :: any).Own == child.Own, "자기 키도 그대로")
+	-- 트레이트가 모르는 **자기 키**는 에러(2026-10-13, 질문 AS — 예전엔 "자기 키도 그대로" 완성 표에 들어갔음).
+	-- 물려받은 쪽(`__index` 사슬)의 다른 이름은 보지 않습니다(아는 이름만 찾아 씀).
+	do
+		const strayChild = setmetatable({
+			Own = function(): string
+				return "own"
+			end,
+		}, { __index = parent })
+		const okStray, errStray = pcall(function()
+			T.Impl(Shaped, T.NewToken("StrayKind"), strayChild)
+		end)
+		assert(
+			not okStray
+				and string.find(
+					tostring(errStray),
+					"Trait: StrayKind gave Own to Shaped, which Shaped does not have",
+					1,
+					true
+				),
+			`모르는 자기 키: {errStray}`
+		)
+	end
 	-- 저절로 만들어진 표 위에 물려받은 재정의를 얹는 것도
 	type AutoOps = { read Hello: (v: any) -> string, read Twice: (v: any) -> string }
 	const Auto = T.New<<AutoOps>>("AutoShape", {
@@ -2124,7 +2178,7 @@ do
 		chainOps2.Name == nameOf and chainOps2.Bye({}) == "inherited-bye" and chainOps2.Hello({}) == "hello n",
 		"두 단 위에서 물려받은 필수·재정의"
 	)
-	-- (d) 저절로 따라온 표 위의 재정의(제자리 경로): **새 이름도 얹고**, 엄격한 모듈이어도 됨, 반쯤 적용되지 않음
+	-- (d) 저절로 따라온 표 위의 재정의(제자리 경로): 엄격한 모듈이어도 됨, 모르는 이름은 에러, 반쯤 적용되지 않음
 	const Auto2 = T.New<<{ [string]: any }>>("Auto2", {
 		defaults = function()
 			return {
@@ -2141,6 +2195,36 @@ do
 	const autoValue = { __type = AutoKind }
 	const before = T.ImplOf(Auto2, autoValue) :: any
 	assert(before.Hello() == "auto-hello" and T.Implements(Auto2, autoValue), "저절로 따라옴")
+	-- 트레이트가 모르는 이름이 섞이면 에러이고 **아무것도 적용되지 않습니다**(2026-10-13, 질문 AS — 예전엔 새 이름도
+	-- 얹혔음). 아는 이름(`Hello`)까지 같이 들어 있어도 표는 그대로, 저절로 따라온 상태도 그대로.
+	const okExtra, errExtra = pcall(function()
+		T.Impl(
+			Auto2,
+			AutoKind,
+			setmetatable({
+				Hello = function(): string
+					return "own-hello"
+				end,
+				Extra = function(): string
+					return "own-extra"
+				end,
+			}, getmetatable(strict :: any)) :: any
+		)
+	end)
+	assert(
+		not okExtra
+			and string.find(
+				tostring(errExtra),
+				"Trait: AutoKind2 gave Extra to Auto2, which Auto2 does not have",
+				1,
+				true
+			),
+		`모르는 이름: {errExtra}`
+	)
+	assert(
+		before.Hello() == "auto-hello" and rawget(before, "Extra") == nil,
+		"실패한 등록은 반쯤 적용되지 않음"
+	)
 	T.Impl(
 		Auto2,
 		AutoKind,
@@ -2148,16 +2232,11 @@ do
 			Hello = function(): string
 				return "own-hello"
 			end,
-			Extra = function(): string
-				return "own-extra"
-			end,
 		}, getmetatable(strict :: any)) :: any
 	)
 	const after = T.ImplOf(Auto2, autoValue) :: any
 	assert(after == before, "같은 표를 제자리에서 고침")
 	assert(after.Hello() == "own-hello" and after.Bye() == "auto-bye", "재정의한 것만 바뀜")
-	const extra = rawget(after, "Extra") :: (() -> string)?
-	assert(extra ~= nil and extra() == "own-extra", "기본 구현에 없던 새 이름도 얹힘")
 	const okReimpl = pcall(function()
 		T.Impl(Auto2, AutoKind, { Hello = print } :: any)
 	end)
@@ -2208,18 +2287,12 @@ do
 		end,
 	})
 	T.Impl(SecondTrait, EarlyKind, { Put = function(_v: any) end })
-	const givenEarly = {
-		Extra = function(): string
-			return "extra"
-		end,
-	}
+	-- (트레이트가 모르는 이름은 넘길 수 없음 — 질문 AS. 재정의할 것이 없으면 빈 표)
+	const givenEarly = {}
 	T.Impl(Both, EarlyKind, givenEarly)
 	const early: any = T.ImplOf(Both, { __type = EarlyKind })
 	assert(early.Use({ __type = EarlyKind }) == "use3", "먼저 등록해도 기본 구현이 의존을 받음")
-	assert(
-		early.Extra == givenEarly.Extra and not Both.derived[EarlyKind],
-		"넘긴 함수가 들어 있고 저절로 만든 것이 아님"
-	)
+	assert(not Both.derived[EarlyKind], "저절로 만든 것이 아님(명시 등록)")
 	-- **넘긴 표는 고치지 않음** — 완성 표는 다른 표(모듈 테이블을 그대로 넘겨도 모듈에 기본 구현이 써지지 않음)
 	assert(not rawequal(early, givenEarly) and rawget(givenEarly :: any, "Use") == nil, "넘긴 표는 그대로")
 	-- 얼린 표를 넘겨도 됨
@@ -2674,9 +2747,9 @@ do
 		assert(stl.List.Contains(kind.list, 30) and not stl.List.Contains(kind.list, 99), `{kind.name} Contains`)
 	end
 
-	-- ⭐ 내장 종류가 **무엇을 재정의하는지 전수로 고정**: 모듈 테이블을 통째로 등록하므로 모듈에 같은 이름의
-	-- 함수가 생기면 조용히 재정의가 됩니다(뜻이 다른 함수, 진입점에 위임하는 함수 — 무한 재귀, 리뷰).
-	-- 여기가 깨지면 "그 함수가 기본 구현과 같은 뜻인가" 를 확인하고 목록을 고치세요.
+	-- ⭐ 내장 종류가 **무엇을 재정의하는지 전수로 고정**. 등록은 "넘길 것만 든 표" 라(2026-10-13, 질문 AS) 모듈에
+	-- 같은 이름의 함수가 생겨도 저절로 재정의가 되지는 않습니다 — 여기는 "등록 표에 적은 것이 이 목록과 같은가" 를
+	-- 봅니다. 재정의를 더하면(등록 표에 이름을 더하면) "그 함수가 기본 구현과 같은 뜻인가" 를 확인하고 목록을 고치세요.
 	const defaultNames = { "Fold", "Find", "IndexOf", "Contains", "Count", "Some", "Every" }
 	const overrides: { { name: string, module: any, value: any, own: { [string]: boolean } } } = {
 		{
@@ -2696,8 +2769,8 @@ do
 				assert(ops[fnName] == case.module[fnName], `{case.name}.{fnName} 은 자기 구현(재정의)`)
 			else
 				assert(
-					case.module[fnName] == nil,
-					`{case.name} 모듈에 {fnName} 이 생김 — 재정의가 맞는지 확인할 것`
+					case.module[fnName] == nil or ops[fnName] ~= case.module[fnName],
+					`{case.name}.{fnName} 이 재정의로 등록됨 — 목록에 없는 재정의`
 				)
 			end
 		end
@@ -3289,6 +3362,132 @@ do
 		string.find(tostring(errEmpty), `spec.contracts.luau:{where}:`, 1, true),
 		`빈 목록의 FromList 사용자 줄: {errEmpty}`
 	)
+end
+print("PASS")
+
+print(
+	"=== 18. 트레이트에는 넘길 것만 든 표 — 모르는 이름은 에러 (2026-10-13 사용자 결정, 질문 AS) ==="
+)
+do
+	const T = stl.Trait
+	local where = 0
+	-- (1) 모듈 테이블을 통째로 넘기면 에러(사용자 줄) — 예전엔 같은 이름이 전부 그 트레이트의 구현이 됐습니다
+	const wholeSites: { { name: string, trait: any, module: any } } = {
+		{ name = "List", trait = stl.List, module = stl.Arr },
+		{ name = "Map", trait = stl.Map, module = stl.HashMap },
+		{ name = "Set", trait = stl.Set, module = stl.TreeSet },
+		{ name = "Collection", trait = stl.Collection, module = stl.Heap },
+		{ name = "Deque", trait = stl.Deque, module = stl.LinkedDeque },
+	}
+	for _, site in wholeSites do
+		const token = T.NewToken("Whole" .. site.name)
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			T.Impl(site.trait, token, site.module)
+		end)
+		assert(
+			not ok
+				and string.find(tostring(err), `Trait: Whole{site.name} gave `, 1, true)
+				and string.find(tostring(err), ` to {site.name}, which {site.name} does not have`, 1, true),
+			`통째 등록 {site.name}: {err}`
+		)
+		assert(
+			string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true),
+			`통째 등록 {site.name} 사용자 줄: {err}`
+		)
+		assert(
+			T.ImplOf(site.trait, { __type = token }) == nil,
+			`통째 등록 {site.name}: 실패했는데 등록이 남음`
+		)
+	end
+	-- 이름 하나가 더 든 표, 문자열이 아닌 키
+	for _, bad in
+		{
+			{ Len = stl.Arr.Len, Clear = stl.Arr.Clear, Size = stl.Arr.Len } :: any,
+			{ Len = stl.Arr.Len, Clear = stl.Arr.Clear, [1] = print } :: any,
+		}
+	do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			T.Impl(stl.Collection, T.NewToken("OneMore"), bad)
+		end)
+		assert(
+			not ok and string.find(tostring(err), "to Collection, which Collection does not have", 1, true),
+			`하나 더: {err}`
+		)
+		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `하나 더 사용자 줄: {err}`)
+	end
+
+	-- (2) ⭐ 두 트레이트에 같은 이름(`Test`)이 있고 한 종류가 둘 다 구현: 표를 따로 넘기니 **각자의 `Test`** 를 받음
+	--     (통째로 넘기던 때는 모듈의 `Test` 하나가 두 트레이트에 다 먹었음 — 사용자가 물은 그 경우)
+	type Tester = { read Test: (v: any) -> string }
+	const TraitA = T.New<<Tester>>("TraitA", { required = { "Test" } })
+	const TraitB = T.New<<Tester>>("TraitB", { required = { "Test" } })
+	const StrA = T.NewToken("StrA")
+	T.Impl(TraitA, StrA, {
+		Test = function(_v: any): string
+			return "A 의 Test"
+		end,
+	})
+	T.Impl(TraitB, StrA, {
+		Test = function(_v: any): string
+			return "B 의 Test"
+		end,
+	})
+	const strA = { __type = StrA }
+	assert((T.ImplOf(TraitA, strA) :: Tester).Test(strA) == "A 의 Test", "TraitA 는 자기 Test")
+	assert((T.ImplOf(TraitB, strA) :: Tester).Test(strA) == "B 의 Test", "TraitB 는 자기 Test")
+
+	-- (3) 모듈에 **뜻이 다른 같은 이름**이 있어도 등록 표에 안 넣으면 기본 구현이 그대로: 값으로 찾는 `Find`,
+	--     술어 없이 전부 세는 `Count`(진입점에 위임 — 통째 등록이면 무한 재귀였음)
+	const BagToken = T.NewToken("Bag")
+	const BagModule: any = {
+		Get = function(bag: any, idx: number): any
+			return bag.items[idx]
+		end,
+		FirstIndex = function(bag: any): number?
+			return if #bag.items > 0 then 1 else nil
+		end,
+		LastIndex = function(bag: any): number?
+			return if #bag.items > 0 then #bag.items else nil
+		end,
+		NextIndex = function(bag: any, idx: number): number?
+			return if idx < #bag.items then idx + 1 else nil
+		end,
+		PrevIndex = function(_bag: any, idx: number): number?
+			return if idx > 1 then idx - 1 else nil
+		end,
+		-- 뜻이 다름: **값**을 받아 그 위치를 돌려줌(트레이트의 `Find` 는 술어를 받아 원소와 위치)
+		Find = function(bag: any, value: any): number?
+			return table.find(bag.items, value)
+		end,
+		-- 진입점에 위임: 전부 셈
+		Count = function(bag: any): number
+			return stl.List.Count(bag, function(): boolean
+				return true
+			end)
+		end,
+	}
+	T.Impl(stl.List, BagToken, {
+		Get = BagModule.Get,
+		FirstIndex = BagModule.FirstIndex,
+		LastIndex = BagModule.LastIndex,
+		NextIndex = BagModule.NextIndex,
+		PrevIndex = BagModule.PrevIndex,
+	})
+	const bag = { __type = BagToken, items = { 10, 20, 30, 20 } }
+	const found, at = stl.List.Find(bag :: any, function(item: number): boolean
+		return item > 15
+	end)
+	assert(found == 20 and at == 2, `트레이트의 Find 는 기본 구현(술어): {found}, {at}`)
+	assert(BagModule.Find(bag, 30) == 3, "모듈의 Find 는 모듈의 뜻(값) 그대로")
+	assert(
+		BagModule.Count(bag) == 4,
+		"진입점에 위임하는 같은 이름 함수가 자기 자신으로 돌아오지 않음"
+	)
+	assert(stl.List.Count(bag :: any, function(item: number): boolean
+		return item == 20
+	end) == 2, "트레이트의 Count 는 기본 구현")
 end
 print("PASS")
 

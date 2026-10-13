@@ -352,13 +352,15 @@ const HashSetModule = {
 	Retain = Retain,
 }
 
--- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.
-Trait.Impl(Set, TOKEN, HashSetModule)
-Trait.Impl(Collection, TOKEN, HashSetModule)
--- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다(`Trait.Impl` 호출만으로는 서명 불일치가 안 잡힘).
--- ⚠️ **구체 타입으로** 적습니다(키 `string`·값 `number` 처럼 서로 다르게): `any` 로 적었던 때는 반환 타입만 잡히고
--- 인자 수·인자 타입·자리 바뀜이 0건이었습니다(2라운드 리뷰 — 인자가 `any` 인 함수 타입 자리는 서명을 안 견줌).
-const _set: Set.Core<HashSet<string>, string> = HashSetModule
-const _collection: Collection.Core<HashSet<string>> = HashSetModule
+-- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
+-- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
+-- `Trait.Impl` 이 에러로 알림). 표의 타입 주석이 "구현이 계약을 만족하는가" 의 정적 확인이기도 합니다 — **구체
+-- 타입으로** 적습니다(원소 `string`·위치 `number`, 맵은 키 `string`·값 `number` 처럼 서로 다르게: `any` 로 적으면
+-- 인자 수·인자 타입이 검사되지 않음, 2라운드 리뷰).
+const setImpl: Set.Core<HashSet<string>, string> =
+	{ Add = HashSetModule.Add, Has = HashSetModule.Has, Remove = HashSetModule.Remove, Items = HashSetModule.Items }
+const collectionImpl: Collection.Core<HashSet<string>> = { Len = HashSetModule.Len, Clear = HashSetModule.Clear }
+Trait.Impl(Set, TOKEN, setImpl)
+Trait.Impl(Collection, TOKEN, collectionImpl)
 
 return HashSetModule

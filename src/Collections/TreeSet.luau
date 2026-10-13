@@ -489,11 +489,15 @@ const TreeSetModule = {
 	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal,
 }
 
--- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.
-Trait.Impl(Set, TOKEN, TreeSetModule)
-Trait.Impl(Collection, TOKEN, TreeSetModule)
--- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
-const _set: Set.Core<TreeSet<string>, string> = TreeSetModule
-const _collection: Collection.Core<TreeSet<string>> = TreeSetModule
+-- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
+-- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
+-- `Trait.Impl` 이 에러로 알림). 표의 타입 주석이 "구현이 계약을 만족하는가" 의 정적 확인이기도 합니다 — **구체
+-- 타입으로** 적습니다(원소 `string`·위치 `number`, 맵은 키 `string`·값 `number` 처럼 서로 다르게: `any` 로 적으면
+-- 인자 수·인자 타입이 검사되지 않음, 2라운드 리뷰).
+const setImpl: Set.Core<TreeSet<string>, string> =
+	{ Add = TreeSetModule.Add, Has = TreeSetModule.Has, Remove = TreeSetModule.Remove, Items = TreeSetModule.Items }
+const collectionImpl: Collection.Core<TreeSet<string>> = { Len = TreeSetModule.Len, Clear = TreeSetModule.Clear }
+Trait.Impl(Set, TOKEN, setImpl)
+Trait.Impl(Collection, TOKEN, collectionImpl)
 
 return TreeSetModule

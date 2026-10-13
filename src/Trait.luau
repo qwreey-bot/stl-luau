@@ -244,10 +244,10 @@ end
 -- 완성 표의 빈 자리를 기본 구현으로 채웁니다(기본 구현이 없는 트레이트면 아무 일도 안 함).
 -- `impl` 은 구현이 넘긴 표(저절로 만들 땐 nil) — 기본 구현과 같은 이름을 **물려받고** 있으면(`lookup`)
 -- 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히 기본 구현에 졌습니다, 리뷰).
-const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps: { [any]: any })
+const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps: { [any]: any }): { [string]: any }?
 	const defaults: Defaults? = trait.defaults
 	if defaults == nil then
-		return
+		return nil
 	end
 	const provided: any = defaults(full, deps)
 	if type(provided) ~= "table" then
@@ -260,6 +260,7 @@ const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps
 			full[fnName] = if inherited ~= nil then inherited else fn
 		end
 	end
+	return provided
 end
 
 -- 그 종류의 완성 표. 등록된 것이 없어도 **필수 함수가 없는** 트레이트면 의존만으로 만들어 둡니다
@@ -291,9 +292,20 @@ end
 -- 얹는 길). 그때는 완성 표를 새로 만들지 않고 **같은 표를 제자리에서** 고칩니다 — 그 표를 이미 들고
 -- 있는 쪽(의존으로 받은 다른 트레이트의 기본 구현 포함)도 새 함수를 보게 됩니다.
 --
--- 저장되는 것: 기본 구현도 의존도 없는 트레이트는 **넘긴 표 그대로**(모듈 테이블이 곧 구현체), 그 밖에는
--- 새 표입니다: 넘긴 표의 **자기 키 전부** + 필수·기본 구현 이름 중 물려받은 것(`__index` 가 테이블인 사슬) +
--- 기본 구현. (그 밖의 이름으로 물려받은 함수는 옮기지 않습니다 — 완성 표는 트레이트의 함수를 부르는 곳.)
+-- 저장되는 것: 기본 구현도 의존도 없는 트레이트는 **넘긴 표 그대로**, 그 밖에는 새 표입니다: 넘긴 표의 자기 키
+-- (전부 그 트레이트의 이름 — 아래) + 필수·기본 구현 이름 중 물려받은 것(`__index` 가 테이블인 사슬) + 기본 구현.
+-- (그 밖의 이름으로 물려받은 함수는 옮기지 않습니다 — 완성 표는 트레이트의 함수를 부르는 곳.)
+-- ⭐ **넘긴 표에는 그 트레이트의 함수만 들어 있어야 합니다**(2026-10-13 사용자 결정, 질문 AS: *"난 넘길것만 든 표
+-- 동의함. 그게 내 목적이긴 했음"*). 예전에는 모듈 테이블을 통째로 넘겼는데, 그러면 **같은 이름이 전부 그 트레이트의
+-- 구현이 됩니다** — 다른 트레이트를 위해 쓴 `Test` 가 이 트레이트의 `Test` 로도 먹고, 뜻이 다른 같은 이름(값으로 찾는
+-- `Find`)이 기본 구현을 조용히 갈아치우고, 진입점에 위임하는 같은 이름 함수는 무한 재귀였습니다(진단 0건, 2단계 리뷰).
+-- 그래서 트레이트가 모르는 이름이 든 표는 에러입니다 — 무엇을 넘기는지가 등록하는 자리에 적혀 있게.
+const function unknownName(trait: any, token: any, fnName: any): never
+	return Common.raise(
+		`Trait: {token.name} gave {tostring(fnName)} to {trait.name}, which {trait.name} does not have — pass a table of only that trait's functions (not a whole module)`
+	)
+end
+
 const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 	if not traits[trait] then
 		Common.raise(`Trait: Impl needs a trait (from Trait.New), got {typeof(trait)}`)
@@ -325,6 +337,13 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 		end
 	end
 	if not merges then
+		if required then
+			for fnName in impl :: any do
+				if not table.find(required, fnName) then
+					unknownName(trait, token, fnName)
+				end
+			end
+		end
 		impls[token] = impl
 		return
 	end
@@ -335,6 +354,11 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 	if existing ~= nil then
 		-- 저절로 따라온 표 위에 재정의 — 같은 표를 고칩니다. 구현이 `__index` 로 물려받은 것도 재정의이니,
 		-- 자기 키를 옮긴 뒤 표에 이미 있는 이름들을 구현에서 한 번 더 찾습니다.
+		for fnName in impl :: any do
+			if existing[fnName] == nil then
+				unknownName(trait, token, fnName)
+			end
+		end
 		for fnName, fn in impl :: any do
 			existing[fnName] = fn
 		end
@@ -347,7 +371,7 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 		derived[token] = nil
 		return
 	end
-	-- 넘긴 표는 고치지 않습니다(모듈 테이블을 그대로 넘겨도 모듈에 기본 구현이 써지지 않고, 얼린 표도 됨).
+	-- 넘긴 표는 고치지 않습니다(얼린 표도 됨) — 완성 표를 따로 만듭니다.
 	const full: { [string]: any } = {}
 	for fnName, fn in impl :: any do
 		full[fnName] = fn
@@ -361,7 +385,13 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 			end
 		end
 	end
-	fillDefaults(trait, impl, full, deps :: any)
+	const provided = fillDefaults(trait, impl, full, deps :: any)
+	-- 모르는 이름: 필수도 아니고 기본 구현의 이름(재정의할 수 있는 것)도 아닌 키
+	for fnName in impl :: any do
+		if not (required and table.find(required, fnName)) and not (provided and provided[fnName] ~= nil) then
+			unknownName(trait, token, fnName)
+		end
+	end
 	impls[token] = full
 end
 

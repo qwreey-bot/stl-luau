@@ -546,7 +546,10 @@ do
 	end
 	-- 종류를 모르는 코드(트레이트 진입점)와 묶기의 목적지로
 	assert(table.concat(stl.Map.Keys(rb), ",") == table.concat(TreeMap.Keys(rb), ","), "Map.Keys")
-	assert(stl.Collection.Len(rb) == 200 and stl.Trait.ImplOf(stl.Map, rb) == TreeMap :: any, "트레이트")
+	assert(
+		stl.Collection.Len(rb) == 200 and (stl.Trait.ImplOf(stl.Map, rb) :: any).Get == TreeMap.Get :: any,
+		"트레이트"
+	)
 	const grouped = stl.Arr.GroupBy(stl.Arr.Of(11, 25, 12, 31, 27), function(v: number): number
 		return v // 10
 	end, TreeMap.New<<number, stl.Arr<number>>>(cmp))

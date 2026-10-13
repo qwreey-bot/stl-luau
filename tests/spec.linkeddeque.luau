@@ -386,8 +386,11 @@ do
 			"셋 다 구현"
 		)
 	end
-	assert(T.ImplOf(Deque, LinkedDeque.Of(1)) == LinkedDeque :: any, "Deque 구현은 모듈 그대로")
-	assert(T.ImplOf(Deque, CircularDeque.Of(1)) == CircularDeque :: any, "원형도")
+	-- 구현 표는 Deque 의 여섯 함수만 든 표(모듈 테이블이 아님 — 질문 AS)
+	const linkedImpl: any, circularImpl: any = T.ImplOf(Deque, LinkedDeque.Of(1)), T.ImplOf(Deque, CircularDeque.Of(1))
+	assert(linkedImpl.PushBack == LinkedDeque.PushBack and linkedImpl.Front == LinkedDeque.Front, "Deque 구현")
+	assert(linkedImpl.InsertAfter == nil and linkedImpl.Len == nil, "Deque 표에 다른 함수가 섞이지 않음")
+	assert(circularImpl.PopFront == CircularDeque.PopFront and circularImpl.ToArr == nil, "원형도")
 	assert(not T.Implements(Deque, stl.Arr.Of(1)), "Arr 은 Deque 가 아님")
 
 	-- 리스트 알고리즘(기본 구현)이 노드 위치로 돎

@@ -397,7 +397,10 @@ do
 	end
 	-- 종류를 모르는 코드
 	const viaTrait = TreeSet.FromList({ 30, 10 }, cmp)
-	assert(stl.Trait.ImplOf(stl.Set, viaTrait) == TreeSet :: any and stl.Collection.Len(viaTrait) == 2, "트레이트")
+	assert(
+		(stl.Trait.ImplOf(stl.Set, viaTrait) :: any).Add == TreeSet.Add :: any and stl.Collection.Len(viaTrait) == 2,
+		"트레이트"
+	)
 end
 print("PASS")
 
