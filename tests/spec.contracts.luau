@@ -3723,6 +3723,29 @@ do
 		(stl.Stack :: any).derived[Widget],
 		"실패한 재정의는 저절로 따라온 상태를 바꾸지 않음(물려받은 것)"
 	)
+	-- 멀쩡한 물려받은 재정의와 함수 아닌 것이 **섞인** 표: 실패하면 멀쩡한 것도 적용되지 않음(6라운드 리뷰 —
+	-- "확인하고 바로 적용" 으로 두 루프를 합치는 실수가 통과했음). 틀린 이름을 셋으로 돌려 순회 순서에 기대지 않게.
+	const stackBefore: any = T.ImplOf(stl.Stack, { __type = Widget })
+	const pushBefore, popBefore, peekBefore = stackBefore.Push, stackBefore.Pop, stackBefore.Peek
+	for _, wrong in { "Push", "Pop", "Peek" } do
+		const inherited: any = { Push = print, Pop = print, Peek = print }
+		inherited[wrong] = "not a function"
+		const okMixed, errMixed = pcall(function()
+			T.Impl(stl.Stack, Widget, setmetatable({}, { __index = inherited }) :: any)
+		end)
+		assert(
+			not okMixed and string.find(tostring(errMixed), `gave a string as {wrong} for Stack`, 1, true),
+			`섞인 표({wrong}): {errMixed}`
+		)
+		const stackAfter: any = T.ImplOf(stl.Stack, { __type = Widget })
+		assert(
+			stackAfter == stackBefore
+				and stackAfter.Push == pushBefore
+				and stackAfter.Pop == popBefore
+				and stackAfter.Peek == peekBefore,
+			`섞인 표({wrong}): 실패한 등록이 일부를 적용함`
+		)
+	end
 
 	-- (3) Stack·Queue 의 진입점 여섯: 에러 메시지의 진입점 이름, `Push` 는 재정의가 무엇을 돌려주든 넣은 것을 돌려줌
 	const entries: { { trait: string, name: string, call: (v: any) -> any } } = {

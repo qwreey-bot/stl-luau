@@ -1036,7 +1036,7 @@ do
 					end,
 				},
 				{
-					want = `{kind.head}: Join needs another {kind.head}, got`,
+					want = `{kind.head}: Join needs another {kind.head}, got {(stl.Trait.TokenOf(kind.other()) :: any).name}`,
 					call = function()
 						where = debug.info(1, "l") + 1
 						kind.join(low, kind.other())
@@ -1044,7 +1044,7 @@ do
 				},
 				{
 					-- 섞인 쪽이 **첫 인자**여도(5라운드 리뷰 — 예전엔 라이브러리 줄의 원시 에러이거나 엉뚱한 메시지)
-					want = `{kind.head}: Join needs a {kind.head}, got`,
+					want = `{kind.head}: Join needs a {kind.head}, got {(stl.Trait.TokenOf(kind.other()) :: any).name}`,
 					call = function()
 						where = debug.info(1, "l") + 1
 						kind.join(kind.other(), low)

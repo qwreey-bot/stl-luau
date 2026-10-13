@@ -1367,6 +1367,39 @@ do
 		end
 	end
 
+	-- (2c) `Split` 이 `Join` 에 넘기는 가운데 노드는 **연결이 없는 노드**여야 함(계약 — 바깥에서 만든 균형 방식은 그
+	--      전제에 기댐). 6라운드 리뷰: 고치는 순서를 바꾸며 부모 칸이 낡은 채 넘어갔음(내장 `Join` 은 덮어써서 안 보임).
+	--      `Join` 을 감싸 넘어온 노드의 세 연결과, 두 트리가 부모 없는 뿌리인지를 봄.
+	do
+		local joins = 0
+		const watched: any = table.clone(M)
+		watched.Join = function(left: any, mid: any, right: any): any
+			joins += 1
+			assert(
+				mid[2] == nil and mid[3] == nil and mid[4] == nil,
+				`{name}: 가운데 노드에 연결이 남음(왼 {mid[2] ~= nil}, 오 {mid[3] ~= nil}, 부모 {mid[4] ~= nil})`
+			)
+			assert(left == nil or left[4] == nil, `{name}: Join 에 넘긴 왼쪽 트리의 뿌리에 부모가 있음`)
+			assert(
+				right == nil or right[4] == nil,
+				`{name}: Join 에 넘긴 오른쪽 트리의 뿌리에 부모가 있음`
+			)
+			return M.Join(left, mid, right)
+		end
+		for _, count in { 1, 2, 3, 15, 200, 1000 } do
+			for _, at in { 5, count * 5 + 5, count * 10 - 5, count * 10 + 5, count * 10 } do
+				const small, found, large = stl.Balance.Split(watched, build(10, count, 10), at, compare)
+				check(small, `감시 {count}@{at} 작은 쪽`)
+				check(large, `감시 {count}@{at} 큰 쪽`)
+				assert(
+					found == nil or (found[2] == nil and found[3] == nil and found[4] == nil),
+					`{name}: 찾은 노드의 연결`
+				)
+			end
+		end
+		assert(joins > 50, `{name}: 감시한 Join 이 거의 안 불림({joins})`)
+	end
+
 	-- (3) 무작위: 넣고 빼서 모양을 흔든 트리를 가르고, 다시 잇고, 그 뒤에도 넣기·지우기가 멀쩡한지
 	local seed = 8086
 	local function rand(limit: number): number

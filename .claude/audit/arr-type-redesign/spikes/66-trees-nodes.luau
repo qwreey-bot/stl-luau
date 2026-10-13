@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 56 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 57 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -173,6 +173,8 @@ local okRejoined: RbNode? = if okMid then RedBlack.Join(okSmall, okMid, okLarge)
 stl.Balance.Split(RedBlack, splitRoot, 5, compare)
 local negSplitRoot: string = okSmall
 local negSplitMid: RbNode = okMid
+-- NEG: 읽기 노드(컨테이너가 내준 뿌리 같은 것)는 가를 수 없음 — 원래 트리를 없애는 도구
+stl.Balance.Split(RedBlack, found, "k", compare)
 
 local canary: string = 42
 

@@ -77,14 +77,16 @@ end
 -- O(log n), 레드블랙은 잇기마다 검정 높이를 세어 O(log² n) — 10만 개에서 4~7.5 μs, perf 49절).
 -- 균형 방식마다 따로 쓰지 않습니다 — `Join`·`AsRoot` 만 주면 됩니다.
 -- 돌려준 가운데 노드는 연결이 끊긴 노드입니다(어느 쪽에 붙이려면 `Join(nil, 노드, 큰 쪽)` 처럼).
--- 받은 뿌리의 타입 그대로 돌려줍니다(레드블랙 노드를 넣으면 레드블랙 노드 셋). 방식과 노드의 종류가 맞는지는
+-- 받은 뿌리의 타입 그대로 돌려줍니다(레드블랙 노드를 넣으면 레드블랙 노드 셋). **고칠 수 있는 노드**여야 합니다
+-- (불변 팬텀 `__keyMut` 을 요구 — 원래 트리를 없애는 도구라, 컨테이너가 내준 읽기 노드(`m.root`)가 들어오면 그 컨테이너가
+-- 깨집니다. 받은 핸들 그대로 돌려주는 모양만 따라가기 도구와 같고 읽기 노드는 받지 않습니다 — 6라운드 리뷰). 방식과 노드의 종류가 맞는지는
 -- 타입이 못 봅니다(계약이 노드 타입을 모름) — 그 트리를 만든 방식을 넘기세요.
 -- 비교자가 던지면: 고치기 전에 비교가 다 끝나므로 **트리는 그대로**입니다(관측 — 계약은 아님. 예전엔 떼어 낸 뒤에
 -- 견줘서 첫 비교에서 던져도 조각났습니다, 5라운드 리뷰).
 const LEFT, RIGHT, PARENT, KEY = 2, 3, 4, 5
 const function Split<N, K>(
 	scheme: Scheme,
-	root: (N & { read __links: "binary", read __key: K })?,
+	root: (N & { read __links: "binary", read __key: K, read __keyMut: (K, any) -> (K, any) })?,
 	key: K,
 	compare: Comparator<K>
 ): (N?, N?, N?)
@@ -113,10 +115,11 @@ const function Split<N, K>(
 			-- 가를 자리는 왼쪽 안: 이 노드와 오른쪽은 통째로 큰 쪽
 			const small, found, large = split(node[LEFT])
 			const right = node[RIGHT]
-			-- 가운데 노드는 "연결이 없는 노드" 로 넘깁니다(계약 — 내장 방식의 `Join` 은 두 자식 칸을 어차피 덮어쓰지만
-			-- 바깥에서 만든 방식이 그 전제에 기댈 수 있음)
+			-- 가운데 노드는 "연결이 없는 노드" 로 넘깁니다(계약 — 내장 방식의 `Join` 은 세 칸을 어차피 덮어쓰지만 바깥에서
+			-- 만든 방식이 그 전제에 기댈 수 있음. 부모 칸을 빠뜨렸더니 그런 방식에서 중위 순회가 트리 밖으로 나갔음 — 6라운드)
 			node[LEFT] = nil
 			node[RIGHT] = nil
+			node[PARENT] = nil
 			if right ~= nil then
 				right[PARENT] = nil
 			end
@@ -126,6 +129,7 @@ const function Split<N, K>(
 		const left = node[LEFT]
 		node[LEFT] = nil
 		node[RIGHT] = nil
+		node[PARENT] = nil
 		if left ~= nil then
 			left[PARENT] = nil
 		end

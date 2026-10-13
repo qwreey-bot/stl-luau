@@ -399,13 +399,13 @@ end
 -- **`key` 이상인 키들을 떼어 새 맵으로** 돌려줍니다. 이 맵에는 `key` 미만만 남습니다(Rust `split_off`).
 -- O(log n + 작은 쪽의 크기) — 노드를 새로 만들지 않고 다시 잇습니다(쥐고 있던 노드는 둘 중 한 맵에 살아 있음).
 -- 새 맵은 같은 비교자·균형 방식. `key` 가 맵에 없어도 됩니다(그 자리에서 가름). `nil`·NaN 키는 에러.
--- ⚠️ 비교자가 도중에 던지면 이 맵은 깨진 채입니다(약속하지 않는 상태 — 규약의 예외 안전성).
+-- 비교자가 도중에 던지면 이 맵은 그대로입니다(관측 — 계약은 아님: 비교를 다 한 뒤에 고치기 시작함).
 const function SplitOff<K, V>(self: TreeMapData<K, V>, key: K): TreeMap<K, V>
 	if unusable(key) then
 		rejectKey(key)
 	end
 	const scheme: any = self.balance
-	const low, found, rest = Balance.Split(scheme, self.root, key, self.compare)
+	const low, found, rest = Balance.Split(scheme, self.root :: any, key, self.compare)
 	const high = if found ~= nil then scheme.Join(nil, found, rest) else rest
 	const total = self.size
 	const moved = countHigh(low, high, total)
