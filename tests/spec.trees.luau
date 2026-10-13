@@ -1300,6 +1300,43 @@ do
 		assert(stl.Search.Value(mid) == midKey + 1, `{name} Join: 가운데 노드의 값`)
 	end
 
+	-- (1b) 떼어 낸 **부분 트리**를 그대로 넘겨도 됨(레드블랙: 뿌리가 빨강일 수 있음 — `Join` 이 검정으로 칠함. 파일 주석이
+	--      약속한 관용인데, `Split` 이 `AsRoot` 를 거쳐 넘기게 된 뒤로 이것을 덮는 테스트가 없었음 — 8라운드 리뷰).
+	do
+		local redRoots = 0
+		for count = 2, 60 do
+			-- 큰 키들의 트리에서 뿌리의 오른쪽 부분 트리를 떼어 냄(부모 칸만 끊음 — `AsRoot` 를 안 거침)
+			const donor = build(10000, count, 10)
+			const part = donor[3]
+			if part ~= nil then
+				part[4] = nil
+				if part[6] == true then
+					redRoots += 1
+				end
+				const wantPart: { number } = {}
+				for node in Traverse.InOrder(part) do
+					table.insert(wantPart, (node :: any)[5])
+				end
+				const left = build(10, (count * 7) % 45, 10)
+				const want: { number } = {}
+				for at = 1, (count * 7) % 45 do
+					want[at] = at * 10
+				end
+				table.insert(want, 5000)
+				table.move(wantPart, 1, #wantPart, #want + 1, want)
+				same(
+					check(M.Join(left, single(5000), part), `부분 트리 Join {count}`),
+					want,
+					`부분 트리 Join {count}`
+				)
+			end
+		end
+		assert(
+			name ~= "RedBlack" or redRoots > 5,
+			`{name}: 빨강 뿌리 부분 트리가 거의 안 나옴({redRoots})`
+		)
+	end
+
 	-- (2) Split — 크기 0~40 의 트리를 **모든 자리**에서(있는 키, 키 사이, 맨 앞보다 작게, 맨 뒤보다 크게)
 	for count = 0, 40 do
 		for probe = 5, count * 10 + 15, 5 do
