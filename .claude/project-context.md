@@ -89,6 +89,7 @@ src/
                      균형 방식과 무관한 공유 조각(Find·LowerBound·UpperBound·Clone)
     Balance.luau     자가 균형의 계약(Balance.Scheme)과 조립하는 쪽의 인자 확인(Balance.Expect)
     CompleteArray.luau  배열에 담은 완전 이진 트리 — 자리 계산(Parent·Left·Right·Height), 힙 순서(SiftUp·SiftDown·Heapify·IsHeap)
+    CompleteNode.luau   노드로 이은 완전 이진 트리 — At·Append·RemoveLast·Exchange, 힙 순서(SiftUp·SiftDown — 노드를 다시 이음)
     Traverse.luau    순회자 — PreOrder·InOrder·PostOrder·LevelOrder (받은 부분 트리 안에서만, 스택 없이 부모 칸으로)
     RedBlack.luau    레드블랙 — Insert·Remove·FromSorted (제품의 기본)
     Avl.luau         AVL — 같은 표면
@@ -158,7 +159,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `Heap` | 완성 | `spikes/44` |
 | `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |
 | `LinkedDeque` / `Node` / 트레이트 `Deque` | 2026-10-13 — 리뷰 대기 | `spikes/65` |
-| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`·`Balance`·`Traverse`·`CompleteArray`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
+| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`·`Balance`·`Traverse`·`CompleteArray`·`CompleteNode`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 

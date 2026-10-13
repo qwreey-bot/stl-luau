@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 35 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 39 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -125,6 +125,18 @@ local negLeft: number = stl.CompleteArray.Left(1, 3)
 stl.CompleteArray.SiftUp({ "a", "b" }, 2, lessNumber)
 local negIsHeap: number = stl.CompleteArray.IsHeap(numbers, 3, lessNumber)
 
+--[[ CompleteNode — 노드로 이은 완전 이진 트리(노드가 곧 위치) ]]
+local cnRoot = stl.CompleteNode.Append(nil :: stl.BinaryNode<number>?, 0, Node.Binary.New(10))
+local cnRead: stl.BinaryNodeRead<number> = cnRoot
+local okAt: stl.BinaryNode<number>? = stl.CompleteNode.At(cnRoot, 1)
+local okSift: stl.BinaryNode<number> = stl.CompleteNode.SiftUp(cnRoot, cnRoot, lessNumber)
+local okShape: boolean = stl.CompleteNode.IsComplete(cnRead, 1) and stl.CompleteNode.IsHeap(cnRead, lessNumber)
+-- NEG: 자리는 옵셔널 / 양방향 노드는 못 붙임 / 원소 타입과 비교자가 어긋남 / 읽기 노드는 자리를 바꿀 수 없음
+local negAt: stl.BinaryNode<number> = stl.CompleteNode.At(cnRoot, 2)
+stl.CompleteNode.Append(cnRoot, 1, Node.Double.New(20))
+stl.CompleteNode.SiftDown(cnRoot, cnRoot, string.lower)
+stl.CompleteNode.Exchange(cnRoot, cnRoot, cnRead)
+
 local canary: string = 42
 
 return {
@@ -170,5 +182,9 @@ return {
 	negParent,
 	negLeft,
 	negIsHeap,
+	okAt,
+	okSift,
+	okShape,
+	negAt,
 	canary,
 }

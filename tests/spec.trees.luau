@@ -852,6 +852,226 @@ do
 end
 print("PASS")
 
+print("=== 8. CompleteNode — 노드로 이은 완전 이진 트리 (2026-10-13) ===")
+do
+	const Complete = stl.CompleteNode
+	type N = stl.BinaryNode<number>
+	local function less(a: number, b: number): boolean
+		return a < b
+	end
+	-- 값이 10, 20, … 인 노드 `count` 개를 차례로 붙인 트리(자리 i 의 값은 i * 10)
+	local function build(count: number): (N?, { N })
+		local root: N? = nil
+		const nodes: { N } = {}
+		for idx = 1, count do
+			const node = Binary.New(idx * 10)
+			nodes[idx] = node
+			root = Complete.Append(root, idx - 1, node)
+			assert(Complete.IsComplete(root, idx), `Append {idx}: 완전 이진이 아님`)
+		end
+		return root, nodes
+	end
+
+	-- (1) At — 뿌리에서 번호의 비트를 따라. 경계: 0·음수·개수 밖·빈 트리
+	do
+		const root, nodes = build(10)
+		for idx = 1, 10 do
+			assert(Complete.At(root, idx) == nodes[idx], `At({idx})`)
+		end
+		assert(Complete.At(root, 0) == nil and Complete.At(root, -3) == nil, "At 0·음수")
+		assert(
+			Complete.At(root, 11) == nil and Complete.At(root, 20) == nil and Complete.At(root, 1000) == nil,
+			"At 개수 밖"
+		)
+		assert(Complete.At(nil :: N?, 1) == nil, "At 빈 트리")
+		-- 모양: 자리 i 의 자식은 2i·2i+1, 부모는 i // 2 (배열식과 같은 번호)
+		for idx = 1, 10 do
+			const node = nodes[idx]
+			assert(Binary.Left(node) == nodes[idx * 2] and Binary.Right(node) == nodes[idx * 2 + 1], `자식 {idx}`)
+			assert(Binary.Parent(node) == nodes[idx // 2], `부모 {idx}`)
+		end
+	end
+
+	-- (2) RemoveLast — 붙인 역순으로 나오고, 뗀 노드는 연결이 끊김. 하나·빈 것
+	do
+		local root, nodes = build(7)
+		for count = 7, 2, -1 do
+			const nextRoot, removed = Complete.RemoveLast(root, count)
+			assert(removed == nodes[count] and nextRoot == nodes[1], `RemoveLast {count}`)
+			assert(Binary.Parent(removed :: N) == nil, `뗀 노드의 부모 {count}`)
+			root = nextRoot
+			assert(Complete.IsComplete(root, count - 1), `RemoveLast 뒤 {count - 1}`)
+		end
+		const emptied, lastOne = Complete.RemoveLast(root, 1)
+		assert(emptied == nil and lastOne == nodes[1], "하나 남은 것을 떼면 빈 트리")
+		const none, nothing = Complete.RemoveLast(nil :: N?, 0)
+		assert(none == nil and nothing == nil, "빈 트리의 RemoveLast")
+	end
+
+	-- (3) Exchange — **모든 쌍**(부모-자식 양방향, 형제, 뿌리, 먼 사이, 같은 노드): 두 자리만 바뀌고 나머지는
+	--     그대로, 모양은 완전 이진, 노드의 값은 그대로(값이 아니라 노드가 옮겨감)
+	for first = 1, 10 do
+		for second = 1, 10 do
+			local root, nodes = build(10)
+			root = Complete.Exchange(root :: N, nodes[first], nodes[second])
+			assert(Complete.IsComplete(root, 10), `Exchange({first}, {second}): 모양이 깨짐`)
+			for idx = 1, 10 do
+				const want = if idx == first then nodes[second] elseif idx == second then nodes[first] else nodes[idx]
+				assert(Complete.At(root, idx) == want, `Exchange({first}, {second}): 자리 {idx}`)
+				assert(
+					Binary.Value(nodes[idx]) == idx * 10,
+					`Exchange({first}, {second}): 노드 {idx} 의 값이 바뀜`
+				)
+			end
+			assert(Binary.Parent(root :: N) == nil, `Exchange({first}, {second}): 뿌리의 부모`)
+		end
+	end
+	-- 노드 둘·셋뿐인 트리(자식이 하나인 부모, 뿌리와 그 자식)
+	for _, size in { 2, 3 } do
+		for first = 1, size do
+			for second = 1, size do
+				local root, nodes = build(size)
+				root = Complete.Exchange(root :: N, nodes[first], nodes[second])
+				assert(Complete.IsComplete(root, size), `작은 트리 {size} Exchange({first}, {second})`)
+				assert(
+					Complete.At(root, first) == nodes[second] and Complete.At(root, second) == nodes[first],
+					"작은 트리 자리"
+				)
+			end
+		end
+	end
+
+	-- (4) IsHeap·IsComplete 의 거짓 — 순서가 어긋난 자리, 빈 자리, 개수 불일치, 틀린 부모 칸
+	do
+		const root, nodes = build(6)
+		assert(Complete.IsHeap(root, less) and Complete.IsHeap(nil :: N?, less), "IsHeap 참·빈 것")
+		Binary.SetValue(nodes[6], 5) -- 맨 끝(3 의 왼쪽 자식)이 부모보다 앞섬
+		assert(not Complete.IsHeap(root, less), "IsHeap: 맨 끝")
+		Binary.SetValue(nodes[6], 60)
+		Binary.SetValue(nodes[5], 15) -- 2 의 오른쪽 자식
+		assert(not Complete.IsHeap(root, less), "IsHeap: 오른쪽 자식")
+		Binary.SetValue(nodes[5], 20) -- 부모와 같은 값은 어긋남이 아님
+		assert(Complete.IsHeap(root, less), "IsHeap 같은 값")
+		assert(not Complete.IsComplete(root, 5) and not Complete.IsComplete(root, 7), "IsComplete 개수 불일치")
+		assert(Complete.IsComplete(nil, 0) and not Complete.IsComplete(nil, 1), "IsComplete 빈 트리")
+		assert(not Complete.IsComplete(nodes[2], 3), "IsComplete: 부모가 있는 노드는 뿌리가 아님")
+		-- 빈 자리: 5번(2 의 오른쪽)을 떼면 6번이 남아 완전 이진이 아님(노드 수는 5)
+		Binary.SetRight(nodes[2], nil)
+		assert(not Complete.IsComplete(root, 5), "IsComplete: 가운데 빈 자리")
+		Binary.SetRight(nodes[2], nodes[5])
+		assert(Complete.IsComplete(root, 6), "되돌리면 참")
+		const wrong: any = nodes[4]
+		wrong[4] = nodes[3] -- 틀린 부모 칸
+		assert(not Complete.IsComplete(root, 6), "IsComplete: 틀린 부모 칸")
+	end
+
+	-- (5) 힙으로 조립 — 넣기(맨 뒤에 붙이고 올림)·꺼내기(뿌리와 맨 뒤를 맞바꾸고 떼고 내림)를 무작위로, 배열식
+	--     (`Heap`)과 **같은 순서로 나오는지**. 그리고 노드식만의 것: 쥔 노드의 값을 고치기, 가운데 노드를 빼기.
+	do
+		local seed = 987
+		local function rand(limit: number): number
+			seed = (seed * 48271) % 2147483647
+			return seed % limit
+		end
+		for round = 1, 60 do
+			local root: N? = nil
+			local count = 0
+			const model = stl.Heap.New(less)
+			const live: { N } = {} -- 쥐고 있는 노드들(순서 없음)
+			local function settle(label: string)
+				assert(Complete.IsComplete(root, count), `{label} {round}: 모양`)
+				assert(Complete.IsHeap(root, less), `{label} {round}: 힙 순서`)
+				assert(count == stl.Heap.Len(model) and count == #live, `{label} {round}: 개수`)
+				if root ~= nil then
+					assert(Binary.Value(root) == stl.Heap.Peek(model), `{label} {round}: 꼭대기`)
+				end
+			end
+			local function push(value: number)
+				const node = Binary.New(value)
+				root = Complete.SiftUp(Complete.Append(root, count, node), node, less)
+				count += 1
+				table.insert(live, node)
+				stl.Heap.Push(model, value)
+			end
+			-- 쥔 노드 하나를 뺌(뿌리든 가운데든): 맨 뒤와 자리를 바꾸고 떼고, 그 자리에 온 노드를 올리거나 내림
+			local function remove(node: N)
+				const last = Complete.At(root, count) :: N
+				local top = Complete.Exchange(root :: N, node, last)
+				const afterRoot, removed = Complete.RemoveLast(top, count)
+				assert(removed == node, `remove {round}: 뗀 것이 그 노드가 아님`)
+				count -= 1
+				root = afterRoot
+				if root ~= nil and last ~= node then
+					root = Complete.SiftDown(Complete.SiftUp(root, last, less), last, less)
+				end
+				table.remove(live, table.find(live, node) :: number)
+			end
+			for step = 1, 300 do
+				const roll = rand(10)
+				if roll < 5 or count == 0 then
+					push(rand(50) * 10) -- 중복이 섞이게
+				elseif roll < 8 then
+					-- 꺼내기: 배열식과 같은 값이 나와야 함
+					const top = root :: N
+					const want = stl.Heap.Pop(model)
+					assert(Binary.Value(top) == want, `Pop {round}/{step}: {Binary.Value(top)}, 기대 {want}`)
+					remove(top)
+				elseif roll < 9 then
+					-- 쥔 노드의 값을 고침(우선순위 바꾸기) — 모델은 다시 지음
+					const node = live[1 + rand(#live)]
+					Binary.SetValue(node, rand(50) * 10)
+					root = Complete.SiftDown(Complete.SiftUp(root :: N, node, less), node, less)
+					const values: { number } = {}
+					for idx, held in live do
+						values[idx] = Binary.Value(held)
+					end
+					stl.Heap.Clear(model)
+					for _, value in values do
+						stl.Heap.Push(model, value)
+					end
+				else
+					-- 가운데 노드를 뺌 — 모델은 다시 지음
+					const node = live[1 + rand(#live)]
+					remove(node)
+					stl.Heap.Clear(model)
+					for _, held in live do
+						stl.Heap.Push(model, Binary.Value(held))
+					end
+				end
+				settle(`걸음 {step}`)
+			end
+			-- 남은 것을 다 꺼내면 정렬 순서
+			local previous = -math.huge
+			while root ~= nil do
+				const top = root :: N
+				assert(Binary.Value(top) >= previous, `마무리 {round}: 순서`)
+				previous = Binary.Value(top)
+				assert(previous == stl.Heap.Pop(model), `마무리 {round}: 배열식과 다름`)
+				remove(top)
+			end
+			assert(count == 0 and #live == 0, `마무리 {round}: 남음`)
+		end
+	end
+
+	-- (6) 같은 키는 넘지 않음(걸음마다 연결을 열 군데쯤 고치니 쓸데없이 옮기면 비쌉니다)
+	do
+		const a, b, c, d = Binary.New(10), Binary.New(30), Binary.New(20), Binary.New(30)
+		local root: N? = nil
+		for idx, node in { a, b, c, d } do
+			root = Complete.Append(root, idx - 1, node)
+		end
+		root = Complete.SiftUp(root :: N, d, less)
+		assert(
+			Complete.At(root, 4) == d and Complete.At(root, 2) == b,
+			"SiftUp 은 같은 키의 부모를 넘지 않음"
+		)
+		Binary.SetValue(a, 20) -- 뿌리 20, 자식 30·20: 같은 키(오른쪽 20) 아래로 안 내려감
+		root = Complete.SiftDown(root :: N, a, less)
+		assert(root == a and Complete.At(root, 3) == c, "SiftDown 은 같은 키의 자식 아래로 안 내려감")
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (트리부·Node 도구) ===")
 
