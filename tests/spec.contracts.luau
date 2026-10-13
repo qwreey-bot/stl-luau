@@ -3218,7 +3218,7 @@ do
 	assert(stl.Balance ~= nil and type(stl.Balance.Expect) == "function", "stl.Balance")
 	assert(stl.Balance.Expect(nil, stl.RedBlack, "X: Y") == stl.RedBlack, "Expect(nil) 은 fallback")
 	assert(stl.Balance.Expect(stl.Avl, stl.RedBlack, "X: Y") == stl.Avl, "Expect 는 받은 것을 그대로")
-	for _, missing in { "Insert", "Remove", "FromSorted", "Clone" } do
+	for _, missing in { "Insert", "Remove", "Join", "AsRoot", "FromSorted", "Clone" } do
 		const partial: any = table.clone(stl.Avl)
 		partial[missing] = nil
 		const ok, err = pcall(function()
@@ -3229,7 +3229,7 @@ do
 			not ok
 				and string.find(
 					tostring(err),
-					"Probe: New needs a balance scheme with Insert, Remove, FromSorted and Clone",
+					"Probe: New needs a balance scheme with Insert, Remove, Join, AsRoot, FromSorted and Clone",
 					1,
 					true
 				),

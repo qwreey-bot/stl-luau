@@ -89,12 +89,12 @@ src/
   Trees/           ⭐ 2층 트리부 — 노드 도구로 짠 균형 방식. 컨테이너가 아니라 뿌리 노드를 받는 함수들
     Search.luau      탐색 트리 노드의 칸 배치(이진 + `5` = 키, `6` = 균형 정보), Key·Value·Next·Prev·First·Last,
                      균형 방식과 무관한 공유 조각(Find·LowerBound·UpperBound·Clone)
-    Balance.luau     자가 균형의 계약(Balance.Scheme)과 조립하는 쪽의 인자 확인(Balance.Expect)
+    Balance.luau     자가 균형의 계약(Balance.Scheme)과 인자 확인(Balance.Expect), 그 계약의 Join 위에 선 Split(부분 떼어내기)
     CompleteArray.luau  배열에 담은 완전 이진 트리 — 자리 계산(Parent·Left·Right·Height), 힙 순서(SiftUp·SiftDown·Heapify·IsHeap)
     CompleteNode.luau   노드로 이은 완전 이진 트리 — At·Append·RemoveLast·Exchange, 힙 순서(SiftUp·SiftDown — 노드를 다시 이음)
     SortedArray.luau    정렬 배열로 된 탐색 구조 — Locate, 밀고 당기는 InsertAt·RemoveAt (FlatMap 이 조립해 씀)
     Traverse.luau    순회자 — PreOrder·InOrder·PostOrder·LevelOrder (받은 부분 트리 안에서만, 스택 없이 부모 칸으로)
-    RedBlack.luau    레드블랙 — Insert·Remove·FromSorted (제품의 기본)
+    RedBlack.luau    레드블랙 — Insert·Remove·Join·FromSorted (제품의 기본)
     Avl.luau         AVL — 같은 표면
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
   Fut.luau         코루틴 래퍼(프로미스). provider, 다중 반환, All → Arr

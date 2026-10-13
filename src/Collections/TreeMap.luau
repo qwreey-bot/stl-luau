@@ -375,6 +375,87 @@ const function Clone<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
 	return newMap((self.balance :: any).Clone(self.root), self.size, self.compare, self.balance)
 end
 
+--#region ----------- 가르기·잇기 -----------
+-- 균형 방식의 `Join` 과 그 위의 `Balance.Split`(2층)을 조립합니다 — 노드를 새로 만들지 않고 다시 잇습니다.
+
+-- 두 트리를 **번갈아 한 걸음씩** 세다가 먼저 끝나는 쪽으로 `high` 의 노드 수를 정합니다(전체 `total` 을 알고 있음).
+-- 노드에 부분 크기를 두지 않아(넣기 1.1~1.3배·지우기 1.5~2배 — perf 45절) 세어야 하는데, 작은 쪽만큼만 셉니다.
+const function countHigh(low: any, high: any, total: number): number
+	local lowAt: any = if low ~= nil then firstOf(low) else nil
+	local highAt: any = if high ~= nil then firstOf(high) else nil
+	local counted = 0
+	while true do
+		if lowAt == nil then
+			return total - counted
+		elseif highAt == nil then
+			return counted
+		end
+		counted += 1
+		lowAt = nextOf(lowAt)
+		highAt = nextOf(highAt)
+	end
+end
+
+-- **`key` 이상인 키들을 떼어 새 맵으로** 돌려줍니다. 이 맵에는 `key` 미만만 남습니다(Rust `split_off`).
+-- O(log n + 작은 쪽의 크기) — 노드를 새로 만들지 않고 다시 잇습니다(쥐고 있던 노드는 둘 중 한 맵에 살아 있음).
+-- 새 맵은 같은 비교자·균형 방식. `key` 가 맵에 없어도 됩니다(그 자리에서 가름). `nil`·NaN 키는 에러.
+-- ⚠️ 비교자가 도중에 던지면 이 맵은 깨진 채입니다(약속하지 않는 상태 — 규약의 예외 안전성).
+const function SplitOff<K, V>(self: TreeMapData<K, V>, key: K): TreeMap<K, V>
+	if unusable(key) then
+		rejectKey(key)
+	end
+	const scheme: any = self.balance
+	const low, found, rest = Balance.Split(scheme, self.root, key, self.compare)
+	const high = if found ~= nil then scheme.Join(nil, found, rest) else rest
+	const total = self.size
+	const moved = countHigh(low, high, total)
+	self.root = low
+	self.size = total - moved
+	return newMap(high, moved, self.compare, self.balance)
+end
+
+-- **`other` 의 전부를 이 맵 뒤에 잇고** 이 맵을 돌려줍니다 — `other` 의 모든 키가 이 맵의 모든 키보다 커야 합니다
+-- (아니면 에러: 겹치는 맵을 합치는 것은 `Merge`). `other` 는 빈 맵이 됩니다(노드가 이쪽으로 옮겨 옴).
+-- O(log n) — 원소를 하나씩 옮기지 않습니다. 두 맵은 같은 비교자·같은 균형 방식이어야 합니다.
+const function Join<K, V>(self: TreeMapData<K, V>, other: TreeMapData<K, V>): TreeMap<K, V>
+	const rest: any = other
+	if type(rest) ~= "table" or rawget(rest, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(rest)
+		Common.raise(`TreeMap: Join needs another TreeMap, got {if kind then kind.name else typeof(rest)}`)
+	end
+	if rest == self then
+		Common.raise("TreeMap: Join needs two different maps")
+	end
+	if self.compare ~= rest.compare then
+		Common.raise("TreeMap: maps use different comparators")
+	end
+	if self.balance ~= rest.balance then
+		Common.raise("TreeMap: maps use different balance schemes")
+	end
+	const high: any = rest.root
+	if high == nil then
+		return self :: any
+	end
+	const low: any = self.root
+	const scheme: any = self.balance
+	if low == nil then
+		self.root = high
+	else
+		const first = firstOf(high)
+		if self.compare(lastOf(low)[KEY], first[KEY]) >= 0 then
+			Common.raise("TreeMap: Join needs every key of the second map to be greater than every key of the first")
+		end
+		-- 뒤쪽의 가장 작은 노드를 떼어 가운데 노드로 씁니다
+		self.root = scheme.Join(low, first, scheme.Remove(high, first))
+	end
+	self.size += rest.size
+	rest.root = nil
+	rest.size = 0
+	return self :: any
+end
+
+--#endregion
+
 --#endregion
 
 --#region ----------- 생성자 -----------
@@ -476,6 +557,7 @@ const TreeMapModule = {
 	RangeRecords = RangeRecords, Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set,
 	Records = Records,
 	LowerKey = LowerKey, HigherKey = HigherKey, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
+	SplitOff = SplitOff, Join = Join,
 }
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지

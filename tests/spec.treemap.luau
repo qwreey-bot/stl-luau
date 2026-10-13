@@ -706,6 +706,441 @@ do
 	)
 end
 
+print("=== 가르기·잇기 — SplitOff·Join, 맵·셋 다섯 종류에 같은 시나리오 (2026-10-14) ===")
+do
+	const cmp = stl.Common.compareNumber
+	const FlatMap, TreeSet, FlatSet, Binary = stl.FlatMap, stl.TreeSet, stl.FlatSet, stl.Node.Binary
+	-- 트리 판의 구조 검사: 부모 칸, 순서, 노드 수 = size, 높이가 로그
+	local function soundTree(root: any, size: number, label: string)
+		local count, last: number? = 0, nil
+		local function walk(node: any, parent: any)
+			if node == nil then
+				return
+			end
+			assert(node[4] == parent, `{label}: {node[5]} 의 부모 칸`)
+			walk(node[2], node)
+			assert(last == nil or last < node[5], `{label}: 순서`)
+			last = node[5]
+			count += 1
+			walk(node[3], node)
+		end
+		assert(root == nil or root[4] == nil, `{label}: 뿌리의 부모`)
+		walk(root, nil)
+		assert(count == size, `{label}: size {size} ~= 노드 수 {count}`)
+		assert(Binary.Height(root) <= 2 * math.log(count + 1, 2) + 1e-9, `{label}: 높이 {Binary.Height(root)}`)
+	end
+	-- 배열 판의 구조 검사: 순서, size 밖 칸이 비었는지
+	local function soundFlat(map: any, label: string)
+		for idx = 2, map.size do
+			assert(map.records[idx - 1].key < map.records[idx].key, `{label}: 순서`)
+		end
+		assert(map.records[map.size + 1] == nil and #map.records == map.size, `{label}: size 밖 칸`)
+	end
+	type Kind = {
+		name: string,
+		head: string, -- 에러 메시지의 머리
+		noun: string, -- 메시지의 "maps"/"sets"
+		each: string, -- "key"/"item"
+		new: (compare: any?) -> any,
+		put: (c: any, key: number) -> (),
+		drop: (c: any, key: number) -> (),
+		keys: (c: any) -> { number },
+		len: (c: any) -> number,
+		splitOff: (c: any, key: any) -> any,
+		join: (c: any, other: any) -> any,
+		sound: (c: any, label: string) -> (),
+		other: () -> any, -- 종류가 다른 것(에러 확인용)
+	}
+	const kinds: { Kind } = {
+		{
+			name = "TreeMap(레드블랙)",
+			head = "TreeMap",
+			noun = "maps",
+			each = "key",
+			new = function(compare)
+				return TreeMap.New(compare or cmp)
+			end,
+			put = function(c, key)
+				TreeMap.Set(c, key, key + 1)
+			end,
+			drop = function(c, key)
+				TreeMap.Remove(c, key)
+			end,
+			keys = TreeMap.Keys,
+			len = TreeMap.Len,
+			splitOff = TreeMap.SplitOff,
+			join = TreeMap.Join,
+			sound = function(c, label)
+				soundTree(c.root, c.size, label)
+			end,
+			other = function()
+				return FlatMap.New(cmp)
+			end,
+		},
+		{
+			name = "TreeMap(AVL)",
+			head = "TreeMap",
+			noun = "maps",
+			each = "key",
+			new = function(compare)
+				return TreeMap.New(compare or cmp, stl.Avl)
+			end,
+			put = function(c, key)
+				TreeMap.Set(c, key, key + 1)
+			end,
+			drop = function(c, key)
+				TreeMap.Remove(c, key)
+			end,
+			keys = TreeMap.Keys,
+			len = TreeMap.Len,
+			splitOff = TreeMap.SplitOff,
+			join = TreeMap.Join,
+			sound = function(c, label)
+				soundTree(c.root, c.size, label)
+			end,
+			other = function()
+				return TreeSet.New(cmp)
+			end,
+		},
+		{
+			name = "FlatMap",
+			head = "FlatMap",
+			noun = "maps",
+			each = "key",
+			new = function(compare)
+				return FlatMap.New(compare or cmp)
+			end,
+			put = function(c, key)
+				FlatMap.Set(c, key, key + 1)
+			end,
+			drop = function(c, key)
+				FlatMap.Remove(c, key)
+			end,
+			keys = FlatMap.Keys,
+			len = FlatMap.Len,
+			splitOff = FlatMap.SplitOff,
+			join = FlatMap.Join,
+			sound = soundFlat,
+			other = function()
+				return TreeMap.New(cmp)
+			end,
+		},
+		{
+			name = "TreeSet",
+			head = "TreeSet",
+			noun = "sets",
+			each = "item",
+			new = function(compare)
+				return TreeSet.New(compare or cmp)
+			end,
+			put = function(c, key)
+				TreeSet.Add(c, key)
+			end,
+			drop = function(c, key)
+				TreeSet.Remove(c, key)
+			end,
+			keys = TreeSet.Items,
+			len = TreeSet.Len,
+			splitOff = TreeSet.SplitOff,
+			join = TreeSet.Join,
+			sound = function(c, label)
+				soundTree(c.map.root, c.map.size, label)
+			end,
+			other = function()
+				return FlatSet.New(cmp)
+			end,
+		},
+		{
+			name = "FlatSet",
+			head = "FlatSet",
+			noun = "sets",
+			each = "item",
+			new = function(compare)
+				return FlatSet.New(compare or cmp)
+			end,
+			put = function(c, key)
+				FlatSet.Add(c, key)
+			end,
+			drop = function(c, key)
+				FlatSet.Remove(c, key)
+			end,
+			keys = FlatSet.Items,
+			len = FlatSet.Len,
+			splitOff = FlatSet.SplitOff,
+			join = FlatSet.Join,
+			sound = function(c, label)
+				soundFlat(c.map, label)
+			end,
+			other = function()
+				return TreeSet.New(cmp)
+			end,
+		},
+	}
+	local function list(keys: { number }): string
+		return table.concat(keys, ",")
+	end
+	for _, kind in kinds do
+		const name = kind.name
+		local function filled(from: number, to: number): any
+			const c = kind.new()
+			-- 넣는 순서를 흩음(짝수 번째를 뒤에서부터, 그다음 홀수 번째를 앞에서부터)
+			for key = to, from, -1 do
+				if (key - from) % 2 == 0 then
+					kind.put(c, key * 10)
+				end
+			end
+			for key = from, to do
+				if (key - from) % 2 == 1 then
+					kind.put(c, key * 10)
+				end
+			end
+			return c
+		end
+		local function expect(c: any, want: string, label: string)
+			assert(list(kind.keys(c)) == want, `{name} {label}: {list(kind.keys(c))}, 기대 {want}`)
+			kind.sound(c, `{name} {label}`)
+		end
+
+		-- (1) SplitOff — 키 사이, 있는 키(그 키는 떼어 낸 쪽으로), 맨 앞보다 작게(전부 떼어 냄), 맨 뒤보다 크게(빈 것), 빈 것
+		do
+			const low = filled(1, 10)
+			const high = kind.splitOff(low, 55)
+			expect(low, "10,20,30,40,50", "키 사이: 남은 쪽")
+			expect(high, "60,70,80,90,100", "키 사이: 떼어 낸 쪽")
+			assert(kind.len(low) == 5 and kind.len(high) == 5, `{name} 크기`)
+			-- 둘은 따로 놂: 한쪽을 고쳐도 다른 쪽은 그대로
+			kind.put(low, 25)
+			kind.drop(high, 80)
+			kind.put(high, 85)
+			expect(low, "10,20,25,30,40,50", "가른 뒤 남은 쪽을 고침")
+			expect(high, "60,70,85,90,100", "가른 뒤 떼어 낸 쪽을 고침")
+			const onKey = kind.splitOff(low, 30)
+			expect(low, "10,20,25", "있는 키: 남은 쪽")
+			expect(onKey, "30,40,50", "있는 키는 떼어 낸 쪽으로")
+			const all = kind.splitOff(low, 5)
+			expect(low, "", "맨 앞보다 작게: 전부 떼어 냄")
+			expect(all, "10,20,25", "맨 앞보다 작게: 떼어 낸 쪽")
+			const none = kind.splitOff(all, 999)
+			expect(all, "10,20,25", "맨 뒤보다 크게: 그대로")
+			expect(none, "", "맨 뒤보다 크게: 빈 것")
+			const fromEmpty = kind.splitOff(low, 10)
+			expect(fromEmpty, "", "빈 것을 가름")
+			-- 한쪽이 훨씬 큰 경우(크기를 "작은 쪽만 세서" 정하는 길의 양쪽)
+			const big = filled(1, 300)
+			const tail = kind.splitOff(big, 2985)
+			assert(
+				kind.len(big) == 298 and kind.len(tail) == 2,
+				`{name} 뒤가 작음: {kind.len(big)}/{kind.len(tail)}`
+			)
+			kind.sound(big, `{name} 뒤가 작음`)
+			const rest = kind.splitOff(big, 25)
+			assert(
+				kind.len(big) == 2 and kind.len(rest) == 296,
+				`{name} 앞이 작음: {kind.len(big)}/{kind.len(rest)}`
+			)
+			kind.sound(rest, `{name} 앞이 작음`)
+		end
+
+		-- (2) Join — 뒤에 잇기. 상대는 빈 것이 됨. 빈 것과 잇기(양쪽), 이은 뒤에도 넣고 빼기
+		do
+			const low, high = filled(1, 4), filled(5, 9)
+			assert(kind.join(low, high) == low, `{name} Join 은 자기 자신을 돌려줌`)
+			expect(low, "10,20,30,40,50,60,70,80,90", "Join")
+			expect(high, "", "Join 뒤 상대는 빈 것")
+			kind.put(high, 7)
+			expect(high, "7", "비워진 상대도 다시 쓸 수 있음")
+			kind.drop(low, 50)
+			kind.put(low, 55)
+			expect(low, "10,20,30,40,55,60,70,80,90", "이은 뒤 고침")
+			const empty = kind.new()
+			kind.join(low, empty)
+			expect(low, "10,20,30,40,55,60,70,80,90", "빈 것을 이음")
+			kind.join(empty, low)
+			expect(empty, "10,20,30,40,55,60,70,80,90", "빈 것에 이음")
+			expect(low, "", "빈 것에 이은 뒤 상대")
+			-- 가르고 다시 이으면 원래대로
+			const again = kind.splitOff(empty, 40)
+			kind.join(empty, again)
+			expect(empty, "10,20,30,40,55,60,70,80,90", "가르고 다시 이음")
+		end
+
+		-- (3) 에러 — 메시지와 사용자 줄. 실패한 뒤 두 쪽 다 그대로
+		do
+			local where = 0
+			const low, high = filled(1, 3), filled(3, 5) -- 30 이 겹침
+			const sites: { { want: string, call: () -> () } } = {
+				{
+					want = `{kind.head}: Join needs every {kind.each} of the second`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(low, high)
+					end,
+				},
+				{
+					want = `{kind.head}: Join needs every {kind.each} of the second`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(high, filled(1, 2)) -- 뒤의 것이 전부 작음
+					end,
+				},
+				{
+					want = `{kind.head}: Join needs two different {kind.noun}`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(low, low)
+					end,
+				},
+				{
+					want = `{kind.head}: Join needs another {kind.head}, got`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(low, kind.other())
+					end,
+				},
+				{
+					want = `{kind.head}: Join needs another {kind.head}, got nil`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(low, nil)
+					end,
+				},
+				{
+					want = `{kind.head}: {kind.noun} use different comparators`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(
+							low,
+							kind.new(function(a: number, b: number): number
+								return a - b
+							end)
+						)
+					end,
+				},
+				{
+					want = `{kind.head}: nil {kind.each}`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.splitOff(low, nil)
+					end,
+				},
+				{
+					want = `{kind.head}: NaN {kind.each}`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.splitOff(low, 0 / 0)
+					end,
+				},
+			}
+			for _, site in sites do
+				const ok, err = pcall(site.call)
+				assert(not ok and string.find(tostring(err), site.want, 1, true), `{name} {site.want}: {err}`)
+				assert(string.find(tostring(err), `spec.treemap.luau:{where}:`, 1, true), `{name} 사용자 줄: {err}`)
+				expect(low, "10,20,30", "실패한 뒤 앞의 것")
+				expect(high, "30,40,50", "실패한 뒤 뒤의 것")
+			end
+		end
+
+		-- (4) 무작위: 정렬된 모델과 대조 — 가르고, 양쪽을 고치고, 다시 잇고
+		do
+			local seed = 4004
+			local function rand(limit: number): number
+				seed = (seed * 48271) % 2147483647
+				return seed % limit
+			end
+			for round = 1, 8 do
+				const whole = kind.new()
+				const model: { [number]: boolean } = {}
+				local function sorted(from: number, to: number): string
+					const keys: { number } = {}
+					for key in model do
+						if key >= from and key < to then
+							table.insert(keys, key)
+						end
+					end
+					table.sort(keys)
+					return list(keys)
+				end
+				for _ = 1, 150 do
+					const key = rand(400) * 10
+					kind.put(whole, key)
+					model[key] = true
+				end
+				for step = 1, 40 do
+					const cut = rand(820) * 5
+					const high = kind.splitOff(whole, cut)
+					expect(whole, sorted(-1, cut), `무작위 {round}/{step} 남은 쪽`)
+					expect(high, sorted(cut, math.huge), `무작위 {round}/{step} 떼어 낸 쪽`)
+					-- 양쪽을 고침(각자의 구간 안에서)
+					for _ = 1, 8 do
+						const lowKey, highKey = rand(math.max(1, cut // 10)) * 10, (cut // 10 + 1 + rand(60)) * 10
+						if lowKey < cut then
+							if rand(2) == 0 then
+								kind.put(whole, lowKey)
+								model[lowKey] = true
+							else
+								kind.drop(whole, lowKey)
+								model[lowKey] = nil
+							end
+						end
+						if rand(2) == 0 then
+							kind.put(high, highKey)
+							model[highKey] = true
+						else
+							kind.drop(high, highKey)
+							model[highKey] = nil
+						end
+					end
+					expect(whole, sorted(-1, cut), `무작위 {round}/{step} 고친 남은 쪽`)
+					expect(high, sorted(cut, math.huge), `무작위 {round}/{step} 고친 떼어 낸 쪽`)
+					kind.join(whole, high)
+					expect(whole, sorted(-1, math.huge), `무작위 {round}/{step} 이은 뒤`)
+					assert(kind.len(high) == 0, `{name} 무작위 {round}/{step}: 상대가 안 비었음`)
+				end
+			end
+		end
+	end
+	-- 균형 방식이 다른 두 TreeMap 은 못 이음(노드의 균형 칸이 서로 다른 뜻)
+	local where = 0
+	const rbMap, avlMap = TreeMap.New(cmp), TreeMap.New(cmp, stl.Avl)
+	TreeMap.Set(rbMap, 10, 1)
+	TreeMap.Set(avlMap, 20, 2)
+	const okScheme, errScheme = pcall(function()
+		where = debug.info(1, "l") + 1
+		TreeMap.Join(rbMap, avlMap)
+	end)
+	assert(
+		not okScheme and string.find(tostring(errScheme), "TreeMap: maps use different balance schemes", 1, true),
+		`균형 방식: {errScheme}`
+	)
+	assert(
+		string.find(tostring(errScheme), `spec.treemap.luau:{where}:`, 1, true),
+		`균형 방식 사용자 줄: {errScheme}`
+	)
+	const rbSet, avlSet = TreeSet.New(cmp), TreeSet.New(cmp, stl.Avl)
+	TreeSet.Add(rbSet, 10)
+	TreeSet.Add(avlSet, 20)
+	const okSetScheme, errSetScheme = pcall(function()
+		where = debug.info(1, "l") + 1
+		TreeSet.Join(rbSet, avlSet)
+	end)
+	assert(
+		not okSetScheme and string.find(tostring(errSetScheme), "TreeSet: sets use different balance schemes", 1, true),
+		`셋의 균형 방식: {errSetScheme}`
+	)
+	assert(
+		string.find(tostring(errSetScheme), `spec.treemap.luau:{where}:`, 1, true),
+		`셋의 균형 방식 사용자 줄: {errSetScheme}`
+	)
+	-- 떼어 낸 맵은 같은 균형 방식·비교자를 물려받음
+	TreeMap.Set(avlMap, 30, 3)
+	const avlHigh = TreeMap.SplitOff(avlMap, 25)
+	assert(
+		avlHigh.balance == stl.Avl :: any and avlHigh.compare == avlMap.compare,
+		"떼어 낸 맵의 균형 방식·비교자"
+	)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeMap) ===")
 

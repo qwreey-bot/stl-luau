@@ -1182,6 +1182,231 @@ do
 end
 print("PASS")
 
+print("=== 10. Join·Split — 두 트리를 잇기, 부분을 떼어 내기 (2026-10-14) ===")
+for _, scheme in
+	{
+		{ name = "RedBlack", module = stl.RedBlack :: any, balance = redBlackBalance },
+		{ name = "Avl", module = stl.Avl :: any, balance = avlBalance },
+	}
+do
+	const name, M = scheme.name, scheme.module
+	balanceOf = scheme.balance
+	-- 키 `from, from + step, …` 을 `count` 개 든 트리(값은 키 + 1). 넣는 순서를 흩어 모양이 한쪽으로 쏠리지 않게.
+	local shuffleSeed = 77
+	local function build(from: number, count: number, step: number): any
+		const keys = table.create(count) :: { number }
+		for at = 1, count do
+			keys[at] = from + (at - 1) * step
+		end
+		for at = count, 2, -1 do
+			shuffleSeed = (shuffleSeed * 48271) % 2147483647
+			const other = shuffleSeed % at + 1
+			keys[at], keys[other] = keys[other], keys[at]
+		end
+		local root: any = nil
+		for _, key in keys do
+			root = (M.Insert(root, key, key + 1, compare))
+		end
+		return root
+	end
+	local function single(key: number): any
+		return (M.Insert(nil, key, key + 1, compare))
+	end
+	local function same(got: { number }, want: { number }, label: string)
+		assert(#got == #want, `{name} {label}: {#got}개, 기대 {#want}`)
+		for at, key in want do
+			assert(got[at] == key, `{name} {label}: {at}번째 {got[at]}, 기대 {key}`)
+		end
+	end
+
+	-- (1) Join — 크기의 모든 조합(0~24 × 0~24)과 한쪽이 훨씬 큰 경우. 불변식 전부 + 키 목록
+	const sizes: { { number } } = {}
+	for left = 0, 24 do
+		for right = 0, 24 do
+			table.insert(sizes, { left, right })
+		end
+	end
+	for _, pair in
+		{
+			{ 500, 0 },
+			{ 0, 500 },
+			{ 700, 1 },
+			{ 1, 700 },
+			{ 1000, 3 },
+			{ 3, 1000 },
+			{ 900, 40 },
+			{ 40, 900 },
+			{ 513, 512 },
+		}
+	do
+		table.insert(sizes, pair)
+	end
+	for _, pair in sizes do
+		const leftCount, rightCount = pair[1], pair[2]
+		-- 왼쪽: 10, 20, …  가운데: 그다음  오른쪽: 그 뒤
+		const left = build(10, leftCount, 10)
+		const midKey = 10 + leftCount * 10
+		const mid = single(midKey)
+		const right = build(midKey + 10, rightCount, 10)
+		const heldLeft = if left ~= nil then Binary.First(left) else nil
+		const heldRight = if right ~= nil then Binary.Last(right) else nil
+		const joined = M.Join(left, mid, right)
+		const keys = check(joined, `Join {leftCount}+1+{rightCount}`)
+		const want: { number } = {}
+		for at = 1, leftCount + 1 + rightCount do
+			want[at] = at * 10
+		end
+		same(keys, want, `Join {leftCount}+1+{rightCount}`)
+		-- 노드는 그대로(새로 만들지 않음): 가운데 노드, 양쪽에서 쥐고 있던 노드
+		assert(stl.Search.Find(joined, midKey, compare) == mid, `{name} Join: 가운데 노드가 그 노드가 아님`)
+		assert(heldLeft == nil or stl.Search.First(joined) == heldLeft, `{name} Join: 왼쪽 끝 노드`)
+		assert(heldRight == nil or stl.Search.Last(joined) == heldRight, `{name} Join: 오른쪽 끝 노드`)
+		assert(stl.Search.Value(mid) == midKey + 1, `{name} Join: 가운데 노드의 값`)
+	end
+
+	-- (2) Split — 크기 0~40 의 트리를 **모든 자리**에서(있는 키, 키 사이, 맨 앞보다 작게, 맨 뒤보다 크게)
+	for count = 0, 40 do
+		for probe = 5, count * 10 + 15, 5 do
+			const root = build(10, count, 10)
+			const held: any = if root ~= nil then (stl.Search.Find :: any)(root, probe, compare) else nil
+			const small, found, large = stl.Balance.Split(M, root, probe, compare)
+			const smallKeys = check(small, `Split {count}@{probe} 작은 쪽`)
+			const largeKeys = check(large, `Split {count}@{probe} 큰 쪽`)
+			const wantSmall: { number }, wantLarge: { number } = {}, {}
+			for at = 1, count do
+				const key = at * 10
+				if key < probe then
+					table.insert(wantSmall, key)
+				elseif key > probe then
+					table.insert(wantLarge, key)
+				end
+			end
+			same(smallKeys, wantSmall, `Split {count}@{probe} 작은 쪽`)
+			same(largeKeys, wantLarge, `Split {count}@{probe} 큰 쪽`)
+			const exists = probe % 10 == 0 and probe >= 10 and probe <= count * 10
+			assert((found ~= nil) == exists, `{name} Split {count}@{probe}: 찾은 노드`)
+			if found ~= nil then
+				assert(
+					found == held and found[5] == probe and found[1] == probe + 1,
+					`{name} Split: 그 노드 그대로`
+				)
+				assert(
+					found[2] == nil and found[3] == nil and found[4] == nil,
+					`{name} Split: 찾은 노드는 연결이 끊김`
+				)
+			end
+		end
+	end
+	-- 빈 트리
+	do
+		const small, found, large = stl.Balance.Split(M, nil, 10, compare)
+		assert(small == nil and found == nil and large == nil, `{name} 빈 트리의 Split`)
+	end
+
+	-- (3) 무작위: 넣고 빼서 모양을 흔든 트리를 가르고, 다시 잇고, 그 뒤에도 넣기·지우기가 멀쩡한지
+	local seed = 8086
+	local function rand(limit: number): number
+		seed = (seed * 48271) % 2147483647
+		return seed % limit
+	end
+	for round = 1, 12 do
+		local root: any = nil
+		const model: { [number]: boolean } = {}
+		local function sortedModel(): { number }
+			const keys: { number } = {}
+			for key in model do
+				table.insert(keys, key)
+			end
+			table.sort(keys)
+			return keys
+		end
+		for _ = 1, 400 do
+			const key = rand(600) * 10
+			if rand(4) > 0 then
+				root = (M.Insert(root, key, key + 1, compare))
+				model[key] = true
+			else
+				const node = stl.Search.Find(root, key, compare)
+				if node ~= nil then
+					root = M.Remove(root, node)
+					model[key] = nil
+				end
+			end
+		end
+		for step = 1, 120 do
+			const probe = rand(1300) * 5 -- 있는 키·없는 키가 섞임
+			local small, found, large = stl.Balance.Split(M, root, probe, compare)
+			const all = sortedModel()
+			const wantSmall: { number }, wantLarge: { number } = {}, {}
+			for _, key in all do
+				if key < probe then
+					table.insert(wantSmall, key)
+				elseif key > probe then
+					table.insert(wantLarge, key)
+				end
+			end
+			same(check(small, `무작위 {round}/{step} 작은 쪽`), wantSmall, `무작위 {round}/{step} 작은 쪽`)
+			same(check(large, `무작위 {round}/{step} 큰 쪽`), wantLarge, `무작위 {round}/{step} 큰 쪽`)
+			assert((found ~= nil) == (model[probe] == true), `{name} 무작위 {round}/{step}: 찾은 노드`)
+			-- 가끔은 한쪽을 버림(떼어 낸 채로 계속 씀)
+			const roll = rand(10)
+			if roll == 0 then
+				root = small
+				for _, key in wantLarge do
+					model[key] = nil
+				end
+				model[probe] = nil
+			elseif roll == 1 then
+				root = large
+				for _, key in wantSmall do
+					model[key] = nil
+				end
+				model[probe] = nil
+			else
+				-- 다시 잇기: 가운데 노드가 없으면 한쪽 끝에서 하나를 떼어 가운데로
+				local mid = found
+				if mid == nil and large ~= nil then
+					mid = stl.Search.First(large)
+					large = M.Remove(large, mid)
+				elseif mid == nil and small ~= nil then
+					mid = stl.Search.Last(small)
+					small = M.Remove(small, mid)
+				end
+				if mid ~= nil then
+					root = M.Join(small, mid, large)
+				else
+					root = nil
+				end
+			end
+			same(
+				check(root, `무작위 {round}/{step} 이은 뒤`),
+				sortedModel(),
+				`무작위 {round}/{step} 이은 뒤`
+			)
+			-- 이은 트리에 넣고 빼기
+			for _ = 1, 6 do
+				const key = rand(600) * 10
+				if rand(3) > 0 then
+					root = (M.Insert(root, key, key + 1, compare))
+					model[key] = true
+				else
+					const node = stl.Search.Find(root, key, compare)
+					if node ~= nil then
+						root = M.Remove(root, node)
+						model[key] = nil
+					end
+				end
+			end
+			same(
+				check(root, `무작위 {round}/{step} 고친 뒤`),
+				sortedModel(),
+				`무작위 {round}/{step} 고친 뒤`
+			)
+		end
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (트리부·Node 도구) ===")
 

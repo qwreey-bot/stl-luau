@@ -72,6 +72,64 @@ const Next, Prev, First, Last = Search.Next, Search.Prev, Search.First, Search.L
 
 --#region ----------- 넣기 -----------
 
+-- 빨강 노드 `start` 의 부모도 빨강일 수 있을 때, 그 빨강-빨강을 위로 밀어 올리며 고치고 **새 뿌리**(검정으로 칠함)를
+-- 돌려줍니다. 잇기(`Join` 의 가운데 노드)가 씁니다. ⚠️ **`Insert` 안의 루프와 같은 코드입니다** — 넣기는 가장 뜨거운 길이라
+-- 호출 하나를 아끼려고 풀어 써 둡니다(함수로 합치니 넣기가 2% 안팎 느렸음, perf 49절). 한쪽을 고치면 다른 쪽도.
+const function fixRedRed(root: any, start: any): any
+	local top: any = root
+	local node: any = start
+	while true do
+		local above = node[PARENT]
+		if above == nil or not above[RED] then
+			break
+		end
+		const grand = above[PARENT] -- 빨강은 뿌리가 아니니 조부모가 있음
+		if grand[LEFT] == above then
+			const uncle = grand[RIGHT]
+			if uncle ~= nil and uncle[RED] then
+				above[RED] = false
+				uncle[RED] = false
+				grand[RED] = true
+				node = grand
+			else
+				if above[RIGHT] == node then
+					rotateLeft(above)
+					above = node
+				end
+				above[RED] = false
+				grand[RED] = true
+				const raised = rotateRight(grand)
+				if raised[PARENT] == nil then
+					top = raised
+				end
+				break
+			end
+		else
+			const uncle = grand[LEFT]
+			if uncle ~= nil and uncle[RED] then
+				above[RED] = false
+				uncle[RED] = false
+				grand[RED] = true
+				node = grand
+			else
+				if above[LEFT] == node then
+					rotateRight(above)
+					above = node
+				end
+				above[RED] = false
+				grand[RED] = true
+				const raised = rotateLeft(grand)
+				if raised[PARENT] == nil then
+					top = raised
+				end
+				break
+			end
+		end
+	end
+	top[RED] = false
+	return top
+end
+
 -- 키-값을 넣고 `(새 뿌리, 그 키의 노드, 새로 만들었나)` 를 돌려줍니다. 키가 이미 있으면 값만 바꿉니다
 -- (구조는 그대로, 셋째 반환 `false`). 회전은 최대 2번.
 const function Insert<K, V>(
@@ -102,7 +160,7 @@ const function Insert<K, V>(
 	else
 		parent[RIGHT] = fresh
 	end
-	-- 빨강-빨강을 위로 밀어 올리며 고칩니다
+	-- 빨강-빨강을 위로 밀어 올리며 고칩니다(아래 루프는 위 `fixRedRed` 와 같은 코드 — 한쪽을 고치면 다른 쪽도)
 	local top: any = root
 	local node: any = fresh
 	while true do
@@ -292,6 +350,105 @@ end
 
 --#endregion
 
+--#region ----------- 잇기 -----------
+
+-- 부분 트리의 검정 높이(뿌리에서 잎까지의 검정 노드 수 — 왼쪽 등뼈로 셈). 빈 트리는 0.
+const function blackHeight(node: any): number
+	local count = 0
+	while node ~= nil do
+		if not node[RED] then
+			count += 1
+		end
+		node = node[LEFT]
+	end
+	return count
+end
+
+-- 부모에서 떼어 낸 부분 트리의 뿌리(없으면 `nil`)를 홀로 선 트리의 뿌리로: 검정으로 칠합니다(빨강 뿌리는 규칙 위반.
+-- 검정으로 칠하면 그 트리의 검정 높이만 하나 늘 뿐 나머지 규칙은 그대로).
+const function AsRoot<K, V>(node: RbNode<K, V>?): RbNode<K, V>?
+	if node ~= nil then
+		(node :: any)[RED] = false
+	end
+	return node
+end
+
+-- **두 트리와 가운데 노드를 하나로 잇습니다**: `left` 의 모든 키 < `mid` 의 키 < `right` 의 모든 키여야 합니다
+-- (검사하지 않음 — 호출자 책임). `left`·`right` 는 뿌리(부모 없음, 비었으면 `nil`), `mid` 는 어느 트리에도 속하지
+-- 않은 노드 하나. 새 뿌리를 돌려줍니다. 두 트리의 **검정 높이 차만큼**만 걸립니다 — O(log n).
+-- 높은 쪽의 등뼈를 따라 검정 높이가 같아지는 자리까지 내려가, 거기에 `mid` 를 빨강으로 끼우고(한쪽 자식은 그
+-- 자리에 있던 부분 트리, 다른 쪽은 낮은 트리) 넣기와 같은 방법으로 빨강-빨강을 고칩니다.
+-- `Balance.Split` 이 이것 위에 섭니다(부분을 떼어 내기). 뿌리가 빨강인 부분 트리를 넘겨도 됩니다(검정으로 칠함).
+const function Join<K, V>(left: RbNode<K, V>?, mid: RbNode<K, V>, right: RbNode<K, V>?): RbNode<K, V>
+	const low: any, center: any, high: any = left, mid, right
+	if low ~= nil then
+		low[RED] = false
+	end
+	if high ~= nil then
+		high[RED] = false
+	end
+	const lowHeight, highHeight = blackHeight(low), blackHeight(high)
+	if lowHeight == highHeight then
+		center[LEFT] = low
+		center[RIGHT] = high
+		center[PARENT] = nil
+		center[RED] = false
+		if low ~= nil then
+			low[PARENT] = center
+		end
+		if high ~= nil then
+			high[PARENT] = center
+		end
+		return center
+	end
+	center[RED] = true
+	if lowHeight > highHeight then
+		-- 왼쪽이 높음: 왼쪽 트리의 오른쪽 등뼈에서 검정 높이가 `highHeight` 인 검정 자리(없으면 빈 자리)를 찾음
+		local above: any, spot: any = nil, low
+		local height = lowHeight
+		while spot ~= nil and (spot[RED] or height ~= highHeight) do
+			if not spot[RED] then
+				height -= 1
+			end
+			above = spot
+			spot = spot[RIGHT]
+		end
+		center[LEFT] = spot
+		center[RIGHT] = high
+		center[PARENT] = above
+		above[RIGHT] = center
+		if spot ~= nil then
+			spot[PARENT] = center
+		end
+		if high ~= nil then
+			high[PARENT] = center
+		end
+		return fixRedRed(low, center)
+	end
+	local above: any, spot: any = nil, high
+	local height = highHeight
+	while spot ~= nil and (spot[RED] or height ~= lowHeight) do
+		if not spot[RED] then
+			height -= 1
+		end
+		above = spot
+		spot = spot[LEFT]
+	end
+	center[LEFT] = low
+	center[RIGHT] = spot
+	center[PARENT] = above
+	above[LEFT] = center
+	if spot ~= nil then
+		spot[PARENT] = center
+	end
+	if low ~= nil then
+		low[PARENT] = center
+	end
+	return fixRedRed(high, center)
+end
+
+--#endregion
+
 --#region ----------- 한 번에 짓기·베끼기 -----------
 
 -- **정렬된** 목록에서 O(n) 으로 짓습니다(`keys[i]`·`values[i]`, `1..count` — 키가 오름차순이고 중복이
@@ -324,7 +481,7 @@ end
 const RedBlackModule = {
 	Find = Find, LowerBound = LowerBound, UpperBound = UpperBound,
 	Next = Next, Prev = Prev, First = First, Last = Last,
-	Insert = Insert, Remove = Remove,
+	Insert = Insert, Remove = Remove, Join = Join, AsRoot = AsRoot,
 	FromSorted = FromSorted, Clone = Clone,
 }
 

@@ -416,6 +416,52 @@ const function Clone<K, V>(self: FlatMapData<K, V>): FlatMap<K, V>
 	})
 end
 
+--#region ----------- 가르기·잇기 -----------
+-- `TreeMap` 과 같은 표면입니다. 배열이라 가르기는 블록 이동(O(떼어 낸 개수)), 잇기도 블록 이동(O(이어 붙인 개수)).
+
+-- **`key` 이상인 키들을 떼어 새 맵으로** 돌려줍니다. 이 맵에는 `key` 미만만 남습니다. 새 맵은 같은 비교자.
+-- 레코드는 옮겨 갑니다(새로 만들지 않음). `nil`·NaN 키는 에러.
+const function SplitOff<K, V>(self: FlatMapData<K, V>, key: K): FlatMap<K, V>
+	if unusable(key) then
+		rejectKey(key)
+	end
+	const size = self.size
+	const pos = BSearch.LowerBound(self.records, size, key, self.probe)
+	const high = SortedArray.SplitOff(self.records, size, pos)
+	self.size = pos - 1
+	return tagged({ records = high, size = size - pos + 1, compare = self.compare, probe = self.probe })
+end
+
+-- **`other` 의 전부를 이 맵 뒤에 잇고** 이 맵을 돌려줍니다 — `other` 의 모든 키가 이 맵의 모든 키보다 커야 합니다
+-- (아니면 에러). `other` 는 빈 맵이 됩니다. 두 맵은 같은 비교자여야 합니다.
+const function Join<K, V>(self: FlatMapData<K, V>, other: FlatMapData<K, V>): FlatMap<K, V>
+	const rest: any = other
+	if type(rest) ~= "table" or rawget(rest, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(rest)
+		Common.raise(`FlatMap: Join needs another FlatMap, got {if kind then kind.name else typeof(rest)}`)
+	end
+	if rest == self then
+		Common.raise("FlatMap: Join needs two different maps")
+	end
+	if self.compare ~= rest.compare then
+		Common.raise("FlatMap: maps use different comparators")
+	end
+	const size, restSize = self.size, rest.size
+	if restSize == 0 then
+		return self :: any
+	end
+	if size > 0 and self.compare(self.records[size].key, rest.records[1].key) >= 0 then
+		Common.raise("FlatMap: Join needs every key of the second map to be greater than every key of the first")
+	end
+	SortedArray.Append(self.records, size, rest.records, restSize)
+	self.size = size + restSize
+	table.clear(rest.records)
+	rest.size = 0
+	return self :: any
+end
+
+--#endregion
+
 --#endregion
 
 --#region ----------- 타입 -----------
@@ -538,6 +584,7 @@ const FlatMapModule = {
 	RangeRecords = RangeRecords, Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set,
 	Records = Records,
 	LowerKey = LowerKey, HigherKey = HigherKey, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
+	SplitOff = SplitOff, Join = Join,
 }
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지

@@ -199,6 +199,75 @@ end
 
 --#endregion
 
+--#region ----------- 잇기 -----------
+
+-- 부모에서 떼어 낸 부분 트리의 뿌리(없으면 `nil`)를 홀로 선 트리의 뿌리로: AVL 은 할 일이 없습니다(부분 트리의 높이
+-- 칸은 이미 맞음). 균형 계약의 모양을 맞추려고 있습니다.
+const function AsRoot<K, V>(node: AvlNode<K, V>?): AvlNode<K, V>?
+	return node
+end
+
+-- **두 트리와 가운데 노드를 하나로 잇습니다**: `left` 의 모든 키 < `mid` 의 키 < `right` 의 모든 키여야 합니다
+-- (검사하지 않음 — 호출자 책임). `left`·`right` 는 뿌리(부모 없음, 비었으면 `nil`), `mid` 는 어느 트리에도 속하지
+-- 않은 노드 하나. 새 뿌리를 돌려줍니다. 두 트리의 **높이 차만큼**만 걸립니다 — O(log n).
+-- 높은 쪽의 등뼈를 따라 높이가 낮은 쪽과 비슷해지는 자리(차이 1 이하)까지 내려가 거기에 `mid` 를 끼우고, 넣기와
+-- 같은 방법으로 위로 올라가며 균형을 잡습니다. `Balance.Split` 이 이것 위에 섭니다(부분을 떼어 내기).
+const function Join<K, V>(left: AvlNode<K, V>?, mid: AvlNode<K, V>, right: AvlNode<K, V>?): AvlNode<K, V>
+	const low: any, center: any, high: any = left, mid, right
+	const lowHeight, highHeight = heightOf(low), heightOf(high)
+	if lowHeight > highHeight + 1 then
+		-- 왼쪽이 높음: 왼쪽 트리의 오른쪽 등뼈를 따라 내려감
+		local above: any, spot: any = nil, low
+		while heightOf(spot) > highHeight + 1 do
+			above = spot
+			spot = spot[RIGHT]
+		end
+		center[LEFT] = spot
+		center[RIGHT] = high
+		center[PARENT] = above
+		above[RIGHT] = center
+		if spot ~= nil then
+			spot[PARENT] = center
+		end
+		if high ~= nil then
+			high[PARENT] = center
+		end
+		refresh(center)
+		return rebalance(low, above)
+	elseif highHeight > lowHeight + 1 then
+		local above: any, spot: any = nil, high
+		while heightOf(spot) > lowHeight + 1 do
+			above = spot
+			spot = spot[LEFT]
+		end
+		center[LEFT] = low
+		center[RIGHT] = spot
+		center[PARENT] = above
+		above[LEFT] = center
+		if spot ~= nil then
+			spot[PARENT] = center
+		end
+		if low ~= nil then
+			low[PARENT] = center
+		end
+		refresh(center)
+		return rebalance(high, above)
+	end
+	center[LEFT] = low
+	center[RIGHT] = high
+	center[PARENT] = nil
+	if low ~= nil then
+		low[PARENT] = center
+	end
+	if high ~= nil then
+		high[PARENT] = center
+	end
+	refresh(center)
+	return center
+end
+
+--#endregion
+
 --#region ----------- 한 번에 짓기 -----------
 
 -- **정렬된** 목록에서 O(n) 으로 짓습니다(`keys[i]`·`values[i]`, `1..count` — 키가 오름차순이고 중복이
@@ -224,7 +293,7 @@ end
 const AvlModule = {
 	Find = Find, LowerBound = LowerBound, UpperBound = UpperBound,
 	Next = Next, Prev = Prev, First = First, Last = Last,
-	Insert = Insert, Remove = Remove,
+	Insert = Insert, Remove = Remove, Join = Join, AsRoot = AsRoot,
 	FromSorted = FromSorted, Clone = Clone,
 }
 

@@ -244,6 +244,40 @@ const function Clone<T>(self: FlatSetData<T>): FlatSet<T>
 	return tagged({ map = FlatMap.Clone(self.map) })
 end
 
+-- **`item` 이상인 원소들을 떼어 새 셋으로** 돌려줍니다(이 셋에는 미만만 남음) — `FlatMap.SplitOff`.
+const function SplitOff<T>(self: FlatSetData<T>, item: T): FlatSet<T>
+	if item == nil or item ~= item then
+		Common.raise(if item == nil then "FlatSet: nil item" else "FlatSet: NaN item")
+	end
+	return tagged({ map = FlatMap.SplitOff(self.map, item) })
+end
+
+-- **`other` 의 전부를 이 셋 뒤에 잇고** 이 셋을 돌려줍니다 — `other` 의 모든 원소가 이 셋의 모든 원소보다 커야 합니다.
+-- `other` 는 빈 셋이 됩니다. 같은 비교자.
+const function Join<T>(self: FlatSetData<T>, other: FlatSetData<T>): FlatSet<T>
+	const rest: any = other
+	if type(rest) ~= "table" or rawget(rest, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(rest)
+		Common.raise(`FlatSet: Join needs another FlatSet, got {if kind then kind.name else typeof(rest)}`)
+	end
+	const selfMap: any, restMap: any = self.map, rest.map
+	if rest == self then
+		Common.raise("FlatSet: Join needs two different sets")
+	end
+	if selfMap.compare ~= restMap.compare then
+		Common.raise("FlatSet: sets use different comparators")
+	end
+	if
+		selfMap.size > 0
+		and restMap.size > 0
+		and selfMap.compare(selfMap.records[selfMap.size].key, restMap.records[1].key) >= 0
+	then
+		Common.raise("FlatSet: Join needs every item of the second set to be greater than every item of the first")
+	end
+	FlatMap.Join(selfMap, restMap)
+	return self :: any
+end
+
 --#endregion
 
 --#region ----------- 집합 연산 (병합) -----------
@@ -528,6 +562,7 @@ const FlatSetModule = {
 	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal, Add = Add, Has = Has,
 	Remove = Remove, Items = Items,
 	LowerItem = LowerItem, HigherItem = HigherItem, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
+	SplitOff = SplitOff, Join = Join,
 }
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지

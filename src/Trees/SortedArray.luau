@@ -16,6 +16,7 @@
 	합니다:
 
 	- 찾기: `Find`·`LowerBound`·`UpperBound`·`Locate` — O(log n)(`Algorithms/BSearch` 그대로).
+	- 가르기 `SplitOff`(한 자리부터 끝까지를 새 배열로), 잇기 `Append` — 블록 이동.
 	- 끼워 넣기 `InsertAt`, 빼기 `RemoveAt` — 뒤를 한 칸 밀거나 당깁니다. O(n) 이지만 `table.move` 라 C 안에서 돌아
 	  원소 루프의 14배 빠릅니다(perf 3절). 그래서 넣기 하나가 **O(log n + n)**.
 
@@ -62,8 +63,29 @@ const function RemoveAt<E>(list: { E }, count: number, pos: number): E
 	return removed
 end
 
+-- **`pos` 부터 끝까지를 떼어 새 배열로** 돌려줍니다(원래 배열에는 `1..pos - 1` 만 남고 뒤 칸은 비움). `pos` 는
+-- `1..count + 1`(`count + 1` 이면 빈 배열). 떼어 낸 개수는 `count - pos + 1`. 블록 이동이라 O(떼어 낸 개수).
+const function SplitOff<E>(list: { E }, count: number, pos: number): { E }
+	const moved = count - pos + 1
+	const high: { E } = table.create(moved)
+	if moved > 0 then
+		table.move(list, pos, count, 1, high)
+		-- 뒤 칸을 비웁니다(남기면 `count` 밖에 값이 남아 나중에 다시 보임)
+		for idx = pos, count do
+			list[idx] = nil :: any
+		end
+	end
+	return high
+end
+
+-- `other` 의 `1..otherCount` 를 **뒤에 이어 붙입니다**(`other` 는 그대로 — 비우는 것은 쓰는 쪽이). 순서는 검사하지
+-- 않습니다: `other` 의 모든 키가 `list` 의 모든 키보다 커야 정렬이 유지됩니다(호출자 책임). O(otherCount).
+const function Append<E>(list: { E }, count: number, other: { E }, otherCount: number)
+	table.move(other, 1, otherCount, count + 1, list)
+end
+
 -- stylua: ignore
 return {
 	Find = Find, LowerBound = LowerBound, UpperBound = UpperBound, Locate = Locate,
-	InsertAt = InsertAt, RemoveAt = RemoveAt,
+	InsertAt = InsertAt, RemoveAt = RemoveAt, SplitOff = SplitOff, Append = Append,
 }

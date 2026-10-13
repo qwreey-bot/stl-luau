@@ -21,6 +21,11 @@ type Comparator<T> = Types.Comparator<T>
 -- "그 방식의 노드" 로만 다루면 됩니다(읽을 때는 `Search.KeyNodeRead`).
 -- - `Insert(root, key, value, compare)` → `(새 뿌리, 그 키의 노드, 새로 만들었나)`. 있던 키면 값만 바꿈.
 -- - `Remove(root, node)` → 새 뿌리(비면 `nil`). `node` 는 그 트리의 노드, 떼어 낸 뒤 연결이 끊김.
+-- - `Join(left, mid, right)` → 두 트리(뿌리, 비었으면 `nil`)와 가운데 노드를 이은 새 뿌리. 키는 `left` < `mid` < `right`
+--   여야 하고(검사 안 함), 두 트리의 높이 차만큼만 걸려야 합니다(O(log n)). 부분을 떼어 내는 `Split` 이 이것 위에 섭니다
+--   (2026-10-14 사용자: *"부분형으로 뭐보다 크거나 작은 영역을 때어 트리로"*, *"만들어보자"*).
+-- - `AsRoot(node)` → 부모에서 떼어 낸 **부분 트리의 뿌리**(없으면 `nil`)를 홀로 선 트리의 뿌리로 만들어 그대로 돌려줌.
+--   레드블랙은 뿌리를 검정으로 칠하고, AVL 은 할 일이 없음(높이는 부분 트리마다 이미 맞음).
 -- - `FromSorted(keys, values, count)` → 정렬된 목록에서 O(n) 으로 지은 뿌리. `Clone(root)` → 구조째 베낀 뿌리.
 -- 바깥에서 만드는 방식의 노드는 **탐색 트리 노드의 칸 배치**(`Trees/Search` 머리)를 따라야 합니다(조립하는 쪽이 값·왼쪽·오른쪽·부모·키 칸 — `1`~`5` — 을
 -- 직접 읽음).
@@ -34,6 +39,8 @@ type Comparator<T> = Types.Comparator<T>
 export type Scheme = {
 	read Insert: (root: never, key: never, value: never, compare: never) -> (unknown, unknown, boolean),
 	read Remove: (root: never, node: never) -> unknown,
+	read Join: (left: never, mid: never, right: never) -> unknown,
+	read AsRoot: (node: never) -> unknown,
 	read FromSorted: (keys: never, values: never, count: number) -> unknown,
 	read Clone: (root: never) -> unknown,
 }
@@ -49,11 +56,13 @@ const function Expect(balance: any, fallback: Scheme, who: string): Scheme
 		type(balance) ~= "table"
 		or type(rawget(balance, "Insert")) ~= "function"
 		or type(rawget(balance, "Remove")) ~= "function"
+		or type(rawget(balance, "Join")) ~= "function"
+		or type(rawget(balance, "AsRoot")) ~= "function"
 		or type(rawget(balance, "FromSorted")) ~= "function"
 		or type(rawget(balance, "Clone")) ~= "function"
 	then
 		Common.raise(
-			`{who} needs a balance scheme with Insert, Remove, FromSorted and Clone (RedBlack, Avl, …), got {typeof(
+			`{who} needs a balance scheme with Insert, Remove, Join, AsRoot, FromSorted and Clone (RedBlack, Avl, …), got {typeof(
 				balance
 			)}`
 		)
@@ -61,7 +70,47 @@ const function Expect(balance: any, fallback: Scheme, who: string): Scheme
 	return balance
 end
 
+-- ⭐ **부분을 떼어 냅니다**: 트리를 `key` 보다 작은 키들의 트리, 키가 `key` 인 노드(없으면 `nil`), 큰 키들의 트리로
+-- 가릅니다 — `(작은 쪽 뿌리, 그 노드, 큰 쪽 뿌리)`. **원래 트리는 없어집니다**(노드를 새로 만들지 않고 다시 이음 —
+-- 쥐고 있던 노드는 살아 있고 둘 중 한 트리에 속함). O(log n): 뿌리에서 `key` 쪽으로 내려가며 가르고, 올라오며
+-- 방식의 `Join` 으로 다시 잇습니다. 균형 방식마다 따로 쓰지 않습니다 — `Join` 만 주면 됩니다.
+-- 돌려준 가운데 노드는 연결이 끊긴 노드입니다(어느 쪽에 붙이려면 `Join(nil, 노드, 큰 쪽)` 처럼).
+-- ⚠️ 비교자가 도중에 던지면 트리는 조각난 채입니다(약속하지 않는 상태 — 규약의 예외 안전성).
+const LEFT, RIGHT, PARENT, KEY = 2, 3, 4, 5
+const function Split(scheme: Scheme, root: any, key: any, compare: Comparator<any>): (any, any, any)
+	const join: (any, any, any) -> any = (scheme :: any).Join
+	const asRoot: (any) -> any = (scheme :: any).AsRoot
+	const function split(node: any): (any, any, any)
+		if node == nil then
+			return nil, nil, nil
+		end
+		-- 이 노드와 두 부분 트리를 떼어 놓습니다(각자 부모 없는 뿌리로 — 이 노드의 부모 칸은 한 걸음 위에서 이미
+		-- 끊겼고, 맨 처음 받은 뿌리는 원래 부모가 없습니다)
+		const left, right = node[LEFT], node[RIGHT]
+		node[LEFT] = nil
+		node[RIGHT] = nil
+		if left ~= nil then
+			left[PARENT] = nil
+		end
+		if right ~= nil then
+			right[PARENT] = nil
+		end
+		const order = compare(key, node[KEY])
+		if order == 0 then
+			-- 잇기를 거치지 않고 나가는 부분 트리는 홀로 선 트리로(레드블랙: 뿌리가 빨강일 수 있음)
+			return asRoot(left), node, asRoot(right)
+		elseif order < 0 then
+			-- 가를 자리는 왼쪽 안: 이 노드와 오른쪽은 통째로 큰 쪽
+			const small, found, large = split(left)
+			return small, found, join(large, node, right)
+		end
+		const small, found, large = split(right)
+		return join(left, node, small), found, large
+	end
+	return split(root)
+end
+
 -- stylua: ignore
 return {
-	Expect = Expect,
+	Expect = Expect, Split = Split,
 }
