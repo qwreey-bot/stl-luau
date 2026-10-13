@@ -72,6 +72,15 @@
       제자리에서 바뀜), 명시적으로 등록한 것을 또 등록하면 에러입니다.
     - 타입: 완성 표와 구현이 넘기는 표가 다르면 `Trait.New<<Full>>(…) :: Trait<Full, Core>`.
     - 트레이트마다 함수 이름은 달라도 됩니다(네임스페이스가 다름 — 사용자 결정).
+  - ⭐ **리스트는 위치 프리미티브 다섯만 구현하면 읽기 알고리즘이 따라옵니다**(2026-10-13, `papers/07` 2단계):
+    `Trait.List` 의 기본 구현이 `Fold`·`Find`·`IndexOf`·`Contains`·`Count`·`Some`·`Every` 를 채웁니다(콜백은 원소와
+    **위치**를 받음 — 위치는 `Arr`·`Deque` 에선 숫자, 연결 구조에선 노드). 종류를 모르는 코드는
+    `Algorithm.Fold(list, …)` 처럼 부릅니다. **빨라야 하는 종류는 같은 이름의 함수를 가지면 됩니다** — 모듈
+    테이블을 그대로 등록하니 `Arr.Fold` 가 곧 재정의입니다(진입점 비용 ~50ns 뿐). 기본 구현은 손 루프의
+    1.65~1.87배(perf 31절). 알고리즘은 **작게 시작해 부르는 곳이 보이면 늘립니다**(사용자 결정) — 새로 올릴 땐
+    `Types.ListFull`, `Trait` 의 `listDefaults`, `Algorithm` 진입점, `spec.contracts` 13절의 대조에 같이.
+    ⚠️ 그래서 `Trait.ImplOf(Trait.List, v)` 는 모듈 테이블이 아니라 **완성 표**(모듈이 준 것 + 기본 구현)입니다 —
+    `== stl.Arr` 로 견주지 마세요(기본 구현이 없는 `Map`·`Set`·`Collection` 은 여전히 모듈 그대로).
     값의 토큰은 `Trait.TokenOf(v)` — `type…` 이름은 Lua 내장 `type`/`typeof` 와 겹쳐 피합니다
     (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewType`, `Trait.Types`)은
     트레이트를 구현하지 않는 종류(`Fut` — `Heap` 은 `Collection` 만 구현)도 쓰는 바탕이지만 `Trait` 밑에 둡니다.

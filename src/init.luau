@@ -39,6 +39,7 @@ export type LessThan<T> = Types.LessThan<T>
 export type Hasher<T> = Types.Hasher<T>
 export type Record<K, V> = Types.Record<K, V>
 export type ListOps<C, E, I> = Types.ListOps<C, E, I>
+export type ListFull<C, E, I> = Types.ListFull<C, E, I>
 export type MapOps<C, K, V> = Types.MapOps<C, K, V>
 export type SetOps<C, T> = Types.SetOps<C, T>
 export type ListMarker<E, I> = Types.ListMarker<E, I>

@@ -60,42 +60,48 @@ const function implOf(trait: any, value: any, who: string): any
 	return impl
 end
 
+--[[ 리스트 — `Trait.List` 의 완성 표(구현이 준 것 + 기본 구현)를 부릅니다 ]]
+-- (2026-10-13, `papers/07` 2단계) 예전엔 여기서 프리미티브로 직접 돌았습니다. 지금은 그 종류의 완성 표를
+-- 부릅니다 — `Arr` 처럼 자기 구현이 있는 종류는 그것이(빠름), `Deque`·사용자 리스트는 트레이트의 기본
+-- 구현이 돕니다. 콜백은 원소와 위치를 받습니다.
+
 -- 같은 원소가 처음 나오는 위치. 없으면 nil.
 -- 비교는 `==` 입니다 — 값 동등성이 필요하면 호출자가 다른 걸 써야 합니다.
 -- (원소 타입이 다른 `item` 은 타입 에러가 아닙니다 — `E` 가 둘의 합으로 넓어집니다.
 -- 건전하고(그냥 nil), 예전 판도 같았습니다.)
 function exports.IndexOf<E, I>(list: ListMarker<E, I>, item: E): I?
-	const ops = implOf(Trait.List, list, "IndexOf")
-	local idx = ops.FirstIndex(list)
-	while idx ~= nil do
-		if ops.Get(list, idx) == item then
-			return idx
-		end
-		idx = ops.NextIndex(list, idx)
-	end
-	return nil
+	return implOf(Trait.List, list, "IndexOf").IndexOf(list, item)
+end
+
+-- 같은 원소가 있는가(`==` 비교).
+function exports.Contains<E, I>(list: ListMarker<E, I>, item: E): boolean
+	return implOf(Trait.List, list, "Contains").Contains(list, item)
 end
 
 -- 세어서 구한 개수(AE, 2026-10-06 — `Len` 은 알고 있는 크기, `Count` 는 셈). 술어가
--- 있으면 참인 원소만. 위치를 끝까지 걷는 O(n) 판입니다 — 길이를 아는 컨테이너는
--- 자기 `Len`/`Count` 가 빠릅니다.
-function exports.Count<E, I>(list: ListMarker<E, I>, pred: ((element: E) -> boolean)?): number
-	const ops = implOf(Trait.List, list, "Count")
-	local total, idx = 0, ops.FirstIndex(list)
-	if pred == nil then
-		while idx ~= nil do
-			total += 1
-			idx = ops.NextIndex(list, idx)
-		end
-	else
-		while idx ~= nil do
-			if pred(ops.Get(list, idx)) then
-				total += 1
-			end
-			idx = ops.NextIndex(list, idx)
-		end
-	end
-	return total
+-- 있으면 참인 원소만. 길이를 아는 컨테이너는 자기 `Len` 이 빠릅니다(`Algorithm.Len`).
+function exports.Count<E, I>(list: ListMarker<E, I>, pred: ((element: E, idx: I) -> boolean)?): number
+	return implOf(Trait.List, list, "Count").Count(list, pred)
+end
+
+-- 앞에서부터 접기.
+function exports.Fold<E, I, U>(list: ListMarker<E, I>, init: U, fn: (acc: U, element: E, idx: I) -> U): U
+	return implOf(Trait.List, list, "Fold").Fold(list, init, fn)
+end
+
+-- 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
+function exports.Find<E, I>(list: ListMarker<E, I>, pred: (element: E, idx: I) -> boolean): (E?, I?)
+	return implOf(Trait.List, list, "Find").Find(list, pred)
+end
+
+-- 하나라도 만족하는가.
+function exports.Some<E, I>(list: ListMarker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
+	return implOf(Trait.List, list, "Some").Some(list, pred)
+end
+
+-- 전부 만족하는가. 빈 리스트면 참.
+function exports.Every<E, I>(list: ListMarker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
+	return implOf(Trait.List, list, "Every").Every(list, pred)
 end
 
 -- 맵의 키들·값들. 순서는 구현의 순회 순서(`HashMap` 은 약속 없음, `TreeMap` 은 키 순서)이고 두 함수의

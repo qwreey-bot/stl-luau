@@ -452,7 +452,9 @@ do
 	})
 	const showArr = stl.Trait.ImplOf(ShowTrait, stl.Arr.Of(1, 2))
 	assert(showArr ~= nil and showArr.Show(stl.Arr.Of(1, 2)) == "Arr(2)", "사용자 트레이트를 Arr 에")
-	assert(stl.Trait.ImplOf(stl.Trait.List, stl.Arr.Of(1)) == stl.Arr, "Arr 은 List 도 그대로")
+	-- (2026-10-13: List 는 기본 구현을 가진 트레이트가 돼 완성 표가 모듈과 다른 표 — 함수로 견줍니다)
+	const arrList = stl.Trait.ImplOf(stl.Trait.List, stl.Arr.Of(1))
+	assert(arrList ~= nil and arrList.Get == stl.Arr.Get and arrList.Fold == stl.Arr.Fold, "Arr 은 List 도 그대로")
 	assert(stl.Trait.ImplOf(ShowTrait, stl.HashMap.New()) == nil, "등록 안 한 종류는 nil")
 	for _, v in { nil, 1, "x", {} } :: { any } do
 		assert(stl.Trait.ImplOf(ShowTrait, v) == nil, `{typeof(v)} 는 안전하게 nil`)
@@ -505,7 +507,19 @@ do
 		{ name = "Deque", value = stl.Deque.Of(1), list = stl.Deque, map = nil, set = nil },
 	}
 	for _, case in samples do
-		assert(T.ImplOf(T.List, case.value) == case.list, `{case.name} 의 List 구현`)
+		-- List 의 완성 표는 "모듈이 준 것 + 기본 구현" — 모듈의 프리미티브가 그대로 들어 있는지로 봅니다
+		const listImpl = T.ImplOf(T.List, case.value)
+		assert((listImpl ~= nil) == (case.list ~= nil), `{case.name} 의 List 구현 유무`)
+		if listImpl ~= nil then
+			assert(
+				listImpl.Get == case.list.Get and listImpl.NextIndex == case.list.NextIndex,
+				`{case.name} 의 List 구현`
+			)
+			assert(
+				type(listImpl.Fold) == "function" and type(listImpl.Every) == "function",
+				`{case.name} 의 기본 구현`
+			)
+		end
 		assert(T.ImplOf(T.Map, case.value) == case.map, `{case.name} 의 Map 구현`)
 		assert(T.ImplOf(T.Set, case.value) == case.set, `{case.name} 의 Set 구현`)
 		assert(T.Implements(T.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
@@ -600,7 +614,10 @@ do
 			`{case.name}: 사용자 줄이 아님: {err}`
 		)
 	end
-	assert(T.ImplOf(T.List, stl.Arr.Of(1)) == stl.Arr, "덮어쓰기 시도 뒤에도 내장 그대로")
+	assert(
+		(T.ImplOf(T.List, stl.Arr.Of(1)) :: any).Get == stl.Arr.Get,
+		"덮어쓰기 시도 뒤에도 내장 그대로"
+	)
 	-- 리스트·사전을 받는 진입점에 **다른 종류의 컨테이너**를 넘기면 조용히 비거나(`n` 이 없어
 	-- `#` 가 0) 내부 필드가 키로 쏟아졌음(Gemini 트레이트 검토 — Deque 가 들어오면 바로 남) →
 	-- 사용자 줄 에러. `Arr` 은 그대로 리스트로 받습니다.
@@ -1749,7 +1766,8 @@ do
 	assert((T.ImplOf(LoudTrait, fresh) :: any).Loud(fresh) == "quiet!!", "의존의 재정의가 위로 전해짐")
 
 	-- 기본 구현도 의존도 없는 트레이트는 예전 그대로: 넘긴 표가 곧 구현, 저절로 따라오지 않음
-	assert(T.ImplOf(T.List, stl.Arr.Of(1)) == stl.Arr, "내장 List 는 모듈 테이블 그대로")
+	assert(T.ImplOf(T.Collection, stl.Arr.Of(1)) == stl.Arr, "내장 Collection 은 모듈 테이블 그대로")
+	assert(T.ImplOf(T.Map, stl.HashMap.New()) == stl.HashMap, "내장 Map 도")
 	const Bare = T.New<<{ read X: () -> number }>>("Bare")
 	assert(
 		T.ImplOf(Bare, plain) == nil and not T.Implements(Bare, plain),
@@ -1791,6 +1809,296 @@ do
 	})
 	deps[1] = nil :: any
 	assert((T.ImplOf(Snap, plain) :: any).Id(plain) == 14, "requires 는 넘긴 때의 것")
+end
+print("PASS")
+
+print(
+	"=== 13. ⭐ 리스트 알고리즘은 프리미티브 다섯에서 따라온다 (2026-10-13, papers/07 2단계) ==="
+)
+do
+	const T = stl.Trait
+	const A = stl.Algorithm
+	-- 사용자 리스트: 양방향으로 이은 노드. **위치가 노드**이고, 구현은 프리미티브 다섯뿐입니다.
+	type ChainNode = { value: number?, prev: ChainNode?, next: ChainNode? }
+	type Chain = {
+		head: ChainNode?,
+		tail: ChainNode?,
+		read __type: stl.TraitToken<string>,
+		read __list: number?,
+		read __listIndex: ChainNode,
+	}
+	const ChainType = T.NewType("Chain")
+	T.Impl(T.List, ChainType, {
+		Get = function(_c: Chain, node: ChainNode): number?
+			return node.value
+		end,
+		FirstIndex = function(c: Chain): ChainNode?
+			return c.head
+		end,
+		LastIndex = function(c: Chain): ChainNode?
+			return c.tail
+		end,
+		NextIndex = function(_c: Chain, node: ChainNode): ChainNode?
+			return node.next
+		end,
+		PrevIndex = function(_c: Chain, node: ChainNode): ChainNode?
+			return node.prev
+		end,
+	})
+	local function chainOf(values: { number? }, count: number): Chain
+		const chain: Chain = { head = nil, tail = nil, __type = ChainType } :: any
+		for at = 1, count do
+			const node: ChainNode = { value = values[at], prev = chain.tail, next = nil }
+			if chain.tail then
+				chain.tail.next = node
+			else
+				chain.head = node
+			end
+			chain.tail = node
+		end
+		return chain
+	end
+	-- 노드가 앞에서 몇 번째인지(견주기용)
+	local function ordinal(chain: Chain, node: ChainNode?): number?
+		local at, cursor = 1, chain.head
+		while cursor ~= nil do
+			if cursor == node then
+				return at
+			end
+			at += 1
+			cursor = cursor.next
+		end
+		return nil
+	end
+
+	-- 기본 구현을 받았는지 / 재정의가 이겼는지
+	const chainOps = T.ImplOf(T.List, chainOf({ 10 }, 1))
+	assert(
+		chainOps ~= nil and type(chainOps.Fold) == "function" and type(chainOps.Every) == "function",
+		"Chain 이 받음"
+	)
+	const arrOps = T.ImplOf(T.List, stl.Arr.Of(1))
+	assert(
+		arrOps ~= nil and arrOps.Fold == stl.Arr.Fold and arrOps.IndexOf == stl.Arr.IndexOf,
+		"Arr 은 자기 구현으로"
+	)
+	assert(
+		arrOps.Find == stl.Arr.Find and arrOps.Some == stl.Arr.Some and arrOps.Count == stl.Arr.Count,
+		"Arr 재정의"
+	)
+	const dequeOps = T.ImplOf(T.List, stl.Deque.Of(1))
+	assert(
+		(stl.Deque :: any).Fold == nil and dequeOps ~= nil and type(dequeOps.Fold) == "function",
+		"Deque 는 기본 구현"
+	)
+	assert(dequeOps.Fold ~= chainOps.Fold, "기본 구현은 종류마다 따로(자기 프리미티브를 부름)")
+
+	-- ⭐ 무작위 대조: 같은 값 열을 Arr·Deque(감기게)·Chain 에 — 일곱 알고리즘이 같은 답.
+	-- 기준은 `Arr` 의 직접 구현입니다(값은 위치와 겹치지 않게 100 단위, 중복·구멍 포함).
+	local seed = 20261013
+	local function rand(limit: number): number
+		seed = (seed * 16807) % 2147483647
+		return seed % limit + 1
+	end
+	for round = 1, 300 do
+		const count = rand(13) - 1
+		const values = table.create(count) :: { number? }
+		for at = 1, count do
+			const roll = rand(10)
+			values[at] = if roll == 1 then nil else rand(6) * 100
+		end
+		const arr = stl.Arr.Sized<<number?>>(count, nil)
+		for at = 1, count do
+			arr[at] = values[at]
+		end
+		-- 덱은 뒤 절반을 먼저 넣고 앞 절반을 PushFront 로 — 감긴 상태가 되게
+		const dq = stl.Deque.New<<number?>>()
+		const half = count // 2
+		for at = half + 1, count do
+			stl.Deque.PushBack(dq, values[at])
+		end
+		for at = half, 1, -1 do
+			stl.Deque.PushFront(dq, values[at])
+		end
+		const chain = chainOf(values, count)
+		const target = rand(7) * 100
+		const label = `라운드 {round}(길이 {count}, 찾는 값 {target})`
+
+		const wantSum = A.Fold(arr, 0, function(acc: number, v: number?): number
+			return acc * 3 + (v or 7)
+		end)
+		assert(A.Fold(dq, 0, function(acc: number, v: number?): number
+			return acc * 3 + (v or 7)
+		end) == wantSum, `{label} Deque Fold`)
+		assert(A.Fold(chain, 0, function(acc: number, v: number?): number
+			return acc * 3 + (v or 7)
+		end) == wantSum, `{label} Chain Fold`)
+
+		const wantIndex = A.IndexOf(arr, target)
+		assert(A.IndexOf(dq, target) == wantIndex, `{label} Deque IndexOf`)
+		assert(ordinal(chain, A.IndexOf(chain, target)) == wantIndex, `{label} Chain IndexOf`)
+		assert(A.IndexOf(dq, nil) == A.IndexOf(arr, nil), `{label} Deque IndexOf(nil) — 첫 구멍`)
+		assert(ordinal(chain, A.IndexOf(chain, nil)) == A.IndexOf(arr, nil), `{label} Chain IndexOf(nil)`)
+
+		const wantHas = A.Contains(arr, target)
+		assert(wantHas == (wantIndex ~= nil), `{label} Arr Contains 는 IndexOf 와 맞음`)
+		assert(A.Contains(dq, target) == wantHas and A.Contains(chain, target) == wantHas, `{label} Contains`)
+
+		const big = function(v: number?): boolean
+			return v ~= nil and v >= 400
+		end
+		const wantCount = A.Count(arr, big)
+		assert(A.Count(dq, big) == wantCount and A.Count(chain, big) == wantCount, `{label} Count(술어)`)
+		assert(
+			A.Count(arr) == count and A.Count(dq) == count and A.Count(chain) == count,
+			`{label} Count() 는 구멍도 자리`
+		)
+
+		const wantItem, wantAt = A.Find(arr, big)
+		const dqItem, dqAt = A.Find(dq, big)
+		const chainItem, chainAt = A.Find(chain, big)
+		assert(dqItem == wantItem and dqAt == wantAt, `{label} Deque Find`)
+		assert(chainItem == wantItem and ordinal(chain, chainAt) == wantAt, `{label} Chain Find`)
+
+		assert(A.Some(dq, big) == A.Some(arr, big) and A.Some(chain, big) == A.Some(arr, big), `{label} Some`)
+		assert(A.Every(dq, big) == A.Every(arr, big) and A.Every(chain, big) == A.Every(arr, big), `{label} Every`)
+		assert(
+			A.Some(arr, big) == (wantCount > 0) and A.Every(arr, big) == (wantCount == count),
+			`{label} Some/Every 의 뜻`
+		)
+	end
+
+	-- 콜백은 원소와 **위치**를 받음 — Chain 에서는 노드
+	const three = chainOf({ 10, 20, 30 }, 3)
+	const seen: { string } = {}
+	A.Fold(three, 0, function(acc: number, v: number?, node: ChainNode): number
+		table.insert(seen, `{v}@{ordinal(three, node)}:{node.value}`)
+		return acc
+	end)
+	assert(table.concat(seen, " ") == "10@1:10 20@2:20 30@3:30", `위치는 노드: {table.concat(seen, " ")}`)
+	const _, foundNode = A.Find(three, function(_v: number?, node: ChainNode): boolean
+		return node.prev ~= nil and node.prev.value == 10
+	end)
+	assert(foundNode ~= nil and foundNode.value == 20, "술어가 노드를 받음")
+	-- Deque·Arr 에서는 숫자 위치(앞에서부터 1)
+	const positions: { number } = {}
+	A.Some(stl.Deque.PushFront(stl.Deque.Of(20, 30), 10), function(_v: number, at: number): boolean
+		table.insert(positions, at)
+		return false
+	end)
+	assert(table.concat(positions, ",") == "1,2,3", "Deque 의 위치")
+
+	-- 빈 리스트
+	for name, empty in
+		{ Arr = stl.Arr.Of<<number>>(), Deque = stl.Deque.New<<number>>(), Chain = chainOf({}, 0) } :: { [string]: any }
+	do
+		const never = function(_v: any): boolean
+			return true
+		end
+		assert(A.Fold(empty, "init", function(acc: string, _v: any): string
+			return acc .. "!"
+		end) == "init", `빈 {name} Fold`)
+		const item, at = A.Find(empty, never)
+		assert(item == nil and at == nil, `빈 {name} Find`)
+		assert(
+			A.IndexOf(empty, 10) == nil and not A.Contains(empty, 10) and A.Count(empty) == 0,
+			`빈 {name} 찾기·세기`
+		)
+		assert(not A.Some(empty, never) and A.Every(empty, never), `빈 {name} Some 거짓·Every 참`)
+	end
+
+	-- 기본 구현이 부르는 다른 기본 구현은 재정의된 판(Contains → IndexOf)
+	const OddType = T.NewType("OddChain")
+	local indexOfCalls = 0
+	T.Impl(
+		T.List,
+		OddType,
+		{
+			Get = chainOps.Get,
+			FirstIndex = chainOps.FirstIndex,
+			LastIndex = chainOps.LastIndex,
+			NextIndex = chainOps.NextIndex,
+			PrevIndex = chainOps.PrevIndex,
+			IndexOf = function(c: Chain, item: number?): ChainNode?
+				indexOfCalls += 1
+				return if item == 777 then c.head else nil
+			end,
+		} :: any
+	)
+	const odd: Chain = chainOf({ 10, 20 }, 2)
+	rawset(odd :: any, "__type", OddType)
+	assert(
+		A.Contains(odd, 777) and not A.Contains(odd, 10) and indexOfCalls == 2,
+		"Contains 가 재정의된 IndexOf 를 부름"
+	)
+	assert(A.Count(odd) == 2, "나머지는 기본 구현")
+
+	-- 리스트가 아닌 것: 사용자 줄 에러
+	-- (콜백은 밖에서 선언 — 테이블 리터럴 안에 콜백 리터럴을 겹쳐 쓰면 새 솔버가 다른 필드의 반환 타입을
+	-- 끌어와 엉뚱한 에러를 냈습니다. `Algorithm.Fold` 의 서명 문제가 아님은 최소 재현으로 확인.)
+	local where = 0
+	const keepAcc = function(acc: number): number
+		return acc
+	end
+	const alwaysTrue = function(): boolean
+		return true
+	end
+	const calls: { { name: string, call: (any) -> any } } = {
+		{
+			name = "Fold",
+			call = function(v: any): any
+				return A.Fold(v, 0, keepAcc)
+			end,
+		},
+		{
+			name = "Find",
+			call = function(v: any): any
+				return (A.Find(v, alwaysTrue))
+			end,
+		},
+		{
+			name = "Contains",
+			call = function(v: any): any
+				return A.Contains(v, 1)
+			end,
+		},
+		{
+			name = "Every",
+			call = function(v: any): any
+				return A.Every(v, alwaysTrue)
+			end,
+		},
+	}
+	const notLists: { any } = {
+		stl.HashMap.New<<string, number>>(),
+		stl.Heap.New(function(a: number, b: number): boolean
+			return a < b
+		end),
+		5,
+		{},
+	}
+	for _, bad in notLists do
+		for _, entry in calls do
+			const ok, err = pcall(function()
+				where = debug.info(1, "l") + 1
+				entry.call(bad)
+			end)
+			assert(
+				not ok and string.find(tostring(err), `Algorithm: {entry.name} needs a List`, 1, true),
+				`{entry.name}: {err}`
+			)
+		end
+	end
+	const okLine, errLine = pcall(function()
+		where = debug.info(1, "l") + 1
+		A.Some(stl.HashSet.Of(1) :: any, function(): boolean
+			return true
+		end)
+	end)
+	assert(
+		not okLine and string.find(tostring(errLine), `spec.contracts.luau:{where}:`, 1, true),
+		`사용자 줄: {errLine}`
+	)
 end
 print("PASS")
 

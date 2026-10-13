@@ -66,6 +66,28 @@ export type ListOps<C, E, I> = {
 	read PrevIndex: (list: C, idx: I) -> I?,
 }
 
+-- 리스트 트레이트의 **완성 표**(2026-10-13, `papers/07` 2단계): 위 다섯(필수)에 **기본 구현**이 채우는
+-- 읽기 알고리즘이 더해진 것입니다. 구현은 `ListOps`(다섯)만 주면 되고, 같은 이름의 함수를 가지고 있으면
+-- 그것이 기본 구현을 대신합니다(`Arr` 는 모듈을 그대로 등록해 전부 자기 직접 구현으로).
+-- 콜백은 원소와 **위치**를 받습니다(`Arr` 의 콜백은 셋째로 읽기 뷰도 받지만 계약은 둘까지).
+-- - `Fold` 앞에서부터 접기. `Find` 는 처음 맞는 원소와 그 위치(없으면 `nil, nil`).
+-- - `IndexOf`/`Contains` 는 `==` 비교. `Count` 는 술어가 없으면 위치의 수(세어서 구함).
+-- - `Some`/`Every` — 빈 리스트의 `Every` 는 참.
+export type ListFull<C, E, I> = {
+	read Get: (list: C, idx: I) -> E?,
+	read FirstIndex: (list: C) -> I?,
+	read LastIndex: (list: C) -> I?,
+	read NextIndex: (list: C, idx: I) -> I?,
+	read PrevIndex: (list: C, idx: I) -> I?,
+	read Fold: (list: C, init: any, fn: (acc: any, item: E, idx: I) -> any) -> any,
+	read Find: (list: C, pred: (item: E, idx: I) -> boolean) -> (E?, I?),
+	read IndexOf: (list: C, item: E) -> I?,
+	read Contains: (list: C, item: E) -> boolean,
+	read Count: (list: C, pred: ((item: E, idx: I) -> boolean)?) -> number,
+	read Some: (list: C, pred: (item: E, idx: I) -> boolean) -> boolean,
+	read Every: (list: C, pred: (item: E, idx: I) -> boolean) -> boolean,
+}
+
 -- 키로 값을 찾는 컨테이너. HashMap/TreeMap 이 만족합니다.
 --
 -- ⭐ 2026-10-12 에 `Has`·`Remove`·`Iter` 를 더했습니다(질문 AM 다 → AO, 사용자: *"hash 인지 tree 인지

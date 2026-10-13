@@ -326,10 +326,96 @@ end
 
 --[[ 라이브러리의 트레이트와 타입 토큰 ]]
 
-const List = New<<Types.ListOps<any, any, any>>>(
-	"List",
-	{ required = { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" } }
-)
+-- ⭐ 리스트의 기본 구현(2026-10-13, `papers/07` 2단계): 위치 프리미티브 다섯만 구현하면 읽기 알고리즘이
+-- 따라옵니다 — `Deque` 와 사용자 리스트(위치가 노드여도)가 이것을 받습니다. 원소마다 프리미티브를
+-- 간접 호출하므로 직접 구현의 1.1~3.8배입니다(`papers/07` 4절) — 빨라야 하는 종류는 같은 이름의 함수로
+-- 재정의합니다(`Arr` 는 모듈을 그대로 등록해 전부 재정의).
+-- 프리미티브는 **부를 때** `ops` 에서 꺼냅니다(나중에 재정의가 등록돼도 그것을 씀).
+const function listDefaults(ops: any): { [string]: any }
+	return {
+		Fold = function(self: any, init: any, fn: (any, any, any) -> any): any
+			const get, nextIndex = ops.Get, ops.NextIndex
+			local acc, idx = init, ops.FirstIndex(self)
+			while idx ~= nil do
+				acc = fn(acc, get(self, idx), idx)
+				idx = nextIndex(self, idx)
+			end
+			return acc
+		end,
+		Find = function(self: any, pred: (any, any) -> boolean): (any, any)
+			const get, nextIndex = ops.Get, ops.NextIndex
+			local idx = ops.FirstIndex(self)
+			while idx ~= nil do
+				const item = get(self, idx)
+				if pred(item, idx) then
+					return item, idx
+				end
+				idx = nextIndex(self, idx)
+			end
+			return nil, nil
+		end,
+		IndexOf = function(self: any, item: any): any
+			const get, nextIndex = ops.Get, ops.NextIndex
+			local idx = ops.FirstIndex(self)
+			while idx ~= nil do
+				if get(self, idx) == item then
+					return idx
+				end
+				idx = nextIndex(self, idx)
+			end
+			return nil
+		end,
+		-- 다른 기본 구현을 부르는 것도 `ops` 로 — 구현이 `IndexOf` 를 재정의했으면 그 판을 씁니다.
+		Contains = function(self: any, item: any): boolean
+			return ops.IndexOf(self, item) ~= nil
+		end,
+		Count = function(self: any, pred: ((any, any) -> boolean)?): number
+			const get, nextIndex = ops.Get, ops.NextIndex
+			local total, idx = 0, ops.FirstIndex(self)
+			if pred == nil then
+				while idx ~= nil do
+					total += 1
+					idx = nextIndex(self, idx)
+				end
+			else
+				while idx ~= nil do
+					if pred(get(self, idx), idx) then
+						total += 1
+					end
+					idx = nextIndex(self, idx)
+				end
+			end
+			return total
+		end,
+		Some = function(self: any, pred: (any, any) -> boolean): boolean
+			const get, nextIndex = ops.Get, ops.NextIndex
+			local idx = ops.FirstIndex(self)
+			while idx ~= nil do
+				if pred(get(self, idx), idx) then
+					return true
+				end
+				idx = nextIndex(self, idx)
+			end
+			return false
+		end,
+		Every = function(self: any, pred: (any, any) -> boolean): boolean
+			const get, nextIndex = ops.Get, ops.NextIndex
+			local idx = ops.FirstIndex(self)
+			while idx ~= nil do
+				if not pred(get(self, idx), idx) then
+					return false
+				end
+				idx = nextIndex(self, idx)
+			end
+			return true
+		end,
+	}
+end
+
+const List = New<<Types.ListFull<any, any, any>>>("List", {
+	required = { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" },
+	defaults = listDefaults,
+}) :: Trait<Types.ListFull<any, any, any>, Types.ListOps<any, any, any>>
 const Map = New<<Types.MapOps<any, any, any>>>("Map", { required = { "Get", "Set", "Has", "Remove", "Iter" } })
 const Set = New<<Types.SetOps<any, any>>>("Set", { required = { "Add", "Has", "Remove", "Items" } })
 -- 원소를 담는 것 전부(리스트·맵·셋·힙) — 크기와 비우기(2026-10-12). 한 종류가 `List` 와 `Collection` 처럼

@@ -57,9 +57,9 @@ default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
 src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
   Types.luau       ⭐ 공유 계약·트레이트 마커만. **말단 모듈** — 아무것도 require 안 함
-  Trait.luau       타입 토큰과 트레이트 레지스트리(List/Map/Set/Collection). Algorithm 이 구현을 찾는 곳
+  Trait.luau       타입 토큰과 트레이트(필수 함수 + 기본 구현 + 의존). List/Map/Set/Collection, 리스트 알고리즘의 기본 구현
   Common.luau      비교자 어댑터와 기본 3방향 비교자
-  Algorithm.luau   계약만 알고 구현은 모르는 공용 알고리즘
+  Algorithm.luau   종류를 모르는 코드의 진입점 — 그 종류의 트레이트 완성 표(자기 구현 또는 기본 구현)를 부름
   BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
   Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 HashMap 을 돌려줌) + 생성자 8
   HashMap.luau     해시 맵. { data, size } 래퍼

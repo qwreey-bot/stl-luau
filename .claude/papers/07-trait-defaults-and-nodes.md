@@ -166,6 +166,9 @@ local Seq = Trait.New("Seq", {                     -- Map·Filter: 같은 종류
 >    둔 일반 노드 하나).
 
 **들인 것**: 1단계(`src/Trait.luau` — 기본 구현·의존·저절로 따라오기, `spec.contracts` 12절, `spikes/55`) 2026-10-13.
+2단계의 읽기 알고리즘 일곱(`Trait.List` 의 기본 구현 + `Algorithm` 진입점, `spec.contracts` 13절, `spikes/64`,
+perf 31절) 같은 날. ⚠️ 3절의 코드는 시제품의 서명(`defaults(impl, full, deps)`, 등록 때 프리미티브를 붙잡음)이고,
+들인 것은 **`defaults(ops, deps)` — 부를 때 `ops` 에서 꺼냄**입니다(8절 3번의 답).
 
 1. **이 방향으로 들일지**, 들인다면 위 순서와 범위(전부 / 1~2단계만 먼저).
 2. **`Algorithm` 을 어디까지 넓힐지.** 순회만으로 되는 `Arr` 연산은 수십 개입니다. 설계 노트 10절의 교훈("안 쓴 것은
