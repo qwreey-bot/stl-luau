@@ -306,6 +306,14 @@ const function unknownName(trait: any, token: any, fnName: any): never
 	)
 end
 
+-- 재정의 자리의 값은 함수여야 합니다 — 필수 이름은 등록 때 확인하는데 재정의 이름은 안 봐서, 등록은 통과하고 부를 때
+-- 라이브러리 줄의 `attempt to call a number value` 였습니다(4라운드 리뷰).
+const function notFunction(trait: any, token: any, fnName: any, value: any): never
+	return Common.raise(
+		`Trait: {token.name} gave a {typeof(value)} as {tostring(fnName)} for {trait.name} — it must be a function`
+	)
+end
+
 const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 	if not traits[trait] then
 		Common.raise(`Trait: Impl needs a trait (from Trait.New), got {typeof(trait)}`)
@@ -354,14 +362,14 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 	if existing ~= nil then
 		-- 저절로 따라온 표 위에 재정의 — 같은 표를 고칩니다. 구현이 `__index` 로 물려받은 것도 재정의이니,
 		-- 자기 키를 옮긴 뒤 표에 이미 있는 이름들을 구현에서 한 번 더 찾습니다.
-		for fnName in impl :: any do
+		for fnName, fn in impl :: any do
 			if existing[fnName] == nil then
 				unknownName(trait, token, fnName)
+			elseif type(fn) ~= "function" then
+				notFunction(trait, token, fnName, fn)
 			end
 		end
-		for fnName, fn in impl :: any do
-			existing[fnName] = fn
-		end
+		-- (자기 키를 따로 옮기지 않습니다 — 위에서 전부 표에 있는 이름임을 확인했으니 아래 루프의 `lookup` 이 자기 키부터 찾습니다)
 		for fnName in existing do
 			const inherited = lookup(impl, fnName)
 			if inherited ~= nil then
@@ -387,9 +395,11 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 	end
 	const provided = fillDefaults(trait, impl, full, deps :: any)
 	-- 모르는 이름: 필수도 아니고 기본 구현의 이름(재정의할 수 있는 것)도 아닌 키
-	for fnName in impl :: any do
+	for fnName, fn in impl :: any do
 		if not (required and table.find(required, fnName)) and not (provided and provided[fnName] ~= nil) then
 			unknownName(trait, token, fnName)
+		elseif type(fn) ~= "function" then
+			notFunction(trait, token, fnName, fn)
 		end
 	end
 	impls[token] = full

@@ -208,6 +208,13 @@ stl.Trait.Impl(stl.List, stl.Trait.NewToken("BadFold"), {
 	Fold = "not a function",
 })
 
+--[[ 재정의 `Fold` 의 서명(4라운드 리뷰) — 누적 타입이 제네릭이라 뜻이 다른 함수는 등록 표에 안 들어감 ]]
+local arrCore = { Get = stl.Arr.Get, FirstIndex = stl.Arr.FirstIndex, LastIndex = stl.Arr.LastIndex, NextIndex = stl.Arr.NextIndex, PrevIndex = stl.Arr.PrevIndex }
+local okFold: stl.ListProvided<stl.Arr<string>, string, number> = { Get = arrCore.Get, FirstIndex = arrCore.FirstIndex, LastIndex = arrCore.LastIndex, NextIndex = arrCore.NextIndex, PrevIndex = arrCore.PrevIndex, Fold = stl.Arr.Fold }
+-- NEG: `Fold` 자리에 길이를 돌려주는 함수 / 값으로 찾는 함수
+local negFoldLen: stl.ListProvided<stl.Arr<string>, string, number> = { Get = arrCore.Get, FirstIndex = arrCore.FirstIndex, LastIndex = arrCore.LastIndex, NextIndex = arrCore.NextIndex, PrevIndex = arrCore.PrevIndex, Fold = stl.Arr.Len }
+local negFoldFind: stl.ListProvided<stl.Arr<string>, string, number> = { Get = arrCore.Get, FirstIndex = arrCore.FirstIndex, LastIndex = arrCore.LastIndex, NextIndex = arrCore.NextIndex, PrevIndex = arrCore.PrevIndex, Fold = stl.Arr.IndexOf }
+
 local canary: string = 42
 
 return {
@@ -259,5 +266,8 @@ return {
 	fullAsImpl,
 	optionalRange,
 	negRequiredRange,
+	okFold,
+	negFoldLen,
+	negFoldFind,
 	canary,
 }

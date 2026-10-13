@@ -3491,6 +3491,303 @@ do
 end
 print("PASS")
 
+print(
+	"=== 19. 4라운드 리뷰(2026-10-14) — 등록 표의 배선 전수, 함수가 아닌 재정의, Stack·Queue 의 진입점 ==="
+)
+do
+	const T = stl.Trait
+	local where = 0
+	-- (1) ⭐ 등록 표의 배선을 전수로: 표를 손으로 적으니 `Remove = …Has` 같은 복붙 실수가 가능하고 서명이 같아 타입도
+	--     못 잡습니다(리뷰가 16가지를 통과시킴). 이름마다 **그 모듈의 그 이름의 함수**인지, 남는 키가 없는지.
+	const listCore = { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" }
+	const listDefaults = { "Fold", "Find", "IndexOf", "Contains", "Count", "Some", "Every" }
+	const mapNames = { "Get", "Set", "Has", "Remove", "Iter" }
+	const setNames = { "Add", "Has", "Remove", "Items" }
+	const collectionNames = { "Len", "Clear" }
+	const dequeNames = { "PushFront", "PushBack", "PopFront", "PopBack", "Front", "Back" }
+	type Wiring = { kind: string, trait: any, own: { string }, filled: { string }? }
+	const wirings: { Wiring } = {
+		{
+			kind = "Arr",
+			trait = stl.List,
+			own = table.move(listDefaults, 1, #listDefaults, #listCore + 1, table.clone(listCore)),
+		},
+		{ kind = "Arr", trait = stl.Collection, own = collectionNames },
+		{ kind = "CircularDeque", trait = stl.List, own = listCore, filled = listDefaults },
+		{ kind = "CircularDeque", trait = stl.Deque, own = dequeNames },
+		{ kind = "CircularDeque", trait = stl.Collection, own = collectionNames },
+		{ kind = "LinkedDeque", trait = stl.List, own = listCore, filled = listDefaults },
+		{ kind = "LinkedDeque", trait = stl.Deque, own = dequeNames },
+		{ kind = "LinkedDeque", trait = stl.Collection, own = collectionNames },
+		{ kind = "HashMap", trait = stl.Map, own = mapNames },
+		{ kind = "HashMap", trait = stl.Collection, own = collectionNames },
+		{ kind = "TreeMap", trait = stl.Map, own = mapNames },
+		{ kind = "TreeMap", trait = stl.Collection, own = collectionNames },
+		{ kind = "FlatMap", trait = stl.Map, own = mapNames },
+		{ kind = "FlatMap", trait = stl.Collection, own = collectionNames },
+		{ kind = "HashSet", trait = stl.Set, own = setNames },
+		{ kind = "HashSet", trait = stl.Collection, own = collectionNames },
+		{ kind = "TreeSet", trait = stl.Set, own = setNames },
+		{ kind = "TreeSet", trait = stl.Collection, own = collectionNames },
+		{ kind = "FlatSet", trait = stl.Set, own = setNames },
+		{ kind = "FlatSet", trait = stl.Collection, own = collectionNames },
+		{ kind = "Heap", trait = stl.Collection, own = collectionNames },
+	}
+	for _, wiring in wirings do
+		const module = (stl :: any)[wiring.kind]
+		const impl = wiring.trait.impls[module.Token]
+		const label = `{wiring.kind} 의 {wiring.trait.name}`
+		assert(impl ~= nil, `{label}: 등록이 없음`)
+		local expected = 0
+		for _, fnName in wiring.own do
+			expected += 1
+			assert(type(module[fnName]) == "function", `{label}: 모듈에 {fnName} 이 없음`)
+			assert(rawequal(impl[fnName], module[fnName]), `{label}: {fnName} 이 {wiring.kind}.{fnName} 이 아님`)
+		end
+		for _, fnName in wiring.filled or {} do
+			expected += 1
+			assert(type(impl[fnName]) == "function", `{label}: 기본 구현 {fnName} 이 없음`)
+			assert(not rawequal(impl[fnName], module[fnName]), `{label}: {fnName} 이 목록에 없는 재정의`)
+		end
+		local keys = 0
+		for _ in impl do
+			keys += 1
+		end
+		assert(keys == expected, `{label}: 키 {keys}개, 기대 {expected}`)
+	end
+	-- 셋 트레이트는 진입점이 없어 표를 직접 부르는 코드가 유일한 사용처 — 표로 불러 동작까지 확인
+	const setMakers: { () -> any } = {
+		function(): any
+			return stl.HashSet.New()
+		end,
+		function(): any
+			return stl.TreeSet.New(Common.compareNumber)
+		end,
+		function(): any
+			return stl.FlatSet.New(Common.compareNumber)
+		end,
+	}
+	for _, make in setMakers do
+		const set = make()
+		const ops: any = T.ImplOf(stl.Set, set)
+		assert(ops.Add(set, 10) == true and ops.Add(set, 10) == false and ops.Add(set, 20) == true, "Set.Add")
+		assert(ops.Has(set, 10) == true and ops.Has(set, 30) == false, "Set.Has")
+		assert(ops.Remove(set, 10) == true and ops.Remove(set, 10) == false and ops.Has(set, 10) == false, "Set.Remove")
+		assert(#ops.Items(set) == 1 and ops.Items(set)[1] == 20, "Set.Items")
+	end
+	-- 맵의 `Remove`·`Has` 도 표로(진입점은 `Iter` 만 씀)
+	const mapMakers: { () -> any } = {
+		function(): any
+			return stl.HashMap.New()
+		end,
+		function(): any
+			return stl.TreeMap.New(Common.compareNumber)
+		end,
+		function(): any
+			return stl.FlatMap.New(Common.compareNumber)
+		end,
+	}
+	for _, make in mapMakers do
+		const map = make()
+		const ops: any = T.ImplOf(stl.Map, map)
+		ops.Set(map, 10, "a")
+		ops.Set(map, 20, "b")
+		assert(ops.Has(map, 10) == true and ops.Has(map, 30) == false and ops.Get(map, 20) == "b", "Map.Has·Get")
+		assert(ops.Remove(map, 10) == "a" and ops.Has(map, 10) == false and ops.Remove(map, 10) == nil, "Map.Remove")
+	end
+	-- 리스트의 뒤로 가는 프리미티브(진입점의 알고리즘은 앞으로만 감)
+	for _, list in
+		{
+			stl.Arr.Of(10, 20, 30) :: any,
+			stl.CircularDeque.Of(10, 20, 30) :: any,
+			stl.LinkedDeque.Of(10, 20, 30) :: any,
+		}
+	do
+		const ops: any = T.ImplOf(stl.List, list)
+		const first, last = ops.FirstIndex(list), ops.LastIndex(list)
+		assert(ops.Get(list, first) == 10 and ops.Get(list, last) == 30, "FirstIndex·LastIndex")
+		assert(
+			ops.Get(list, ops.NextIndex(list, first)) == 20 and ops.Get(list, ops.PrevIndex(list, last)) == 20,
+			"NextIndex·PrevIndex"
+		)
+		assert(ops.PrevIndex(list, first) == nil and ops.NextIndex(list, last) == nil, "끝에서의 Prev·Next")
+	end
+
+	-- (2) 재정의 자리에 함수가 아닌 값 — 등록 때 사용자 줄 에러(예전엔 등록은 통과하고 부를 때 라이브러리 줄에서 죽음)
+	const Widget = T.NewToken("Widget")
+	T.Impl(
+		stl.Deque,
+		Widget,
+		{
+			PushFront = print,
+			PushBack = print,
+			PopFront = print,
+			PopBack = print,
+			Front = print,
+			Back = print,
+		} :: any
+	)
+	assert(T.Implements(stl.Stack, { __type = Widget }), "Widget 은 덱이라 스택이 따라옴")
+	const okDerived, errDerived = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(stl.Stack, Widget, { Push = 5 } :: any)
+	end)
+	assert(
+		not okDerived
+			and string.find(
+				tostring(errDerived),
+				"Trait: Widget gave a number as Push for Stack — it must be a function",
+				1,
+				true
+			),
+		`저절로 따라온 표 위의 함수 아닌 재정의: {errDerived}`
+	)
+	assert(string.find(tostring(errDerived), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errDerived}`)
+	assert((stl.Stack :: any).derived[Widget], "실패한 재정의는 저절로 따라온 상태를 바꾸지 않음")
+	const Gadget = T.NewToken("Gadget")
+	const okMerge, errMerge = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(
+			stl.List,
+			Gadget,
+			{
+				Get = print,
+				FirstIndex = print,
+				LastIndex = print,
+				NextIndex = print,
+				PrevIndex = print,
+				Fold = "fold",
+			} :: any
+		)
+	end)
+	assert(
+		not okMerge
+			and string.find(
+				tostring(errMerge),
+				"Trait: Gadget gave a string as Fold for List — it must be a function",
+				1,
+				true
+			),
+		`기본 구현 있는 트레이트의 함수 아닌 재정의: {errMerge}`
+	)
+	assert(string.find(tostring(errMerge), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errMerge}`)
+	assert(T.ImplOf(stl.List, { __type = Gadget }) == nil, "실패한 등록은 남지 않음")
+
+	-- (3) Stack·Queue 의 진입점 여섯: 에러 메시지의 진입점 이름, `Push` 는 재정의가 무엇을 돌려주든 넣은 것을 돌려줌
+	const entries: { { trait: string, name: string, call: (v: any) -> any } } = {
+		{
+			trait = "Stack",
+			name = "Push",
+			call = function(v)
+				where = debug.info(1, "l") + 1
+				return stl.Stack.Push(v, 1)
+			end,
+		},
+		{
+			trait = "Stack",
+			name = "Pop",
+			call = function(v)
+				where = debug.info(1, "l") + 1
+				return stl.Stack.Pop(v)
+			end,
+		},
+		{
+			trait = "Stack",
+			name = "Peek",
+			call = function(v)
+				where = debug.info(1, "l") + 1
+				return stl.Stack.Peek(v)
+			end,
+		},
+		{
+			trait = "Queue",
+			name = "Push",
+			call = function(v)
+				where = debug.info(1, "l") + 1
+				return stl.Queue.Push(v, 1)
+			end,
+		},
+		{
+			trait = "Queue",
+			name = "Pop",
+			call = function(v)
+				where = debug.info(1, "l") + 1
+				return stl.Queue.Pop(v)
+			end,
+		},
+		{
+			trait = "Queue",
+			name = "Peek",
+			call = function(v)
+				where = debug.info(1, "l") + 1
+				return stl.Queue.Peek(v)
+			end,
+		},
+	}
+	for _, entry in entries do
+		const ok, err = pcall(entry.call, stl.Arr.Of(1))
+		assert(
+			not ok
+				and string.find(
+					tostring(err),
+					`{entry.trait}: {entry.name} needs a {entry.trait} — Arr does not implement {entry.trait}`,
+					1,
+					true
+				),
+			`{entry.trait}.{entry.name}: {err}`
+		)
+		assert(
+			string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true),
+			`{entry.trait}.{entry.name} 사용자 줄: {err}`
+		)
+	end
+	for _, trait in { stl.Stack :: any, stl.Queue :: any } do
+		const Silent = T.NewToken("Silent" .. trait.name)
+		T.Impl(
+			stl.Deque,
+			Silent,
+			{
+				PushFront = print,
+				PushBack = print,
+				PopFront = print,
+				PopBack = print,
+				Front = print,
+				Back = print,
+			} :: any
+		)
+		local pushed = 0
+		T.Impl(
+			trait,
+			Silent,
+			{
+				Push = function(_self: any, _item: any)
+					pushed += 1 -- `return self` 를 빠뜨린 재정의
+				end,
+			} :: any
+		)
+		const value = { __type = Silent }
+		assert(trait.Push(value, 1) == value and pushed == 1, `{trait.name}.Push 는 넣은 것을 돌려줌`)
+	end
+
+	-- (4) `CompleteNode.IsHeap` 은 받은 부분 트리 **안에서만** — 가운데 노드를 넘기면 그 위의 부모와는 견주지 않음
+	const Binary, Complete = stl.Node.Binary, stl.CompleteNode
+	local function lessNumber(a: number, b: number): boolean
+		return a < b
+	end
+	const top, low, leaf = Binary.New(50), Binary.New(10), Binary.New(20)
+	local root = Complete.Append(nil, 0, top)
+	root = Complete.Append(root, 1, low)
+	root = Complete.Append(root, 2, Binary.New(60))
+	root = Complete.Append(root, 3, leaf)
+	assert(not Complete.IsHeap(root, lessNumber), "전체는 힙 순서가 아님(10 이 50 밑)")
+	assert(
+		Complete.IsHeap(low, lessNumber),
+		"가운데 노드의 부분 트리(10 → 20)는 힙 순서 — 위의 50 과는 견주지 않음"
+	)
+	assert(Complete.IsHeap(leaf, lessNumber), "잎 하나")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (계약) ===")
 

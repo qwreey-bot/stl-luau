@@ -51,7 +51,7 @@ export type Full<C, E, I> = {
 	read LastIndex: (list: C) -> I?,
 	read NextIndex: (list: C, idx: I) -> I?,
 	read PrevIndex: (list: C, idx: I) -> I?,
-	read Fold: (list: C, init: any, fn: (acc: any, item: E, idx: I) -> any) -> any,
+	read Fold: <U>(list: C, init: U, fn: (acc: U, item: E, idx: I) -> U) -> U,
 	read Find: (list: C, pred: (item: E, idx: I) -> boolean) -> (E?, I?),
 	read IndexOf: (list: C, item: E) -> I?,
 	read Contains: (list: C, item: E) -> boolean,
@@ -78,7 +78,9 @@ export type Provided<C, E, I> = {
 	read LastIndex: (list: C) -> I?,
 	read NextIndex: (list: C, idx: I) -> I?,
 	read PrevIndex: (list: C, idx: I) -> I?,
-	read Fold: ((list: C, init: any, fn: (acc: any, item: E, idx: I, ...any) -> any) -> any)?,
+	-- `Fold` 는 누적 타입을 제네릭으로 적습니다 — `init: any`·`acc: any` 였던 때는 이 자리의 서명이 검사되지 않아
+	-- (인자가 `any` 인 함수 타입 자리) `Fold = Arr.Len` 도 0건이었습니다(4라운드 리뷰).
+	read Fold: (<U>(list: C, init: U, fn: (acc: U, item: E, idx: I, ...any) -> U) -> U)?,
 	read Find: ((list: C, pred: (item: E, idx: I, ...any) -> boolean) -> (E?, I?))?,
 	read IndexOf: ((list: C, item: E) -> I?)?,
 	read Contains: ((list: C, item: E) -> boolean)?,

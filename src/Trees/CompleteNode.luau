@@ -236,18 +236,18 @@ const function SiftDown<T>(root: Node<T>, node: Node<T>, less: LessThan<T>): Nod
 end
 
 -- 힙 순서인가(어느 자식도 부모보다 앞서지 않음). 빈 트리는 참. O(n) — 검사·디버깅용.
+-- **받은 부분 트리 안에서만** 봅니다(가운데 노드를 넘기면 그 위의 부모와는 견주지 않음 — `Traverse` 와 같은 결).
 const function IsHeap<T>(root: NodeRead<T>?, less: LessThan<T>): boolean
-	const function check(node: any): boolean
+	const function check(node: any, parent: any): boolean
 		if node == nil then
 			return true
 		end
-		const parent = node[PARENT]
 		if parent ~= nil and less(node[VALUE], parent[VALUE]) then
 			return false
 		end
-		return check(node[LEFT]) and check(node[RIGHT])
+		return check(node[LEFT], node) and check(node[RIGHT], node)
 	end
-	return check(root)
+	return check(root, nil)
 end
 
 -- `root` 가 노드 `count` 개의 **완전 이진 트리**인가: 자리 `1..count` 가 빠짐없이 차 있고, 부모 칸이 전부 맞고,
