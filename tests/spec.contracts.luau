@@ -1813,6 +1813,301 @@ end
 print("PASS")
 
 print(
+	"=== 12b. 트레이트 1단계 리뷰 1라운드 (2026-10-13) — defaults 의 반환, 물려받은 구현, spec 의 오타, 빠진 시나리오 ==="
+)
+do
+	const T = stl.Trait
+	local where = 0
+	const BaseTrait = T.New<<{ read Get: (v: any) -> number }>>("ReviewBase", { required = { "Get" } })
+	const Kind = T.NewType("ReviewKind")
+	T.Impl(BaseTrait, Kind, {
+		Get = function(_v: any): number
+			return 7
+		end,
+	})
+	const value = { __type = Kind }
+
+	-- (1) `return` 을 빠뜨린 defaults — 라이브러리 줄의 `attempt to iterate over a nil value` 였음.
+	-- 저절로 따라오는 트레이트에서는 처음 물은 자리에서 드러납니다.
+	for _, returned in { "nil", 5, "text", true } :: { any } do
+		const Forgot = T.New<<{ read Show: (v: any) -> string }>>("Forgot", {
+			requires = { BaseTrait },
+			defaults = (function(_ops: any, _deps: any): any
+				if returned == "nil" then
+					return nil
+				end
+				return returned
+			end) :: any,
+		})
+		const asks: { { name: string, ask: (any, any) -> any } } = {
+			{ name = "ImplOf", ask = T.ImplOf },
+			{ name = "Implements", ask = T.Implements },
+		}
+		for _, entry in asks do
+			const ok, err = pcall(function()
+				where = debug.info(1, "l") + 1
+				entry.ask(Forgot, value)
+			end)
+			assert(
+				not ok and string.find(tostring(err), "defaults of Forgot must return a table", 1, true),
+				`{entry.name}(defaults 가 {tostring(returned)}): {err}`
+			)
+			assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
+		end
+		assert(Forgot.impls[Kind] == nil and Forgot.derived[Kind] == nil, "실패한 뒤 남는 것 없음")
+	end
+	-- 필수 함수가 있는 트레이트의 명시 등록에서도
+	const ForgotReq = T.New<<{ read Get: (v: any) -> number }>>("ForgotReq", {
+		required = { "Get" },
+		defaults = (function() end) :: any,
+	})
+	const okReq, errReq = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(ForgotReq, Kind, {
+			Get = function(): number
+				return 1
+			end,
+		})
+	end)
+	assert(
+		not okReq and string.find(tostring(errReq), "defaults of ForgotReq must return a table", 1, true),
+		`{errReq}`
+	)
+	assert(string.find(tostring(errReq), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errReq}`)
+	assert(ForgotReq.impls[Kind] == nil, "실패한 등록은 남지 않음")
+
+	-- (2) 구현 표가 `__index` 로 함수를 물려받을 때 — 필수 검사는 통과했는데 완성 표에는 그 함수가 없었고,
+	-- 물려받은 재정의는 조용히 기본 구현에 졌습니다. (리스트가 기본 구현을 가진 지금, 기반 구현을 물려받은
+	-- 사용자 리스트가 이 길을 탑니다.)
+	type Shape = { read Get: (v: any) -> string, read Extra: (v: any) -> string, read Show: (v: any) -> string }
+	const Shaped = T.New<<Shape>>("Shaped", {
+		required = { "Get" },
+		defaults = function(ops: any)
+			return {
+				Extra = function(_v: any): string
+					return "default-extra"
+				end,
+				Show = function(v: any): string
+					return `<{ops.Get(v)}/{ops.Extra(v)}>`
+				end,
+			}
+		end,
+	}) :: stl.Trait<Shape, any>
+	const parent = {
+		Get = function(_v: any): string
+			return "inherited-get"
+		end,
+		Extra = function(_v: any): string
+			return "inherited-extra"
+		end,
+	}
+	const child = setmetatable({
+		Own = function(): string
+			return "own"
+		end,
+	}, { __index = parent })
+	const InheritKind = T.NewType("InheritKind")
+	T.Impl(Shaped, InheritKind, child)
+	const shaped = T.ImplOf(Shaped, { __type = InheritKind })
+	assert(shaped ~= nil and shaped.Get == parent.Get, "물려받은 필수 함수가 완성 표에")
+	assert(shaped.Extra == parent.Extra, "물려받은 재정의가 기본 구현을 이김")
+	assert(
+		shaped.Show({}) == "<inherited-get/inherited-extra>",
+		`기본 구현이 그것들을 부름: {shaped.Show({})}`
+	)
+	assert((shaped :: any).Own == child.Own, "자기 키도 그대로")
+	-- 저절로 만들어진 표 위에 물려받은 재정의를 얹는 것도
+	type AutoOps = { read Hello: (v: any) -> string, read Twice: (v: any) -> string }
+	const Auto = T.New<<AutoOps>>("AutoShape", {
+		requires = { BaseTrait },
+		defaults = function(ops: any)
+			return {
+				Hello = function(_v: any): string
+					return "hello"
+				end,
+				Twice = function(v: any): string
+					return ops.Hello(v) .. ops.Hello(v)
+				end,
+			}
+		end,
+	}) :: stl.Trait<AutoOps, any>
+	const auto = T.ImplOf(Auto, value)
+	assert(auto ~= nil and auto.Twice(value) == "hellohello", "저절로")
+	const inheritedHello = {
+		Hello = function(): string
+			return "hi"
+		end,
+	}
+	T.Impl(Auto, Kind, setmetatable({}, { __index = inheritedHello }))
+	assert(auto.Twice(value) == "hihi", `물려받은 재정의가 제자리에 얹힘: {auto.Twice(value)}`)
+
+	-- (3) spec 의 모르는 필드 — 옛 호출 모양(이름 목록을 그대로)과 한 글자 오타가 조용히 통과해
+	-- 필수 검사·의존이 사라졌습니다(`require = { … }` 면 의존이 없는 것으로 읽혀 아무 값에나 따라옴).
+	const badSpecs: { { spec: any, needle: string } } = {
+		{ spec = { "Get", "Inc" }, needle = "unknown spec field 1" },
+		{ spec = { require = { BaseTrait } }, needle = "unknown spec field require" },
+		{ spec = { default = function() end }, needle = "unknown spec field default" },
+		{ spec = { required = { "Get" }, Requires = {} }, needle = "unknown spec field Requires" },
+	}
+	for _, bad in badSpecs do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			T.New("BadField", bad.spec)
+		end)
+		assert(not ok and string.find(tostring(err), bad.needle, 1, true), `spec: {err}`)
+		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
+	end
+
+	-- 의존 목록이 **비어 있고** 기본 구현도 없으면 저절로 따라올 것이 없음(예전엔 빈 표가 모든 값에 따라왔음)
+	const Hollow = T.New<<{}>>("Hollow", { requires = {} })
+	assert(
+		T.ImplOf(Hollow, value) == nil and not T.Implements(Hollow, value),
+		"빈 의존만으로는 따라오지 않음"
+	)
+	-- 저절로 따라올 수 없는 트레이트의 빗나감은 그냥 nil(만들기 경로를 타지 않음 — perf 32절)
+	assert(
+		T.ImplOf(BaseTrait, { __type = T.NewType("Stranger") }) == nil,
+		"필수 함수가 있는 트레이트의 빗나감"
+	)
+
+	-- ── 타입·검증 리뷰가 짚은 빠진 시나리오(돌연변이 16개가 살아남았음) ──
+	-- 의존이 **둘**: 하나만 갖춘 종류는 따라오지 않고, 거절 메시지는 빠진 그 의존을 말함
+	const SecondTrait = T.New<<{ read Put: (v: any) -> () }>>("ReviewSecond", { required = { "Put" } })
+	const Both = T.New<<{ read Use: (v: any) -> string }>>("Both", {
+		requires = { BaseTrait, SecondTrait },
+		defaults = function(_ops: any, deps: { [any]: any })
+			return {
+				Use = function(v: any): string
+					deps[SecondTrait].Put(v)
+					return `use{deps[BaseTrait].Get(v)}`
+				end,
+			}
+		end,
+	}) :: stl.Trait<{ read Use: (v: any) -> string }, any>
+	assert(T.ImplOf(Both, value) == nil and not T.Implements(Both, value), "의존 둘 중 하나만 — 안 따라옴")
+	const okBoth, errBoth = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(Both, Kind, {})
+	end)
+	assert(
+		not okBoth
+			and string.find(tostring(errBoth), "ReviewKind must implement ReviewSecond to implement Both", 1, true),
+		`빠진 의존을 말함: {errBoth}`
+	)
+	local puts = 0
+	T.Impl(SecondTrait, Kind, {
+		Put = function(_v: any)
+			puts += 1
+		end,
+	})
+	const both = T.ImplOf(Both, value)
+	assert(both ~= nil and both.Use(value) == "use7" and puts == 1, "둘 다 갖추면 따라오고 둘 다 받음")
+	-- 의존 있는 트레이트를 **저절로 만들어지기 전에** 명시 등록(모듈을 불러올 때 등록하는 보통 순서)
+	const EarlyKind = T.NewType("EarlyKind")
+	T.Impl(BaseTrait, EarlyKind, {
+		Get = function(_v: any): number
+			return 3
+		end,
+	})
+	T.Impl(SecondTrait, EarlyKind, { Put = function(_v: any) end })
+	const givenEarly = {
+		Extra = function(): string
+			return "extra"
+		end,
+	}
+	T.Impl(Both, EarlyKind, givenEarly)
+	const early: any = T.ImplOf(Both, { __type = EarlyKind })
+	assert(early.Use({ __type = EarlyKind }) == "use3", "먼저 등록해도 기본 구현이 의존을 받음")
+	assert(
+		early.Extra == givenEarly.Extra and not Both.derived[EarlyKind],
+		"넘긴 함수가 들어 있고 저절로 만든 것이 아님"
+	)
+	-- **넘긴 표는 고치지 않음** — 완성 표는 다른 표(모듈 테이블을 그대로 넘겨도 모듈에 기본 구현이 써지지 않음)
+	assert(not rawequal(early, givenEarly) and rawget(givenEarly :: any, "Use") == nil, "넘긴 표는 그대로")
+	-- 얼린 표를 넘겨도 됨
+	const FrozenKind = T.NewType("FrozenKind")
+	T.Impl(
+		BaseTrait,
+		FrozenKind,
+		table.freeze({
+			Get = function(_v: any): number
+				return 9
+			end,
+		})
+	)
+	T.Impl(SecondTrait, FrozenKind, { Put = function(_v: any) end })
+	T.Impl(Both, FrozenKind, table.freeze({}))
+	assert((T.ImplOf(Both, { __type = FrozenKind }) :: any).Use({}) == "use9", "얼린 표를 넘겨도 합쳐짐")
+	-- 다 갖춘 등록을 또 하면 에러(합치는 트레이트에서도)
+	const okAgain, errAgain = pcall(function()
+		T.Impl(Both, EarlyKind, {})
+	end)
+	assert(not okAgain and string.find(tostring(errAgain), "EarlyKind already implements Both", 1, true), `{errAgain}`)
+	-- 합치는 트레이트에 표가 아닌 구현 — 사용자 줄
+	const okNum, errNum = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(Both, T.NewType("NumKind"), 5 :: any)
+	end)
+	assert(not okNum and string.find(tostring(errNum), "needs a table of functions for Both", 1, true), `{errNum}`)
+	assert(string.find(tostring(errNum), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errNum}`)
+
+	-- **기본 구현만** 있는 트레이트(필수·의존 없음): 토큰 있는 모든 종류에 따라오고, 토큰 없는 값에는 안 따라옴
+	const Anyone = T.New<<{ read Name: (v: any) -> string }>>("Anyone", {
+		defaults = function()
+			return {
+				Name = function(v: any): string
+					return (T.TokenOf(v) :: any).name
+				end,
+			}
+		end,
+	})
+	assert((T.ImplOf(Anyone, value) :: any).Name(value) == "ReviewKind", "기본 구현만 — 토큰 있는 종류")
+	assert((T.ImplOf(Anyone, stl.Arr.Of(1)) :: any).Name(stl.Arr.Of(1)) == "Arr", "내장 종류에도")
+	for _, notKind in { 5, "x", {}, { __type = "Arr" } } :: { any } do
+		assert(
+			T.ImplOf(Anyone, notKind) == nil and not T.Implements(Anyone, notKind),
+			"토큰 없는 값에는 안 따라옴"
+		)
+	end
+	assert(T.ImplOf(Anyone, nil) == nil, "nil 에도")
+	-- **의존만** 있는 트레이트(표식): 의존을 갖춘 종류에 빈 표가 따라오고, 못 갖춘 종류의 명시 등록은 거절
+	const Marked = T.New<<{}>>("Marked", { requires = { BaseTrait } })
+	assert(T.Implements(Marked, value) and not T.Implements(Marked, stl.Arr.Of(1)), "표식 트레이트")
+	assert(not pcall(function()
+		T.Impl(Marked, T.NewType("Unmarked"), {})
+	end), "의존을 못 갖춘 종류의 표식 등록은 거절")
+	-- `required = {}`(빈 필수 목록) + 의존 — 필수가 없는 것으로 읽혀 따라옴
+	const EmptyRequired = T.New<<{ read Id: (v: any) -> number }>>("EmptyRequired", {
+		required = {},
+		requires = { BaseTrait },
+		defaults = function(_ops: any, deps: { [any]: any })
+			return {
+				Id = function(v: any): number
+					return deps[BaseTrait].Get(v)
+				end,
+			}
+		end,
+	})
+	assert((T.ImplOf(EmptyRequired, value) :: any).Id(value) == 7, "빈 필수 목록은 저절로 따라옴")
+	-- 넘긴 의존 목록은 사본이고 얼어 있음
+	assert(
+		table.isfrozen(Both.requires :: any) and table.isfrozen(BaseTrait.required :: any),
+		"사본은 얼어 있음"
+	)
+	-- `Algorithm.Records` 의 에러 메시지(예전엔 에러가 나는지만 봤음 — 함수 이름이 틀려도 통과)
+	const okRecords, errRecords = pcall(function()
+		where = debug.info(1, "l") + 1
+		stl.Algorithm.Records(stl.Arr.Of(1) :: any)
+	end)
+	assert(
+		not okRecords and string.find(tostring(errRecords), "Algorithm: Records needs a Map", 1, true),
+		`{errRecords}`
+	)
+	assert(string.find(tostring(errRecords), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errRecords}`)
+end
+print("PASS")
+
+print(
 	"=== 13. ⭐ 리스트 알고리즘은 프리미티브 다섯에서 따라온다 (2026-10-13, papers/07 2단계) ==="
 )
 do

@@ -36,9 +36,14 @@ local Types = require("./Types")
 -- `Types` — 마커가 토큰을 요구하려고 말단에 둠).
 export type Token<N> = Types.Token<N>
 -- 트레이트. `I` 는 **완성 표**(구현이 준 것 + 기본 구현)의 타입 — `ImplOf` 가 돌려주는 것. `C` 는
--- 구현이 `Impl` 에 넘기는 표의 타입(필수 함수 + 재정의하고 싶은 것)이고, 기본 구현이 없는 트레이트는
--- `I` 와 같습니다. 둘이 다른 트레이트는 만든 자리에서 캐스트합니다:
--- `Trait.New<<Full>>(name, spec) :: Trait<Full, Core>`.
+-- 구현이 `Impl` 에 넘기는 표의 타입이고, 기본 구현이 없는 트레이트는 `I` 와 같습니다. 둘이 다른 트레이트는
+-- 만든 자리에서 캐스트합니다: `Trait.New<<Full>>(name, spec) :: Trait<Full, Core>`.
+-- ⚠️ **`Core` 는 "필수 함수 + 재정의할 수 있는 함수는 선택 필드(`?`)"** 로 적으세요(`Types.ListImpl` 이 그 모양).
+-- 필수만 적으면 재정의 자리는 검사되지 않습니다(폭 서브타이핑 — `Describe = "문자열"` 이 0건이고 런타임에
+-- `attempt to call a string value`, 리뷰). ⚠️ 그 캐스트 자체는 검사되지 않습니다(새 솔버는 테이블 → 테이블
+-- 캐스트를 안 봄): `Full` 이 "필수 + 기본 구현이 채우는 것" 과 맞는지는 테스트로 지키세요.
+-- 트레이트를 인자로 받는 제네릭은 `<I, C>(t: Trait<I, C>)` 로 — `Trait<I>` 하나로 적으면 기본 구현 달린
+-- 트레이트를 못 받습니다.
 export type Trait<I, C = I> = {
 	read name: string,
 	read impls: { [any]: I },
@@ -46,6 +51,7 @@ export type Trait<I, C = I> = {
 	read requires: { any }?, -- 의존 트레이트들(자기 자신을 다른 인자로 가리키는 재귀 타입은 Luau 가 받지 않음)
 	read defaults: Defaults?,
 	read derived: { [any]: true },
+	read derivable: boolean, -- 등록 없이 저절로 따라올 수 있는 트레이트인가(`New` 가 한 번 계산)
 	-- 타입에만 있는 필드(구현 표의 타입). **함수 타입**이라 `C` 에 불변입니다 — `read __impl: C` 로 두었더니
 	-- `Impl` 에 엉뚱한 표를 넘겨도 `C` 가 조용히 넓어져 통과했습니다(읽기 마커와 같은 함정, `spikes/55`).
 	read __impl: (C) -> C,
@@ -71,8 +77,11 @@ const TYPE_KEY = "__type"
 -- `NewType`·`New` 가 만든 것만 토큰·트레이트로 칩니다(약한 키 — 버려진 사용자 토큰은
 -- 수거됨). 얼린 아무 테이블, 토큰 모음 테이블, 숫자·문자열 `__type` 이 토큰 행세를 하면
 -- 에러 메시지가 라이브러리 줄에서 터졌습니다(리뷰 1라운드). 만드는 일이 드물어 비용 없음.
-const tokens: { [any]: true } = setmetatable({}, { __mode = "k" }) :: any
-const traits: { [any]: true } = setmetatable({}, { __mode = "k" }) :: any
+-- 약한 키 + **줄어들 수 있음**(`s`) — `k` 만이면 항목이 수거돼도 칸 수가 안 줄어, 종류를 많이 만들었다 버리는
+-- 쓰임에서 메모리가 남았습니다(리뷰 실측: 40만 종에 +8~32MB → `ks` 로 0).
+const WEAK_KEYS = table.freeze({ __mode = "ks" })
+const tokens: { [any]: true } = setmetatable({}, WEAK_KEYS) :: any
+const traits: { [any]: true } = setmetatable({}, WEAK_KEYS) :: any
 
 -- 새 타입 토큰. 사용자 컨테이너도 이걸로 만듭니다.
 const function NewType(name: string): Token<string>
@@ -111,6 +120,15 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 	local requires: { any }? = nil
 	local defaults: Defaults? = nil
 	if spec ~= nil then
+		-- 모르는 필드는 거절합니다 — 한 글자 오타(`require = …`)나 옛 호출 모양(이름 목록을 그대로)이 조용히
+		-- 통과해 필수 검사·의존이 사라졌습니다(오타 난 의존은 "의존 없음" 으로 읽혀 아무 값에나 따라옴, 리뷰).
+		for field in spec :: any do
+			if field ~= "required" and field ~= "requires" and field ~= "defaults" then
+				Common.raise(
+					`Trait: New got an unknown spec field {tostring(field)} (expected required, requires or defaults)`
+				)
+			end
+		end
 		const givenRequired: any = rawget(spec :: any, "required")
 		if givenRequired ~= nil then
 			if type(givenRequired) ~= "table" then
@@ -154,13 +172,17 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 	-- 않으면 조회될 일도 없음). 내장 토큰은 `Trait.Types` 가 붙잡습니다. ⚠️ Luau 의 약한 키는
 	-- ephemeron 이 아니라 구현 테이블이 토큰을 참조하면 남습니다(리뷰 2라운드 실측).
 	-- `derived` 는 "등록 없이 저절로 만들어진" 종류의 표시입니다(그 위에는 재정의를 등록할 수 있음).
+	-- 저절로 따라올 수 있는가: 필수 함수가 없고, 따라올 것(의존이나 기본 구현)이 있을 때. 의존 목록이 비어 있고
+	-- 기본 구현도 없으면 만들 것이 없습니다(빈 표가 모든 값에 따라오던 것을 막음, 리뷰).
+	const derivable = (required == nil or #required == 0) and ((requires ~= nil and #requires > 0) or defaults ~= nil)
 	const trait = {
 		name = name,
-		impls = setmetatable({}, { __mode = "k" }),
+		impls = setmetatable({}, WEAK_KEYS),
 		required = required,
 		requires = requires,
 		defaults = defaults,
-		derived = setmetatable({}, { __mode = "k" }),
+		derived = setmetatable({}, WEAK_KEYS),
+		derivable = derivable,
 	}
 	traits[trait] = true
 	return trait :: any
@@ -184,13 +206,22 @@ const function depsOf(trait: any, token: any): ({ [any]: any }?, any)
 end
 
 -- 완성 표의 빈 자리를 기본 구현으로 채웁니다(기본 구현이 없는 트레이트면 아무 일도 안 함).
-const function fillDefaults(defaults: Defaults?, full: { [string]: any }, deps: { [any]: any })
+-- `impl` 은 구현이 넘긴 표(저절로 만들 땐 nil) — 기본 구현과 같은 이름을 **`__index` 로 물려받고** 있으면
+-- 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히 기본 구현에 졌습니다, 리뷰).
+const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps: { [any]: any })
+	const defaults: Defaults? = trait.defaults
 	if defaults == nil then
 		return
 	end
-	for fnName, fn in defaults(full, deps) do
+	const provided: any = defaults(full, deps)
+	if type(provided) ~= "table" then
+		-- `return` 을 빠뜨린 기본 구현 — 라이브러리 줄의 `attempt to iterate over a nil value` 였습니다(리뷰)
+		Common.raise(`Trait: defaults of {trait.name} must return a table of functions, got {typeof(provided)}`)
+	end
+	for fnName, fn in provided do
 		if full[fnName] == nil then
-			full[fnName] = fn
+			const inherited = if impl ~= nil then impl[fnName] else nil
+			full[fnName] = if inherited ~= nil then inherited else fn
 		end
 	end
 end
@@ -202,10 +233,7 @@ function resolve(trait: any, token: any): any
 	if found ~= nil then
 		return found
 	end
-	if not tokens[token] or trait.required ~= nil and #trait.required > 0 then
-		return nil
-	end
-	if trait.requires == nil and trait.defaults == nil then
+	if not trait.derivable or not tokens[token] then
 		return nil
 	end
 	const deps = depsOf(trait, token)
@@ -213,7 +241,7 @@ function resolve(trait: any, token: any): any
 		return nil
 	end
 	const full: { [string]: any } = {}
-	fillDefaults(trait.defaults, full, deps)
+	fillDefaults(trait, nil, full, deps)
 	trait.impls[token] = full
 	trait.derived[token] = true
 	return full
@@ -268,18 +296,35 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 		Common.raise(`Trait: {token.name} must implement {missing.name} to implement {trait.name}`)
 	end
 	if existing ~= nil then
-		-- 저절로 따라온 표 위에 재정의 — 같은 표를 고칩니다.
+		-- 저절로 따라온 표 위에 재정의 — 같은 표를 고칩니다. 구현이 `__index` 로 물려받은 것도 재정의이니,
+		-- 자기 키를 옮긴 뒤 표에 이미 있는 이름들을 구현에서 한 번 더 찾습니다.
 		for fnName, fn in impl :: any do
 			existing[fnName] = fn
+		end
+		for fnName in existing do
+			const inherited = (impl :: any)[fnName]
+			if inherited ~= nil then
+				existing[fnName] = inherited
+			end
 		end
 		derived[token] = nil
 		return
 	end
+	-- 넘긴 표는 고치지 않습니다(모듈 테이블을 그대로 넘겨도 모듈에 기본 구현이 써지지 않고, 얼린 표도 됨).
 	const full: { [string]: any } = {}
 	for fnName, fn in impl :: any do
 		full[fnName] = fn
 	end
-	fillDefaults((trait :: any).defaults, full, deps :: any)
+	if required then
+		-- 필수 함수는 `impl[name]` 으로 — 위의 검사가 `__index` 를 타고 통과했으니 완성 표에도 그렇게 넣습니다
+		-- (자기 키만 옮겼더니 물려받은 필수 함수가 완성 표에 없었습니다, 리뷰).
+		for _, fnName in required do
+			if full[fnName] == nil then
+				full[fnName] = (impl :: any)[fnName]
+			end
+		end
+	end
+	fillDefaults(trait, impl, full, deps :: any)
 	impls[token] = full
 end
 
@@ -300,7 +345,12 @@ const function ImplOf<I, C>(trait: Trait<I, C>, value: any): I?
 	-- `impls[nil]` 읽기는 에러가 아닙니다 — 토큰이 없으면 그대로 nil. 등록된 것이 없으면 저절로
 	-- 따라오는 구현을 찾습니다(있으면 만들어 둠 — 그 뒤로는 첫 줄의 조회 하나).
 	const token: any = TokenOf(value)
-	return (trait.impls :: any)[token] or resolve(trait, token)
+	const found = (trait.impls :: any)[token]
+	-- 저절로 따라올 수 없는 트레이트는 여기서 끝(빗나갈 때마다 만들기 경로를 타 1.6~1.9배였습니다, 리뷰)
+	if found ~= nil or not (trait :: any).derivable then
+		return found
+	end
+	return resolve(trait, token)
 end
 
 const function Implements<I, C>(trait: Trait<I, C>, value: any): boolean
@@ -308,7 +358,10 @@ const function Implements<I, C>(trait: Trait<I, C>, value: any): boolean
 		Common.raise(`Trait: Implements needs a trait (from Trait.New), got {typeof(trait)}`)
 	end
 	const token: any = TokenOf(value)
-	return ((trait.impls :: any)[token] or resolve(trait, token)) ~= nil
+	if (trait.impls :: any)[token] ~= nil then
+		return true
+	end
+	return (trait :: any).derivable and resolve(trait, token) ~= nil
 end
 
 -- 값에 타입 토큰을 붙입니다. 사용자 컨테이너의 생성자가 씁니다(라이브러리 모듈은 상수
@@ -415,7 +468,7 @@ end
 const List = New<<Types.ListFull<any, any, any>>>("List", {
 	required = { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" },
 	defaults = listDefaults,
-}) :: Trait<Types.ListFull<any, any, any>, Types.ListOps<any, any, any>>
+}) :: Trait<Types.ListFull<any, any, any>, Types.ListImpl<any, any, any>>
 const Map = New<<Types.MapOps<any, any, any>>>("Map", { required = { "Get", "Set", "Has", "Remove", "Iter" } })
 const Set = New<<Types.SetOps<any, any>>>("Set", { required = { "Add", "Has", "Remove", "Items" } })
 -- 원소를 담는 것 전부(리스트·맵·셋·힙) — 크기와 비우기(2026-10-12). 한 종류가 `List` 와 `Collection` 처럼

@@ -972,6 +972,9 @@ local n: number? = HashMap.Get(hm, "x")   -- 런타임엔 "bad"
 ### AO. 트레이트 넓히기 — 종류를 모르고 만지기 (2026-10-12, AM 다를 앞당김) — **[2026-10-13 사용자 확인]**
 
 > 확인(2026-10-13): `Len` 의 마커는 **토큰만 그대로**, `Trait.New` 의 필수 함수 목록은 **선택 인자 그대로**.
+> ⚠️ 같은 날 `papers/07` 1단계에서 둘째 인자의 **모양이 바뀌었습니다**: `Trait.New(name, { "Get", … })`(이름 목록)가
+> 아니라 `Trait.New(name, { required = { "Get", … }, requires = …, defaults = … })`. 옛 모양은 이제 사용자 줄
+> 에러입니다(`unknown spec field 1`). 아래 표의 `Trait.New(name, required?)` 행은 그 전의 기록입니다.
 > ⭐ **`MapOps` 에서 `Records` 를 뺌** — 계약은 다섯(`Get`·`Set`·`Has`·`Remove`·`Iter`), 레코드 목록은
 > `Algorithm.Records(m)` 이 `Iter` 위에 한 번만 구현(사용자 맵이 구현할 것이 하나 줄어듦, 모듈의
 > `HashMap.Records`·`TreeMap.Records` 는 그대로).

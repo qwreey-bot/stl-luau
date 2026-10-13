@@ -20,7 +20,7 @@
 
 | 단계 | 무엇 | 상태 |
 |---|---|---|
-| 1 | **`Trait` 에 기본 구현·의존·저절로 따라오기** — `Trait.New(name, { required, requires, defaults })`. 완성 표는 등록 때 합침. 필수 함수가 없는 트레이트는 의존만 갖추면 처음 쓸 때 만들어짐. 저절로 따라온 것 위에 재정의 등록은 허용(같은 표를 제자리에서 고침, 기본 구현은 부를 때 표에서 꺼냄), 명시 등록의 재등록은 에러 | ✅ 넣음(리뷰 중) |
+| 1 | **`Trait` 에 기본 구현·의존·저절로 따라오기** — `Trait.New(name, { required, requires, defaults })`. 완성 표는 등록 때 합침. 필수 함수가 없는 트레이트는 의존만 갖추면 처음 쓸 때 만들어짐. 저절로 따라온 것 위에 재정의 등록은 허용(같은 표를 제자리에서 고침, 기본 구현은 부를 때 표에서 꺼냄), 명시 등록의 재등록은 에러 | ✅ 넣음. 리뷰 1라운드(동작 / 타입·검증 둘) 반영 — 결함 다섯: `defaults` 가 표를 안 돌려주면 라이브러리 줄 에러, `__index` 로 물려받은 구현이 완성 표에 빠짐, `spec` 의 오타·옛 모양이 조용히 통과, 빗나감 경로 1.6~1.9배, 재정의 자리가 타입 검사를 안 받음. 2라운드 대기 |
 | 2 | **리스트 알고리즘을 `List` 의 기본 구현으로** + `Algorithm` 진입점(작게 시작: 접기·찾기·세기·거르기·옮기기). `Arr` 는 모듈 등록으로 전부 재정의, `Deque` 가 알고리즘을 얻음. 원소 타입이 바뀌는 연산은 목적지 인스턴스를 받음 | 읽기 일곱(`Fold`·`Find`·`IndexOf`·`Contains`·`Count`·`Some`·`Every`) ✅ 넣음(리뷰 전). 거르기·옮기기는 `Build` 가 필요해 3단계에서 |
 | 3 | **`Build`(같은 종류 만들기)와 묶기(질문 AR)** — `GroupBy`·`CountBy`·`KeyBy` 가 목적지 인스턴스를 셋째 인자로. 누적은 목적지 맵의 `Get`/`Set`(트레이트에서 꺼냄) + `HashMap` 지름길(결정). ⚠️ 사전을 빌려주는 안은 비교자 맵에서 틀림(AR) | |
 | 4 | **노드 조각 → `LinkedList`, `Tree` 트레이트, 노드 기반 `TreeMap`/`TreeSet`**(균형 트리). 지금의 정렬 배열 판은 **`FlatMap`/`FlatSet` 으로 이름을 바꿔** 남김(작거나 한 번에 만드는 쓰임 — perf 30절). 둘 다 같은 `Map`/`Set` 트레이트 | |
@@ -142,7 +142,7 @@ local f = nested:Flat<<number>>()
 | ~~M3~~ | **✅ 2026-10-07** 리뷰 1라운드 소진(결함 0) — `Arr` 빈 조각 — `PopBack`/`PopFront`, `SwapRemove`, `Contains`/`IndexOf`/`LastIndexOf`, `FindLast`, `Zip`/`ZipWith`, `Dedup`(+Inplace)/`Unique`, `Partition`, `Chunks`/`Windows`, `Scan`, `MinMax`, `MaxBy`/`MinBy`, `TakeWhile`/`DropWhile` | 작고 독립적. 한 절씩 |
 | ~~M4~~ | **✅ 2026-10-07** 리뷰 소진(3라운드 — 결함 1 → 0 → 0, 2·3라운드는 테스트 공백·성능만). 모양은 질문 AJ(제가 정함, **확인 대기**) **맵·셋** — `HashMap.GetOrInsert`/`GetOrInsertWith`, `Merge(other)`, `Accumulate(k, v, combine)`, 네 컨테이너의 `Retain`, `TreeMap`/`TreeSet` 의 `LowerKey`/`HigherKey`·`PopFirst`/`PopLast`, `Arr.GroupBy`/`CountBy`/`KeyBy` | `Accumulate`/`GetOrInsertWith` 가 `GroupBy` 의 재료 |
 | ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(`DequeRead` 는 10-12 에 넣음, 나머지 확인 대기) **`Deque`**(링 버퍼) — 리스트 진입점이 Deque 를 받을지는 AK 에서 잠정 "안 받음(`ToArr`)", `Algorithm` 은 받음 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
-| **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음. 맵 종류를 모르고 다루는 표면(`Trait.Collection`, `MapOps` 여섯)은 **2026-10-12 에 앞당겨 넣음**(질문 AO) — 새 컨테이너는 `Collection` 을 구현하고 `__collectionMut` 팬텀을 넣을 것 | M4 위에 얇게. 부르는 곳이 보이면 |
+| **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음. 맵 종류를 모르고 다루는 표면(`Trait.Collection`, `MapOps` 다섯 + `Algorithm.Records`)은 **2026-10-12 에 앞당겨 넣음**(질문 AO) — 새 컨테이너는 `Collection` 을 구현하고 `__collectionMut` 팬텀을 넣을 것 | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |
 | **마지막** | **문서 사이트** — *"다른거 다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md` | 사용자 결정 |

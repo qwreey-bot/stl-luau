@@ -40,6 +40,11 @@ local exports = {}
 const function implOf(trait: any, value: any, who: string): any
 	const impl = if type(value) == "table" then trait.impls[rawget(value, "__type")] else nil
 	if impl == nil then
+		-- 빗나갔을 때만: 저절로 따라오는 트레이트면 여기서 만들어집니다(뜨거운 길은 위의 조회 하나 그대로).
+		const derived = Trait.ImplOf(trait, value)
+		if derived ~= nil then
+			return derived
+		end
 		-- 셋으로 가릅니다(리뷰 2라운드 — 반대로 안내했음): 이 사본의 토큰인데 구현이 없음 /
 		-- 이름 있는 토큰 모양이지만 이 사본이 모름(다른 사본의 라이브러리, 되읽은 테이블) / 토큰 없음.
 		const token = Trait.TokenOf(value)

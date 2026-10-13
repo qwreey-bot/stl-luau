@@ -11,7 +11,7 @@
 	- 콜백은 원소와 위치를 받고, 주석을 단 콜백의 원소 타입이 어긋나면 에러.
 	- 리스트가 아닌 것(맵·셋·리터럴)은 못 들어옴.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 10 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 13 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Algorithm, Arr, Deque, HashMap, HashSet = stl.Algorithm, stl.Arr, stl.Deque, stl.HashMap, stl.HashSet
@@ -85,6 +85,36 @@ local negMap = Algorithm.Fold(HashMap.New<<string, number>>(), 0, function(acc: 
 end)
 local negSet = Algorithm.Contains(HashSet.Of(1), 1)
 
+--[[ 구현이 넘기는 표(`ListImpl`) — 필수 다섯 + 재정의는 선택 필드라 서명이 검사됨 ]]
+-- POS: 모듈이 그대로 들어감(Arr 는 일곱을 재정의, Deque 는 필수만)
+local arrImpl: stl.ListImpl<stl.Arr<number>, number, number> = Arr
+local dequeImpl: stl.ListImpl<stl.Deque<string>, string, number> = Deque
+-- NEG: 재정의 자리에 함수가 아닌 것 / 반환 타입이 다른 함수 / 필수 함수가 빠짐
+local negOverride: stl.ListImpl<stl.Deque<string>, string, number> = {
+	Get = Deque.Get,
+	FirstIndex = Deque.FirstIndex,
+	LastIndex = Deque.LastIndex,
+	NextIndex = Deque.NextIndex,
+	PrevIndex = Deque.PrevIndex,
+	Fold = "not a function",
+}
+local negOverrideReturn: stl.ListImpl<stl.Deque<string>, string, number> = {
+	Get = Deque.Get,
+	FirstIndex = Deque.FirstIndex,
+	LastIndex = Deque.LastIndex,
+	NextIndex = Deque.NextIndex,
+	PrevIndex = Deque.PrevIndex,
+	Contains = function(_list: stl.Deque<string>, _item: string): number
+		return 1
+	end,
+}
+local negMissing: stl.ListImpl<stl.Deque<string>, string, number> = {
+	Get = Deque.Get,
+	FirstIndex = Deque.FirstIndex,
+	LastIndex = Deque.LastIndex,
+	NextIndex = Deque.NextIndex,
+}
+
 local canary: string = 42
 
 return {
@@ -112,5 +142,10 @@ return {
 	negHoled,
 	negMap,
 	negSet,
+	arrImpl,
+	dequeImpl,
+	negOverride,
+	negOverrideReturn,
+	negMissing,
 	canary,
 }

@@ -41,7 +41,7 @@ export type Hasher<T> = (value: T, maxHash: number) -> number
 --[[ 맵 계열이 공유하는 항목 표현 ]]
 
 -- 키-값 한 쌍. 구현마다 `iter()` / `orderedIter()` 로 이름이 갈라지는 것을
--- 막으려고 계약에 포함합니다.
+-- 막으려던 것입니다(맵들의 `Records`·`First`·`PopFirst`, `Algorithm.Records` 가 이 모양을 돌려줍니다).
 -- 받은 레코드를 고쳐도 컨테이너는 안 망가집니다 — 컨테이너들은 레코드를
 -- **새로 만들어서** 내줍니다(2026-09-30 리뷰). `read` 필드로 막는 안도 재봤는데,
 -- 리터럴에서 제네릭을 못 뽑고 `FromRecords(Records(m))` 왕복까지 막혀 접었습니다.
@@ -67,7 +67,7 @@ export type ListOps<C, E, I> = {
 }
 
 -- 리스트 트레이트의 **완성 표**(2026-10-13, `papers/07` 2단계): 위 다섯(필수)에 **기본 구현**이 채우는
--- 읽기 알고리즘이 더해진 것입니다. 구현은 `ListOps`(다섯)만 주면 되고, 같은 이름의 함수를 가지고 있으면
+-- 읽기 알고리즘이 더해진 것입니다. 구현은 필수 다섯만 주면 되고(넘기는 표의 타입은 아래 `ListImpl`), 같은 이름의 함수를 가지고 있으면
 -- 그것이 기본 구현을 대신합니다(`Arr` 는 모듈을 그대로 등록해 전부 자기 직접 구현으로).
 -- 콜백은 원소와 **위치**를 받습니다(`Arr` 의 콜백은 셋째로 읽기 뷰도 받지만 계약은 둘까지).
 -- - `Fold` 앞에서부터 접기. `Find` 는 처음 맞는 원소와 그 위치(없으면 `nil, nil`).
@@ -86,6 +86,26 @@ export type ListFull<C, E, I> = {
 	read Count: (list: C, pred: ((item: E, idx: I) -> boolean)?) -> number,
 	read Some: (list: C, pred: (item: E, idx: I) -> boolean) -> boolean,
 	read Every: (list: C, pred: (item: E, idx: I) -> boolean) -> boolean,
+}
+
+-- 리스트 구현이 **`Trait.Impl` 에 넘기는 표**의 타입: 필수 다섯 + **재정의할 수 있는 것은 선택 필드**.
+-- 선택 필드로 적어 두어야 재정의의 서명이 검사됩니다 — 필수만 적은 타입이면 재정의 자리는 폭 서브타이핑으로
+-- 아무 값이나 통과했습니다(`Fold = "문자열"` 이 0건, 리뷰). 콜백 타입의 `...any` 는 "원소와 위치, 그리고 구현이
+-- 더 넘길 수도 있음" 입니다 — `Arr` 의 콜백은 셋째로 읽기 뷰를 받고 `Some`/`Every` 는 구간 인자도 받는데,
+-- Luau 는 인자 수가 다른 함수 타입을 서로 넣어 주지 않아 꼬리가 없으면 `Arr` 모듈이 이 타입에 못 들어갑니다(실측).
+export type ListImpl<C, E, I> = {
+	read Get: (list: C, idx: I) -> E?,
+	read FirstIndex: (list: C) -> I?,
+	read LastIndex: (list: C) -> I?,
+	read NextIndex: (list: C, idx: I) -> I?,
+	read PrevIndex: (list: C, idx: I) -> I?,
+	read Fold: ((list: C, init: any, fn: (acc: any, item: E, idx: I, ...any) -> any) -> any)?,
+	read Find: ((list: C, pred: (item: E, idx: I, ...any) -> boolean) -> (E?, I?))?,
+	read IndexOf: ((list: C, item: E) -> I?)?,
+	read Contains: ((list: C, item: E) -> boolean)?,
+	read Count: ((list: C, pred: ((item: E, idx: I, ...any) -> boolean)?) -> number)?,
+	read Some: ((list: C, pred: (item: E, idx: I, ...any) -> boolean, ...any) -> boolean)?,
+	read Every: ((list: C, pred: (item: E, idx: I, ...any) -> boolean, ...any) -> boolean)?,
 }
 
 -- 키로 값을 찾는 컨테이너. HashMap/TreeMap 이 만족합니다.

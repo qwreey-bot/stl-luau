@@ -7,7 +7,7 @@
 	추론하는지. 예전엔 `Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
 	사용자 컨테이너·사용자 트레이트도 같은 모양으로 들어오는지.
 
-	기대 진단: 17건 (NEG 열다섯이 16건 — neg6 은 두 자리 + CANARY 1)
+	기대 진단: 21건 (NEG 열아홉이 20건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, TreeMap, Algorithm, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Algorithm, stl.Trait
@@ -112,7 +112,9 @@ local neg12 = itemOf((nil :: any) :: { read __setItem: number })
 
 --[[ 기본 구현을 가진 트레이트(2026-10-13, papers/07 1단계) — 완성 표의 타입과 구현이 넘기는 표의 타입 ]]
 type Shape = { read __type: stl.TraitToken<string>, side: number }
-type ShapeCore = { read Area: (s: Shape) -> number }
+-- 구현이 넘기는 표: 필수(`Area`) + **재정의할 수 있는 것은 선택 필드**(`Describe?`). 필수만 적으면 재정의 자리는
+-- 검사되지 않았습니다(`Describe = "문자열"` 이 0건 — 1단계 리뷰).
+type ShapeCore = { read Area: (s: Shape) -> number, read Describe: ((s: Shape) -> string)? }
 type ShapeFull = { read Area: (s: Shape) -> number, read Describe: (s: Shape) -> string }
 local ShapeTrait = Trait.New<<ShapeFull>>("Shape", {
 	required = { "Area" },
@@ -134,8 +136,32 @@ Trait.Impl(ShapeTrait, SquareType, {
 local square: Shape = { __type = SquareType, side = 3 } :: any
 local shapeOps = Trait.ImplOf(ShapeTrait, square)
 local described: string? = if shapeOps then shapeOps.Describe(square) else nil
--- NEG: 넘기는 표의 타입이 어긋남 / 완성 표의 함수 타입 / 없는 함수
+-- 맞는 재정의는 통과
+Trait.Impl(ShapeTrait, Trait.NewType("Round"), {
+	Area = function(s: Shape): number
+		return s.side
+	end,
+	Describe = function(_s: Shape): string
+		return "round"
+	end,
+})
+-- NEG: 넘기는 표의 타입이 어긋남 / 재정의 자리 / 완성 표의 함수 타입 / 없는 함수
 Trait.Impl(ShapeTrait, Trait.NewType("Bad"), { Area = "not a function" })
+local function area(s: Shape): number
+	return s.side
+end
+Trait.Impl(ShapeTrait, Trait.NewType("BadOverride"), { Area = area, Describe = "not a function" })
+Trait.Impl(ShapeTrait, Trait.NewType("BadReturn"), {
+	Area = area,
+	Describe = function(_s: Shape): number
+		return 12345
+	end,
+})
+-- 캐스트하지 않은 평범한 트레이트도 `Impl` 이 표를 검사함(완성 표 전체를 요구)
+local PlainTrait = Trait.New<<{ read Show: (v: Shape) -> string }>>("PlainShow", { required = { "Show" } })
+Trait.Impl(PlainTrait, Trait.NewType("BadPlain"), { Show = 5 })
+-- 인자 하나짜리 `Trait<I>` 자리에는 기본 구현 달린 트레이트(`Trait<Full, Core>`)가 안 들어감
+local negOneParam: stl.Trait<ShapeFull> = ShapeTrait
 local negDescribed: number? = if shapeOps then shapeOps.Describe(square) else nil
 local negNoSuch = if shapeOps then shapeOps.Perimeter(square) else nil
 
@@ -162,5 +188,6 @@ return {
 	described,
 	negDescribed,
 	negNoSuch,
+	negOneParam,
 	canary,
 }

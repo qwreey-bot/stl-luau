@@ -40,6 +40,7 @@ export type Hasher<T> = Types.Hasher<T>
 export type Record<K, V> = Types.Record<K, V>
 export type ListOps<C, E, I> = Types.ListOps<C, E, I>
 export type ListFull<C, E, I> = Types.ListFull<C, E, I>
+export type ListImpl<C, E, I> = Types.ListImpl<C, E, I>
 export type MapOps<C, K, V> = Types.MapOps<C, K, V>
 export type SetOps<C, T> = Types.SetOps<C, T>
 export type ListMarker<E, I> = Types.ListMarker<E, I>
@@ -54,6 +55,7 @@ export type CollectionMarkerMut = Types.CollectionMarkerMut
 export type TraitToken<N> = Trait.Token<N>
 export type Trait<I, C = I> = Trait.Trait<I, C>
 export type TraitSpec = Trait.TraitSpec
+export type TraitDefaults = Trait.Defaults
 
 -- 컨테이너 타입
 export type Arr<T> = Arr.Arr<T>

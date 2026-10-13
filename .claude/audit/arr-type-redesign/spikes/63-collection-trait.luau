@@ -26,7 +26,7 @@
 	- `HashMap.Iter(m)` 의 읽기 전용 타입은 **인덱싱 쓰기**만 막습니다 — `table.clear`·`table.freeze`·
 	  `setmetatable` 같은 내장은 읽기 전용 테이블을 받아 0건입니다(Luau 내장 타입의 한계).
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 23 줄 · 24건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 24 줄 · 25건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
 ]]
 local stl = require("../../../../src")
 local Algorithm, Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Heap, Common =
@@ -142,6 +142,7 @@ local negPartial: stl.MapOps<stl.HashMap<string, number>, string, number> = {
 }
 local negRemoved: number = mapOps.Remove(tm, "x")
 local negRecs: { Record<number, number> } = Algorithm.Records(tm) -- 키는 string
+local negRecsValue: { Record<string, string> } = Algorithm.Records(tm) -- 값은 number
 local negRecsList = Algorithm.Records(arr) -- 리스트는 맵이 아님
 local negOldContract = mapOps.Records(tm) -- 계약에는 더 없음
 for _, value in HashMap.Iter(hm) do
@@ -217,6 +218,7 @@ return {
 	negPartial,
 	negRemoved,
 	negRecs,
+	negRecsValue,
 	negRecsList,
 	negOldContract,
 	canary,
