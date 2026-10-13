@@ -142,6 +142,20 @@ function exports.Values<K, V>(map: MapMarker<K, V>): { V }
 	return out
 end
 
+-- 키-값 레코드의 목록(`{ { key, value } }`) — 순서는 구현의 순회 순서. 레코드는 **새로 만든 것**이라
+-- 받은 쪽이 고쳐도 맵은 그대로입니다. 계약(`MapOps`)에 있던 `Records` 를 `Iter` 위로 옮긴 것입니다
+-- (2026-10-13 사용자 결정) — 종류를 아는 코드는 `HashMap.Records`/`TreeMap.Records` 를 직접 쓰세요.
+function exports.Records<K, V>(map: MapMarker<K, V>): { Types.Record<K, V> }
+	const ops = implOf(Trait.Map, map, "Records")
+	const out: { Types.Record<K, V> } = sizedList(map)
+	local count = 0
+	for key, value in ops.Iter(map) do
+		count += 1
+		out[count] = { key = key, value = value }
+	end
+	return out
+end
+
 -- 알고 있는 크기(O(1)). 리스트·맵·셋·힙 어느 것이든 — `Trait.Collection` 을 구현하는 종류면 됩니다.
 -- 읽기라 빌린 참조(`ArrRead`·`DequeRead`)도 받습니다. 세어서 구하는 것은 `Count`.
 function exports.Len(collection: CollectionMarker): number

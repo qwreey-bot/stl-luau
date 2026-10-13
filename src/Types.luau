@@ -71,6 +71,9 @@ export type ListOps<C, E, I> = {
 -- ⭐ 2026-10-12 에 `Has`·`Remove`·`Iter` 를 더했습니다(질문 AM 다 → AO, 사용자: *"hash 인지 tree 인지
 -- 몰라도 만질 수 있게"*). 예전의 셋(`Get`·`Set`·`Records`)만으로는 구현을 모르는 코드가 지울 수도,
 -- 할당 없이 돌 수도 없었습니다. 크기와 비우기는 맵만의 것이 아니라 아래 `CollectionOps` 에 있습니다.
+-- `Records` 는 **2026-10-13 에 계약에서 뺐습니다**(사용자 결정, 질문 AO) — `Iter` 가 있으면 유도되고
+-- (`Algorithm.Records(m)`) 라이브러리의 알고리즘은 더 쓰지 않아, 사용자 맵이 구현할 것을 하나 줄였습니다.
+-- 모듈의 `HashMap.Records`·`TreeMap.Records` 는 그대로 있습니다.
 -- - `Remove` 는 지운 값을 돌려줍니다(없었으면 `nil`).
 -- - `Iter` 는 `for key, value in ops.Iter(map) do` 에 넣는 **값 하나**입니다: 키-값이 그대로 든 **테이블**
 --   (Luau 가 직접 돎 — 가장 빠름, `HashMap`) 또는 **인자 없는 순회 함수**(상태는 클로저에, `TreeMap`).
@@ -84,7 +87,6 @@ export type MapOps<C, K, V> = {
 	read Set: (map: C, key: K, value: V) -> (),
 	read Has: (map: C, key: K) -> boolean,
 	read Remove: (map: C, key: K) -> V?,
-	read Records: (map: C) -> { Record<K, V> },
 	read Iter: (map: C) -> { read [K]: V } | (() -> (K, V)),
 }
 

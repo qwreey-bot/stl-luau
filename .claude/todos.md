@@ -8,11 +8,9 @@
 | 무엇 | 어디 |
 |---|---|
 | **AA. Luau 새 솔버 결함 보고** — 초안 정리 끝(이슈 넷 + 재현 파일). **올리는 것은 사용자가**(또는 지시하실 때) | `.claude/audit/luau-solver-issues/DRAFTS.md` |
-| **AO. 트레이트 넓히기의 모양**(제가 정함 — `Trait.Collection`, `MapOps` 여섯, `Trait.New` 의 필수 함수 목록) | `question.md` AO |
-| **AP 1 을 넣으며 정한 것**(10-12 결정 반영) — `HashMap.Iter` 반환은 읽기 전용 타입(내장 `next`/`pairs` 엔 캐스트), 계약의 `Iter` 는 유니온(계약 경유 루프 변수는 `any`) | `question.md` AP |
-| **AJ. M4 맵·셋의 모양**(사용자가 주무시는 동안 제가 정함 — 확인 부탁) | `question.md` AJ |
-| **AK. Deque 의 나머지 모양**(`DequeRead` 는 10-12 에 넣음) — 리스트 진입점이 Deque 를 받을지(지금 안 받고 `ToArr`), 이름·칸 수 정책 | `question.md` AK |
-| **AN. 트리의 `nil` 키를 막은 것**(제가 정함 — 빈 트리에 조용히 들어가 나중에 죽어서). 해시 쪽은 10-12 결정대로 그대로 | `question.md` AN |
+| ⏳ **AR. 묶기의 결과 컨테이너** — 목적지 인스턴스를 셋째 인자로(정해짐). 안에서 누적하는 방식(프로토콜 대 Java 식)은 서브에이전트 의견을 받는 중 | `question.md` AR |
+
+(2026-10-13 에 확인 끝: AJ·AK·AN·AO — 바뀐 것은 `MapOps` 에서 `Records` 를 뺀 것과 AR.)
 
 ## ☀️ 자고 일어나서 볼 것 (2026-10-07 밤 자율 작업)
 

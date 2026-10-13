@@ -26,7 +26,7 @@
 	- `HashMap.Iter(m)` 의 읽기 전용 타입은 **인덱싱 쓰기**만 막습니다 — `table.clear`·`table.freeze`·
 	  `setmetatable` 같은 내장은 읽기 전용 테이블을 받아 0건입니다(Luau 내장 타입의 한계).
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 20 줄 · 21건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 23 줄 · 24건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
 ]]
 local stl = require("../../../../src")
 local Algorithm, Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Heap, Common =
@@ -67,6 +67,8 @@ end
 -- 모듈 테이블이 계약을 만족
 local colOps: stl.CollectionOps<stl.HashMap<string, number>> = HashMap
 local mapOps: stl.MapOps<stl.TreeMap<string, number>, string, number> = TreeMap
+-- 레코드 목록은 계약이 아니라 알고리즘으로(2026-10-13 — `Records` 를 계약에서 뺌)
+local recs: { Record<string, number> } = Algorithm.Records(tm)
 local has: boolean = mapOps.Has(tm, "x")
 local removed: number? = mapOps.Remove(tm, "x")
 -- 모듈의 Iter 를 직접 돌면 루프 변수 타입이 섬(HashMap 은 테이블, TreeMap 은 함수)
@@ -126,7 +128,6 @@ local noRemove = {
 	Get = HashMap.Get,
 	Set = HashMap.Set,
 	Has = HashMap.Has,
-	Records = HashMap.Records,
 	Iter = HashMap.Iter,
 }
 local negNoRemove: stl.MapOps<stl.HashMap<string, number>, string, number> = noRemove
@@ -137,9 +138,12 @@ putVia<<stl.HashSet<number>, number, boolean>>(HashSet, hs, 3, true)
 local negPartial: stl.MapOps<stl.HashMap<string, number>, string, number> = {
 	Get = HashMap.Get,
 	Set = HashMap.Set,
-	Records = HashMap.Records,
+	Iter = HashMap.Iter,
 }
 local negRemoved: number = mapOps.Remove(tm, "x")
+local negRecs: { Record<number, number> } = Algorithm.Records(tm) -- 키는 string
+local negRecsList = Algorithm.Records(arr) -- 리스트는 맵이 아님
+local negOldContract = mapOps.Records(tm) -- 계약에는 더 없음
 for _, value in HashMap.Iter(hm) do
 	local _negValue: string = value
 end
@@ -176,9 +180,6 @@ local vecIter = {
 	Remove = function(_m: VecMap, _k: number): number?
 		return nil
 	end,
-	Records = function(_m: VecMap): { Record<number, number> }
-		return {}
-	end,
 	Iter = function(m: VecMap): stl.Arr<number>
 		return m.items
 	end,
@@ -201,6 +202,7 @@ return {
 	clearedHeap,
 	borrowedLen,
 	colOps,
+	recs,
 	has,
 	removed,
 	negClearedHm,
@@ -214,6 +216,9 @@ return {
 	negNoRemove,
 	negPartial,
 	negRemoved,
+	negRecs,
+	negRecsList,
+	negOldContract,
 	canary,
 	futLen,
 	looseOps,

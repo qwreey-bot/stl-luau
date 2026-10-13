@@ -166,7 +166,7 @@ end
 --[[ 라이브러리의 트레이트와 타입 토큰 ]]
 
 const List = New<<Types.ListOps<any, any, any>>>("List", { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" })
-const Map = New<<Types.MapOps<any, any, any>>>("Map", { "Get", "Set", "Has", "Remove", "Records", "Iter" })
+const Map = New<<Types.MapOps<any, any, any>>>("Map", { "Get", "Set", "Has", "Remove", "Iter" })
 const Set = New<<Types.SetOps<any, any>>>("Set", { "Add", "Has", "Remove", "Items" })
 -- 원소를 담는 것 전부(리스트·맵·셋·힙) — 크기와 비우기(2026-10-12). 한 종류가 `List` 와 `Collection` 처럼
 -- 여러 트레이트를 구현합니다.

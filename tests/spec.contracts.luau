@@ -38,7 +38,13 @@ local function fillAndCount<C, V>(ops: MapOps<C, string, V>, map: C, value: V): 
 	ops.Set(map, "하나", value)
 	ops.Set(map, "둘", value)
 	ops.Set(map, "하나", value) -- 덮어쓰기
-	return #ops.Records(map)
+	-- 세는 것은 `Iter` 로(2026-10-13 — `Records` 는 계약에서 빠졌음). 계약을 거친 루프 변수는 타입이
+	-- 없어(유니온 순회) 주석을 답니다.
+	local count = 0
+	for _key: string in ops.Iter(map) do
+		count += 1
+	end
+	return count
 end
 
 -- 셋: 넣고 확인하고 뺍니다.
@@ -950,13 +956,6 @@ do
 			table.remove(m.keys, at)
 			return table.remove(m.values, at)
 		end,
-		Records = function(m: MyMap): { stl.Record<string, number> }
-			const out = {}
-			for at, k in m.keys do
-				out[at] = { key = k, value = m.values[at] }
-			end
-			return out
-		end,
 		Iter = function(m: MyMap)
 			local at = 0
 			return function(): (string, number)
@@ -973,6 +972,13 @@ do
 	const myKeys = stl.Algorithm.Keys(mine)
 	const myValues = stl.Algorithm.Values(mine)
 	assert(table.concat(myKeys, ",") == "x,y,w", "Keys(사용자 맵) 은 순회 순서")
+	-- ⭐ Records 는 계약이 아니라 알고리즘(2026-10-13 — `Iter` 위에 한 번만 구현). 사용자 맵은 다섯
+	-- 함수만으로 레코드 목록을 얻습니다.
+	const myRecords = stl.Algorithm.Records(mine)
+	assert(#myRecords == 3, `Records(사용자 맵): {#myRecords}`)
+	assert(myRecords[1].key == "x" and myRecords[1].value == 1 and myRecords[3].key == "w", "Records 는 순회 순서")
+	myRecords[1].value = 99 -- 받은 레코드를 고쳐도 맵은 그대로(새로 만든 레코드)
+	assert(myOps.Get(mine, "x") == 1, "Records 의 레코드는 사본")
 	assert(table.concat(myValues, ",") == "1,2,3", "Values(사용자 맵) — Keys 와 같은 순서")
 	-- 결과는 메타 키 없는 새 평범한 배열 — 구현의 내부 목록이 아님
 	assert((myKeys :: any) ~= mine.keys and (myValues :: any) ~= mine.values, "새 테이블")
@@ -1003,6 +1009,31 @@ do
 	for at, key in bigKeys do
 		assert(stl.HashMap.Get(big, key) == bigValues[at], `Keys[{at}] 와 Values[{at}] 가 짝`)
 	end
+	-- 내장 두 맵의 Algorithm.Records: 자기 모듈의 Records 와 같은 내용, 받은 것을 고쳐도 맵은 그대로
+	const hashRecords = stl.Algorithm.Records(big)
+	assert(#hashRecords == 40, "Algorithm.Records(HashMap) 개수")
+	for _, rec in hashRecords do
+		assert(stl.HashMap.Get(big, rec.key) == rec.value, "Algorithm.Records(HashMap) 의 키-값")
+	end
+	const treeRecords = stl.Algorithm.Records(bigTree)
+	const ownRecords = stl.TreeMap.Records(bigTree)
+	assert(#treeRecords == #ownRecords and #treeRecords == 40, "Algorithm.Records(TreeMap) 개수")
+	for at, rec in treeRecords do
+		assert(
+			rec.key == ownRecords[at].key and rec.value == ownRecords[at].value,
+			`TreeMap 레코드 {at} 은 정렬 순서`
+		)
+	end
+	treeRecords[1].key = "zzz"
+	treeRecords[1].value = -1
+	assert(
+		stl.TreeMap.Records(bigTree)[1].key == ownRecords[1].key,
+		"받은 레코드를 고쳐도 TreeMap 은 그대로"
+	)
+	assert(#stl.Algorithm.Records(emptyHash) == 0, "빈 맵의 Records")
+	assert(not pcall(function()
+		stl.Algorithm.Records(stl.Arr.Of(1) :: any)
+	end), "맵이 아닌 것의 Records 는 에러")
 	const treeKeys, treeValues = stl.Algorithm.Keys(bigTree), stl.Algorithm.Values(bigTree)
 	assert(
 		table.concat(treeKeys, ",") == table.concat(stl.TreeMap.Keys(bigTree), ","),
@@ -1015,7 +1046,7 @@ do
 	const partial = {
 		Get = myOps.Get,
 		Set = myOps.Set,
-		Records = myOps.Records,
+		Iter = myOps.Iter,
 	}
 	const PartialType = stl.Trait.NewType("PartialMap")
 	local partialLine = 0
@@ -1415,7 +1446,6 @@ do
 				Set = stl.HashMap.Set,
 				Has = stl.HashMap.Has,
 				Remove = stl.HashMap.Remove,
-				Records = stl.HashMap.Records,
 				Iter = stl.HashMap.Iter,
 			},
 		},
@@ -1500,9 +1530,6 @@ do
 			end,
 			Remove = function(): number?
 				return nil
-			end,
-			Records = function(): { stl.Record<string, number> }
-				return {}
 			end,
 			Iter = function()
 				return pairsOf
