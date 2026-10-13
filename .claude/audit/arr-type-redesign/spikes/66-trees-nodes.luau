@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 48 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 53 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -150,6 +150,20 @@ local negLevelEnd: RbNode = stl.Traverse.LevelOrder(root)()
 stl.CompleteArray.SiftDown({ "a", "b" }, 2, 1, lessNumber)
 stl.CompleteArray.Heapify({ "a", "b" }, 2, lessNumber)
 
+--[[ SortedArray — 정렬 배열로 된 탐색 구조(찾기, 밀고 당기는 넣기·빼기) ]]
+local sortedList = { 10, 20, 30 }
+local function probeNumber(item: number, key: number): number
+	return item - key
+end
+local okPos, okFound = stl.SortedArray.Locate(sortedList, 3, 20, probeNumber)
+local okRemoved: number = stl.SortedArray.RemoveAt(sortedList, 3, 1)
+-- NEG: 자리와 "있는가" 의 타입 / 원소 타입이 다른 것을 끼워 넣음 / 키 타입과 probe 가 어긋남 / 뺀 것의 타입
+local negLocatePos: string = okPos
+local negLocateFound: number = okFound
+stl.SortedArray.InsertAt(sortedList, 2, 1, "ten")
+stl.SortedArray.Locate(sortedList, 2, "20", probeNumber)
+local negRemovedType: string = stl.SortedArray.RemoveAt(sortedList, 2, 1)
+
 local canary: string = 42
 
 return {
@@ -206,5 +220,9 @@ return {
 	negInEnd,
 	negPostEnd,
 	negLevelEnd,
+	okRemoved,
+	negLocatePos,
+	negLocateFound,
+	negRemovedType,
 	canary,
 }

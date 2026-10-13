@@ -1072,6 +1072,116 @@ do
 end
 print("PASS")
 
+print(
+	"=== 9. SortedArray — 정렬 배열로 된 탐색 구조: 찾기, 밀고 당기는 넣기·빼기 (2026-10-14) ==="
+)
+do
+	const Sorted = stl.SortedArray
+	type Rec = { key: number, tag: string }
+	local function probe(rec: Rec, key: number): number
+		return rec.key - key
+	end
+	local function show(list: { Rec }, count: number): string
+		const out: { string } = {}
+		for idx = 1, count do
+			out[idx] = `{list[idx].key}{list[idx].tag}`
+		end
+		return table.concat(out, ",")
+	end
+	const list: { Rec } = { { key = 10, tag = "a" }, { key = 30, tag = "b" }, { key = 50, tag = "c" } }
+
+	-- (1) Locate — 있는 자리 / 들어갈 자리(앞·사이·맨 뒤), 빈 배열
+	do
+		local pos, found = Sorted.Locate(list, 3, 30, probe)
+		assert(pos == 2 and found == true, "Locate 있는 키")
+		pos, found = Sorted.Locate(list, 3, 5, probe)
+		assert(pos == 1 and found == false, "Locate 맨 앞에 들어갈 키")
+		pos, found = Sorted.Locate(list, 3, 40, probe)
+		assert(pos == 3 and found == false, "Locate 사이에 들어갈 키")
+		pos, found = Sorted.Locate(list, 3, 99, probe)
+		assert(pos == 4 and found == false, "Locate 맨 뒤(count + 1)")
+		pos, found = Sorted.Locate({} :: { Rec }, 0, 7, probe)
+		assert(pos == 1 and found == false, "Locate 빈 배열")
+		-- count 밖은 보지 않음: 셋째 칸의 50 은 count = 2 에서는 없는 것
+		pos, found = Sorted.Locate(list, 2, 50, probe)
+		assert(pos == 3 and found == false, "Locate 는 count 까지만")
+		-- 찾기 셋은 BSearch 와 같은 것
+		assert(Sorted.Find(list, 3, 50, probe) == 3 and Sorted.Find(list, 3, 40, probe) == nil, "Find")
+		assert(Sorted.LowerBound(list, 3, 30, probe) == 2 and Sorted.UpperBound(list, 3, 30, probe) == 3, "경계")
+	end
+
+	-- (2) InsertAt — 맨 앞·사이·맨 뒤. 뒤의 것들이 한 칸씩 밀리고 순서가 유지됨
+	do
+		const work = table.clone(list)
+		Sorted.InsertAt(work, 3, 3, { key = 40, tag = "x" })
+		assert(show(work, 4) == "10a,30b,40x,50c", `사이: {show(work, 4)}`)
+		Sorted.InsertAt(work, 4, 1, { key = 5, tag = "y" })
+		assert(show(work, 5) == "5y,10a,30b,40x,50c", `맨 앞: {show(work, 5)}`)
+		Sorted.InsertAt(work, 5, 6, { key = 60, tag = "z" })
+		assert(show(work, 6) == "5y,10a,30b,40x,50c,60z" and work[7] == nil, `맨 뒤: {show(work, 6)}`)
+		const empty: { Rec } = {}
+		Sorted.InsertAt(empty, 0, 1, { key = 1, tag = "only" })
+		assert(show(empty, 1) == "1only", "빈 배열에 넣기")
+	end
+
+	-- (3) RemoveAt — 맨 앞·사이·맨 뒤. 뺀 것을 돌려주고, 당긴 뒤 **맨 끝 칸을 비움**(안 비우면 끝 원소가 둘)
+	do
+		const work: { Rec } = {
+			{ key = 10, tag = "a" },
+			{ key = 20, tag = "b" },
+			{ key = 30, tag = "c" },
+			{ key = 40, tag = "d" },
+		}
+		assert(Sorted.RemoveAt(work, 4, 2).tag == "b", "RemoveAt 은 뺀 것을 돌려줌")
+		assert(show(work, 3) == "10a,30c,40d" and work[4] == nil, `사이: {show(work, 3)}`)
+		assert(Sorted.RemoveAt(work, 3, 1).tag == "a" and show(work, 2) == "30c,40d" and work[3] == nil, "맨 앞")
+		assert(Sorted.RemoveAt(work, 2, 2).tag == "d" and show(work, 1) == "30c" and work[2] == nil, "맨 뒤")
+		assert(Sorted.RemoveAt(work, 1, 1).tag == "c" and work[1] == nil, "하나 남은 것")
+	end
+
+	-- (4) 무작위: Locate → InsertAt / RemoveAt 로 짠 맵을 평범한 사전과 대조. 걸음마다 순서·개수·끝 칸
+	do
+		local seed = 5150
+		local function rand(limit: number): number
+			seed = (seed * 48271) % 2147483647
+			return seed % limit
+		end
+		for round = 1, 60 do
+			const work: { Rec } = {}
+			local count = 0
+			const model: { [number]: string } = {}
+			local modelCount = 0
+			for step = 1, 200 do
+				const key = rand(80) * 10
+				const pos, found = Sorted.Locate(work, count, key, probe)
+				if rand(3) > 0 then
+					const tag = `t{step}`
+					if found then
+						work[pos].tag = tag
+					else
+						Sorted.InsertAt(work, count, pos, { key = key, tag = tag })
+						count += 1
+						modelCount += 1
+					end
+					model[key] = tag
+				elseif found then
+					const removed = Sorted.RemoveAt(work, count, pos)
+					assert(removed.key == key and removed.tag == model[key], `뺀 것 {round}/{step}`)
+					count -= 1
+					modelCount -= 1
+					model[key] = nil
+				end
+				assert(count == modelCount and work[count + 1] == nil, `개수·끝 칸 {round}/{step}`)
+				for idx = 1, count do
+					assert(model[work[idx].key] == work[idx].tag, `내용 {round}/{step}`)
+					assert(idx == 1 or work[idx - 1].key < work[idx].key, `순서 {round}/{step}`)
+				end
+			end
+		end
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (트리부·Node 도구) ===")
 

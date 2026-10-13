@@ -37,6 +37,7 @@
 ]]
 local Types = require("../Types")
 local BSearch = require("../Algorithms/BSearch")
+local SortedArray = require("../Trees/SortedArray")
 local Common = require("../Common")
 local Trait = require("../Trait")
 local Map = require("../Traits/Map")
@@ -98,15 +99,18 @@ const function rejectKey(key: any): never
 	return Common.raise(if key == nil then "FlatMap: nil key" else "FlatMap: NaN key")
 end
 
--- `pos` 의 레코드를 빼고 뒤를 당깁니다. `Set(k, nil)` 과 `Remove` 가 같이 씁니다.
+-- ⭐ 끼워 넣기·빼기(배열을 밀고 당기는 구조 연산)는 **`Trees/SortedArray`(2층) 의 것**입니다 — 이 모듈은 그것의
+-- 조립입니다(크기·타입 토큰·키 검사). 노드 기반 `TreeMap` 이 `RedBlack` 의 조립인 것과 같은 층 나눔입니다
+-- (2026-10-14 사용자: *"노드 연산이 컬랙션에 정의인게 걸린점"*). 찾기는 예전처럼 `BSearch` 를 바로 부릅니다 —
+-- `SortedArray.Locate` 를 거치면 호출이 한 겹 더 붙어 작은 맵의 `Set` 이 7% 느렸습니다(perf 47절).
+const insertAt, removeFrom = SortedArray.InsertAt, SortedArray.RemoveAt
+
+-- `pos` 의 레코드를 빼고 값을 돌려줍니다. `Set(k, nil)` 과 `Remove` 가 같이 씁니다.
 const function removeAt<K, V>(self: FlatMapData<K, V>, pos: number): V
-	const records = self.records
 	const size = self.size
-	const removed = records[pos].value
-	table.move(records, pos + 1, size, pos)
-	records[size] = nil :: any
+	const removed = removeFrom(self.records, size, pos)
 	self.size = size - 1
-	return removed
+	return removed.value
 end
 
 const function Get<K, V>(self: FlatMapData<K, V>, key: K): V?
@@ -144,10 +148,7 @@ const function Set<K, V>(self: FlatMapData<K, V>, key: K, value: V): ()
 		(records[pos] :: any).value = value
 		return
 	end
-	if pos <= size then
-		table.move(records, pos, size, pos + 1)
-	end
-	records[pos] = { key = key, value = value }
+	insertAt(records, size, pos, { key = key, value = value })
 	self.size = size + 1
 end
 
@@ -350,10 +351,7 @@ const function PopFirst<K, V>(self: FlatMapData<K, V>): Record<K, V>?
 	if size == 0 then
 		return nil
 	end
-	const records = self.records
-	const rec = records[1]
-	table.move(records, 2, size, 1)
-	records[size] = nil :: any
+	const rec = removeFrom(self.records, size, 1)
 	self.size = size - 1
 	return rec
 end
@@ -364,9 +362,7 @@ const function PopLast<K, V>(self: FlatMapData<K, V>): Record<K, V>?
 	if size == 0 then
 		return nil
 	end
-	const records = self.records
-	const rec = records[size]
-	records[size] = nil :: any
+	const rec = removeFrom(self.records, size, size)
 	self.size = size - 1
 	return rec
 end

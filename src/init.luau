@@ -36,6 +36,7 @@ local Search = require("@self/Trees/Search")
 local Traverse = require("@self/Trees/Traverse")
 local CompleteArray = require("@self/Trees/CompleteArray")
 local CompleteNode = require("@self/Trees/CompleteNode")
+local SortedArray = require("@self/Trees/SortedArray")
 local Balance = require("@self/Trees/Balance")
 local BSearch = require("@self/Algorithms/BSearch")
 local Arr = require("@self/Collections/Arr")
@@ -140,6 +141,8 @@ return {
 	CompleteArray = CompleteArray,
 	-- 노드로 이은 완전 이진 트리 — 자리 찾기·맨 뒤 붙이기/떼기·노드 자리 맞바꾸기, 힙 순서(노드가 곧 위치)
 	CompleteNode = CompleteNode,
+	-- 정렬 배열로 된 탐색 구조 — 찾기와 밀고 당기는 넣기·빼기(`FlatMap`·`FlatSet` 이 조립해 씀)
+	SortedArray = SortedArray,
 	-- 자가 균형의 계약(`Balance.Scheme`)과 조립하는 쪽의 인자 확인(`Balance.Expect`)
 	Balance = Balance,
 

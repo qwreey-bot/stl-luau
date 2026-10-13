@@ -71,7 +71,7 @@ src/
     HashMap.luau     해시 맵. { data, size } 래퍼
     HashSet.luau     HashMap 위에 단방향으로 얹음
     TreeMap.luau     ⭐ 키 순서 맵 — **노드 기반 균형 트리**(3층 조립: 기본 레드블랙, 둘째 인자로 균형 방식 선택)
-    FlatMap.luau     정렬 레코드 배열 + 이분 탐색(예전 TreeMap — 2026-10-13 에 이름 바꿈). 작거나 읽기 위주일 때
+    FlatMap.luau     정렬 레코드 배열 + 이분 탐색 — Trees/SortedArray 의 조립(예전 TreeMap — 2026-10-13 에 이름 바꿈). 작거나 읽기 위주일 때
     TreeSet.luau     노드 기반 TreeMap 위에 단방향. 집합 연산은 두 트리를 순서대로 나란히 훑는 병합
     FlatSet.luau     FlatMap 위에 단방향. 집합 연산은 병합(예전 TreeSet)
     Heap.luau        이진 힙 — Trees/CompleteArray 의 조립(크기·비교자·토큰을 얹음). Collection 만 구현(크기·비우기)
@@ -90,6 +90,7 @@ src/
     Balance.luau     자가 균형의 계약(Balance.Scheme)과 조립하는 쪽의 인자 확인(Balance.Expect)
     CompleteArray.luau  배열에 담은 완전 이진 트리 — 자리 계산(Parent·Left·Right·Height), 힙 순서(SiftUp·SiftDown·Heapify·IsHeap)
     CompleteNode.luau   노드로 이은 완전 이진 트리 — At·Append·RemoveLast·Exchange, 힙 순서(SiftUp·SiftDown — 노드를 다시 이음)
+    SortedArray.luau    정렬 배열로 된 탐색 구조 — Locate, 밀고 당기는 InsertAt·RemoveAt (FlatMap 이 조립해 씀)
     Traverse.luau    순회자 — PreOrder·InOrder·PostOrder·LevelOrder (받은 부분 트리 안에서만, 스택 없이 부모 칸으로)
     RedBlack.luau    레드블랙 — Insert·Remove·FromSorted (제품의 기본)
     Avl.luau         AVL — 같은 표면
@@ -159,7 +160,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `Heap` | 완성 | `spikes/44` |
 | `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |
 | `LinkedDeque` / `Node` / 트레이트 `Deque` | 2026-10-13 — 리뷰 대기 | `spikes/65` |
-| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`·`Balance`·`Traverse`·`CompleteArray`·`CompleteNode`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
+| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`·`Balance`·`Traverse`·`CompleteArray`·`CompleteNode`·`SortedArray`) | 2026-10-13~14 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 
