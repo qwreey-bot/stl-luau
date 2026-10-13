@@ -26,7 +26,7 @@
 	  에러입니다(끝 쪽 칸이 `nil` 인데 그 덱의 머리·꼬리가 아닌 노드 — 두 번 지우기와 떼어 낸 노드를
 	  잡습니다. 비교 둘이라 비용이 없습니다).
 	- ⚠️ **다른 덱의 가운데 노드**를 넘기는 것은 잡지 못합니다(정의되지 않은 동작 — 두 덱이 다 깨집니다).
-	  노드에 주인을 적으면 잡을 수 있지만 노드마다 칸 하나가 듭니다(conventions "위치 저장 — 문서 규약").
+	  노드에 주인을 적으면 잡을 수 있지만 노드마다 칸 하나가 듭니다(위치 저장은 문서 규약 — 질문 D).
 	- `Iter` 는 **도는 동안 지금 노드를 `Remove` 해도 됩니다**(다음 노드를 미리 읽어 둠). 그 밖의 변경
 	  (다른 노드 지우기, 넣기)은 다른 컨테이너처럼 정의되지 않은 동작입니다.
 
@@ -194,6 +194,11 @@ end
 -- `node` 가 이 덱에 이어져 있지 않으면 에러. 끝 쪽 칸이 `nil` 인 노드만 가릴 수 있습니다(머리·꼬리와 견줌) —
 -- 떼어 낸 노드, 두 번 지우기, 다른 덱의 머리·꼬리·외톨이 노드가 걸립니다(머리 주석).
 const function checkLinked<T>(self: LinkedDequeRead<T>, node: NodeRead<T>, who: string)
+	-- 위치를 돌려주는 함수가 전부 옵셔널이라(`List.IndexOf` 가 못 찾음, 빈 덱의 `LastIndex`) 타입 없는 코드에서
+	-- 가장 흔한 비노드 값이 `nil` 입니다 — 라이브러리 줄의 `attempt to index nil` 이었습니다(리뷰).
+	if type(node) ~= "table" then
+		Common.raise(`LinkedDeque: {who} needs a node, got {typeof(node)}`)
+	end
 	if (node[PREV] == nil and self.head ~= node) or (node[NEXT] == nil and self.tail ~= node) then
 		Common.raise(
 			`LinkedDeque: {who} got a node that is not in this deque (removed already, or from another deque?)`

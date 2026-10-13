@@ -22,11 +22,11 @@ export type Ops<C> = {
 --[[ 마커 — 타입에만 있는 필드(런타임엔 없음) ]]
 
 -- 읽는 쪽(`Len`)은 **타입 토큰만** 요구합니다 — 토큰은 있지만 컬렉션이 아닌 것(`Fut`)은 타입을 지나
--- 런타임에 `Common.raise` 로 걸립니다(읽기 마커 필드를 데이터 타입 일곱과 읽기 타입 셋에 하나씩 더
+-- 런타임에 `Common.raise` 로 걸립니다(읽기 마커 필드를 데이터 타입과 읽기 타입마다 하나씩 더
 -- 두는 값을 못 해서).
 export type Marker = { read __type: Trait.Token<any> }
 -- **바꾸는 쪽**(`Clear`)은 이 팬텀을 요구합니다 — 원소 타입이 흘러들지 않아 불변일 필요는 없지만,
--- **읽기 전용으로 빌린 참조**(`ArrRead`·`CircularDequeRead`)가 `Clear` 를 얻으면 안 됩니다(토큰만 요구하니
+-- **읽기 전용으로 빌린 참조**(`ArrRead`·`CircularDequeRead`·`LinkedDequeRead`)가 `Clear` 를 얻으면 안 됩니다(토큰만 요구하니
 -- 진단 0건으로 지워졌습니다 — 시제품에서 재현, AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결). 팬텀은
 -- 데이터 타입(`ArrData`·`CircularDequeData`·맵·셋·`HeapData`)에만 있습니다. 새 컨테이너에도 같이 넣으세요.
 export type MarkerMut = { read __type: Trait.Token<any>, read __collectionMut: true }

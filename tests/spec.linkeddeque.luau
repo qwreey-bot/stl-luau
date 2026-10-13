@@ -251,6 +251,86 @@ do
 	same(copy, { 10, 20, 30, 40 }, 4, "사본")
 	same(original, { 20, 30 }, 2, "원본")
 	same(LinkedDeque.Clone(LinkedDeque.New<<number>>()), {}, 0, "빈 Clone")
+	-- Clone 은 구멍과 false 도 그대로(값이 있을 때만 옮기는 실수를 잡음 — 리뷰)
+	same(
+		LinkedDeque.Clone(LinkedDeque.Of<<number?>>(10, nil, 30, nil)),
+		{ 10, nil, 30, nil } :: { number? },
+		4,
+		"구멍 든 Clone"
+	)
+	same(LinkedDeque.Clone(LinkedDeque.Of(false, true, false)), { false, true, false }, 3, "false 든 Clone")
+end
+print("PASS")
+
+print(
+	"=== 4b. false 원소 — nil 과 다르게 다뤄짐(두 구현 모두), 위치가 노드가 아닐 때 (리뷰 1라운드) ==="
+)
+do
+	const flags = LinkedDeque.Of(false, true, false)
+	same(flags, { false, true, false }, 3, "false 든 덱")
+	assert(LinkedDeque.Front(flags) == false and LinkedDeque.Back(flags) == false, "Front·Back 이 false")
+	const mid = LinkedDeque.NextIndex(flags, LinkedDeque.FirstIndex(flags) :: NodeRead<boolean>) :: NodeRead<boolean>
+	assert(
+		LinkedDeque.Remove(flags, LinkedDeque.LastIndex(flags) :: NodeRead<boolean>) == false,
+		"Remove 가 false 를 돌려줌"
+	)
+	assert(
+		LinkedDeque.PopFront(flags) == false and LinkedDeque.Len(flags) == 1 and mid.value == true,
+		"PopFront 가 false"
+	)
+	const ring = CircularDeque.Of(false, true, false)
+	assert(CircularDeque.Front(ring) == false and CircularDeque.PopBack(ring) == false, "원형도 false")
+	assert(
+		CircularDeque.PopFront(ring) == false and CircularDeque.Len(ring) == 1 and CircularDeque.Front(ring) == true,
+		"원형에 true 하나 남음"
+	)
+	local seenFalse = 0
+	for _, value in LinkedDeque.Iter(LinkedDeque.Of(false, false)) do
+		seenFalse += if value == false then 1 else 0
+	end
+	assert(seenFalse == 2, "Iter 가 false 를 그대로")
+
+	-- 위치가 노드가 아니면(못 찾은 `IndexOf`, 빈 덱의 `LastIndex` — nil) 사용자 줄 에러
+	local where = 0
+	const d = LinkedDeque.Of(10, 20)
+	const notNodes: { { name: string, call: () -> (), got: string } } = {
+		{
+			name = "Remove",
+			got = "nil",
+			call = function()
+				where = debug.info(1, "l") + 1
+				LinkedDeque.Remove(d, stl.List.IndexOf(d, 99) :: any)
+			end,
+		},
+		{
+			name = "InsertAfter",
+			got = "nil",
+			call = function()
+				where = debug.info(1, "l") + 1
+				LinkedDeque.InsertAfter(d, LinkedDeque.LastIndex(LinkedDeque.New<<number>>()) :: any, 1)
+			end,
+		},
+		{
+			name = "InsertBefore",
+			got = "number",
+			call = function()
+				where = debug.info(1, "l") + 1
+				LinkedDeque.InsertBefore(d, 1 :: any, 1)
+			end,
+		},
+	}
+	for _, case in notNodes do
+		const ok, err = pcall(case.call)
+		assert(
+			not ok and string.find(tostring(err), `LinkedDeque: {case.name} needs a node, got {case.got}`, 1, true),
+			`{case.name}: {err}`
+		)
+		assert(
+			string.find(tostring(err), `spec.linkeddeque.luau:{where}:`, 1, true),
+			`{case.name} 사용자 줄: {err}`
+		)
+	end
+	same(d, { 10, 20 }, 2, "거절된 호출은 덱을 안 바꿈")
 end
 print("PASS")
 
@@ -275,6 +355,24 @@ do
 	end
 	assert(table.concat(backward, ",") == "30,20,10", "Walk 뒤로")
 	assert(Node.Count(a, 2) == 3 and Node.Count(b, 2) == 2 and Node.Count(c, 2) == 1, "Count")
+	assert(
+		Node.Count(c, 1) == 3 and Node.Count(b, 1) == 2 and Node.Count(a, 1) == 1,
+		"Count 는 그 칸을 따라감(뒤로)"
+	)
+	-- New 의 연결 칸 수: 숫자 인자 정책(소수는 자름, NaN·음수·너무 큼·숫자 아님은 사용자 줄 에러)
+	assert(Node.New(1, 2.7).value == 1 and Node.New(1, 0).value == 1, "소수·0")
+	local newWhere = 0
+	for _, bad in { -1, 0 / 0, 2 ^ 26 + 1, math.huge, "x" :: any } do
+		const ok, err = pcall(function()
+			newWhere = debug.info(1, "l") + 1
+			Node.New(1, bad)
+		end)
+		assert(
+			not ok and string.find(tostring(err), "Node: New links must be a number in", 1, true),
+			`links {tostring(bad)}: {err}`
+		)
+		assert(string.find(tostring(err), `spec.linkeddeque.luau:{newWhere}:`, 1, true), `links 사용자 줄: {err}`)
+	end
 	assert(Node.Count(nil :: stl.NodeRead<number>?, 2) == 0, "Count(nil)")
 	local never = 0
 	for _ in Node.Walk(nil :: stl.NodeRead<number>?, 2) do
@@ -347,6 +445,15 @@ do
 		Deque.PushBack(kept, 1) == kept and Deque.PushFront(kept, 0) == kept,
 		"진입점의 넣기는 넣은 덱을 돌려줌"
 	)
+	-- 진입점이 **그 끝**에 넣는지: 비어 있지 않은 덱에(빈 덱에 한 번만 넣으면 앞·뒤가 구별되지 않음 — 리뷰)
+	const makers: { (...number) -> any } = { LinkedDeque.Of :: any, CircularDeque.Of :: any }
+	for _, make in makers do
+		const dq = make(10, 20)
+		Deque.PushBack(dq, 30)
+		Deque.PushFront(dq, 5)
+		assert(Deque.Front(dq) == 5 and Deque.Back(dq) == 30, "PushFront 는 앞에, PushBack 은 뒤에")
+		assert(Deque.PopBack(dq) == 30 and Deque.PopFront(dq) == 5 and Deque.PopFront(dq) == 10, "꺼내는 끝")
+	end
 
 	-- 덱이 아닌 것: 트레이트 이름을 머리로 한 사용자 줄 에러(여섯 진입점 전부)
 	local where = 0

@@ -19,7 +19,6 @@
 # [2026-09-22] 재작성 **이전** 코드를 재던 스파이크 셋(00/10/23)은 src-old 와
 # 함께 지웠습니다. 결론은 audit/arr-type-redesign/REPORT.md 에 있고 파일은
 # git 히스토리에 있습니다. 지금 남은 것은 전부 **현재 src 를 재는** 것들입니다.
-
 2	.claude/audit/arr-type-redesign/spikes/11-intersection-prop-hole.luau	11,14
 5	.claude/audit/arr-type-redesign/spikes/22-export-shape-comparison.luau	20,27,33,34,36
 5	.claude/audit/arr-type-redesign/spikes/24-typeof-named-fn-fix.luau	26,27,47,53,56
@@ -67,7 +66,6 @@
 4	.claude/audit/arr-type-redesign/spikes/62-solver-generic-body-and-literal-key.luau	32,34,34,36
 26	.claude/audit/arr-type-redesign/spikes/63-collection-trait.luau	102,103,107,108,112,113,116,117,118,118,121,125,126,133,137,138,143,144,145,146,147,149,152,155,156,158
 26	.claude/audit/arr-type-redesign/spikes/64-list-algorithms.luau	58,61,64,67,68,69,74,77,82,85,89,90,92,93,96,99,101,104,107,110,123,131,135,176,184,187
-
-26	.claude/audit/arr-type-redesign/spikes/65-linked-deque.luau	42,43,45,46,47,49,51,52,55,56,59,60,60,60,60,60,61,62,63,64,66,67,68,69,71,73
+34	.claude/audit/arr-type-redesign/spikes/65-linked-deque.luau	42,43,45,46,47,49,51,52,55,56,59,60,60,60,60,60,61,62,63,64,66,67,68,69,71,73,74,75,76,77,78,81,83,89
 17	.claude/audit/arr-type-redesign/spikes/66-trees-nodes.luau	32,33,35,36,37,39,42,43,44,47,48,50,52,54,56,58,60
 15	.claude/audit/arr-type-redesign/spikes/67-treemap-nodes.luau	34,35,36,38,39,40,41,43,44,46,51,52,55,58,62

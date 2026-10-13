@@ -31,7 +31,7 @@ Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너�
   타입 **변수**로 받은 키·위치·값을 컨테이너에 **넘기는** 제네릭(쓰기뿐 아니라 키를 넘기는 조회도)은 불변 마커(`MapMarkerMut` 등,
   2026-10-12 — 읽기 마커는 공변이라 그 타입이 조용히 넓어짐. `==` 비교만 하는 값은 읽기 마커로 충분). 콜백이 순회 중인 컨테이너를 바꾸는 것은 **UB**(검사 없음, 사용자 결정).
   공용 알고리즘은 구현을 손으로 받지 않음(`Map.Keys(m)`). 트레이트는 `List`/`Map`(`Get`·`Set`·`Has`·`Remove`·
-  `Iter` — 레코드 목록은 `Map.Records`)/`Set`/`Collection`(`Len`·`Clear` — 일곱 컨테이너 전부, 2026-10-12). 컨테이너를 **바꾸는** 제네릭은
+  `Iter` — 레코드 목록은 `Map.Records`)/`Set`/`Collection`(`Len`·`Clear` — 컨테이너 전부, 2026-10-12). 컨테이너를 **바꾸는** 제네릭은
   원소 타입이 안 흘러들어도 `CollectionMarkerMut` — 읽기로 빌린 `ArrRead`·`CircularDequeRead` 가 `Clear` 를 얻으면 안 됨.
   ⭐ 트레이트는 **필수 함수 + 기본 구현 + 의존**(2026-10-13, `papers/07`): `Trait.New(name, { required, defaults, dependencies })`.
   필수 함수가 없는 트레이트는 의존만 갖추면 등록 없이 저절로 구현됨 — 컨테이너는 자기가 아는 트레이트만 등록.

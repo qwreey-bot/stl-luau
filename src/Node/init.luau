@@ -48,8 +48,18 @@ export type NodeRead<T> = Types.NodeRead<T>
 
 -- 연결이 없는 새 노드. `links` 는 미리 잡아 둘 연결 칸 수(양방향·이진이면 2) — 배열 부분을 한 번에
 -- 잡습니다. 뜨거운 자리에서는 생성자를 직접 쓰세요(머리 주석).
+-- `links` 는 숫자 인자 정책을 따릅니다(conventions): 소수는 0 쪽으로 자르고, NaN·음수·`2^26` 초과는 에러.
+const MAX_LINKS = 2 ^ 26
+
 const function New<T>(value: T, links: number?): Node<T>
-	const node = table.create(links or 2) :: any
+	local count = 2
+	if links ~= nil then
+		if type(links) ~= "number" or not (links >= 0) or links > MAX_LINKS then
+			Common.raise(`Node: New links must be a number in [0, {MAX_LINKS}] (got {tostring(links)})`)
+		end
+		count = math.floor(links)
+	end
+	const node = table.create(count) :: any
 	node.value = value
 	return node
 end

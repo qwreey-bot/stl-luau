@@ -19,7 +19,7 @@
    2025-12), 그것을 고치려던 PR `#2894` 등은 2026-09-08 에 머지 없이 닫힘. 아래 1·2번은 같은 영역
    (`FunctionCheckConstraint`)이지만 **증상이 반대**(에러가 안 남)라 별개로 봅니다 — 본문에 Related 로 적으세요.
 2. **최신 릴리스에서 재현되는지** 다시(0.734 이후 고쳐졌을 수 있음). 고쳐진 것은 빼고, 저장소의 스파이크 기대치도 올립니다.
-3. 네 건을 **이슈 넷으로** 나눠 올리는 것을 권합니다(원인이 다를 수 있고, 하나씩 닫히기 쉬움). 실해 순서는 3 > 2 > 4 > 1.
+3. 다섯 건을 **이슈 다섯으로** 나눠 올리는 것을 권합니다(원인이 다를 수 있고, 하나씩 닫히기 쉬움). 실해 순서는 3 > 5 > 2 > 4 > 1.
 
 ---
 
@@ -158,6 +158,30 @@
 우리 쪽 영향: `HashMap.FromTable<<string, number>>({ x = "bad" })` 가 0건입니다.
 
 ---
+
+## 5. 재귀 타입 별칭이 유니온의 갈래이면 타입 인자를 안 봄 (2026-10-13 추가 — `LinkedDeque` 리뷰)
+
+재현: `5-recursive-alias-in-union.luau`
+
+> **New solver: a recursive generic alias is not checked against a different instantiation when the expected type is a union containing it (including `T?`)**
+
+```lua
+type Plain<T> = { value: T, next: Plain<T>? }
+local ps: Plain<string> = { value = "s", next = nil }
+local control: Plain<number> = ps          -- TypeError (정상)
+local optional: Plain<number>? = ps        -- 0건
+local union: Plain<number> | boolean = ps  -- 0건
+```
+
+- 옵셔널이 아닌 자리는 잡힙니다. 필드 이름이 다른 재귀 타입이나 테이블 리터럴도 잡힙니다. 유니온의 갈래일 때만.
+- **이 저장소에서의 해**: 노드 위치가 전부 옵셔널로 나옵니다(`FirstIndex`·`List.IndexOf`·`Find` 의 둘째 반환 …) —
+  `local at: NodeRead<number>? = List.IndexOf(문자열덱, "b")` 가 0건이고, 그 위치로 숫자 덱에 `InsertAfter` 하면
+  문자열 덱에 숫자가 들어갑니다(리뷰어 재현, 메인 확인). 트리의 노드 타입(`RbNode` …)도 같은 모양입니다.
+- 피하는 모양을 찾아봤습니다: 노드 타입을 교집합(`{ read value: T } & { read [number]: NodeRead<T>? }`)으로 적으면
+  옵셔널 자리에서도 잡히지만, **기존 제네릭 추론 192곳이 깨져**(`No valid instantiation could be inferred`) 쓰지
+  못합니다(2026-10-13 메인 실측). 팬텀 함수 필드, `| false`, 연결을 하위 테이블로 옮기기는 효과 없음(리뷰어 실측).
+- 저장소 쪽 감시: `spikes/65` 의 "알려진 구멍" 줄(기대 0건 — 솔버가 고쳐지면 배터리가 알려 줌).
+- 실해 순위: 3번 다음(조용히 다른 타입이 컨테이너에 들어감).
 
 ## 참고 — 올리지 않는 것
 

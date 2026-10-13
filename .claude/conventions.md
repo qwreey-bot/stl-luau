@@ -66,7 +66,7 @@
     하고 조각마다 따로 떼어 쓸 수 있게까지는 만들지 않습니다(*"코드베이스가 난잡해지니까"*). 진입점의 에러 머리는
     트레이트 이름(`List: IndexOf needs a List — …`).
   - **구현은 트레이트가 듭니다**: `List`/`Map`/`Set`/`Collection`(`src/Traits/`)이 `[토큰] = 구현(모듈 테이블)`.
-    `Collection`(`Len`·`Clear`, 2026-10-12 질문 AO)은 일곱 컨테이너 전부가 구현합니다 — 새 컨테이너도 등록하고
+    `Collection`(`Len`·`Clear`, 2026-10-12 질문 AO)은 컨테이너 전부가 구현합니다 — 새 컨테이너도 등록하고
     데이터 타입에 `read __collectionMut: true` 를 넣으세요.
   - ⭐ **트레이트는 필수 함수 + 기본 구현 + 의존**(2026-10-13 사용자 결정, `papers/07` — Rust 의 트레이트와 같은 셋):
     `Trait.New(name, { required = { … }, defaults = function(ops, deps) … end, dependencies = { 다른 트레이트 } })`.
@@ -309,7 +309,13 @@
   지어 읽기만 하면 `FlatMap`(`Keys`·순회가 빠름) — perf 37절. `TreeMap.New(compare, balance?)` 의 둘째 인자로 균형
   방식을 고릅니다(기본 레드블랙). 아래 규약에서 "트리 계열" 이라 한 것(`nil`·NaN 키 정책 등)은 **둘 다**에 그대로
   적용됩니다 — 에러 머리만 자기 이름(`TreeMap: nil key` / `FlatMap: nil key`). 한쪽에 함수를 더하면 다른 쪽에도.
-- **의존 방향**: `Arr → HashMap`(묶기의 지름길이 `HashMap` 의 안쪽을 앎, 2026-10-07), `CircularDeque → Arr`
+- ⚠️ **옵셔널 노드 자리는 원소 타입을 못 지킵니다**(새 솔버 결함 — `audit/luau-solver-issues` 5번, `LinkedDeque`
+  리뷰가 재현): 재귀 타입 별칭이 유니온의 갈래이면 타입 인자를 안 봐서 `local at: NodeRead<number>? =
+  List.IndexOf(문자열덱, "b")` 가 0건이고, 그 위치로 다른 덱에 `InsertAfter` 하면 그 덱에 다른 타입의 원소가
+  들어갑니다. 위치를 돌려주는 함수가 전부 옵셔널이라 흔한 자리입니다. 노드 타입을 교집합으로 적으면 잡히지만 기존
+  추론 192곳이 깨져 쓰지 못합니다(실측). **위치는 그것을 준 컨테이너에만 돌려주세요** — 타입이 지켜 주지 않는
+  규약입니다(`spikes/65` 의 "알려진 구멍" 줄이 솔버 수정 여부를 감시).
+- **의존 방향**: `LinkedDeque → Arr`(`ToArr`)·`Node`, `TreeMap → Trees/RedBlack → Node`, `Arr → HashMap`(묶기의 지름길이 `HashMap` 의 안쪽을 앎, 2026-10-07), `CircularDeque → Arr`
   (`ToArr`), `HashSet → HashMap`, `TreeSet → TreeMap`. 반대 방향(`HashMap` 이 `Arr` 을 아는 것)은 만들지
   않습니다 — 순환이 생깁니다.
 

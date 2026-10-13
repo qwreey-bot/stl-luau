@@ -1514,6 +1514,18 @@ do
 			},
 		},
 		{ trait = stl.Collection, name = "Collection", full = { Len = stl.Arr.Len, Clear = stl.Arr.Clear } },
+		{
+			trait = stl.Deque,
+			name = "Deque",
+			full = {
+				PushFront = stl.LinkedDeque.PushFront,
+				PushBack = stl.LinkedDeque.PushBack,
+				PopFront = stl.LinkedDeque.PopFront,
+				PopBack = stl.LinkedDeque.PopBack,
+				Front = stl.LinkedDeque.Front,
+				Back = stl.LinkedDeque.Back,
+			},
+		},
 	}
 	local where = 0
 	for _, builtin in builtins do
