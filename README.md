@@ -17,8 +17,10 @@ Roblox 엔진 언어 **Luau**용 표준 라이브러리 스타일 유틸리티 �
 | `Arr<T>` | 배열. 연산 103개(+ 생성자 8, 계약 함수 5) — map/filter/slice, 안정·부분·키 정렬과 선택, Zip·Chunks·GroupBy 등 |
 | `HashMap<K, V>` | 해시 맵. Luau 테이블을 그대로 쓰되 크기를 따로 추적 |
 | `HashSet<T>` | `HashMap` 위에 얹은 셋 (`Add`/`Has`/`Remove`) |
-| `TreeMap<K, V>` | 정렬을 유지하는 맵. 정렬 배열 + 이분 탐색으로 구현 |
-| `TreeSet<T>` | `TreeMap` 위에 얹은 정렬 셋 |
+| `TreeMap<K, V>` | 키 순서를 유지하는 맵. 노드 기반 균형 트리(기본 레드블랙, AVL 선택 가능) — 넣고 빼기가 O(log n) |
+| `FlatMap<K, V>` / `FlatSet<T>` | 같은 표면의 정렬 배열 판(정렬 배열 + 이분 탐색) — 작거나, 한 번에 지어 읽기만 할 때 |
+| `CircularDeque<T>` / `LinkedDeque<T>` | 양끝 큐 — 링 버퍼 / 노드를 이은 것(가운데도 O(1)). 종류를 몰라도 `Deque` 트레이트로 |
+| `TreeSet<T>` | `TreeMap` 위에 얹은 정렬 셋(집합 연산은 두 트리를 나란히 훑는 병합) |
 | `Heap<T>` | 이진 힙. 기본은 최소 힙, 비교자를 뒤집으면 최대 힙 |
 | `CircularDeque<T>` | 링 버퍼 양끝 큐. 양끝 넣기·빼기 O(1) |
 | `Optional<T>` | `nil` 구멍을 값으로 — `Optional.Present(v)` / `Optional.Absent` |

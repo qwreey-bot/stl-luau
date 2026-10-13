@@ -3,7 +3,7 @@
 	Avl — AVL 트리의 구조 제어(2층 트리부, 2026-10-13 — `papers/07` 9-4).
 
 	`RedBlack` 과 **같은 표면**입니다(뿌리 노드와 비교자를 받아 고치고 새 뿌리를 돌려줌 — `Find`·`LowerBound`·
-	`UpperBound`·`Insert`·`Remove`·`FromSorted`·`Clone`). 제품의 `FlatMap` 은 레드블랙으로 조립하고, 이것은
+	`UpperBound`·`Insert`·`Remove`·`FromSorted`·`Clone`). 제품의 `TreeMap` 은 레드블랙으로 조립하고, 이것은
 	구현체로 둡니다(사용자: *"AVL 도 있어도 되긴 해. 버리진 말고 추출해서 Trees 안에 넣어도"*).
 
 	## 노드의 칸 배치 (계약)
@@ -50,21 +50,15 @@ const rotateLeft: (any) -> any = binary.RotateLeft
 const rotateRight: (any) -> any = binary.RotateRight
 const replace: (any, any) -> boolean = binary.Replace
 
---#region ----------- 읽기 — 균형 방식과 무관한 공유 조각(`Trees/Search`)을 이 노드 타입으로 -----------
+--#region ----------- 읽기 — 균형 방식과 무관한 공유 조각(`Trees/Search`) 그대로 -----------
+-- 받은 노드의 타입 그대로 돌려줍니다(이 방식의 읽기 노드를 넣으면 읽기 노드가 — 그대로 `Remove` 에 넘길 수 있음).
 
-type FindFn = <K, V>(
-	root: AvlNodeRead<K, V> | AvlNode<K, V> | nil,
-	key: K,
-	compare: Comparator<K>
-) -> AvlNodeRead<K, V>?
-type CloneFn = <K, V>(root: AvlNodeRead<K, V> | AvlNode<K, V> | nil) -> AvlNode<K, V>?
-const shared: any = Search
 -- 키가 같은 노드 / 키가 `key` 이상인 첫 노드 / 초과인 첫 노드(없으면 `nil`).
-const Find: FindFn = shared.Find
-const LowerBound: FindFn = shared.LowerBound
-const UpperBound: FindFn = shared.UpperBound
--- 구조째 베낍니다(노드는 새로, 키·값·높이는 그대로). O(n).
-const Clone: CloneFn = shared.Clone
+const Find, LowerBound, UpperBound = Search.Find, Search.LowerBound, Search.UpperBound
+-- 구조째 베낍니다(노드는 새로, 키·값·균형 정보는 그대로). O(n).
+const Clone = Search.Clone
+-- 중위 순서로 다음 / 이전 노드, 부분 트리의 처음 / 끝 노드.
+const Next, Prev, First, Last = Search.Next, Search.Prev, Search.First, Search.Last
 
 --#endregion
 
@@ -228,6 +222,7 @@ end
 -- stylua: ignore
 const AvlModule = {
 	Find = Find, LowerBound = LowerBound, UpperBound = UpperBound,
+	Next = Next, Prev = Prev, First = First, Last = Last,
 	Insert = Insert, Remove = Remove,
 	FromSorted = FromSorted, Clone = Clone,
 }

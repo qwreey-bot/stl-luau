@@ -6,7 +6,7 @@
 	경계 조회(`FloorKey` …)는 옵셔널 키 / `PopFirst` 는 옵셔널 레코드 / `Retain` 콜백의 타입 / 뿌리 노드는
 	읽기 전용 / 균형 방식 자리에 계약과 다른 것은 안 들어감 / 순회 변수의 타입.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 20 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 30 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local TreeMap = stl.TreeMap
@@ -71,6 +71,23 @@ local negFlatSet: stl.TreeSet<number> = stl.FlatSet.New<<number>>(cmp)
 local negUnion = stl.TreeSet.Union(ranks, stl.TreeSet.New<<string>>(stl.Common.compareString))
 local negSetLiteral: stl.TreeSet<number> = { map = scores }
 
+--[[ 리뷰 1라운드(2026-10-13) — 지키는 NEG 가 없던 성질 ]]
+local negCeiling: number = TreeMap.CeilingKey(scores, 15)
+local negLower: number = TreeMap.LowerKey(scores, 15)
+local negGetKey = TreeMap.Get(scores, "ten")
+local negRange = TreeMap.RangeRecords(scores, "a", "z")
+local negSetHas = stl.TreeSet.Has(ranks, "x")
+local negSetPop: number = stl.TreeSet.PopFirst(ranks)
+local negSetFloor: number = stl.TreeSet.FloorItem(ranks, 5)
+stl.TreeSet.Retain(ranks, function(item: string): boolean
+	return item == "x"
+end)
+local negSetBalance = stl.TreeSet.New<<number>>(cmp, { Insert = stl.RedBlack.Insert })
+for _, again in stl.TreeSet.Iter(ranks) do
+	local negAgain: string = again
+	print(negAgain)
+end
+
 local canary: string = 42
 
 return {
@@ -97,5 +114,13 @@ return {
 	negFlatSet,
 	negUnion,
 	negSetLiteral,
+	negCeiling,
+	negLower,
+	negGetKey,
+	negRange,
+	negSetHas,
+	negSetPop,
+	negSetFloor,
+	negSetBalance,
 	canary,
 }

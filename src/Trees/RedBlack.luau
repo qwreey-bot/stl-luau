@@ -9,7 +9,7 @@
 
 	`{ [1] = 값, [2] = 왼쪽, [3] = 오른쪽, [4] = 부모, [5] = 키, [6] = 빨강인가 }` — 앞의 넷은 `Node.Binary`,
 	다섯째는 `Trees/Search`, 여섯째(균형 정보)가 이 방식의 것입니다. 타입은 불투명 핸들(`RbNode`·`RbNodeRead`)
-	이라 값·키는 `Search.Value(node)`·`Search.Key(node)` 로, 순서는 `Search.Next`·`Prev` 로 읽습니다.
+	이라 값·키는 `Search.Value(node)`·`Search.Key(node)` 로, 순서는 `RedBlack.Next`·`Prev`(= `Node.Binary` 의 것)로 읽습니다.
 
 	## 왜 레드블랙인가
 
@@ -28,7 +28,7 @@
 	- 위치는 노드입니다. `Remove` 는 **이 트리의 노드**를 받습니다 — 다른 트리의 노드나 이미 뗀 노드는 정의되지
 	  않은 동작입니다(조립하는 쪽이 키로 찾아 넘기는 것이 보통).
 	- 떼어 낸 노드는 연결이 끊깁니다(왼쪽·오른쪽·부모 칸이 `nil`). 순회 중에 지우려면 다음 노드를 **먼저** 읽어
-	  두세요(`Search.Next`) — 지우기가 회전으로 길을 바꿉니다. 다음 노드 자체는 남아 있습니다.
+	  두세요(`RedBlack.Next`) — 지우기가 회전으로 길을 바꿉니다. 다음 노드 자체는 남아 있습니다.
 ]]
 local Types = require("../Types")
 local Common = require("../Common")
@@ -57,18 +57,15 @@ const rotateLeft: (any) -> any = binary.RotateLeft
 const rotateRight: (any) -> any = binary.RotateRight
 const replace: (any, any) -> boolean = binary.Replace
 
---#region ----------- 읽기 — 균형 방식과 무관한 공유 조각(`Trees/Search`)을 이 노드 타입으로 -----------
+--#region ----------- 읽기 — 균형 방식과 무관한 공유 조각(`Trees/Search`) 그대로 -----------
+-- 받은 노드의 타입 그대로 돌려줍니다(이 방식의 읽기 노드를 넣으면 읽기 노드가 — 그대로 `Remove` 에 넘길 수 있음).
 
--- (옵셔널 자리는 `읽기 | 쓰기 | nil` 로 — `RbNodeRead<K, V>?` 하나로 적으면 `RbNode` 를 넘길 때 `K`·`V` 를 못 풀었습니다)
-type FindFn = <K, V>(root: RbNodeRead<K, V> | RbNode<K, V> | nil, key: K, compare: Comparator<K>) -> RbNodeRead<K, V>?
-type CloneFn = <K, V>(root: RbNodeRead<K, V> | RbNode<K, V> | nil) -> RbNode<K, V>?
-const shared: any = Search
 -- 키가 같은 노드 / 키가 `key` 이상인 첫 노드 / 초과인 첫 노드(없으면 `nil`).
-const Find: FindFn = shared.Find
-const LowerBound: FindFn = shared.LowerBound
-const UpperBound: FindFn = shared.UpperBound
--- 구조째 베낍니다(노드는 새로, 키·값·색은 그대로). O(n).
-const Clone: CloneFn = shared.Clone
+const Find, LowerBound, UpperBound = Search.Find, Search.LowerBound, Search.UpperBound
+-- 구조째 베낍니다(노드는 새로, 키·값·균형 정보는 그대로). O(n).
+const Clone = Search.Clone
+-- 중위 순서로 다음 / 이전 노드, 부분 트리의 처음 / 끝 노드.
+const Next, Prev, First, Last = Search.Next, Search.Prev, Search.First, Search.Last
 
 --#endregion
 
@@ -325,6 +322,7 @@ end
 -- stylua: ignore
 const RedBlackModule = {
 	Find = Find, LowerBound = LowerBound, UpperBound = UpperBound,
+	Next = Next, Prev = Prev, First = First, Last = Last,
 	Insert = Insert, Remove = Remove,
 	FromSorted = FromSorted, Clone = Clone,
 }

@@ -43,7 +43,7 @@ local function avlBalance(root: any, count: number, label: string)
 		end
 		const left, right = walk(node[2]), walk(node[3])
 		assert(math.abs(left - right) <= 1, `{label}: {node[5]} 에서 높이 차 {left - right}`)
-		assert(node[6] == math.max(left, right) + 1, `{label}: {node[5]} 의 height 필드 {node[6]}`)
+		assert(node[6] == math.max(left, right) + 1, `{label}: {node[5]} 의 높이 칸 {node[6]}`)
 		return node[6]
 	end
 	assert(walk(root) <= 1.4405 * math.log(count + 2, 2) + 1e-9, `{label}: 높이 {Binary.Height(root)}`)
@@ -183,6 +183,18 @@ do
 		assert(Binary.Next(held) == heldNext and heldNext[5] == 100, "다음 노드도 그대로")
 		assert(RedBlack.Find(root, 80, compare) == nil, "지운 키는 없음")
 		check(root, "하나 지운 뒤")
+		-- 뿌리가 아닌, 자식이 둘인 노드도(두 방식의 모양이 달라 한 키로는 한쪽이 뿌리였음 — 리뷰): 뗀 뒤 세 칸이 nil
+		for _, key in { 20, 120, 60 } do
+			const target = RedBlack.Find(root, key, compare)
+			if target ~= nil then
+				root = RedBlack.Remove(root :: RbNode, target)
+				assert(
+					target[2] == nil and target[3] == nil and target[4] == nil,
+					`{key}: 뗀 노드의 왼쪽·오른쪽·부모 칸`
+				)
+				check(root, `{key} 지운 뒤`)
+			end
+		end
 		-- 뿌리를 되풀이해 지움
 		local removed = 0
 		while root ~= nil do
@@ -190,7 +202,7 @@ do
 			removed += 1
 			check(root, `뿌리 지우기 {removed}`)
 		end
-		assert(removed == 14, `뿌리만 지워 다 비움: {removed}`)
+		assert(removed == 11, `뿌리만 지워 다 비움: {removed}`)
 
 		-- 무작위: 넣기·지우기 섞어 모델과, 연산마다 불변식
 		math.randomseed(20261013)
@@ -394,6 +406,11 @@ do
 	assert(Binary.Next(n30) == n40 and Binary.Next(n40) == n50 and Binary.Next(n70) == nil, "Next")
 	assert(Binary.Prev(n50) == n40 and Binary.Prev(n40) == n30 and Binary.Prev(n10) == nil, "Prev")
 	assert(Binary.Height(n40) == 3 and Binary.Height(nil :: stl.BinaryNodeRead<number>?) == 0, "Height")
+	-- 한쪽으로 기운 트리의 높이(왼쪽만 세는 실수를 잡음)
+	const lean1, lean2, lean3 = Binary.New(1), Binary.New(2), Binary.New(3)
+	Binary.SetRight(lean1, lean2)
+	Binary.SetRight(lean2, lean3)
+	assert(Binary.Height(lean1) == 3 and Binary.Height(lean2) == 2, "오른쪽으로 기운 트리의 Height")
 	-- 가운데 노드를 회전(부모가 있음)
 	assert(Binary.RotateLeft(n20) == n30, "RotateLeft 가 올라온 노드를 돌려줌")
 	assert(Binary.Left(n40) == n30 and Binary.Parent(n30) == n40 and Binary.Left(n30) == n20, "RotateLeft 연결(위)")

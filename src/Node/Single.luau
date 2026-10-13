@@ -16,11 +16,15 @@ Common.registerSource(debug.info(1, "s"))
 -- 읽기 노드(불투명 핸들 — 원소에 공변).
 export type NodeRead<T> = { read __links: "single", read __value: T }
 -- 고칠 수 있는 노드(불변 팬텀이 더 있음).
--- (옵셔널로 받는 도구는 `NodeRead<T> | Node<T> | nil` 로 적습니다 — `NodeRead<T>?` 하나로 적으면 `Node<T>` 를
--- 넘길 때 솔버가 `T` 를 못 풀었습니다, 실측.)
 export type Node<T> = { read __links: "single", read __value: T, read __valueMut: (T) -> T }
 
 const VALUE, NEXT = 1, 2
+
+-- ⭐ **따라가는 도구는 받은 핸들의 타입 그대로 돌려줍니다**(`<N>(node: N & Kind): N?`): 고칠 수 있는 노드를 따라가면
+-- 고칠 수 있는 노드가, 읽기 노드를 따라가면 읽기 노드가 나옵니다. `NodeRead<T>` 로 받아 `NodeRead<T>?` 를 돌려주던
+-- 때는 자기가 만든 사슬도 따라간 뒤에는 고칠 수 없었고(`Walk` 로 돌며 떼기가 캐스트 없이는 안 써짐), 타입 인자가
+-- 둘인 트리 노드는 값 타입이 `K | V` 로 넓어졌습니다(리뷰).
+type Kind = { read __links: "single" }
 
 -- 연결이 없는 새 노드.
 const function New<T>(value: T): Node<T>
@@ -36,7 +40,7 @@ const function SetValue<T>(node: Node<T>, value: T)
 end
 
 -- 다음 노드. 끝이면 `nil`.
-const function Next<T>(node: NodeRead<T>): NodeRead<T>?
+const function Next<N>(node: N & Kind): N?
 	return (node :: any)[NEXT]
 end
 
@@ -61,9 +65,9 @@ end
 
 -- 노드를 하나씩: `for node in Node.Single.Walk(head) do`. `start` 가 `nil` 이면 돌지 않습니다. 다음 노드를
 -- 미리 읽어 두므로 도는 동안 **지금 노드의 연결**을 고쳐도 됩니다.
-const function Walk<T>(start: NodeRead<T> | Node<T> | nil): () -> NodeRead<T>?
+const function Walk<N>(start: (N & Kind)?): () -> N?
 	local cursor: any = start
-	return function(): NodeRead<T>?
+	return function(): N?
 		const node = cursor
 		if node ~= nil then
 			cursor = node[NEXT]
@@ -73,7 +77,7 @@ const function Walk<T>(start: NodeRead<T> | Node<T> | nil): () -> NodeRead<T>?
 end
 
 -- `start` 부터 끝까지의 노드 수. `nil` 이면 0. ⚠️ 고리로 이은 사슬에서는 끝나지 않습니다.
-const function Count<T>(start: NodeRead<T> | Node<T> | nil): number
+const function Count(start: Kind?): number
 	local total, cursor: any = 0, start
 	while cursor ~= nil do
 		total += 1

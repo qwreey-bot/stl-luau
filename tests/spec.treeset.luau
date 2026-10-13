@@ -401,6 +401,132 @@ do
 end
 print("PASS")
 
+print(
+	"=== 리뷰 1라운드(2026-10-13) — TreeSet: 집합 연산의 상대 검사 전부, RangeItems 의 끝, 에러 자리의 줄 ==="
+)
+do
+	const cmp = stl.Common.compareNumber
+	local where = 0
+	const s = TreeSet.FromList({ 10, 20, 30 }, cmp)
+	const reversed = TreeSet.FromList({ 10, 20, 30 }, function(x: number, y: number): number
+		return cmp(y, x)
+	end)
+	const other: any = stl.FlatSet.FromList({ 30, 40 }, cmp)
+	-- 일곱 연산 전부: 비교자가 다른 함수면 에러, 다른 종류의 셋이면 에러(표면이 같아 섞이기 쉬움 — 조용히 빈 셋으로
+	-- 읽히거나 라이브러리 줄에서 죽었음). 사용자 줄
+	const ops: { { name: string, call: (any, any) -> any } } = {
+		{ name = "Union", call = TreeSet.Union },
+		{ name = "Intersect", call = TreeSet.Intersect },
+		{ name = "Difference", call = TreeSet.Difference },
+		{ name = "SymmetricDifference", call = TreeSet.SymmetricDifference },
+		{ name = "IsSubsetOf", call = TreeSet.IsSubsetOf },
+		{ name = "IsDisjointFrom", call = TreeSet.IsDisjointFrom },
+		{ name = "Equal", call = TreeSet.Equal },
+	}
+	for _, op in ops do
+		const run = op.call
+		const okOrder, errOrder = pcall(function()
+			where = debug.info(1, "l") + 1
+			run(s, reversed)
+		end)
+		assert(
+			not okOrder and string.find(tostring(errOrder), "TreeSet: sets use different comparators", 1, true),
+			`{op.name} 비교자: {errOrder}`
+		)
+		assert(
+			string.find(tostring(errOrder), `spec.treeset.luau:{where}:`, 1, true),
+			`{op.name} 사용자 줄: {errOrder}`
+		)
+		for _, bad in { other, nil :: any, 5 :: any, stl.Arr.Of(1) :: any } do
+			const okKind, errKind = pcall(function()
+				where = debug.info(1, "l") + 1
+				run(s, bad)
+			end)
+			assert(
+				not okKind
+					and string.find(tostring(errKind), "TreeSet: set operations need another TreeSet, got", 1, true),
+				`{op.name} 상대 종류: {errKind}`
+			)
+			assert(
+				string.find(tostring(errKind), `spec.treeset.luau:{where}:`, 1, true),
+				`{op.name} 종류 사용자 줄: {errKind}`
+			)
+		end
+	end
+	assert(
+		string.find(tostring(select(2, pcall(TreeSet.Union, s, other))), "got FlatSet", 1, true),
+		"메시지에 상대의 종류 이름"
+	)
+	assert(table.concat(TreeSet.Items(s), ",") == "10,20,30", "거절된 연산은 셋을 안 바꿈")
+
+	-- RangeItems: 끝이 nil·NaN 이면 빈 목록(양쪽 다)
+	for _, ends in { { 10, nil }, { nil, 30 }, { 10, 0 / 0 }, { 0 / 0, 30 } } :: { { any } } do
+		assert(#TreeSet.RangeItems(s, ends[1], ends[2]) == 0, `RangeItems({tostring(ends[1])}, {tostring(ends[2])})`)
+	end
+	assert(table.concat(TreeSet.RangeItems(s, 10, 20), ",") == "10,20", "정상 구간")
+
+	-- 에러 자리: 메시지와 사용자 줄
+	const sites: { { want: string, call: () -> () } } = {
+		{
+			want = "TreeSet: nil item",
+			call = function()
+				where = debug.info(1, "l") + 1
+				TreeSet.Add(s, nil :: any)
+			end,
+		},
+		{
+			want = "TreeSet: NaN item",
+			call = function()
+				where = debug.info(1, "l") + 1
+				TreeSet.Add(s, 0 / 0)
+			end,
+		},
+		{
+			want = "TreeSet: NaN item",
+			call = function()
+				where = debug.info(1, "l") + 1
+				TreeSet.FromList({ 1, 0 / 0 }, cmp)
+			end,
+		},
+		{
+			want = "TreeSet: New needs a comparator function, got nil",
+			call = function()
+				where = debug.info(1, "l") + 1
+				TreeSet.New(nil :: any)
+			end,
+		},
+		{
+			want = "TreeSet: FromList needs a comparator function, got nil",
+			call = function()
+				where = debug.info(1, "l") + 1
+				TreeSet.FromList({ 1 }, nil :: any)
+			end,
+		},
+		{
+			want = "TreeSet: New needs a balance scheme",
+			call = function()
+				where = debug.info(1, "l") + 1
+				TreeSet.New(cmp, "avl" :: any)
+			end,
+		},
+		{
+			want = "TreeSet: FromList needs a balance scheme",
+			call = function()
+				where = debug.info(1, "l") + 1
+				TreeSet.FromList({ 1 }, cmp, {} :: any)
+			end,
+		},
+	}
+	for _, site in sites do
+		const ok, err = pcall(site.call)
+		assert(not ok and string.find(tostring(err), site.want, 1, true), `{site.want}: {err}`)
+		assert(string.find(tostring(err), `spec.treeset.luau:{where}:`, 1, true), `{site.want} 사용자 줄: {err}`)
+	end
+	const toClear = TreeSet.FromList({ 1, 2 }, cmp)
+	assert(stl.Collection.Clear(toClear) == toClear and TreeSet.Len(toClear) == 0, "Collection.Clear")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (TreeSet) ===")
 

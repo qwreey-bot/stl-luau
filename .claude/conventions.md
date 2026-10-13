@@ -271,8 +271,8 @@
 
 - ⭐ **덱은 둘이고 `Deque` 는 트레이트입니다**(2026-10-13 사용자 결정): `CircularDeque`(링 버퍼 — 예전 `Deque`)와
   `LinkedDeque`(노드를 양방향으로 이음). 종류를 모르는 코드는 `Deque.PushBack(d, v)`·`Deque.PopFront(d)`
-  (`src/Traits/Deque.luau`). 양끝만 쓰면 원형이 1.4~1.7배 빠르고, 가운데의 위치(노드)를 쥐고 O(1) 로 넣고 빼야 하면
-  연결입니다(perf 35절). 새 덱 구현은 데이터 타입에 `read __dequeItem: T` 와 팬텀 `read __dequeMut: (T) -> T` 를
+  (`src/Traits/Deque.luau`). 양끝만 쓰면 원형이 1.13~1.41배 빠르고(perf 38-3절), 가운데의 위치(노드)를 쥐고 O(1) 로 넣고 빼야 하면
+  연결입니다. 새 덱 구현은 데이터 타입에 `read __dequeItem: T` 와 팬텀 `read __dequeMut: (T) -> T` 를
   넣고(읽기 타입에는 앞의 것만) `Trait.Impl(Deque, TOKEN, Module)`.
 - ⭐ **층은 셋입니다**(2026-10-13 사용자 결정 — `papers/07` 9-4): **1층 노드단 도구**(`src/Node/` — 연결 방식별 노드와
   도구 `Node.Single`·`Node.Double`·`Node.Binary`) → **2층 트리부**(`src/Trees/` — 노드 도구로 짠 균형
@@ -299,10 +299,16 @@
     필드보다 느립니다**(12.7 대 5.1ns — perf 38-2절) — 그래서 **라이브러리 안쪽은 그 종류의 상수와 같은 값을 지역
     상수로 다시 적어 직접 인덱싱**합니다(`const VALUE, PREV, NEXT = 1, 2, 3` — 모듈의 값을 받아 쓰면 접히지 않음).
     안쪽에서는 노드를 `any` 로 다루고, 불투명 타입은 공개 서명에만 씁니다.
-  - 타입을 적을 때의 함정 둘(실측): ① 옵셔널로 받는 파라미터는 `NodeRead<T> | Node<T> | nil` 로 — `NodeRead<T>?`
-    하나면 `Node<T>` 를 넘길 때 `T` 를 못 풉니다. ② 타입 인자가 둘인 노드(`RbNodeRead<K, V>`)를 하나짜리 제네릭
-    (`Binary.Next<T>`)에 넘기면 `T` 가 `K | V` 로 풀립니다 — 트리 노드는 `Search.Next`·`Prev`·`First`·`Last` 로
-    따라가세요. (교집합으로 적으면 ②는 풀리지만 다른 추론이 깨졌습니다.)
+  - ⭐ **노드를 따라가거나 찾는 도구는 "받은 핸들의 타입 그대로" 돌려주는 서명**으로 적습니다(리뷰 1라운드):
+    `Next<N>(node: N & Kind): N?`, `Walk<N>(start: (N & Kind)?): () -> N?`, `Find<N, K>(root: (N & Keyed<K>)?, …): N?`
+    (`Kind` = `{ read __links: "double" }` 같은 종류 팬텀). 고칠 수 있는 노드를 따라가면 고칠 수 있는 노드가,
+    읽기 노드면 읽기 노드가, 레드블랙 노드면 레드블랙 노드가 나옵니다. `NodeRead<T>` 로 받아 `NodeRead<T>?` 를
+    돌려주던 때는 ① 자기가 만든 사슬도 따라간 뒤에는 못 고쳤고 ② 트리 노드를 넘기면 값 타입이 `K | V` 나
+    `unknown` 이 됐고 ③ 따라가 얻은 노드를 그 방식의 `Remove` 에 못 넘겼습니다. 값을 읽는 도구(`Value<T>(node:
+    NodeRead<T>): T`)는 그대로입니다.
+  - ⚠️ **알려진 경계**: 읽기 노드는 원소에 공변이라 `number` 덱의 위치가 `number?` 덱의 `InsertAfter`·`Remove` 에
+    진단 0건으로 들어갑니다(`T → T?` 방향만 — `string` 대 `number` 는 막힘). 런타임은 "다른 컨테이너의 가운데
+    노드" 라 정의되지 않은 동작입니다(`spikes/65` 의 "알려진 경계" 줄). 위치는 그것을 준 컨테이너에만 돌려주세요.
   - 위치를 받는 함수는 "이 컨테이너에 이어져 있는가" 를 **값싸게 가릴 수 있는 만큼만** 검사합니다(`LinkedDeque` —
     노드가 아닌 값, 끝 쪽 칸이 `nil` 인데 머리·꼬리가 아닌 노드: 두 번 지우기·떼어 낸 노드가 걸림). 다른 컨테이너의
     가운데 노드는 못 가립니다(문서 규약 — 질문 D). 노드를 따라가는 순회자는 **다음을 미리 읽어** 지금 노드를 떼어
@@ -326,9 +332,12 @@
   틀어짐). 결과 컨테이너를 고르게 하는 다른 함수를 더할 때도 이 모양(목적지 인스턴스)을 따르세요.
 - ⭐ **`TreeMap` 은 노드 기반 균형 트리, 정렬 배열 판은 `FlatMap`/`FlatSet`**(2026-10-13 사용자 결정). 둘은 **같은
   표면**(같은 `Map` 트레이트, 같은 함수 이름과 뜻 — `spec.treemap` 이 `spec.flatmap` 을 옮긴 것이고 무작위로 서로
-  대조)이라 쓰임으로 고릅니다: 넣고 빼기가 섞이면 `TreeMap`(1만 개에서 3.6배, 10만 개에서 10배), 작거나 한 번에
+  대조)이라 쓰임으로 고릅니다: 넣고 빼기가 섞이면 `TreeMap`(1만 개에서 4.5배, 10만 개에서 19배 — perf 38-3절), 작거나 한 번에
   지어 읽기만 하면 `FlatMap`(`Keys`·순회가 빠름) — perf 37절. `TreeMap.New(compare, balance?)` 의 둘째 인자로 균형
-  방식을 고릅니다(기본 레드블랙). 아래 규약에서 "트리 계열" 이라 한 것(`nil`·NaN 키 정책 등)은 **둘 다**에 그대로
+  방식을 고릅니다(기본 레드블랙). **생성자는 비교자와 균형 방식 인자를 확인합니다**(`Common.expectComparator`,
+  `Search.ExpectBalance` — 빈 구조에서는 비교도 넣기도 일어나지 않아 엉뚱한 인자가 조용히 통과하고 나중에 라이브러리
+  줄에서 죽었음. `nil` 키와 같은 모양), 집합 연산은 **상대가 같은 종류인지** 봅니다(표면이 같은 `FlatSet` 을 섞으면
+  빈 셋으로 읽혔음). 정렬 구조의 생성자를 더하면 같이. 아래 규약에서 "트리 계열" 이라 한 것(`nil`·NaN 키 정책 등)은 **둘 다**에 그대로
   적용됩니다 — 에러 머리만 자기 이름(`TreeMap: nil key` / `FlatMap: nil key`). 한쪽에 함수를 더하면 다른 쪽에도.
 - **의존 방향**: `LinkedDeque → Arr`(`ToArr`)·`Node`, `TreeMap → Trees/RedBlack → Node`, `Arr → HashMap`(묶기의 지름길이 `HashMap` 의 안쪽을 앎, 2026-10-07), `CircularDeque → Arr`
   (`ToArr`), `HashSet → HashMap`, `TreeSet → TreeMap`, `FlatSet → FlatMap`. 반대 방향(`HashMap` 이 `Arr` 을 아는 것)은 만들지

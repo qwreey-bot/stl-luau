@@ -7,10 +7,11 @@
 	못 얻음(모듈 함수로도, 트레이트 진입점으로도) / `Deque` 진입점은 원소 타입을 지키고 넣은 타입 그대로
 	돌려주며 덱이 아닌 것을 안 받음 / 두 구현은 서로 다른 타입.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 34 줄 + CANARY 1 — 빌린 참조의 `PopFront` 줄은 여러 건)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 39 줄 + CANARY 1 — 빌린 참조의 `PopFront`·`PopBack` 줄은 여러 건. "알려진 경계" 줄은 0건이어야 함)
 ]]
 local stl = require("../../../../src")
 local LinkedDeque, CircularDeque, Deque, Arr = stl.LinkedDeque, stl.CircularDeque, stl.Deque, stl.Arr
+local Node = stl.Node
 type LinkedDeque<T> = stl.LinkedDeque<T>
 type NodeRead<T> = stl.DoubleNodeRead<T>
 
@@ -92,6 +93,23 @@ local negKindOfNode = LinkedDeque.Remove(d, stl.Node.Binary.New(1))
 local okValue: number = stl.Node.Double.Value(head :: NodeRead<number>)
 local negValue: string = stl.Node.Double.Value(head :: NodeRead<number>)
 
+--[[ 리뷰 1라운드(2026-10-13) ]]
+-- NEG: 덱이 내준 위치는 읽기 노드 — `Node.Double` 의 고치는 도구에 못 들어감(덱을 거치지 않고 연결을 끊는 길)
+Node.Double.Unlink(head :: NodeRead<number>)
+Node.Double.SetValue(head :: NodeRead<number>, 99)
+-- NEG: 대칭 짝의 나머지 — 빌린 참조의 PopBack, Back 은 옵셔널, Iter 의 값 타입
+local negBorrowedPopBack = LinkedDeque.PopBack(borrowed)
+local negBack: number = LinkedDeque.Back(d)
+for _node, value in LinkedDeque.Iter(d) do
+	local negIterValue: string = value
+	print(negIterValue)
+end
+-- ⚠️ **알려진 경계**(기대 0건): 읽기 노드는 원소에 공변이라 `number` 덱의 위치가 `number?` 덱의 자리에 들어갑니다
+-- (`T → T?` 방향만. 런타임은 "다른 덱의 가운데 노드" 라 정의되지 않은 동작 — 문서 규약). 막으려면 위치 타입을
+-- 읽기용(공변)과 고치는 연산용(불변) 둘로 갈라야 합니다.
+local holes = LinkedDeque.New<<number?>>()
+local knownCovariant = LinkedDeque.InsertAfter(holes, head :: NodeRead<number>, nil)
+
 local canary: string = 42
 
 return {
@@ -127,5 +145,8 @@ return {
 	negKindOfNode,
 	okValue,
 	negValue,
+	negBorrowedPopBack,
+	negBack,
+	knownCovariant,
 	canary,
 }

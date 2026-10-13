@@ -2,21 +2,22 @@
 --[[
 	FlatMap — **정렬을 유지하는** 맵.
 
-	## 표현 — 트리가 아니라 정렬 배열입니다
+	2026-10-13 에 이름을 `TreeMap` 에서 바꿨습니다 — `TreeMap` 은 노드 기반 균형 트리가 됐고(같은 표면), 이쪽은
+	**작거나, 한 번에 지어 읽기만 하는** 쓰임을 위한 정렬 배열 판입니다(`Keys`·순회가 빠르고 메모리가 촘촘함.
+	넣고 빼기가 섞이면 `TreeMap` 이 1만 개에서 4.5배, 10만 개에서 19배 빠릅니다 — perf 37·38-3절).
+
+	## 표현 — 정렬 배열
 
 	```lua
 	{ records: { Record<K, V> }, size: number, compare: Comparator<K>, probe: … }
 	```
 
-	이름은 `FlatMap` 이지만 안은 **정렬된 레코드 배열 + 이분 탐색**입니다.
-	Luau 에서 붉은검은나무를 굴리면 노드마다 테이블이 하나씩 생기는데, 그
-	테이블 하나하나가 메타테이블 없이도 96바이트짜리이고 GC 압력이 됩니다.
-	정렬 배열은 조회가 같은 O(log n) 이고 메모리가 훨씬 촘촘합니다.
+	**정렬된 레코드 배열 + 이분 탐색**입니다. 노드 트리는 노드마다 테이블이 하나씩 생기는데(지금 144바이트 —
+	perf 38절) 정렬 배열은 조회가 같은 O(log n) 이고 메모리가 훨씬 촘촘합니다.
 
 	**대가는 삽입/삭제가 O(n)** 입니다 — 뒤를 밀어야 하니까요. 다만 그 밀기가
 	`table.move` 라 C 안에서 돌아, 원소 루프로 미는 것보다 14배 빠릅니다
-	(`.claude/base/perf-measurements.md` 2절). 쓰기가 아주 잦고 크기가 큰
-	용도라면 나중에 진짜 트리 백엔드를 재볼 만합니다 — 그때 이 주석을 지우세요.
+	(`.claude/base/perf-measurements.md` 2절). 쓰기가 잦고 크기가 큰 용도면 `TreeMap` 을 쓰세요.
 
 	## 왜 `HashMap` 이 있는데 이게 또 있는가
 
@@ -455,6 +456,7 @@ end
 --     local m = FlatMap.New<<number, string>>(Common.compareNumber)   -- 권장
 --     local m = FlatMap.New(Common.compareNumber) :: FlatMap<number, string>
 const function New<K, V>(compare: Comparator<K>): FlatMap<K, V>
+	Common.expectComparator(compare, "FlatMap: New")
 	return adopt({} :: { Record<K, V> }, 0, compare)
 end
 
@@ -467,6 +469,7 @@ end
 -- 원래 위치를 타이브레이커로 씁니다. `table.sort` 는 안정 정렬이 아니라서
 -- 이걸 안 하면 "뒤엣것이 이긴다" 가 보장되지 않습니다.
 const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>): FlatMap<K, V>
+	Common.expectComparator(compare, "FlatMap: FromRecords")
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드).
 	const records, count = Common.denseList(source)
 	if count == 0 then

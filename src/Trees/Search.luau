@@ -17,10 +17,8 @@
 	경계 찾기, 구조째 베끼기. `RedBlack`·`Avl` 은 넣기·지우기(구조를 고치는 쪽)만 자기 것으로 가집니다.
 	자가 균형의 계약(`Balance`)도 여기 있습니다.
 
-	⚠️ 트리 노드를 따라갈 땐 **여기의 `First`·`Last`·`Next`·`Prev`** 를 쓰세요(`Node.Binary` 의 같은 함수에
-	키 타입을 입힌 것). `Node.Binary.Next(트리노드)` 도 동작은 같지만 타입이 `NodeRead<K | V>` 로 넓어집니다 —
-	타입 인자가 둘인 별칭을 하나짜리 제네릭에 넘기면 새 솔버가 둘을 합쳐 풉니다(최소 재현으로 확인,
-	2026-10-13. 교집합으로 적으면 풀리지만 다른 추론이 깨졌습니다).
+	찾기·따라가기는 **받은 노드의 타입 그대로** 돌려줍니다(`RbNodeRead` 를 넣으면 `RbNodeRead?` — 그대로 그 방식의
+	`Remove` 에 넘길 수 있음). `Next`·`Prev`·`First`·`Last` 는 `Node.Binary` 의 것 그대로입니다(트리 노드도 이진 노드).
 ]]
 local Types = require("../Types")
 local Common = require("../Common")
@@ -41,7 +39,8 @@ export type KeyNodeRead<K, V> = { read __links: "binary", read __value: V, read 
 -- - `Insert(root, key, value, compare)` → `(새 뿌리, 그 키의 노드, 새로 만들었나)`. 있던 키면 값만 바꿈.
 -- - `Remove(root, node)` → 새 뿌리(비면 `nil`). `node` 는 그 트리의 노드, 떼어 낸 뒤 연결이 끊김.
 -- - `FromSorted(keys, values, count)` → 정렬된 목록에서 O(n) 으로 지은 뿌리. `Clone(root)` → 구조째 베낀 뿌리.
--- 바깥에서 만드는 방식의 노드는 위 **칸 배치**를 따라야 합니다(조립하는 쪽이 `1`·`2`·`3`·`5` 번 칸을 직접 읽음).
+-- 바깥에서 만드는 방식의 노드는 위 **칸 배치**를 따라야 합니다(조립하는 쪽이 값·왼쪽·오른쪽·부모·키 칸 — `1`~`5` — 을
+-- 직접 읽음).
 export type Balance = {
 	read Insert: (root: any, key: any, value: any, compare: Comparator<any>) -> (any, any, boolean),
 	read Remove: (root: any, node: any) -> any,
@@ -61,19 +60,16 @@ const function Value<K, V>(node: KeyNodeRead<K, V>): V
 	return (node :: any)[VALUE]
 end
 
--- 순서대로 따라가기 — `Node.Binary` 의 것에 키 타입을 입힌 것(머리 주석).
-type StepFn = <K, V>(node: KeyNodeRead<K, V>) -> KeyNodeRead<K, V>?
-type EdgeFn = <K, V>(root: KeyNodeRead<K, V>) -> KeyNodeRead<K, V>
-const binary: any = Binary
--- 중위 순서로 다음 / 이전 노드(끝이면 `nil`).
-const Next: StepFn = binary.Next
-const Prev: StepFn = binary.Prev
--- 부분 트리에서 키가 가장 작은 / 큰 노드.
-const First: EdgeFn = binary.First
-const Last: EdgeFn = binary.Last
+-- 순서대로 따라가기 — `Node.Binary` 의 것 그대로(받은 노드의 타입을 그대로 돌려줌).
+-- 중위 순서로 다음 / 이전 노드(끝이면 `nil`), 부분 트리에서 키가 가장 작은 / 큰 노드.
+const Next, Prev, First, Last = Binary.Next, Binary.Prev, Binary.First, Binary.Last
+
+-- 찾기는 키를 가진 이진 노드면 무엇이든 받고 **그 타입 그대로** 돌려줍니다(`KeyNodeRead<K, V>?` 로 받던 때는
+-- 균형 방식의 노드(`RbNode` …)를 넘기면 값 타입이 `unknown` 이 됐습니다, 리뷰).
+type Keyed<K> = { read __links: "binary", read __key: K }
 
 -- 키가 같은 노드. 없으면 `nil`.
-const function Find<K, V>(root: KeyNodeRead<K, V>?, key: K, compare: Comparator<K>): KeyNodeRead<K, V>?
+const function Find<N, K>(root: (N & Keyed<K>)?, key: K, compare: Comparator<K>): N?
 	local cursor: any = root
 	while cursor ~= nil do
 		const order = compare(key, cursor[KEY])
@@ -86,7 +82,7 @@ const function Find<K, V>(root: KeyNodeRead<K, V>?, key: K, compare: Comparator<
 end
 
 -- 키가 `key` **이상**인 첫 노드(중위 순서). 없으면 `nil`. `Ceiling` 이고, 구간 순회의 시작점입니다.
-const function LowerBound<K, V>(root: KeyNodeRead<K, V>?, key: K, compare: Comparator<K>): KeyNodeRead<K, V>?
+const function LowerBound<N, K>(root: (N & Keyed<K>)?, key: K, compare: Comparator<K>): N?
 	local cursor: any, best: any = root, nil
 	while cursor ~= nil do
 		if compare(key, cursor[KEY]) <= 0 then
@@ -100,7 +96,7 @@ const function LowerBound<K, V>(root: KeyNodeRead<K, V>?, key: K, compare: Compa
 end
 
 -- 키가 `key` **초과**인 첫 노드. 없으면 `nil`.
-const function UpperBound<K, V>(root: KeyNodeRead<K, V>?, key: K, compare: Comparator<K>): KeyNodeRead<K, V>?
+const function UpperBound<N, K>(root: (N & Keyed<K>)?, key: K, compare: Comparator<K>): N?
 	local cursor: any, best: any = root, nil
 	while cursor ~= nil do
 		if compare(key, cursor[KEY]) < 0 then
@@ -115,7 +111,7 @@ end
 
 -- 구조째 베낍니다(노드는 새로, 키·값과 **균형 정보까지 그대로** — 노드를 통째로 베끼니 어느 균형 방식의
 -- 트리든 됩니다). O(n).
-const function Clone<K, V>(root: KeyNodeRead<K, V>?): KeyNodeRead<K, V>?
+const function Clone<N>(root: (N & { read __links: "binary" })?): N?
 	const function copy(node: any, parent: any): any
 		if node == nil then
 			return nil
@@ -129,8 +125,32 @@ const function Clone<K, V>(root: KeyNodeRead<K, V>?): KeyNodeRead<K, V>?
 	return copy(root, nil)
 end
 
+-- 균형 방식 인자를 확인해 돌려줍니다(`nil` 이면 `fallback`). 트리를 조립하는 쪽의 생성자가 씁니다 — 엉뚱한 값
+-- (`"avl"`, 다른 모듈)이 생성 때는 통과하고 첫 넣기에서 라이브러리 줄의 `attempt to call a nil value` 였습니다
+-- (2026-10-13 리뷰). 함수 넷이 있는지만 봅니다(서명은 타입의 몫). `who` 는 메시지 머리(`"TreeMap: New"`).
+const function ExpectBalance(balance: any, fallback: Balance, who: string): Balance
+	if balance == nil then
+		return fallback
+	end
+	if
+		type(balance) ~= "table"
+		or type(rawget(balance, "Insert")) ~= "function"
+		or type(rawget(balance, "Remove")) ~= "function"
+		or type(rawget(balance, "FromSorted")) ~= "function"
+		or type(rawget(balance, "Clone")) ~= "function"
+	then
+		Common.raise(
+			`{who} needs a balance scheme with Insert, Remove, FromSorted and Clone (RedBlack, Avl, …), got {typeof(
+				balance
+			)}`
+		)
+	end
+	return balance
+end
+
 -- stylua: ignore
 return {
+	ExpectBalance = ExpectBalance,
 	-- 칸 배치(계약) — 앞의 넷은 `Node.Binary` 의 것
 	VALUE = VALUE, LEFT = LEFT, RIGHT = RIGHT, PARENT = PARENT, KEY = KEY, BALANCE = BALANCE,
 	Key = Key, Value = Value, Next = Next, Prev = Prev, First = First, Last = Last,

@@ -24,6 +24,7 @@ local Node = require("../Node")
 local Search = require("../Trees/Search")
 local Set = require("../Traits/Set")
 local Collection = require("../Traits/Collection")
+local RedBlack = require("../Trees/RedBlack")
 local TreeMap = require("./TreeMap")
 
 type Comparator<T> = Types.Comparator<T>
@@ -223,6 +224,12 @@ end
 -- ⭐ **두 셋의 비교자가 같은 함수여야 합니다.** 다르면 병합이 뜻을 잃고 결과가 불변식이 깨진 셋이 됩니다.
 -- 같은지 한 번 보는 값은 거의 0 이라 막습니다 — 뜻이 같은 비교자라도 **다른 함수 값**이면 에러입니다.
 const function sameOrder<T>(a: TreeSetData<T>, b: TreeSetData<T>)
+	-- 상대가 같은 종류인지 먼저(타입 없는 코드 — 표면이 같은 `FlatSet` 을 섞으면 `map.root` 가 없어 **빈 셋으로
+	-- 읽혀** `Union` 이 한쪽만 돌려주고 `IsDisjointFrom` 이 참이었습니다, 리뷰)
+	if type(b) ~= "table" or rawget(b :: any, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(b)
+		Common.raise(`TreeSet: set operations need another TreeSet, got {if kind then kind.name else typeof(b)}`)
+	end
 	if a.map.compare ~= b.map.compare then
 		Common.raise("TreeSet: sets use different comparators")
 	end
@@ -419,12 +426,17 @@ end
 
 -- `balance` 는 자가 균형 방식(선택 — 기본 레드블랙, `TreeMap.New` 와 같음).
 const function New<T>(compare: Comparator<T>, balance: Balance?): TreeSet<T>
+	-- 여기서 먼저 봅니다 — 맡기면 메시지 머리가 `TreeMap:` 으로 나옵니다(사용자가 부른 적 없는 모듈).
+	Common.expectComparator(compare, "TreeSet: New")
+	Search.ExpectBalance(balance, RedBlack, "TreeSet: New")
 	return wrap(TreeMap.New<<T, true>>(compare, balance))
 end
 
 -- 평범한 Lua 배열의 원소로 만듭니다. 정렬해서 한 번에 짓고(O(n log n) 정렬 + O(n) 짓기) 중복은 하나로
 -- 접힙니다. 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀), NaN 은 에러.
 const function FromList<T>(source: { T }, compare: Comparator<T>, balance: Balance?): TreeSet<T>
+	Common.expectComparator(compare, "TreeSet: FromList")
+	Search.ExpectBalance(balance, RedBlack, "TreeSet: FromList")
 	const list, count = Common.denseList(source)
 	for idx = 1, count do
 		const item = list[idx]

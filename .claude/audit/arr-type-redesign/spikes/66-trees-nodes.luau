@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 19 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 28 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -67,6 +67,41 @@ local negKind = Node.Binary.Next(Node.Double.New(1))
 local negOptionalNode: stl.BinaryNodeRead<string>? = Node.Binary.Next(Node.Binary.New(1))
 local negKeyType: number = stl.Search.Key(root)
 
+--[[ 리뷰 1라운드(2026-10-13) — 찾기·따라가기는 받은 노드의 타입 그대로 ]]
+-- POS: 균형 방식의 노드를 공유 조각에 그대로(예전엔 값 타입이 unknown) / 따라가 얻은 노드를 그 방식의 Remove 에 /
+-- 자기가 만든 사슬·트리는 따라간 뒤에도 고칠 수 있음
+local okShared = stl.Search.Find(root, "a", compare)
+local okSharedValue: number? = if okShared then stl.Search.Value(okShared) else nil
+local okWalkRemove: RbNode? = RedBlack.Remove(root, RedBlack.First(root))
+local okNextRead: stl.RbNodeRead<string, number>? = if found then RedBlack.Next(found) else nil
+local okChain = Node.Double.New(1)
+local okChainNext = Node.Double.Next(okChain)
+if okChainNext then
+	Node.Double.SetValue(okChainNext, 5)
+end
+for walked in Node.Double.Walk(okChain) do
+	Node.Double.Unlink(walked)
+end
+-- NEG: 읽기 노드는 따라가도 읽기 노드(고치는 도구에 못 들어감) — 양방향·단방향·이진
+local readChain: stl.DoubleNodeRead<number> = okChain
+local readNext = Node.Double.Next(readChain)
+if readNext then
+	Node.Double.SetValue(readNext, 5)
+end
+for walked in Node.Double.Walk(readChain) do
+	Node.Double.Unlink(walked)
+end
+local readSingle: stl.SingleNodeRead<number> = Node.Single.New(1)
+Node.Single.RemoveNext(readSingle)
+Node.Binary.SetLeft(readOnly, nil)
+-- NEG: 단방향 노드는 다른 종류의 도구에 못 들어감 / 따라간 결과의 값 타입
+local negSingleKind = Node.Double.Next(Node.Single.New(1))
+local negSharedValue: string? = if okShared then stl.Search.Value(okShared) else nil
+-- NEG: Avl 도 같은 서명(찾기는 옵셔널, 값 타입, 뿌리는 옵셔널이 아님)
+local avlFound: stl.AvlNodeRead<string, number> = Avl.Find(avlRoot, "a", compare)
+Avl.Insert(avlRoot, "b", "not a number", compare)
+local negAvlRemove = Avl.Remove(Avl.Find(avlRoot, "a", compare), avlRoot)
+
 local canary: string = 42
 
 return {
@@ -94,5 +129,12 @@ return {
 	negKind,
 	negOptionalNode,
 	negKeyType,
+	okSharedValue,
+	okWalkRemove,
+	okNextRead,
+	negSingleKind,
+	negSharedValue,
+	avlFound,
+	negAvlRemove,
 	canary,
 }

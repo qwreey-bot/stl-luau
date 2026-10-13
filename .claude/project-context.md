@@ -155,7 +155,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `Heap` | 완성 | `spikes/44` |
 | `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |
 | `LinkedDeque` / `Node` / 트레이트 `Deque` | 2026-10-13 — 리뷰 대기 | `spikes/65` |
-| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`) | 2026-10-13 — 리뷰 대기. 아직 `TreeMap` 에 조립하지 않음 | `spikes/66` |
+| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 

@@ -194,4 +194,13 @@ function exports.rethrow(value: any): never
 	error(value, 0)
 end
 
+-- 비교자 인자가 함수인지. 정렬 구조의 생성자가 씁니다 — 빈 구조에서는 비교가 일어나지 않아 `nil` 비교자가
+-- 조용히 통과하고 나중에(둘째 원소를 넣을 때) 라이브러리 줄에서 `attempt to call a nil value` 였습니다
+-- (`nil` 키와 같은 모양, 2026-10-13 리뷰). `who` 는 메시지 머리(`"TreeMap: New"`).
+function exports.expectComparator(compare: any, who: string)
+	if type(compare) ~= "function" then
+		exports.raise(`{who} needs a comparator function, got {typeof(compare)}`)
+	end
+end
+
 return exports

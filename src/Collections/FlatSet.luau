@@ -260,6 +260,11 @@ end
 -- 비교자라도 **다른 함수 값**이면 에러이니 `Common.compareNumber` 처럼 같은
 -- 함수를 나눠 쓰세요.
 const function sameOrder<T>(a: FlatSetData<T>, b: FlatSetData<T>)
+	-- 상대가 같은 종류인지 먼저(타입 없는 코드가 표면이 같은 `TreeSet` 을 섞으면 라이브러리 줄에서 죽었음, 리뷰)
+	if type(b) ~= "table" or rawget(b :: any, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(b)
+		Common.raise(`FlatSet: set operations need another FlatSet, got {if kind then kind.name else typeof(b)}`)
+	end
 	if a.map.compare ~= b.map.compare then
 		Common.raise("FlatSet: sets use different comparators")
 	end
@@ -457,6 +462,7 @@ export type FlatSet<T> = FlatSetData<T>
 --#region ----------- 생성자 -----------
 
 const function New<T>(compare: Comparator<T>): FlatSet<T>
+	Common.expectComparator(compare, "FlatSet: New")
 	return adopt({} :: { Record<T, true> }, 0, compare)
 end
 
@@ -465,6 +471,7 @@ end
 -- ⚠️ 한 번에 정렬해서 담습니다(O(n log n)). `Add` 를 n 번 부르면 삽입마다
 -- 뒤를 밀어 **O(n^2)** 이 됩니다.
 const function FromList<T>(source: { T }, compare: Comparator<T>): FlatSet<T>
+	Common.expectComparator(compare, "FlatSet: FromList")
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드).
 	const list, count = Common.denseList(source)
 	if count == 0 then

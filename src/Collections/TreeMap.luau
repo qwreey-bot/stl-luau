@@ -17,11 +17,11 @@
 
 	표면은 같습니다(같은 `Map` 트레이트, 같은 함수 이름과 뜻). `FlatMap` 은 정렬 배열(예전 `TreeMap`)이고
 	이쪽은 노드 트리입니다:
-	- **넣고 빼기가 섞이면 이쪽**: 넣기·지우기가 O(log n) — 정렬 배열은 뒤를 밀어 O(n)(1만 개에서 4배, 10만
-	  개에서 13배 차이). `PopFirst` 도 O(log n).
-	- 조회는 이쪽이 조금 빠릅니다(0.6~0.7배).
-	- 순회와 "이미 정렬된 순서로 넣기", 메모리는 `FlatMap` 이 낫습니다 — 작거나, 한 번에 지어 읽기만 하는
-	  쓰임이면 `FlatMap`.
+	- **넣고 빼기가 섞이면 이쪽**: 넣기·지우기가 O(log n) — 정렬 배열은 뒤를 밀어 O(n)(지우고 넣기가 1만 개에서
+	  4.5배, 10만 개에서 19배 차이 — perf 38-3절). `PopFirst` 도 O(log n).
+	- 조회는 이쪽이 빠릅니다(약 0.5배).
+	- `Keys`·`Values`(3배쯤)와 "이미 정렬된 순서로 넣기", 메모리는 `FlatMap` 이 낫습니다 — 작거나, 한 번에 지어
+	  읽기만 하는 쓰임이면 `FlatMap`.
 
 	## 표현
 
@@ -382,7 +382,8 @@ end
 --
 -- `balance` 는 자가 균형 방식(선택 — 기본 레드블랙). `stl.Avl` 이나 `Search.Balance` 모양의 바깥 구현.
 const function New<K, V>(compare: Comparator<K>, balance: Balance?): TreeMap<K, V>
-	return newMap(nil, 0, compare, balance or RedBlack)
+	Common.expectComparator(compare, "TreeMap: New")
+	return newMap(nil, 0, compare, Search.ExpectBalance(balance, RedBlack, "TreeMap: New"))
 end
 
 -- 키-값 쌍 목록에서 만듭니다. **정렬해서 한 번에 짓고(O(n log n) 정렬 + O(n) 짓기) 중복 키는 뒤엣것이
@@ -390,7 +391,8 @@ end
 -- 동점(비교자가 0 을 돌려주는 두 키)에서 뒤엣것이 이기도록 원래 위치를 타이브레이커로 씁니다(`table.sort`
 -- 는 안정 정렬이 아님).
 const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>, balance: Balance?): TreeMap<K, V>
-	const scheme = balance or RedBlack
+	Common.expectComparator(compare, "TreeMap: FromRecords")
+	const scheme = Search.ExpectBalance(balance, RedBlack, "TreeMap: FromRecords")
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀).
 	const records, count = Common.denseList(source)
 	if count == 0 then
@@ -444,7 +446,8 @@ const function FromSorted<K, V>(
 	compare: Comparator<K>,
 	balance: Balance?
 ): TreeMap<K, V>
-	const scheme = balance or RedBlack
+	Common.expectComparator(compare, "TreeMap: FromSorted")
+	const scheme = Search.ExpectBalance(balance, RedBlack, "TreeMap: FromSorted")
 	return newMap(scheme.FromSorted(keys, values, count), count, compare, scheme)
 end
 

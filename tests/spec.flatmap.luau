@@ -389,6 +389,119 @@ do
 end
 print("PASS")
 
+print(
+	"=== 리뷰 1라운드(2026-10-13) — FlatMap: false 값, FromRecords 의 세부, 에러 자리의 줄, 생성자 인자 검사 ==="
+)
+do
+	const cmp = stl.Common.compareNumber
+	local where = 0
+	-- GetOr 는 값이 false 여도 그 값을(`value or fallback` 로 쓰면 틀림)
+	const flags = FlatMap.New<<number, boolean>>(cmp)
+	FlatMap.Set(flags, 10, false)
+	assert(FlatMap.GetOr(flags, 10, true) == false and FlatMap.GetOr(flags, 20, true) == true, "GetOr 와 false 값")
+	assert(
+		FlatMap.Has(flags, 10) and FlatMap.Get(flags, 10) == false and FlatMap.Len(flags) == 1,
+		"false 값은 있는 값"
+	)
+
+	-- FromRecords: 마지막 값이 nil 인 키는 없는 것(`Set` 과 같은 규칙) — 키·값이 같이 당겨지고 크기가 맞음
+	const pruned = FlatMap.FromRecords<<number, string>>({
+		{ key = 10, value = "a" },
+		{ key = 20, value = "b" },
+		{ key = 30, value = "c" },
+		{ key = 10, value = nil :: any },
+	}, cmp)
+	assert(
+		FlatMap.Len(pruned) == 2 and not FlatMap.Has(pruned, 10),
+		`nil 로 끝난 키는 빠짐: {FlatMap.Len(pruned)}`
+	)
+	assert(FlatMap.Get(pruned, 20) == "b" and FlatMap.Get(pruned, 30) == "c", "남은 키·값이 제 짝")
+	assert(table.concat(FlatMap.Keys(pruned), ",") == "20,30", "남은 키")
+	-- FromRecords 의 길이 규약: `n` 을 따르고 구멍은 건너뜀, 다른 컨테이너는 에러
+	const holed = FlatMap.FromRecords({ { key = 1, value = "a" }, nil, { key = 3, value = "c" }, n = 3 } :: any, cmp)
+	assert(table.concat(FlatMap.Keys(holed), ",") == "1,3", "n 을 따르고 구멍은 건너뜀")
+	const short = FlatMap.FromRecords(
+		{ { key = 1, value = "a" }, { key = 2, value = "b" }, { key = 3, value = "c" }, n = 2 } :: any,
+		cmp
+	)
+	assert(FlatMap.Len(short) == 2 and not FlatMap.Has(short, 3), "n 이 더 짧으면 거기까지")
+	assert(
+		not pcall(FlatMap.FromRecords, stl.HashMap.New() :: any, cmp),
+		"다른 컨테이너는 레코드 목록이 아님"
+	)
+	-- "뒤엣것이 이긴다" — 큰 입력에서도(`table.sort` 는 안정 정렬이 아니라 타이브레이커가 필요. 작은 입력은
+	-- 삽입 정렬 구간이라 타이브레이커 없이도 우연히 맞았음)
+	const many: { stl.Record<number, number> } = {}
+	for at = 1, 3000 do
+		many[at] = { key = (at * 7) % 40, value = at }
+	end
+	const lastWins = FlatMap.FromRecords(many, cmp)
+	assert(FlatMap.Len(lastWins) == 40, "키 40종")
+	for key = 0, 39 do
+		local want = 0
+		for at = 3000, 1, -1 do
+			if (at * 7) % 40 == key then
+				want = at
+				break
+			end
+		end
+		assert(
+			FlatMap.Get(lastWins, key) == want,
+			`키 {key}: 뒤엣것 {want} 이 아니라 {tostring(FlatMap.Get(lastWins, key))}`
+		)
+	end
+
+	-- 에러 자리: 메시지와 **사용자 줄**
+	const m = FlatMap.New<<number, string>>(cmp)
+	const sites: { { want: string, call: () -> () } } = {
+		{
+			want = "FlatMap: nil key",
+			call = function()
+				where = debug.info(1, "l") + 1
+				FlatMap.Set(m, nil :: any, "x")
+			end,
+		},
+		{
+			want = "FlatMap: NaN key",
+			call = function()
+				where = debug.info(1, "l") + 1
+				FlatMap.Set(m, 0 / 0, "x")
+			end,
+		},
+		{
+			want = "FlatMap: nil key",
+			call = function()
+				where = debug.info(1, "l") + 1
+				FlatMap.FromRecords({ { key = 1, value = "a" }, { key = nil :: any, value = "b" } }, cmp)
+			end,
+		},
+		{
+			want = "FlatMap: New needs a comparator function, got nil",
+			call = function()
+				where = debug.info(1, "l") + 1
+				FlatMap.New(nil :: any)
+			end,
+		},
+		{
+			want = "FlatMap: FromRecords needs a comparator function, got string",
+			call = function()
+				where = debug.info(1, "l") + 1
+				FlatMap.FromRecords({}, "compare" :: any)
+			end,
+		},
+	}
+	for _, site in sites do
+		const ok, err = pcall(site.call)
+		assert(not ok and string.find(tostring(err), site.want, 1, true), `{site.want}: {err}`)
+		assert(string.find(tostring(err), `spec.flatmap.luau:{where}:`, 1, true), `{site.want} 사용자 줄: {err}`)
+	end
+	assert(FlatMap.Len(m) == 0, "거절된 호출은 맵을 안 바꿈")
+	-- 종류를 모르는 코드로 비우기
+	const toClear = FlatMap.FromRecords({ { key = 1, value = "a" } }, cmp)
+	assert(stl.Collection.Clear(toClear) == toClear and FlatMap.Len(toClear) == 0, "Collection.Clear")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (FlatMap) ===")
 

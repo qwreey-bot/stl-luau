@@ -133,7 +133,9 @@ luau-analyze src tests      # 타입 검사 + 린트
 | `Arr` | `{ n: number, [number]: T }` | 연속 정수 인덱스. `#` 는 희소 배열에서 정의되지 않으므로 `n` 을 신뢰 |
 | `HashMap` | `{ data: { [K]: V }, size: number }` | 키를 `self` 에 바로 넣으면 `Set("size", v)` 가 길이 필드를 덮어씀 |
 | `HashSet` | `{ map: HashMap<T, T> }` | 맵 위에 단방향. 값은 원소 자신(`원소 → 원소`, 2026-10-13) — `Iter` 가 안쪽 테이블을 그대로 돌려줘도 `(item, item)` |
-| `TreeMap` | `{ records: { Record }, size, compare, probe }` | 정렬 레코드 배열 + 이분 탐색 |
+| `TreeMap` | `{ root: 노드?, size, compare, balance }` | 노드 기반 균형 트리(3층 조립 — 노드는 `Node.Binary` + 키·균형 칸, 구조 제어는 `Trees/RedBlack`). `conventions.md` "층은 셋" |
+| `FlatMap` | `{ records: { Record }, size, compare, probe }` | 정렬 레코드 배열 + 이분 탐색(예전 `TreeMap`). `FlatSet` 은 `{ map: FlatMap<T, true> }` |
+| `LinkedDeque` | `{ head: 노드?, tail: 노드?, size }` | 양방향 노드(`Node.Double` — `{ 값, 앞, 뒤 }`). 위치가 노드 |
 | `TreeSet` | `{ map: TreeMap<T, true> }` | 맵 위에 단방향 |
 | `Heap` | `{ items: { T }, size, less }` | 배열에 담은 완전이진트리 |
 | `CircularDeque` | `{ head, size, cap, [1..cap]: T }` | 링 버퍼(2026-10-07 M5). 길이 필드가 **`n` 이 아니라 `size`** — 물리 칸이 감겨 있어 `{ n, [1..n] }` 리스트로 읽히면 틀림. 리스트 진입점은 받지 않음(`CircularDeque.ToArr`). 읽기 함수의 첫 인자는 `CircularDequeRead<T>`(공변, 2026-10-12) |
