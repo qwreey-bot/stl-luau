@@ -309,7 +309,17 @@ do
 			where = debug.info(1, "l") + 1
 			Arr.GroupBy(Arr.Of(10, 20), function(_v: number): any
 				return nil
-			end)
+			end, stl.HashMap.New() :: any)
+		end)
+	)
+	-- 목적지가 `HashMap` 이 아니면 다른 루프(맵의 Get/Set) — 검사 호출이 거기에도 따로 있음
+	atUserLine(
+		"Arr.GroupBy nil 키(일반 경로)",
+		expectLine("Arr.GroupBy nil 키(일반 경로)", "GroupBy key is nil", function()
+			where = debug.info(1, "l") + 1
+			Arr.GroupBy(Arr.Of(10, 20), function(_v: number): any
+				return nil
+			end, stl.TreeMap.New(stl.Common.compareNumber) :: any)
 		end)
 	)
 	-- NaN 쪽(1라운드: `not pcall` 만 보면 Lua 의 "table index is NaN" 도 통과 — 메시지·줄이 규약 위반)
@@ -319,7 +329,17 @@ do
 			where = debug.info(1, "l") + 1
 			Arr.CountBy(Arr.Of(10, 20), function(_v: number): number
 				return 0 / 0
-			end)
+			end, stl.HashMap.New() :: any)
+		end)
+	)
+	-- 목적지가 `HashMap` 이 아니면 다른 루프(맵의 Get/Set) — 검사 호출이 거기에도 따로 있음
+	atUserLine(
+		"Arr.CountBy NaN 키(일반 경로)",
+		expectLine("Arr.CountBy NaN 키(일반 경로)", "CountBy key is NaN", function()
+			where = debug.info(1, "l") + 1
+			Arr.CountBy(Arr.Of(10, 20), function(_v: number): number
+				return 0 / 0
+			end, stl.TreeMap.New(stl.Common.compareNumber) :: any)
 		end)
 	)
 	-- M5(2026-10-07) — Deque 의 raise 자리 둘
@@ -345,7 +365,17 @@ do
 			where = debug.info(1, "l") + 1
 			Arr.KeyBy(Arr.Of(10, 20), function(_v: number): any
 				return nil
-			end)
+			end, stl.HashMap.New() :: any)
+		end)
+	)
+	-- 목적지가 `HashMap` 이 아니면 다른 루프(맵의 Get/Set) — 검사 호출이 거기에도 따로 있음
+	atUserLine(
+		"Arr.KeyBy nil 키(일반 경로)",
+		expectLine("Arr.KeyBy nil 키(일반 경로)", "KeyBy key is nil", function()
+			where = debug.info(1, "l") + 1
+			Arr.KeyBy(Arr.Of(10, 20), function(_v: number): any
+				return nil
+			end, stl.TreeMap.New(stl.Common.compareNumber) :: any)
 		end)
 	)
 	-- 10. 스택이 끝까지 라이브러리면(라이브러리 함수를 스레드 본문으로 바로 넘김 — Roblox 의

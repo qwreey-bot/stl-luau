@@ -259,7 +259,7 @@ do
 		WindowsEmpty = Arr.Windows(a(), 9),
 		WindowsInner = Arr.Windows(a(), 2)[1],
 		-- M4(2026-10-07) — 무리도 Arr
-		GroupByInner = stl.HashMap.Get(Arr.GroupBy(a(), id), 30),
+		GroupByInner = stl.HashMap.Get(Arr.GroupBy(a(), id, stl.HashMap.New() :: any), 30),
 	}
 	for name, result in arrResults do
 		assert(stl.isArr(result), `Arr.{name} 결과에 태그가 없습니다`)
@@ -281,9 +281,9 @@ do
 		end),
 		MergeInplace = HashMap.MergeInplace(HashMap.Clone(hm), hm),
 		Merge = HashMap.Merge(hm, hm),
-		GroupBy = Arr.GroupBy(a(), id),
-		CountBy = Arr.CountBy(a(), id),
-		KeyBy = Arr.KeyBy(a(), id),
+		GroupBy = Arr.GroupBy(a(), id, HashMap.New() :: any),
+		CountBy = Arr.CountBy(a(), id, HashMap.New() :: any),
+		KeyBy = Arr.KeyBy(a(), id, HashMap.New() :: any),
 	}
 	for name, result in mapResults do
 		assert(stl.isHashMap(result), `HashMap.{name} 결과에 태그가 없습니다`)

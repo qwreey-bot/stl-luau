@@ -78,6 +78,8 @@ local Optional = require("../Optional")
 local Trait = require("../Trait")
 local List = require("../Traits/List")
 local Collection = require("../Traits/Collection")
+-- `Map` 트레이트(묶기의 목적지) — 이 모듈에 `Map` 함수가 있어 다른 이름으로 받습니다.
+local MapTrait = require("../Traits/Map")
 -- `GroupBy`/`CountBy`/`KeyBy` 가 돌려줄 맵. 의존은 **Arr → HashMap 한 방향**입니다(HashMap 은
 -- Arr 을 모름 — `HashMap.Keys` 주석).
 local HashMap = require("./HashMap")
@@ -161,6 +163,7 @@ export type Rng = (min: number, max: number) -> number
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
 const TOKEN = Trait.NewType("Arr") :: Trait.Token<"Arr">
+const isHashMap, dispatch = HashMap.isHashMap, Trait.Dispatch
 
 --#region ----------- 내부 헬퍼 -----------
 
@@ -2303,7 +2306,18 @@ end
 
 --#endregion
 
---#region ----------- 묶기 — 키로 맵 만들기 (M4, 2026-10-07) -----------
+--#region ----------- 묶기 — 키로 맵에 모으기 (M4, 2026-10-07 → 목적지 인자 2026-10-13) -----------
+-- ⭐ **모을 곳은 호출자가 정합니다**(2026-10-13 사용자 결정, 질문 AR): 셋째 인자로 **목적지 맵 인스턴스**를
+-- 받아 거기에 모으고 **넣은 타입 그대로** 돌려줍니다 — `Arr.GroupBy(users, byTeam, TreeMap.New<<string,
+-- Arr<User>>>(cmp))`. 생략할 수 없습니다(Java 의 컬렉터는 빠뜨릴 수 있어서). 이미 채워진 맵이면 **이어
+-- 모읍니다**. 목적지는 `Map` 트레이트를 구현한 어느 종류든(사용자 맵 포함) 됩니다.
+--
+-- 누적은 **목적지 맵의 `Get`/`Set`** 으로 합니다 — "두 키가 같은가" 는 맵이 정할 일이라서입니다. 알고리즘이
+-- 임시 사전에 모았다 옮기면 비교자의 같음이 `==` 와 다른 맵(대소문자 무시 정렬 맵)에서 묶음이 갈리고 중복
+-- 키가 생겼습니다(AR — 재현). 이 라이브러리의 `HashMap` 일 때만 안쪽 테이블을 직접 씁니다(지름길 — 계약을
+-- 거치면 `CountBy` 가 두 배까지 느려졌습니다). ⚠️ 지름길은 **새 키마다** `size` 를 올립니다 — 끝에 한 번
+-- 쓰면 키 함수가 도중에 던졌을 때 호출자가 넘긴 맵의 크기가 틀어집니다.
+--
 -- 키는 원소당 한 번 계산합니다(`SortBy`·`MaxBy` 와 같은 `(element) -> K` 모양). `GroupBy`·`CountBy`
 -- 는 구멍에도 `key` 를 부릅니다(콜백 계열 — 구멍은 `nil` 그대로, 무리에 담김). `KeyBy` 는 구멍을
 -- 건너뜁니다(아래). 키가 `nil`·NaN 이면 **에러**입니다 — 맵의 키가 될 수 없는데 조용히 건너뛰면
@@ -2315,71 +2329,107 @@ const function checkGroupKey(key: any, who: string)
 	end
 end
 
--- 키가 같은 원소끼리 모은 맵(`HashMap<K, Arr<T>>`). 무리 안은 **입력 순서**, 무리끼리는 맵이라
--- 순서가 없습니다. 무리마다 `Arr` 하나.
-const function GroupBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<K, Arr<T>>
-	const groups = HashMap.New() :: HashMap<K, Arr<T>>
-	const data = groups.data
-	local count = 0
+-- 키가 같은 원소끼리 `into` 에 모읍니다(값은 `Arr<T>` — 무리마다 하나). 무리 안은 **입력 순서**, 무리끼리의
+-- 순서는 목적지 맵의 것입니다. 이미 있는 키의 무리에는 뒤에 붙입니다.
+const function GroupBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.MarkerMut<K, Arr<T>>): C
+	if isHashMap(into) then
+		const groups = into :: any
+		const data = groups.data
+		for idx = 1, self.n do
+			const item = self[idx]
+			const k = key(item)
+			checkGroupKey(k, "GroupBy")
+			local group = data[k]
+			if group == nil then
+				group = newSized(0)
+				data[k] = group
+				groups.size += 1
+			end
+			const len = group.n + 1
+			group[len] = item
+			group.n = len
+		end
+		return into
+	end
+	const ops = dispatch(MapTrait, into, "Arr.GroupBy")
+	const get, set = ops.Get, ops.Set
 	for idx = 1, self.n do
 		const item = self[idx]
 		const k = key(item)
 		checkGroupKey(k, "GroupBy")
-		local group = data[k]
+		local group = get(into, k)
 		if group == nil then
 			group = newSized(0)
-			data[k] = group
-			count += 1
+			set(into, k, group)
 		end
 		const len = group.n + 1
 		group[len] = item
 		group.n = len
 	end
-	groups.size = count
-	return groups
+	return into
 end
 
--- 키마다 원소 수(`HashMap<K, number>`). 구멍도 셉니다(`key(nil)` 의 키로).
-const function CountBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<K, number>
-	const counts = HashMap.New() :: HashMap<K, number>
-	const data = counts.data
-	local size = 0
+-- 키마다 원소 수를 `into` 에 셉니다. 구멍도 셉니다(`key(nil)` 의 키로). 이미 있는 키는 그 값에 더합니다.
+const function CountBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.MarkerMut<K, number>): C
+	if isHashMap(into) then
+		const counts = into :: any
+		const data = counts.data
+		for idx = 1, self.n do
+			const k = key(self[idx])
+			checkGroupKey(k, "CountBy")
+			const prev = data[k]
+			if prev == nil then
+				data[k] = 1
+				counts.size += 1
+			else
+				data[k] = prev + 1
+			end
+		end
+		return into
+	end
+	const ops = dispatch(MapTrait, into, "Arr.CountBy")
+	const get, set = ops.Get, ops.Set
 	for idx = 1, self.n do
 		const k = key(self[idx])
 		checkGroupKey(k, "CountBy")
-		const prev = data[k]
-		if prev == nil then
-			data[k] = 1
-			size += 1
-		else
-			data[k] = prev + 1
-		end
+		const prev = get(into, k)
+		set(into, k, if prev == nil then 1 else prev + 1)
 	end
-	counts.size = size
-	return counts
+	return into
 end
 
--- 키 → 원소 맵(`HashMap<K, T>`). 같은 키는 **나중 것이 이깁니다**(lodash `keyBy`, Kotlin
--- `associateBy`). ⚠️ **구멍은 건너뜁니다**(`key` 도 안 부름) — 맵은 `nil` 값을 담을 수 없습니다.
--- 예전엔 `Set` 의 "nil 은 삭제" 를 따라 그 키를 지웠는데, 결과가 구멍의 위치에 좌우돼 놀라웠습니다
--- (M4 리뷰 1라운드 설계 의견).
-const function KeyBy<T, K>(self: ArrRead<T>, key: (element: T) -> K): HashMap<K, T>
-	const out = HashMap.New() :: HashMap<K, T>
-	const data = out.data
-	local size = 0
+-- 키 → 원소를 `into` 에 넣습니다. 같은 키는 **나중 것이 이깁니다**(lodash `keyBy`, Kotlin
+-- `associateBy` — 이미 있던 키도 덮어씀). ⚠️ **구멍은 건너뜁니다**(`key` 도 안 부름) — 맵은 `nil` 값을 담을
+-- 수 없습니다. 예전엔 `Set` 의 "nil 은 삭제" 를 따라 그 키를 지웠는데, 결과가 구멍의 위치에 좌우돼
+-- 놀라웠습니다(M4 리뷰 1라운드 설계 의견).
+const function KeyBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.MarkerMut<K, T>): C
+	if isHashMap(into) then
+		const out = into :: any
+		const data = out.data
+		for idx = 1, self.n do
+			const item = self[idx]
+			if item ~= nil then
+				const k = key(item)
+				checkGroupKey(k, "KeyBy")
+				if data[k] == nil then
+					out.size += 1
+				end
+				data[k] = item
+			end
+		end
+		return into
+	end
+	const ops = dispatch(MapTrait, into, "Arr.KeyBy")
+	const set = ops.Set
 	for idx = 1, self.n do
 		const item = self[idx]
 		if item ~= nil then
 			const k = key(item)
 			checkGroupKey(k, "KeyBy")
-			if data[k] == nil then
-				size += 1
-			end
-			data[k] = item
+			set(into, k, item)
 		end
 	end
-	out.size = size
-	return out
+	return into
 end
 
 --#endregion

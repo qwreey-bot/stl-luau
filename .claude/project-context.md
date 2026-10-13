@@ -66,7 +66,7 @@ src/
     Set.luau         Add·Has·Remove·Items
     Collection.luau  Len·Clear (일곱 컨테이너 전부)
   Collections/     컨테이너
-    Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 HashMap 을 돌려줌) + 생성자 8
+    Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 목적지 맵을 인자로 받음) + 생성자 8
     HashMap.luau     해시 맵. { data, size } 래퍼
     HashSet.luau     HashMap 위에 단방향으로 얹음
     TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색(노드 트리로 바꿀 예정 — papers/07)
