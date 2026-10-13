@@ -266,11 +266,11 @@ do
 		end)
 	)
 	atUserLine(
-		"Arr.FromTable 이미 Arr",
-		expectLine("Arr.FromTable 이미 Arr", "already a container", function()
+		"Arr.Adopt 이미 Arr",
+		expectLine("Arr.Adopt 이미 Arr", "already a container", function()
 			const already = Arr.Of(1, 2)
 			where = debug.info(1, "l") + 1
-			Arr.FromTable(already :: any)
+			Arr.Adopt(already :: any)
 		end)
 	)
 	atUserLine(

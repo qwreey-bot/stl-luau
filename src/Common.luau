@@ -38,7 +38,7 @@ local exports = {}
 -- `{ T }` 를 받는 진입점이 리스트의 길이를 재는 **하나의 규칙**: `n` 이 0 이상의
 -- 정수로 있으면 그것(`Arr`, `table.pack` 결과), 없으면 `#`. `#`/`pairs` 로 읽으면
 -- `Arr` 의 `n` 과 태그 키까지 원소로 담거나(`HashSet.FromList(Arr.Of(10, 20))` 의
--- 크기가 4) 구멍 뒤를 잃었습니다(`CloneFromTable`). `Fut.All` 이 먼저 쓰던 규칙입니다.
+-- 크기가 4) 구멍 뒤를 잃었습니다(`FromTable`). `Fut.All` 이 먼저 쓰던 규칙입니다.
 function exports.listLength(list: any): number
 	const n = rawget(list, "n")
 	-- 유효한 `n` 은 한 번만 판정합니다 — 두 갈래에 따로 적었더니 한쪽만 줄이는 실수를 테스트가

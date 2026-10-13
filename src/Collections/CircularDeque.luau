@@ -27,7 +27,7 @@
 	는 음수 키라 처음부터 해시였습니다.
 
 	⚠️ 길이 필드 이름이 `n` 이 아니라 **`size`** 입니다 — `n` 을 두면 `{ n, [1..n] }` 리스트로
-	잘못 읽히기 쉽습니다(물리 칸은 감겨 있음). 리스트 진입점(`Arr.FromTable` 등)은 타입 토큰이
+	잘못 읽히기 쉽습니다(물리 칸은 감겨 있음). 리스트 진입점(`Arr.Adopt` 등)은 타입 토큰이
 	`Arr` 가 아니면 받지 않습니다(`Common.listLength`) — 넘기려면 `CircularDeque.ToArr`.
 
 	## 구멍
@@ -294,7 +294,7 @@ const function ToArr<T>(self: CircularDequeRead<T>): Arr<T>
 	const raw = table.create(size) :: any
 	copyInto(self, raw)
 	raw.n = size
-	return Arr.FromTable(raw)
+	return Arr.Adopt(raw)
 end
 
 --#endregion

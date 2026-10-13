@@ -68,7 +68,7 @@ do
 	-- 거절하며 바꾸는 길(ToArr)을 안내(가로지른 리뷰)
 	const okList, errList = pcall(CircularDeque.FromList, CircularDeque.Of(1, 2) :: any)
 	assert(not okList and string.find(tostring(errList), "CircularDeque.ToArr", 1, true), tostring(errList))
-	const okAdopt, errAdopt = pcall(Arr.FromTable, CircularDeque.Of(1, 2) :: any)
+	const okAdopt, errAdopt = pcall(Arr.Adopt, CircularDeque.Of(1, 2) :: any)
 	assert(not okAdopt and string.find(tostring(errAdopt), "CircularDeque.ToArr", 1, true), tostring(errAdopt))
 	-- 반대 방향은 ToArr
 	same(CircularDeque.FromList(CircularDeque.ToArr(CircularDeque.Of(10, 20))), { 10, 20 }, "ToArr 왕복")

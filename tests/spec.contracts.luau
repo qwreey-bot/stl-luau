@@ -172,8 +172,8 @@ do
 	const arrResults: { [string]: any } = {
 		Of = a(),
 		Sized = Arr.Sized(2, 0),
+		FromTable = Arr.Adopt({ 1, 2 }),
 		FromTable = Arr.FromTable({ 1, 2 }),
-		CloneFromTable = Arr.CloneFromTable({ 1, 2 }),
 		FromIter = Arr.FromIter<<number>>(ipairs({ 1, 2 })),
 		-- 테이블을 받는 갈래는 따로 돌려줌(4라운드 리뷰 — 토큰 없는 결과를 `any` 로 만들어도 통과했음)
 		FromIterTable = Arr.FromIter<<number>>({ 1, 2 }),
@@ -666,9 +666,9 @@ do
 			end,
 		},
 		{
-			name = "Arr.CloneFromTable(FlatSet)",
+			name = "Arr.FromTable(FlatSet)",
 			run = function()
-				stl.Arr.CloneFromTable(stl.FlatSet.New(Common.compareNumber) :: any)
+				stl.Arr.FromTable(stl.FlatSet.New(Common.compareNumber) :: any)
 			end,
 		},
 		{
@@ -757,7 +757,7 @@ do
 	for _, empty in { emptyArr, negZero } :: { any } do
 		assert(stl.HashSet.Len(stl.HashSet.FromList(empty)) == 0, "빈 Arr → HashSet")
 		assert(stl.FlatSet.Len(stl.FlatSet.FromList(empty, Common.compareNumber)) == 0, "빈 Arr → FlatSet")
-		assert(stl.Arr.CloneFromTable(empty).n == 0, "빈 Arr → CloneFromTable")
+		assert(stl.Arr.FromTable(empty).n == 0, "빈 Arr → FromTable")
 		assert(stl.Fut.Status(stl.Fut.All(empty)) == "Resolved", "빈 Arr → Fut.All")
 	end
 	-- (AC 리뷰) 길이 정책 [0, 2^26] — 정수지만 너무 큰 n 은 어떤 진입점도 받지 않음(예전엔 FromTable 이
@@ -766,10 +766,10 @@ do
 	for _, run in
 		{
 			function()
-				stl.Arr.FromTable(huge :: any)
+				stl.Arr.Adopt(huge :: any)
 			end,
 			function()
-				stl.Arr.CloneFromTable(huge :: any)
+				stl.Arr.FromTable(huge :: any)
 			end,
 			function()
 				stl.HashSet.FromList(huge :: any)
@@ -781,9 +781,9 @@ do
 		assert(string.find(msg, "spec.contracts", 1, true) ~= nil, `너무 큰 n 의 줄: {msg}`)
 	end
 	-- 길이 경계: 2^26 은 받고(할당 없이 입양), 2^26 + 1 은 거절(AC 2라운드 — `>` 를 `>=` 로 바꿔도 통과했음)
-	assert(stl.Arr.FromTable({ n = 2 ^ 26 } :: any).n == 2 ^ 26, "길이 2^26 은 받음")
+	assert(stl.Arr.Adopt({ n = 2 ^ 26 } :: any).n == 2 ^ 26, "길이 2^26 은 받음")
 	const overCap = errOf(function()
-		stl.Arr.FromTable({ n = 2 ^ 26 + 1 } :: any)
+		stl.Arr.Adopt({ n = 2 ^ 26 + 1 } :: any)
 	end)
 	assert(string.find(overCap, "list length must be in", 1, true) ~= nil, `2^26 + 1: {overCap}`)
 	-- (5라운드) "깨진 n" 은 nil 만이 아님 — 음수·소수·무한·NaN·문자열 전부(조건 하나만 빠져도 `#` 로
@@ -847,7 +847,7 @@ do
 			stl.HashSet.FromList(ring :: any)
 		end,
 		function()
-			stl.Arr.CloneFromTable(ring :: any)
+			stl.Arr.FromTable(ring :: any)
 		end,
 	}
 	for _, run in ringRuns do
@@ -857,12 +857,12 @@ do
 			`n 있는 사용자 컨테이너: {msg}`
 		)
 	end
-	-- (4라운드) Arr.FromTable 은 이 사본의 Arr 말고도 `__type` 이 있으면 거절(입력의 토큰을 덮어써
+	-- (4라운드) Arr.Adopt 은 이 사본의 Arr 말고도 `__type` 이 있으면 거절(입력의 토큰을 덮어써
 	-- 다른 사본에서 사라지게 하지 않음)
 	const containerish: { any } = { foreignArr, ring, stl.HashSet.Of(1) }
 	for _, v in containerish do
 		const msg = errOf(function()
-			stl.Arr.FromTable(v)
+			stl.Arr.Adopt(v)
 		end)
 		assert(string.find(msg, "already a container", 1, true) and string.find(msg, "spec.contracts", 1, true), msg)
 	end
@@ -1177,7 +1177,7 @@ print("PASS")
 print("=== 8. ⭐ 리스트를 받는 진입점이 Arr·table.pack 결과를 받을 때 (M0 3라운드) ===")
 do
 	-- `{ T }` 를 받는 생성자들이 `#`/`pairs` 로 읽어 `Arr` 의 `n` 과 태그 키까지
-	-- 원소로 담거나(HashSet 크기 4), 구멍 뒤를 잃었습니다(CloneFromTable). 규약:
+	-- 원소로 담거나(HashSet 크기 4), 구멍 뒤를 잃었습니다(FromTable). 규약:
 	-- **`n` 이 숫자로 있으면 그 길이로 숫자 루프**(구멍은 건너뜀), 없으면 `#`.
 	const Arr, HashMap, HashSet, FlatMap, FlatSet, Heap =
 		stl.Arr, stl.HashMap, stl.HashSet, stl.FlatMap, stl.FlatSet, stl.Heap
@@ -1216,8 +1216,8 @@ do
 		"n·태그는 키가 아님"
 	)
 	-- 복사 판은 구멍까지 그대로(n 을 따름)
-	const cloned = Arr.CloneFromTable(Arr.Of<<number?>>(1, nil, 3) :: any)
-	assert(cloned.n == 3 and cloned[3] == 3 and cloned[2] == nil, "CloneFromTable 은 n 을 따름")
+	const cloned = Arr.FromTable(Arr.Of<<number?>>(1, nil, 3) :: any)
+	assert(cloned.n == 3 and cloned[3] == 3 and cloned[2] == nil, "FromTable 은 n 을 따름")
 
 	-- (M0 4라운드) 구멍 든 입력·table.pack 을 **모든 진입점에** — 구멍 없는 입력만
 	-- 넣으면 `#` 와 `n` 이 같아 진입점을 `#` 로 되돌린 돌연변이가 살아남았음.
@@ -1235,19 +1235,19 @@ do
 	const holedArr = Arr.Of<<number?>>(10, nil, 30)
 	const byIndexHoled = HashMap.FromTable(holedArr :: any)
 	assert(HashMap.Len(byIndexHoled) == 2 and HashMap.Get(byIndexHoled, 3) == 30, "HashMap.FromTable(구멍 Arr)")
-	-- Arr.FromTable 은 pack 이 준 n 을 그대로(꼬리 구멍 포함)
-	assert(Arr.FromTable(table.pack(1, nil, 3, nil, nil) :: any).n == 5, "Arr.FromTable(pack) 은 n 을 따름")
-	-- CloneFromTable 은 메타테이블이 있으면 원소 단위로 읽습니다(길이는 __len, 원소는 __index)
+	-- Arr.Adopt 은 pack 이 준 n 을 그대로(꼬리 구멍 포함)
+	assert(Arr.Adopt(table.pack(1, nil, 3, nil, nil) :: any).n == 5, "Arr.Adopt(pack) 은 n 을 따름")
+	-- FromTable 은 메타테이블이 있으면 원소 단위로 읽습니다(길이는 __len, 원소는 __index)
 	const proxy = setmetatable({}, {
 		__index = { 10, 20, 30 },
 		__len = function()
 			return 3
 		end,
 	}) :: any
-	const fromProxy = Arr.CloneFromTable(proxy)
+	const fromProxy = Arr.FromTable(proxy)
 	assert(
 		fromProxy.n == 3 and fromProxy[1] == 10 and fromProxy[3] == 30,
-		"CloneFromTable 은 메타테이블 원소를 읽음"
+		"FromTable 은 메타테이블 원소를 읽음"
 	)
 
 	-- listLength 단위: n 이 0 이상의 유한 정수일 때만 n, 아니면 #
@@ -1268,16 +1268,16 @@ do
 	-- `{ f, nil, f }` 만 쓰면 `#` 가 3 이라 `#` 로 되돌린 돌연변이가 살아남았음(M0 5라운드).
 	assert(stl.Fut.Status(stl.Fut.All(Arr.Of<<any>>(one, nil, one))) == "Rejected", "Fut.All(구멍 Arr)")
 	assert(stl.Fut.Status(stl.Fut.All(table.pack(one, nil) :: any)) == "Rejected", "Fut.All(pack 꼬리 구멍)")
-	-- FromTable 은 n 뒤의 raw 칸을 비웁니다 — 남으면 정렬·삽입 뒤 그 값이 배열 안으로
+	-- Adopt 는 n 뒤의 raw 칸을 비웁니다 — 남으면 정렬·삽입 뒤 그 값이 배열 안으로
 	-- 다시 들어왔습니다(M0 5라운드, listLength 로 바꾸며 생긴 상태)
 	const shortened = table.pack(50, 40, 30, 20, 10) :: any
 	shortened.n = 2
-	const adopted = Arr.FromTable(shortened)
-	assert(adopted.n == 2 and adopted[3] == nil and adopted[5] == nil, "FromTable 은 n 뒤를 비움")
+	const adopted = Arr.Adopt(shortened)
+	assert(adopted.n == 2 and adopted[3] == nil and adopted[5] == nil, "Adopt 는 n 뒤를 비움")
 	Arr.SortInplaceUnchecked(adopted)
 	assert(adopted[1] == 40 and adopted[2] == 50, "n 뒤 값이 정렬에 섞이지 않음")
 	-- n = -0 은 +0 으로(Sized 와 같은 정규화)
-	assert(tostring(Arr.FromTable({ n = -0 } :: any).n) == "0", "FromTable n = -0 → 0")
+	assert(tostring(Arr.Adopt({ n = -0 } :: any).n) == "0", "FromTable n = -0 → 0")
 end
 print("PASS")
 

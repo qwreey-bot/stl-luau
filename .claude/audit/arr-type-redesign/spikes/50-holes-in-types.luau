@@ -10,7 +10,7 @@
 	으로 통과하고 런타임에 터졌다. 이 스파이크는 그 길이 막혔는지 본다:
 
 	- `Sized` 의 `fill` 이 필수인가
-	- 구멍이 생기는 생성자(`Of`/`FromTable`/`Sized(…, nil)`)가 `Arr<T?>` 를 주는가
+	- 구멍이 생기는 생성자(`Of`/`Adopt`/`Sized(…, nil)`)가 `Arr<T?>` 를 주는가
 	- `Arr<T?>` 에서 집계가 막히고, 콜백이 `T?` 를 받아야 하는가
 	- 정리(`Compact`/`FillHoles`)가 `?` 를 떼는가, 제자리판은 안 떼는가
 
@@ -34,7 +34,7 @@ type Arr<T> = stl.Arr<T>
 local filled: Arr<number> = Arr.Sized(3, 0)
 local holed: Arr<number?> = Arr.Sized<<number?>>(3, nil)
 local fromOf: Arr<number?> = Arr.Of(1, nil, 3)
-local fromTable: Arr<number?> = Arr.FromTable({ 1, nil, 3 })
+local fromTable: Arr<number?> = Arr.Adopt({ 1, nil, 3 })
 local seen: Arr<number> = Arr.Map(holed, function(v: number?): number
 	return v or 0
 end)
@@ -56,7 +56,7 @@ local neg7 = Arr.Map(holed, function(v: number): number -- ⭐ 구멍이던 자�
 	return v * 2
 end)
 local neg8: Arr<number> = Arr.FillHolesInplace(holed, 0) -- 제자리판은 ? 를 못 뗌
-local neg9: Arr<number> = Arr.FromTable({ 1, nil, 3 })
+local neg9: Arr<number> = Arr.Adopt({ 1, nil, 3 })
 local mixed = Arr.Of<<number | string>>(1, "a")
 local neg10 = Arr.Filter(mixed, function(v: number) -- 유니온에서도 같은 구멍이었음
 	return v > 0

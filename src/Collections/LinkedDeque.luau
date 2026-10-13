@@ -303,7 +303,7 @@ const function ToArr<T>(self: LinkedDequeRead<T>): Arr<T>
 		node = node[NEXT]
 	end
 	raw.n = size
-	return Arr.FromTable(raw)
+	return Arr.Adopt(raw)
 end
 
 --#endregion

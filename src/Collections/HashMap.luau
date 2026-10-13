@@ -137,7 +137,7 @@ const function Empty<K, V>(self: HashMapData<K, V>): boolean
 end
 
 -- 키만 모은 평범한 Lua 배열. **순서는 보장하지 않습니다.**
--- `Arr` 로 받고 싶으면 `Arr.FromTable(HashMap.Keys(map))` 하세요 — 이 모듈이 `Arr`
+-- `Arr` 로 받고 싶으면 `Arr.Adopt(HashMap.Keys(map))` 하세요 — 이 모듈이 `Arr`
 -- 을 require 하지 않게 하려는 것입니다(의존을 한 방향으로 유지).
 const function Keys<K, V>(self: HashMapData<K, V>): { K }
 	const out: { K } = table.create(self.size)
@@ -354,7 +354,7 @@ end
 --     local m = HashMap.FromTable(src)
 -- **사전을 받는 진입점**입니다 — `Arr` 만 "위치 → 값" 으로 따로 읽고, 그 밖의 테이블은
 -- 키 전부를 담습니다. `table.pack(…)` 결과를 넘기면 `"n"` 도 키가 됩니다(그 테이블의 정당한
--- 키 — 2026-10-02 Gemini 지적, 그대로 둠). 리스트에서 만들려면 `Arr.FromTable`·`Arr.CloneFromTable` 을 거치세요(`HashMap.FromTable(Arr.FromTable(t))`).
+-- 키 — 2026-10-02 Gemini 지적, 그대로 둠). 리스트에서 만들려면 `Arr.Adopt`·`Arr.FromTable` 을 거치세요(`HashMap.FromTable(Arr.Adopt(t))`).
 -- 내부 배선: `Arr` 모듈이 로드될 때 자기 토큰을 알려 줍니다. `Arr` 가 이 모듈을 쓰니(`GroupBy` 의 지름길)
 -- 여기서 `Arr` 을 require 할 수 없어 거꾸로 받습니다. `Arr` 가 로드되지 않았다면 `Arr` 값도 없습니다.
 local arrToken: any = nil

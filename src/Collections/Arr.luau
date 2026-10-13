@@ -14,7 +14,7 @@
 	Rust 의 `MaybeUninit` 과 같은 결입니다 — 기본값이 없는 언어라 칸을 대신
 	채워줄 수 없으니, **비어 있을 수 있는 칸은 타입이 `T?` 라고 말하게** 합니다.
 	구멍이 생기는 생성자는 전부 `Arr<T?>` 를 돌려주거나(`Of(1, nil, 3)`,
-	`FromTable({ 1, nil, 3 })`), 명시를 요구합니다(`Sized(n, fill)` 의 `fill`
+	`Adopt({ 1, nil, 3 })`), 명시를 요구합니다(`Sized(n, fill)` 의 `fill`
 	은 필수 — 구멍을 원하면 `Arr.Sized<<number?>>(n, nil)`; `FromIter` 는 원소 타입을
 	직접 적는 자리라 구멍이 생길 순회자면 `FromIter<<number?>>(Arr.Iter(a))`).
 
@@ -1315,7 +1315,7 @@ end
 --
 -- (M0 6라운드) `#` 와 `n` 이 어긋나면 checked 판(`SortInplace`)으로 넘어갑니다 —
 -- 예전엔 구멍이 있으면 뒤쪽이 정렬되지 않은 채 **조용히** 남았고, `n` 밖 raw 칸에
--- 값이 남아 있으면(대입으로 만든 테이블을 입양한 경우 — `FromTable` 의 비우기는
+-- 값이 남아 있으면(대입으로 만든 테이블을 입양한 경우 — `Adopt` 의 비우기는
 -- `#` 가 닿는 데까지이고 그 너머는 계약 밖) 그 값이 안으로 섞이거나 크래시했습니다. 구멍이 있어도
 -- `#` 가 `n` 과 같으면 여전히 `table.sort` 가 구멍을 만나 터집니다. 어느 쪽일지는
 -- 예측할 수 없습니다 — `#` 는 구멍 배치와 쓰기 순서에 따라 아무 경계나 돌려줍니다
@@ -2528,12 +2528,15 @@ const function Sized<T>(len: number, fill: T): Arr<T>
 end
 
 -- 평범한 Lua 배열을 **그대로 입양합니다**(복사 안 함). 넘긴 테이블을 뒤에서
--- 또 건드리면 이 배열도 같이 바뀝니다. 복사가 필요하면 `CloneFromTable`.
+-- 또 건드리면 이 배열도 같이 바뀝니다. 복사가 필요하면 `FromTable`.
+-- ⚠️ 2026-10-13 까지는 이 함수가 `FromTable` 이었고 복사 판이 `CloneFromTable` 이었습니다 — 같은 이름인
+-- `HashMap.FromTable` 은 복사라 소유권이 반대였습니다(이름 검토, 질문 AU). 이제 두 모듈이 같습니다:
+-- **`FromTable` 은 복사, `Adopt` 는 입양.**
 --
 -- ⚠️ **길이는 `Common.listLength` 규약**입니다 — `n` 이 0 이상의 정수로 있으면
 -- 그것(`table.pack` 결과), 없으면 `#`. `n` 이 실제 원소보다 짧으면 그 뒤 raw 칸을
 -- **`#` 가 닿는 데까지 비웁니다**(넘긴 테이블이 바뀜) — 구멍 뒤·큰 키처럼 `#` 가 안 닿는
--- `n` 밖 키는 **계약 밖**이니, 그런 희소 테이블은 `CloneFromTable`(1..n 만 복사)로.
+-- `n` 밖 키는 **계약 밖**이니, 그런 희소 테이블은 `FromTable`(1..n 만 복사)로.
 -- `n` 이 없을 때 입력에 구멍이 있으면 `#` 는
 -- 경계 중 **아무 곳**이나 돌려줄 수 있어(Lua 규격) 구멍 뒤의 값이 **조용히 잘릴
 -- 수** 있습니다 — `{ 1, nil, 3 }` 리터럴은 3 이지만 `t[1] = 1; t[3] = 3` 으로
@@ -2545,22 +2548,22 @@ end
 -- 표현하지 못하므로(`table.create(4)` 에 1·4 만 채운 것도 `{ number }`)
 -- **`Arr<number>` 인데 구멍이 있을 수 있습니다**. 구멍 가능성이 있는 입력은
 -- `{ number? }` 로 선언해 넘기세요 — 그러면 `Arr<number?>` 가 됩니다.
-const function FromTable<T>(tbl: { T }): Arr<T>
+const function Adopt<T>(tbl: { T }): Arr<T>
 	-- 메타테이블이 남으면 범위 밖 조회가 `__index` 값을 주고 쓰기가 `__newindex`
 	-- 를 타며 1.59배 인덱싱 세금도 다시 붙습니다 — "인스턴스는 평범한 테이블"
 	-- 전제가 이 경로만 비켜 갔습니다(M0 리뷰). 입양 대신 복사를 안내합니다.
 	if getmetatable(tbl :: any) ~= nil then
-		Common.raise("Arr: FromTable adopts plain tables only (this one has a metatable) — use CloneFromTable")
+		Common.raise("Arr: Adopt takes plain tables only (this one has a metatable) — use FromTable")
 	end
 	-- 이미 Arr 면 `#` 로 `n` 을 덮어써 구멍 뒤가 사라졌습니다(M0 2라운드, 예전부터).
 	if rawget(tbl :: any, TYPE_KEY) ~= nil then
 		Common.raise(
-			"Arr: FromTable got a table that is already a container — use it as is, Clone it, or convert it (e.g. CircularDeque.ToArr)"
+			"Arr: Adopt got a table that is already a container — use it as is, Clone it, or convert it (e.g. CircularDeque.ToArr)"
 		)
 	end
 	-- 동결된 테이블엔 길이·태그를 못 씁니다 — 라이브러리 줄의 "readonly table" 대신.
 	if table.isfrozen(tbl :: any) then
-		Common.raise("Arr: FromTable cannot adopt a frozen table — use CloneFromTable")
+		Common.raise("Arr: Adopt cannot adopt a frozen table — use FromTable")
 	end
 	-- 길이는 `Common.listLength` 규약 — `table.pack` 이 준 `n`(꼬리 구멍 포함)을
 	-- `#` 로 덮어쓰던 것(M0 4라운드).
@@ -2570,7 +2573,7 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	-- 입양이라 넘긴 테이블이 바뀝니다.
 	-- **경계**(2026-10-02, 제가 정함 — 되돌리기 쉬움): `#` 가 닿지 않는 `n` 밖 숫자 키
 	-- (구멍 뒤 `{ n = 1, [1] = 10, [3] = 30 }` 의 `[3]`, 큰 키 `[100]`)는 **계약 밖**입니다 —
-	-- 그런 희소 테이블은 `CloneFromTable`(1..n 만 복사)로 넘기세요. Gemini 사냥이 이 자리를
+	-- 그런 희소 테이블은 `FromTable`(1..n 만 복사)로 넘기세요. Gemini 사냥이 이 자리를
 	-- 짚어 전부 순회해 지우게 했더니 입양이 5~8배 느려져 **복사보다 느려졌습니다**(perf 20절)
 	-- — "복사 없이 입양" 이라는 존재 이유가 사라져 되돌렸습니다. `next(raw, len)` 부터만
 	-- 도는 안은 `len` 이 해시 부분에 있으면 앞의 키를 건너뛰어 틀렸습니다(리뷰가 반례로 확인).
@@ -2581,16 +2584,16 @@ const function FromTable<T>(tbl: { T }): Arr<T>
 	return wrap(raw, len)
 end
 
--- `FromTable` 의 복사 판. 길이는 `Common.listLength` 규약(`n` 우선, 없으면 `#` —
+-- `Adopt` 의 복사 판. 길이는 `Common.listLength` 규약(`n` 우선, 없으면 `#` —
 -- 대입으로 만든 구멍은 `#` 의 함정이 같음). 메타테이블이 있어도 됩니다(원소 단위로 읽음).
-const function CloneFromTable<T>(tbl: { T }): Arr<T>
+const function FromTable<T>(tbl: { T }): Arr<T>
 	-- 길이는 `Common.listLength` 규약(`n` 우선) — `#` 면 `Arr`·`table.pack` 결과의
 	-- 구멍 뒤가 조용히 사라졌습니다(M0 3라운드). 구멍은 **그대로** 복사합니다.
 	const len = Common.listLength(tbl)
 	const result = newSized(len)
 	if getmetatable(tbl :: any) ~= nil then
 		-- 메타테이블이 있으면 원소 단위로(`__index` 를 따름) — 길이는 `__len` 을 따르는데
-		-- `table.move` 는 raw 로 읽어 칸이 전부 nil 이었습니다(M0 4라운드). `FromTable`
+		-- `table.move` 는 raw 로 읽어 칸이 전부 nil 이었습니다(M0 4라운드). `Adopt`
 		-- 이 메타테이블 테이블을 이리로 안내하므로 이 경로가 정상이어야 합니다.
 		for idx = 1, len do
 			result[idx] = (tbl :: any)[idx]
@@ -2812,8 +2815,8 @@ end
 const ArrModule = {
 	Of = Of,
 	Sized = Sized,
+	Adopt = Adopt,
 	FromTable = FromTable,
-	CloneFromTable = CloneFromTable,
 	FromIter = FromIter,
 	FromFunc = FromFunc,
 	Concat = Concat,

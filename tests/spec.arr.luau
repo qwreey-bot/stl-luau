@@ -50,8 +50,8 @@ do
 	end)
 	same(seen, { -1, -1, -1 }, "구멍은 콜백에 nil 로 넘어감")
 end
-same(Arr.FromTable({ 4, 5 }), { 4, 5 }, "FromTable")
-same(Arr.CloneFromTable({ 6, 7 }), { 6, 7 }, "CloneFromTable")
+same(Arr.Adopt({ 4, 5 }), { 4, 5 }, "Adopt")
+same(Arr.FromTable({ 6, 7 }), { 6, 7 }, "FromTable")
 same(
 	Arr.FromFunc(3, function(i)
 		return i * i
@@ -66,15 +66,15 @@ same(Arr.Range(5, 1), {}, "Range 방향이 안 맞으면 빈 것")
 same(Arr.Range(1, 7, 3), { 1, 4, 7 }, "Range step")
 same(Arr.Range(3, 3), { 3 }, "Range 한 칸")
 assert(not pcall(Arr.Range, 1, 5, 0), "Range step 0 은 에러여야 합니다")
--- FromTable 은 입양(복사 안 함), CloneFromTable 은 복사
+-- Adopt 은 입양(복사 안 함), FromTable 은 복사
 local adopted = { 1, 2 }
-local viaAdopt = Arr.FromTable(adopted)
+local viaAdopt = Arr.Adopt(adopted)
 adopted[1] = 99
-assert(viaAdopt[1] == 99, "FromTable 은 원본 테이블을 입양해야 합니다")
+assert(viaAdopt[1] == 99, "Adopt 은 원본 테이블을 입양해야 합니다")
 local cloned = { 1, 2 }
-local viaClone = Arr.CloneFromTable(cloned)
+local viaClone = Arr.FromTable(cloned)
 cloned[1] = 99
-assert(viaClone[1] == 1, "CloneFromTable 은 복사해야 합니다")
+assert(viaClone[1] == 1, "FromTable 은 복사해야 합니다")
 -- Sized 의 fill 공유 함정이 문서대로인지
 local shared = Arr.Sized(2, {} :: { number })
 assert(shared[1] == shared[2], "Sized 의 fill 은 같은 참조를 공유합니다(문서화된 동작)")
@@ -936,11 +936,11 @@ print("PASS")
 
 print("=== 17c. SortInplaceUnchecked 는 n 밖의 값을 끌어오지 않는다 (M0 6라운드) ===")
 do
-	-- (b) n 없는 대입 구멍 테이블: FromTable 은 # 로 n=1 을 잡고 raw[3] 은 n 밖에 남음
+	-- (b) n 없는 대입 구멍 테이블: Adopt 은 # 로 n=1 을 잡고 raw[3] 은 n 밖에 남음
 	const sparse = {} :: { number }
 	sparse[1] = 10
 	sparse[3] = 30
-	const a = Arr.FromTable(sparse)
+	const a = Arr.Adopt(sparse)
 	Arr.PushBack(a, 20)
 	Arr.SortInplaceUnchecked(a, function(x: number, y: number): boolean
 		return x > y
@@ -949,7 +949,7 @@ do
 	-- (a) n 이 있고 n 뒤 값이 해시부에 — 비우기 루프가 # 경계에 막힘
 	const hashTail = { n = 2 } :: any
 	hashTail[1], hashTail[2], hashTail[5], hashTail[7] = 10, 20, 50, 70
-	const b = Arr.FromTable(hashTail)
+	const b = Arr.Adopt(hashTail)
 	Arr.PushBack(b, 30)
 	Arr.PushBack(b, 40)
 	Arr.SortInplaceUnchecked(b)
@@ -957,39 +957,39 @@ do
 end
 print("PASS")
 
-print("=== 17b. FromTable 은 평범한 테이블만 입양 (M0 리뷰) ===")
+print("=== 17b. Adopt 은 평범한 테이블만 입양 (M0 리뷰) ===")
 do
 	-- 입양한 테이블의 메타테이블이 남으면 범위 밖 조회가 메타메소드 값을 주고
 	-- 쓰기가 사용자 `__newindex` 를 타며, 1.59배 인덱싱 세금도 다시 붙습니다.
-	-- "인스턴스는 평범한 테이블" 전제를 지키려 거부하고 `CloneFromTable` 로 안내합니다.
+	-- "인스턴스는 평범한 테이블" 전제를 지키려 거부하고 `FromTable` 로 안내합니다.
 	const withMeta = setmetatable({ 10, 20 }, {
 		__index = function()
 			return 99
 		end,
 	}) :: { number }
 	const ok, err = pcall(function()
-		Arr.FromTable(withMeta)
+		Arr.Adopt(withMeta)
 	end)
-	assert(not ok and string.find(tostring(err), "CloneFromTable", 1, true) ~= nil, `FromTable 메타테이블: {err}`)
+	assert(not ok and string.find(tostring(err), "FromTable", 1, true) ~= nil, `Adopt 메타테이블: {err}`)
 	assert(string.find(tostring(err), "spec.arr", 1, true) ~= nil, "에러는 사용자 줄")
 	-- 복사판은 됩니다(복사본은 평범한 테이블)
-	const copied = Arr.CloneFromTable(withMeta)
-	assert(getmetatable(copied) == nil and copied.n == 2 and copied[1] == 10, "CloneFromTable 은 평범한 테이블")
+	const copied = Arr.FromTable(withMeta)
+	assert(getmetatable(copied) == nil and copied.n == 2 and copied[1] == 10, "FromTable 은 평범한 테이블")
 
 	-- 이미 Arr 인 것을 다시 입양하면 `#` 로 원본의 `n` 을 덮어써 구멍 뒤가 사라졌음
 	-- (M0 2라운드 — M0 이전부터). 거부하고 원본은 그대로.
 	const already = Arr.Of<<number?>>(10, nil, 30)
 	const ok2, err2 = pcall(function()
-		Arr.FromTable(already :: any)
+		Arr.Adopt(already :: any)
 	end)
-	assert(not ok2 and string.find(tostring(err2), "already", 1, true) ~= nil, `FromTable 이미 Arr: {err2}`)
+	assert(not ok2 and string.find(tostring(err2), "already", 1, true) ~= nil, `Adopt 이미 Arr: {err2}`)
 	assert(already.n == 3, "원본의 n 은 그대로")
 	-- 동결된 테이블은 입양할 수 없습니다(태그·n 을 못 씀) — 라이브러리 줄의
 	-- "readonly table" 대신 사용자 줄에서 안내
 	const ok3, err3 = pcall(function()
-		Arr.FromTable(table.freeze({ 10, 20 }))
+		Arr.Adopt(table.freeze({ 10, 20 }))
 	end)
-	assert(not ok3 and string.find(tostring(err3), "CloneFromTable", 1, true) ~= nil, `FromTable 동결: {err3}`)
+	assert(not ok3 and string.find(tostring(err3), "FromTable", 1, true) ~= nil, `Adopt 동결: {err3}`)
 	assert(string.find(tostring(err3), "spec.arr", 1, true) ~= nil, "동결 에러는 사용자 줄")
 end
 print("PASS")
@@ -1564,18 +1564,18 @@ do
 		assert(sparseBack[idx] == sparse[idx], `많은 구멍 {idx}: {sparseBack[idx]}`)
 	end
 
-	-- (2) FromTable 의 "n 밖 raw 칸 비우기" — `#` 가 닿는 데까지가 약속입니다. 구멍 뒤·큰
+	-- (2) Adopt 의 "n 밖 raw 칸 비우기" — `#` 가 닿는 데까지가 약속입니다. 구멍 뒤·큰
 	--     키처럼 `#` 가 안 닿는 n 밖 키는 계약 밖(전부 지우면 입양이 복사보다 느려져
-	--     되돌림, perf 20절) — CloneFromTable 은 1..n 만 복사하니 거기선 깨끗합니다.
-	const tail = Arr.FromTable({ n = 1, 10, 20, 30 } :: any)
+	--     되돌림, perf 20절) — FromTable 은 1..n 만 복사하니 거기선 깨끗합니다.
+	const tail = Arr.Adopt({ n = 1, 10, 20, 30 } :: any)
 	assert(tail.n == 1 and rawget(tail :: any, 2) == nil and rawget(tail :: any, 3) == nil, "# 가 닿는 n 밖")
-	const sparseClone = Arr.CloneFromTable({ n = 1, [1] = 10, [3] = 30, [100] = 9 } :: any)
+	const sparseClone = Arr.FromTable({ n = 1, [1] = 10, [3] = 30, [100] = 9 } :: any)
 	assert(
 		rawget(sparseClone :: any, 3) == nil and rawget(sparseClone :: any, 100) == nil,
 		"희소 테이블은 Clone 이 깨끗"
 	)
 	-- 구멍 든 1..n 은 그대로(구멍은 원소 자리)
-	const inner = Arr.FromTable({ n = 3, [1] = 1, [3] = 3 } :: any)
+	const inner = Arr.Adopt({ n = 3, [1] = 1, [3] = 3 } :: any)
 	assert(inner.n == 3 and inner[1] == 1 and inner[2] == nil and inner[3] == 3, "n 안의 구멍")
 end
 print("PASS")
@@ -1999,7 +1999,7 @@ do
 			-- 값 범위를 좁게 — 중복·이웃 중복이 자주 나오게. 구멍도 섞음
 			raw[idx] = if math.random() < 0.15 then nil else math.random(1, 5) * 10
 		end
-		const a = Arr.FromTable<<number?>>(table.move(raw, 1, len, 1, { n = len } :: any) :: any)
+		const a = Arr.Adopt<<number?>>(table.move(raw, 1, len, 1, { n = len } :: any) :: any)
 		assert(a.n == len, "대조 입력 길이")
 
 		-- Unique ↔ 이중 루프
