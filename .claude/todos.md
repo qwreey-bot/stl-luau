@@ -10,7 +10,7 @@
 | **AA. Luau 새 솔버 결함 보고** — 초안 정리 끝(이슈 **다섯** + 재현 파일 — 2026-10-13 에 5번 "재귀 별칭이 유니온의 갈래이면 타입 인자를 안 봄" 추가: 옵셔널 노드 자리가 원소 타입을 못 지킴). **올리는 것은 사용자가**(또는 지시하실 때) | `.claude/audit/luau-solver-issues/DRAFTS.md` |
 | 페이퍼 07 의 6번 — 일반 트리(자식 여럿)·연결 리스트의 표면을 어디까지(사용자: *"좀만 더 보자"*) | `papers/07` 8절 |
 | ~~AT. 노드의 계약~~ → **2026-10-13 결정·반영**: 종류별 불투명 핸들 + 전부 번호 칸, 칸 배치는 계약으로(값은 1번 칸). perf 38-3 | `question.md` AT |
-| **AU. 이름 검토 — 남은 것**(넷의 의견이 갈려 방향을 정해 주실 것): `FlatMap`/`FlatSet`(외부자 둘이 함수형 `flatMap` 으로 읽음), `Collections/` 폴더 대 트레이트 `Collection`, `Node.Double`(→ `Doubly`?), `Arr.GroupBy` 에 `Into` 를 붙일지, 목적지 인자 `to`/`into`, `Search.LowerBound`(이상) 대 `TreeMap.LowerKey`(미만), 불리언 연산의 `Is` 접두 기준. ✅ **2026-10-13 확인·반영**: `Trait.NewToken`·`ExpectImpl`·`Expose`·`Spec`, 타입 `Core`/`Full`/`Provided`, `Trees/Balance`(`Balance.Scheme`·`Balance.Expect`), `Arr.Adopt`(입양)·`Arr.FromTable`(복사) | `question.md` AU, 원문 `audit/agy/2026-10-13-names-*.md` |
+| ~~AU. 이름~~ → **2026-10-13 밤 2차(넷의 다수결)로 닫음**: 바뀐 이름 없음 — 지난번에 바꾼 것은 넷이 유지, 갈렸던 것은 2:2(외부자 둘 대 내부자 둘)라 유지. **배포 전에 다시 볼 후보**(외부자 둘이 같은 대안): `Balance.Strategy`, `Node.Singly`/`Doubly`, 목적지 인자 전부 `into`, 불리언 전부 `Is…`, 그리고 `FlatMap`·`Exchange`·`Trees/Search` | `question.md` AU 2차 |
 | **AV. `Stack`·`Queue` 를 무엇으로** — 트레이트(덱에서 저절로 따라오게, 권장) / 얇은 컨테이너 / 둘 다 / 안 둠. 큐의 동사 이름(`Enqueue`·`Dequeue` 대 `Push`·`Pop`)도 | `question.md` AV |
 | ~~AS. 모듈을 통째로 등록하면 같은 이름이 전부 재정의~~ → **2026-10-13 결정·반영**: 넘길 것만 든 표, 모르는 이름은 `Trait.Impl` 이 에러 | `question.md` AS |
 | ~~`papers/07` 9절의 설계 초안~~ → **2026-10-13 답 받음**(9-4): 층은 노드단 도구(읽기/쓰기, 단방향·양방향·이진) → 트리부(AVL·레드블랙, 완전 이진은 배열식·노드식 둘) → 조립. **제품의 `TreeMap` 은 레드블랙**. Deque 를 둘로 나눈 것은 들어감 | `papers/07` 9-4 |

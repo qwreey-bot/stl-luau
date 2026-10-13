@@ -288,6 +288,8 @@ const function FloorKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 end
 
 -- `key` 보다 **작은** 키 중 가장 큰 것(엄격). 없으면 `nil`.
+-- ⚠️ Java `NavigableMap` 의 어휘입니다(`Floor`·`Ceiling`·`Lower`·`Higher`) — 트리부·`BSearch` 의 `LowerBound`(C++ 어휘:
+-- **이상**인 첫 것)와 `Lower` 가 반대 뜻입니다.
 const function LowerKey<K, V>(self: TreeMapData<K, V>, key: K): K?
 	if unusable(key) then
 		return nil

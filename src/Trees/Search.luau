@@ -65,6 +65,8 @@ const function Find<N, K>(root: (N & Keyed<K>)?, key: K, compare: Comparator<K>)
 end
 
 -- 키가 `key` **이상**인 첫 노드(중위 순서). 없으면 `nil`. `Ceiling` 이고, 구간 순회의 시작점입니다.
+-- ⚠️ 이름은 C++ 의 `lower_bound`(이상)입니다 — 컨테이너의 `TreeMap.LowerKey`(Java 어휘: **미만** 중 가장 큰 것)와
+-- `Lower` 가 반대 뜻이니 헷갈리지 마세요. 짝: `LowerBound` = `CeilingKey`, `UpperBound` = `HigherKey`.
 const function LowerBound<N, K>(root: (N & Keyed<K>)?, key: K, compare: Comparator<K>): N?
 	local cursor: any, best: any = root, nil
 	while cursor ~= nil do

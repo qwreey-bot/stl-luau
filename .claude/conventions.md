@@ -33,8 +33,9 @@
   | 테스트 파일 | 소문자 + dot | `tests/spec.arr.luau` |
 
   camelCase 인 종류 술어는 **배럴 최상위의 `is…` 뿐**입니다 — 모듈 안에서 불리언을 돌려주는 함수는 다른 연산과 같이
-  PascalCase 입니다(2026-10-13 이름 검토에서 규약 문장이 이걸 말하지 않는다고 둘이 짚음). `Is` 접두를 붙이는 기준
-  (`Empty`·`Equal` 대 `IsSorted`·`IsSubsetOf`)은 아직 안 정했습니다(질문 AU). **`Common` 은 예외로 전부 camelCase**
+  PascalCase 입니다(2026-10-13 이름 검토에서 규약 문장이 이걸 말하지 않는다고 둘이 짚음). **`Is` 접두**: 불리언 연산은 `Is…`(`IsSorted`·`IsSubsetOf`·`IsHeap`),
+  형용사 하나짜리 `Empty`·`Equal` 만 접두 없이 둡니다(2026-10-13 이름 고르기 2차 — 외부자 둘은 "전부 `Is`", 내부자 둘은
+  지금대로: 동률이라 유지. 배포 전에 다시 볼 후보). **`Common` 은 예외로 전부 camelCase**
   (`Common.raise`, `Common.listLength`, `Common.expectComparator`) — 라이브러리 안에서만 쓰는 모듈이고 공개 표면이 아닙니다.
 
 - ⭐ **데이터는 엔티티, 함수는 서비스** (2026-10-01 사용자 결정, 질문 AB —

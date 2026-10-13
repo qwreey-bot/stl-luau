@@ -1290,6 +1290,44 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 
 ---
 
+#### AU 2차 — 넷이 항목마다 하나를 고름 (2026-10-13 밤)
+
+> 사용자: *"이름은 똑같이 gemini 둘, sonnet 둘 돌려보자. 내가 볼 땐 그럴싸 한데, 난 주관적이라서 이름이 괜찮은지는 내가
+> 택하기는 드는 시간 대비 효율이 작아보임. 나중에 바꿔도 되는 부분이기도 하고."* → 열아홉 항목을 넷에게 주고 **다수결로
+> 반영**했습니다(동률은 지금 이름 유지). Gemini 원문은 `audit/agy/2026-10-13-names2-out.md`·`names2-in.md`.
+
+| # | 항목 | S외 | S내 | G외 | G내 | 결과 |
+|---|---|---|---|---|---|---|
+| 1 | `Trait.Expose` | 유지 | 유지 | 유지 | 유지 | **유지** (4) |
+| 2 | 타입 `Core`/`Full`/`Provided` | `Required`/… | 유지 | 유지 | 유지 | **유지** (3) |
+| 3 | `Trait.ExpectImpl` | 유지 | 유지 | 유지 | 유지 | **유지** (4) |
+| 4 | `Trait.NewToken` | 유지 | 유지 | 유지 | 유지 | **유지** (4) |
+| 5 | `Balance.Scheme` | `Strategy` | 유지 | `Strategy` | 유지 | 유지 (2:2) |
+| 6 | `Arr.Adopt` | 유지 | 유지 | 유지 | 유지 | **유지** (4) |
+| 7 | `FlatMap`/`FlatSet` | `SortedArrayMap` | 유지 | `ArrayMap` | 유지 | 유지 (2:2, 바꾸자는 쪽도 이름이 갈림) |
+| 8 | `Collections/` 폴더 대 트레이트 `Collection` | 유지 | 유지 | `Containers/` | `Containers/` | 유지 (2:2) |
+| 9 | `Node.Single`/`Double` | `Singly`/`Doubly` | 유지 | `Singly`/`Doubly` | 유지 | 유지 (2:2) |
+| 10 | `GroupBy`(목적지 필수) | 유지 | 유지 | `GroupByInto` | 유지 | **유지** (3) |
+| 11 | `to`(선택) / `into`(필수) | 전부 `into` | 유지 | 전부 `into` | 유지 | 유지 (2:2) |
+| 12 | `LowerBound`(이상) 대 `LowerKey`(미만) | `TreeMap` 쪽을 `KeyAtLeast`… | 유지 + 주석 | 2층을 `Ceiling`… | 유지 + 주석 | 유지 (2:2) — **주석을 달았음** |
+| 13 | `Is` 접두(`Empty`·`Equal` 만 예외) | 전부 `Is` | 유지 | 전부 `Is` | 유지 | 유지 (2:2) — 규칙을 규약에 적음 |
+| 14 | `InsertNext`(노드) 대 `InsertAfter`(컨테이너) | 유지 | 유지 | 노드를 `InsertAfter` | 유지 | **유지** (3) |
+| 15 | 트레이트 이름 `List`·`Map`·`Set`·`Collection`·`Deque` | 유지 | 유지 | 유지 | 유지 | **유지** (4) |
+| 16 | `Trees/Traverse` | 유지 | 유지 | 유지 | 유지 | **유지** (4) |
+| 17 | `CompleteArray`/`CompleteNode` | 유지 | 유지 | 유지 | 유지 | **유지** (4). 함수 `Exchange`: `Swap` / 유지 / `SwapNodes` / 유지 → 유지 (2:2) |
+| 18 | `Trees/Search` | `SearchTree` | 유지 | `Bst` | 유지 | 유지 (2:2, 바꾸자는 쪽도 갈림) |
+| 19 | 큐의 동사(아직 없음) | `Enqueue`/`Dequeue` | `Enqueue`/`Dequeue` | `Push`/`Pop` | `Push`/`Pop` | **동률** — AV 를 정할 때 같이 |
+
+- **다수결로 바뀐 이름은 없습니다.** 지난번에 바꾼 여섯(1~6)은 넷이 거의 전부 유지 — 잘 바꾼 것으로 봅니다.
+- ⚠️ **2:2 는 거의 전부 "외부자 둘 대 내부자 둘"** 입니다(모델 계열이 아니라 시선으로 갈림): 외부자 둘이 **같은 대안**을
+  고른 것이 넷 — `Balance.Strategy`, `Node.Singly`/`Doubly`, 목적지 인자를 전부 `into`, 불리언을 전부 `Is…`. 내부자의 근거에는
+  "바꿀 곳이 많다" 가 섞여 있는데 배포 전이라 그건 무게가 없습니다. 동률 규칙대로 지금은 두되, **배포 전(문서를 쓸 때)
+  다시 볼 후보 목록**으로 남깁니다: 위 넷 + `FlatMap`(외부자 둘 다 함수형 `flatMap` 으로 읽음) + `Exchange` → `Swap` +
+  `Trees/Search`.
+- 모델 계열로 갈린 것은 둘: 폴더 `Containers/`(Gemini 둘), 큐의 `Push`/`Pop`(Gemini 둘) 대 `Enqueue`/`Dequeue`(sonnet 둘).
+
+---
+
 ### AV. `Stack`·`Queue` 를 무엇으로 둘까 — 컨테이너인가 트레이트인가 — **[열림, 2026-10-13]**
 
 > 할 일 목록의 다음 차례인데 모양이 갈려 넣지 않고 올립니다. 사용자는 컬렉션 폴더에 놓일 것으로 `stack` 을 꼽으셨고
