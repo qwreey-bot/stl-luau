@@ -18,7 +18,12 @@
 	10배 빠르고(perf 29절), `for item in`·`for _, item in`(`TreeSet` 과 같은 모양)·
 	`Arr.FromIter(HashSet.Iter(s))` 가 전부 그대로 됩니다. `true` 였다면 둘째 값과 `FromIter` 가 `true` 를
 	받았을 것입니다. 메모리는 같습니다(값 한 칸). **모든 쓰기 자리가 `out[item] = item`** 이어야 합니다
-	(`spec.hashset` 이 생성·변형 경로 전수로 지킴).
+	(`spec.hashset` 이 생성·변형 경로 전수로 지킴 — 타입은 `out[item] = true` 를 못 잡습니다).
+
+	⚠️ 그래서 **값이 `false` 일 수 있습니다**(`HashSet<boolean>` 의 `false` 원소). 있는지 볼 땐 반드시
+	`data[item] ~= nil` — Lua 의 흔한 관용구 `if data[item] then` 은 `false` 원소를 없다고 봅니다(예전엔 값이
+	늘 `true` 라 같은 뜻이었음). 그리고 `map` 을 밖에서 직접 쓰면(`HashMap.Set(s.map, k, 다른값)`) 타입이 통과하고
+	순회가 틀어집니다 — 예전엔 값 타입이 `true` 뿐이라 막혔습니다. `map` 은 구현 세부입니다.
 
 	**단방향입니다** — `HashSet` 이 `HashMap` 을 require 하고 그 반대는 없어
 	순환이 원천적으로 불가능합니다.

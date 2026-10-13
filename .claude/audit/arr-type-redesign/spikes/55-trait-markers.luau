@@ -68,10 +68,31 @@ local neg4: { string } = Algorithm.Values(ages) -- 값 타입
 local neg5: Arr<number> = { n = 3 } -- 생성자를 거치지 않은 리터럴은 Arr 이 아님(토큰 없음)
 local neg6: number = if shown then shown.Show(nums) else "" -- ImplOf 가 구현 타입을 돌려줌
 -- 토큰**만** 빠진 꼴 — 마커는 다 있어서 토큰 필드가 정말 막는지(리뷰 1라운드: 리터럴 NEG 는
--- 마커도 같이 빠져 토큰을 지워도 안 잡혔음)
-type ArrLike = { n: number, read __list: number, read __listIndex: number, [number]: number }
-type MapLike = { data: { [string]: number }, size: number, read __mapKey: string, read __mapValue: number }
-type SetLike = { map: stl.HashMap<number, number>, read __setItem: number }
+-- 마커도 같이 빠져 토큰을 지워도 안 잡혔음). 2026-10-12 에 데이터 타입에 팬텀 둘(`__xxxMut`,
+-- `__collectionMut`)이 더해지고 여기를 안 채워, 다시 "토큰을 지워도 이 줄이 남는" 상태였습니다
+-- (2026-10-13 리뷰가 토큰 필드를 지워 확인) — 채웠습니다. 데이터 타입에 필드를 더하면 여기도.
+type ArrLike = {
+	n: number,
+	read __list: number,
+	read __listIndex: number,
+	read __listMut: (number, number) -> (number, number),
+	read __collectionMut: true,
+	[number]: number,
+}
+type MapLike = {
+	data: { [string]: number },
+	size: number,
+	read __mapKey: string,
+	read __mapValue: number,
+	read __mapMut: (string, number) -> (string, number),
+	read __collectionMut: true,
+}
+type SetLike = {
+	map: stl.HashMap<number, number>,
+	read __setItem: number,
+	read __setMut: (number) -> number,
+	read __collectionMut: true,
+}
 local neg7: Arr<number> = (nil :: any) :: ArrLike
 local neg8: stl.HashMap<string, number> = (nil :: any) :: MapLike
 local neg9: stl.HashSet<number> = (nil :: any) :: SetLike

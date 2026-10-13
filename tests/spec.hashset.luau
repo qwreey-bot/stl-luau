@@ -276,6 +276,87 @@ do
 end
 print("PASS")
 
+print("=== false 원소 — 모든 연산이 `~= nil` 로 봐야 함 (2026-10-13 리뷰) ===")
+do
+	-- 안쪽이 `원소 → 원소` 가 되면서 값이 `false` 일 수 있습니다. `if data[item] then` 식의 참·거짓
+	-- 검사(Lua 에서 가장 흔한 셋 관용구)는 예전엔 값이 늘 `true` 라 같은 뜻이었지만 지금은 `false`
+	-- 원소에서 틀립니다 — 리뷰가 검사 열한 자리를 그렇게 바꿔도 전부 통과함을 보였습니다. 불리언 셋을
+	-- 연산 전부에 통과시킵니다.
+	local function itemsOf(set: HashSet<boolean>): string
+		const names = {}
+		for item in HashSet.Iter(set) do
+			table.insert(names, tostring(item))
+		end
+		table.sort(names)
+		return table.concat(names, ",")
+	end
+	const f = HashSet.Of(false)
+	const t = HashSet.Of(true)
+	const ft = HashSet.Of(false, true)
+	const none = HashSet.New<<boolean>>()
+	-- 생성자: 중복 false 는 하나
+	const dupOf = HashSet.Of(false, false, true)
+	assert(HashSet.Len(dupOf) == 2 and itemsOf(dupOf) == "false,true", `Of(false, false, true): {HashSet.Len(dupOf)}`)
+	const dupList = HashSet.FromList({ false, true, false })
+	assert(HashSet.Len(dupList) == 2 and itemsOf(dupList) == "false,true", `FromList: {HashSet.Len(dupList)}`)
+	-- 집합 연산: 크기와 내용
+	const union = HashSet.Union(f, ft)
+	assert(HashSet.Len(union) == 2 and itemsOf(union) == "false,true", `Union: {HashSet.Len(union)}`)
+	const unionSame = HashSet.Union(f, f)
+	assert(HashSet.Len(unionSame) == 1 and itemsOf(unionSame) == "false", `Union(f, f): {HashSet.Len(unionSame)}`)
+	const inter = HashSet.Intersect(f, ft)
+	assert(HashSet.Len(inter) == 1 and itemsOf(inter) == "false", `Intersect: {itemsOf(inter)}`)
+	const interBig = HashSet.Intersect(ft, f)
+	assert(
+		HashSet.Len(interBig) == 1 and itemsOf(interBig) == "false",
+		`Intersect(큰 쪽 먼저): {itemsOf(interBig)}`
+	)
+	const diff = HashSet.Difference(ft, f)
+	assert(HashSet.Len(diff) == 1 and itemsOf(diff) == "true", `Difference: {itemsOf(diff)}`)
+	const diffNone = HashSet.Difference(f, ft)
+	assert(HashSet.Len(diffNone) == 0, `Difference(f, ft): {itemsOf(diffNone)}`)
+	const sym = HashSet.SymmetricDifference(ft, f)
+	assert(HashSet.Len(sym) == 1 and itemsOf(sym) == "true", `SymmetricDifference: {itemsOf(sym)}`)
+	const symOther = HashSet.SymmetricDifference(f, ft)
+	assert(
+		HashSet.Len(symOther) == 1 and itemsOf(symOther) == "true",
+		`SymmetricDifference(반대): {itemsOf(symOther)}`
+	)
+	const symDisjoint = HashSet.SymmetricDifference(f, t)
+	assert(HashSet.Len(symDisjoint) == 2 and itemsOf(symDisjoint) == "false,true", "SymmetricDifference(서로소)")
+	-- 관계
+	assert(HashSet.IsSubsetOf(f, ft) and not HashSet.IsSubsetOf(ft, f) and HashSet.IsSubsetOf(f, f), "IsSubsetOf")
+	assert(not HashSet.IsSubsetOf(f, t) and HashSet.IsSubsetOf(none, f), "IsSubsetOf(다른 원소·빈 것)")
+	assert(not HashSet.IsDisjointFrom(f, ft) and not HashSet.IsDisjointFrom(ft, f), "IsDisjointFrom(겹침)")
+	assert(HashSet.IsDisjointFrom(f, t) and HashSet.IsDisjointFrom(f, none), "IsDisjointFrom(서로소)")
+	assert(HashSet.Equal(f, HashSet.Of(false)) and not HashSet.Equal(f, t) and not HashSet.Equal(f, ft), "Equal")
+	assert(HashSet.Equal(ft, HashSet.FromList({ true, false })), "Equal(둘 다)")
+	-- Retain: 전부 버림 / false 만 남김
+	const dropAll = HashSet.Retain(HashSet.Of(false, true), function(_item: boolean): boolean
+		return false
+	end)
+	assert(HashSet.Len(dropAll) == 0 and itemsOf(dropAll) == "", `Retain(전부 버림): {itemsOf(dropAll)}`)
+	const keepFalse = HashSet.Retain(HashSet.Of(false, true), function(item: boolean): boolean
+		return item == false
+	end)
+	assert(
+		HashSet.Len(keepFalse) == 1 and HashSet.Has(keepFalse, false) and not HashSet.Has(keepFalse, true),
+		"Retain(false 만)"
+	)
+	-- Clone·Items·Clear·트레이트 경유
+	const cloned = HashSet.Clone(ft)
+	HashSet.Remove(cloned, false)
+	assert(HashSet.Has(ft, false) and not HashSet.Has(cloned, false) and HashSet.Len(cloned) == 1, "Clone 은 독립")
+	const listed = HashSet.Items(f)
+	assert(#listed == 1 and listed[1] == false, "Items 에 false")
+	const setOps = stl.Trait.ImplOf(stl.Trait.Set, f)
+	assert(setOps ~= nil and setOps.Has(f, false) and not setOps.Add(f, false), "트레이트 경유 Has·Add(false)")
+	assert(stl.Algorithm.Len(ft) == 2 and HashSet.Len(HashSet.Clear(HashSet.Of(false))) == 0, "Len·Clear")
+	-- 입력은 그대로
+	assert(itemsOf(f) == "false" and itemsOf(ft) == "false,true" and itemsOf(t) == "true", "입력 셋은 안 바뀜")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (HashSet) ===")
 
