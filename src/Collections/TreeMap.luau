@@ -44,13 +44,14 @@ Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
 local Node = require("../Node")
 local Search = require("../Trees/Search")
+local Balance = require("../Trees/Balance")
 local RedBlack = require("../Trees/RedBlack")
 local Map = require("../Traits/Map")
 local Collection = require("../Traits/Collection")
 
 type Record<K, V> = Types.Record<K, V>
 type Comparator<K> = Types.Comparator<K>
-type Balance = Search.Balance
+type Scheme = Balance.Scheme
 type KeyNode<K, V> = Search.KeyNodeRead<K, V>
 
 export type TreeMapData<K, V> = {
@@ -58,8 +59,8 @@ export type TreeMapData<K, V> = {
 	root: KeyNode<K, V>?,
 	size: number,
 	compare: Comparator<K>,
-	-- 자가 균형(`Search.Balance` — `RedBlack`·`Avl` 모듈이 그 모양). 노드를 만든 방식과 같아야 합니다.
-	balance: Balance,
+	-- 자가 균형(`Balance.Scheme` — `RedBlack`·`Avl` 모듈이 그 모양). 노드를 만든 방식과 같아야 합니다.
+	balance: Scheme,
 	read __type: Trait.Token<"TreeMap">,
 	read __mapKey: K,
 	read __mapValue: V,
@@ -363,7 +364,7 @@ const function Clear<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
 	return self
 end
 
-const function newMap<K, V>(root: any, size: number, compare: Comparator<K>, balance: Balance): TreeMap<K, V>
+const function newMap<K, V>(root: any, size: number, compare: Comparator<K>, balance: Scheme): TreeMap<K, V>
 	return { root = root, size = size, compare = compare, balance = balance, [TYPE_KEY] = TOKEN } :: any
 end
 
@@ -380,19 +381,19 @@ end
 --
 --     local m = TreeMap.New<<number, string>>(Common.compareNumber)
 --
--- `balance` 는 자가 균형 방식(선택 — 기본 레드블랙). `stl.Avl` 이나 `Search.Balance` 모양의 바깥 구현.
-const function New<K, V>(compare: Comparator<K>, balance: Balance?): TreeMap<K, V>
+-- `balance` 는 자가 균형 방식(선택 — 기본 레드블랙). `stl.Avl` 이나 `Balance.Scheme` 모양의 바깥 구현.
+const function New<K, V>(compare: Comparator<K>, balance: Scheme?): TreeMap<K, V>
 	Common.expectComparator(compare, "TreeMap: New")
-	return newMap(nil, 0, compare, Search.ExpectBalance(balance, RedBlack, "TreeMap: New"))
+	return newMap(nil, 0, compare, Balance.Expect(balance, RedBlack, "TreeMap: New"))
 end
 
 -- 키-값 쌍 목록에서 만듭니다. **정렬해서 한 번에 짓고(O(n log n) 정렬 + O(n) 짓기) 중복 키는 뒤엣것이
 -- 이깁니다.** 마지막 값이 `nil` 인 키는 없는 것으로 봅니다(`Set` 과 같은 규칙).
 -- 동점(비교자가 0 을 돌려주는 두 키)에서 뒤엣것이 이기도록 원래 위치를 타이브레이커로 씁니다(`table.sort`
 -- 는 안정 정렬이 아님).
-const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>, balance: Balance?): TreeMap<K, V>
+const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>, balance: Scheme?): TreeMap<K, V>
 	Common.expectComparator(compare, "TreeMap: FromRecords")
-	const scheme = Search.ExpectBalance(balance, RedBlack, "TreeMap: FromRecords")
+	const scheme = Balance.Expect(balance, RedBlack, "TreeMap: FromRecords")
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀).
 	const records, count = Common.denseList(source)
 	if count == 0 then
@@ -446,10 +447,10 @@ const function FromSorted<K, V>(
 	values: { V },
 	count: number,
 	compare: Comparator<K>,
-	balance: Balance?
+	balance: Scheme?
 ): TreeMap<K, V>
 	Common.expectComparator(compare, "TreeMap: FromSorted")
-	const scheme = Search.ExpectBalance(balance, RedBlack, "TreeMap: FromSorted")
+	const scheme = Balance.Expect(balance, RedBlack, "TreeMap: FromSorted")
 	return newMap(scheme.FromSorted(keys, values, count), count, compare, scheme)
 end
 

@@ -33,6 +33,7 @@ local NodeBinary = require("@self/Node/Binary")
 local RedBlack = require("@self/Trees/RedBlack")
 local Avl = require("@self/Trees/Avl")
 local Search = require("@self/Trees/Search")
+local Balance = require("@self/Trees/Balance")
 local BSearch = require("@self/Algorithms/BSearch")
 local Arr = require("@self/Collections/Arr")
 local HashMap = require("@self/Collections/HashMap")
@@ -80,7 +81,7 @@ export type RbNode<K, V> = RedBlack.RbNode<K, V>
 export type RbNodeRead<K, V> = RedBlack.RbNodeRead<K, V>
 export type AvlNode<K, V> = Avl.AvlNode<K, V>
 export type AvlNodeRead<K, V> = Avl.AvlNodeRead<K, V>
-export type TreeBalance = Search.Balance
+export type TreeBalance = Balance.Scheme
 export type KeyNodeRead<K, V> = Search.KeyNodeRead<K, V>
 export type TraitToken<N> = Trait.Token<N>
 export type Trait<I, C = I> = Trait.Trait<I, C>
@@ -130,6 +131,8 @@ return {
 	Avl = Avl,
 	-- 균형 방식과 무관한 공유 조각(찾기·경계·베끼기)과 탐색 트리 노드의 칸 배치·접근 함수
 	Search = Search,
+	-- 자가 균형의 계약(`Balance.Scheme`)과 조립하는 쪽의 인자 확인(`Balance.Expect`)
+	Balance = Balance,
 
 	-- 컨테이너 네임스페이스. **순수 테이블입니다** — 콜러블로 만들면 제네릭
 	-- 생성자가 타입 인자를 잃고 모듈 오타도 못 잡습니다(실측).

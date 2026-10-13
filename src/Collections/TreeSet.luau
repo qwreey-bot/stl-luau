@@ -22,13 +22,14 @@ Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
 local Node = require("../Node")
 local Search = require("../Trees/Search")
+local Balance = require("../Trees/Balance")
 local Set = require("../Traits/Set")
 local Collection = require("../Traits/Collection")
 local RedBlack = require("../Trees/RedBlack")
 local TreeMap = require("./TreeMap")
 
 type Comparator<T> = Types.Comparator<T>
-type Balance = Search.Balance
+type Scheme = Balance.Scheme
 type TreeMapType<K, V> = TreeMap.TreeMap<K, V>
 
 export type TreeSetData<T> = {
@@ -425,18 +426,18 @@ end
 --#region ----------- 생성자 -----------
 
 -- `balance` 는 자가 균형 방식(선택 — 기본 레드블랙, `TreeMap.New` 와 같음).
-const function New<T>(compare: Comparator<T>, balance: Balance?): TreeSet<T>
+const function New<T>(compare: Comparator<T>, balance: Scheme?): TreeSet<T>
 	-- 여기서 먼저 봅니다 — 맡기면 메시지 머리가 `TreeMap:` 으로 나옵니다(사용자가 부른 적 없는 모듈).
 	Common.expectComparator(compare, "TreeSet: New")
-	Search.ExpectBalance(balance, RedBlack, "TreeSet: New")
+	Balance.Expect(balance, RedBlack, "TreeSet: New")
 	return wrap(TreeMap.New<<T, true>>(compare, balance))
 end
 
 -- 평범한 Lua 배열의 원소로 만듭니다. 정렬해서 한 번에 짓고(O(n log n) 정렬 + O(n) 짓기) 중복은 하나로
 -- 접힙니다. 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀), NaN 은 에러.
-const function FromList<T>(source: { T }, compare: Comparator<T>, balance: Balance?): TreeSet<T>
+const function FromList<T>(source: { T }, compare: Comparator<T>, balance: Scheme?): TreeSet<T>
 	Common.expectComparator(compare, "TreeSet: FromList")
-	Search.ExpectBalance(balance, RedBlack, "TreeSet: FromList")
+	Balance.Expect(balance, RedBlack, "TreeSet: FromList")
 	const list, count = Common.denseList(source)
 	for idx = 1, count do
 		const item = list[idx]

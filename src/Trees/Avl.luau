@@ -28,6 +28,7 @@ local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Node = require("../Node")
 local Search = require("./Search")
+local Balance = require("./Balance")
 
 type Comparator<T> = Types.Comparator<T>
 
@@ -227,8 +228,8 @@ const AvlModule = {
 	FromSorted = FromSorted, Clone = Clone,
 }
 
--- 자가 균형의 계약(`Search.Balance`)을 만족하는지 여기서 정적으로 확인합니다 — 트리를 조립하는 쪽이 이
+-- 자가 균형의 계약(`Balance.Scheme`)을 만족하는지 여기서 정적으로 확인합니다 — 트리를 조립하는 쪽이 이
 -- 모듈을 그대로 받아 씁니다.
-const _balance: Search.Balance = AvlModule
+const _balance: Balance.Scheme = AvlModule
 
 return AvlModule

@@ -15,7 +15,7 @@
 
 	키 순서로 놓인 노드를 **읽는** 일은 균형을 어떻게 맞췄든 같습니다 — 키·값 읽기, 순서대로 따라가기, 찾기,
 	경계 찾기, 구조째 베끼기. `RedBlack`·`Avl` 은 넣기·지우기(구조를 고치는 쪽)만 자기 것으로 가집니다.
-	자가 균형의 계약(`Balance`)도 여기 있습니다.
+	자가 균형의 계약(넣기·지우기를 맡는 쪽의 모양)은 `Trees/Balance` 에 있습니다.
 
 	찾기·따라가기는 **받은 노드의 타입 그대로** 돌려줍니다(`RbNodeRead` 를 넣으면 `RbNodeRead?` — 그대로 그 방식의
 	`Remove` 에 넘길 수 있음). `Next`·`Prev`·`First`·`Last` 는 `Node.Binary` 의 것 그대로입니다(트리 노드도 이진 노드).
@@ -30,23 +30,6 @@ type Comparator<T> = Types.Comparator<T>
 -- 키를 가진 이진 노드(읽기 — 불투명 핸들). 균형 방식의 노드(`RbNodeRead`·`AvlNodeRead`)는 팬텀이 더 있을 뿐
 -- 이 자리에 들어갑니다.
 export type KeyNodeRead<K, V> = { read __links: "binary", read __value: V, read __key: K }
-
--- ⭐ **자가 균형의 계약**(2026-10-13 사용자: *"자가균형 같은 경우는 Insert, Remove 를 계약으로 하나의 추상화를 둘 수
--- 있을법 … 트리 쓰는 곳에서 자가균형을 뭘로 할 지 default 가 있고, 직접 선택도 가능한 구조"*). `RedBlack`·`Avl`
--- 모듈이 그대로 이 모양입니다 — 트리를 조립하는 쪽은 이것 하나를 받아 쓰고(기본은 레드블랙), 바깥에서 만든 균형
--- 방식도 같은 모양이면 들어갑니다. 노드 타입은 방식마다 달라 여기서는 `any` 입니다 — 조립하는 쪽이 뿌리를
--- "그 방식의 노드" 로만 다루면 됩니다(읽을 때는 `KeyNodeRead`).
--- - `Insert(root, key, value, compare)` → `(새 뿌리, 그 키의 노드, 새로 만들었나)`. 있던 키면 값만 바꿈.
--- - `Remove(root, node)` → 새 뿌리(비면 `nil`). `node` 는 그 트리의 노드, 떼어 낸 뒤 연결이 끊김.
--- - `FromSorted(keys, values, count)` → 정렬된 목록에서 O(n) 으로 지은 뿌리. `Clone(root)` → 구조째 베낀 뿌리.
--- 바깥에서 만드는 방식의 노드는 위 **칸 배치**를 따라야 합니다(조립하는 쪽이 값·왼쪽·오른쪽·부모·키 칸 — `1`~`5` — 을
--- 직접 읽음).
-export type Balance = {
-	read Insert: (root: any, key: any, value: any, compare: Comparator<any>) -> (any, any, boolean),
-	read Remove: (root: any, node: any) -> any,
-	read FromSorted: (keys: { any }, values: { any }, count: number) -> any,
-	read Clone: (root: any) -> any,
-}
 
 const VALUE, LEFT, RIGHT, PARENT, KEY, BALANCE = 1, 2, 3, 4, 5, 6
 
@@ -125,32 +108,8 @@ const function Clone<N>(root: (N & { read __links: "binary" })?): N?
 	return copy(root, nil)
 end
 
--- 균형 방식 인자를 확인해 돌려줍니다(`nil` 이면 `fallback`). 트리를 조립하는 쪽의 생성자가 씁니다 — 엉뚱한 값
--- (`"avl"`, 다른 모듈)이 생성 때는 통과하고 첫 넣기에서 라이브러리 줄의 `attempt to call a nil value` 였습니다
--- (2026-10-13 리뷰). 함수 넷이 있는지만 봅니다(서명은 타입의 몫). `who` 는 메시지 머리(`"TreeMap: New"`).
-const function ExpectBalance(balance: any, fallback: Balance, who: string): Balance
-	if balance == nil then
-		return fallback
-	end
-	if
-		type(balance) ~= "table"
-		or type(rawget(balance, "Insert")) ~= "function"
-		or type(rawget(balance, "Remove")) ~= "function"
-		or type(rawget(balance, "FromSorted")) ~= "function"
-		or type(rawget(balance, "Clone")) ~= "function"
-	then
-		Common.raise(
-			`{who} needs a balance scheme with Insert, Remove, FromSorted and Clone (RedBlack, Avl, …), got {typeof(
-				balance
-			)}`
-		)
-	end
-	return balance
-end
-
 -- stylua: ignore
 return {
-	ExpectBalance = ExpectBalance,
 	-- 칸 배치(계약) — 앞의 넷은 `Node.Binary` 의 것
 	VALUE = VALUE, LEFT = LEFT, RIGHT = RIGHT, PARENT = PARENT, KEY = KEY, BALANCE = BALANCE,
 	Key = Key, Value = Value, Next = Next, Prev = Prev, First = First, Last = Last,
