@@ -11,7 +11,7 @@
 	- 콜백은 원소와 위치를 받고, 주석을 단 콜백의 원소 타입이 어긋나면 에러.
 	- 리스트가 아닌 것(맵·셋·리터럴)은 못 들어옴.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 25 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 23 + CANARY 1 — "알려진 함정" 두 줄은 0건이어야 함)
 ]]
 local stl = require("../../../../src")
 local Arr, CircularDeque, HashMap, HashSet = stl.Arr, stl.CircularDeque, stl.HashMap, stl.HashSet
@@ -85,9 +85,33 @@ end)
 local negSet = stl.List.Contains(HashSet.Of(1), 1)
 
 --[[ 2단계 리뷰가 짚은 공백 — 지키는 NEG 가 없던 성질들 ]]
--- 가변인자 함수를 콜백으로: 구현이 인자를 더 넘길 수 있어(Arr 는 읽기 뷰) 틀린 값·라이브러리 줄 에러였음(0건)
-local negVariadic = stl.List.Fold(nums, 0, math.max)
-local negVariadicBits = stl.List.Fold(CircularDeque.Of(1, 1, 4), 0, bit32.bor)
+-- ⚠️ **알려진 함정**(기대 0건 — 타입이 막지 못함): 가변인자 함수를 콜백으로 그대로 넘기면 위치(와 `Arr` 의 읽기
+-- 뷰)까지 값으로 삼아 틀린 값·라이브러리 줄 에러가 됩니다. 콜백 타입에 `...unknown` 꼬리를 두면 이 둘은 잡히지만
+-- 아래 "타입을 적은 콜백" 이 전부 거절됩니다(한 번 넣었다가 회귀로 확인해 걷음 — 구조 재배치 리뷰).
+local knownVariadic = stl.List.Fold(nums, 0, math.max)
+local knownVariadicBits = stl.List.Fold(CircularDeque.Of(1, 1, 4), 0, bit32.bor)
+-- POS: **타입을 적은 콜백 변수·파라미터·함수가 돌려준 콜백**이 그대로 들어감(종류를 모르는 코드가 술어를 받아 넘김)
+type NumberPred = (number, number) -> boolean
+local typedPred: NumberPred = function(v: number, _at: number): boolean
+	return v % 2 == 0
+end
+local viaTypedVar: number = stl.List.Count(nums, typedPred)
+local function countWhere<E, I>(list: stl.ListMarker<E, I>, pred: (E, I) -> boolean): number
+	return stl.List.Count(list, pred)
+end
+local function negate<E, I>(pred: (E, I) -> boolean): (E, I) -> boolean
+	return function(item: E, at: I): boolean
+		return not pred(item, at)
+	end
+end
+local viaPassed: number = countWhere(nums, typedPred)
+local viaReturned: boolean = stl.List.Some(nums, negate(typedPred))
+local typedFolder: (number, number, number) -> number = function(acc: number, v: number, _at: number): number
+	return acc + v
+end
+local viaTypedFold: number = stl.List.Fold(nums, 0, typedFolder)
+local viaTypedFind: number? = (stl.List.Find(nums, typedPred))
+local viaTypedEvery: boolean = stl.List.Every(nums, typedPred)
 -- Count: 반환은 number / 술어의 원소·위치 타입 / 리스트가 아닌 것
 local negCountReturn: string = stl.List.Count(nums)
 local negCountElem = stl.List.Count(nums, function(v: string): boolean
@@ -216,8 +240,14 @@ return {
 	negOverride,
 	negOverrideReturn,
 	negMissing,
-	negVariadic,
-	negVariadicBits,
+	knownVariadic,
+	knownVariadicBits,
+	viaTypedVar,
+	viaPassed,
+	viaReturned,
+	viaTypedFold,
+	viaTypedFind,
+	viaTypedEvery,
 	negCountReturn,
 	negCountElem,
 	negCountAt,

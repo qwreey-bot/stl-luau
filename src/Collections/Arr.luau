@@ -80,12 +80,11 @@ local List = require("../Traits/List")
 local Collection = require("../Traits/Collection")
 -- `Map` 트레이트(묶기의 목적지) — 이 모듈에 `Map` 함수가 있어 다른 이름으로 받습니다.
 local MapTrait = require("../Traits/Map")
--- `GroupBy`/`CountBy`/`KeyBy` 가 돌려줄 맵. 의존은 **Arr → HashMap 한 방향**입니다(HashMap 은
--- Arr 을 모름 — `HashMap.Keys` 주석).
+-- 묶기(`GroupBy`·`CountBy`·`KeyBy`)의 지름길이 `HashMap` 의 안쪽을 압니다. 의존은 **Arr → HashMap 한 방향**
+-- 입니다(HashMap 은 Arr 을 require 하지 않음 — `FromTable` 이 Arr 을 알아보도록 아래에서 토큰만 알려 줌).
 local HashMap = require("./HashMap")
 
 type LessThan<T> = Types.LessThan<T>
-type HashMap<K, V> = HashMap.HashMap<K, V>
 type Optional<T> = Optional.Optional<T>
 
 -- `read __type: Token<"Arr">` 는 생성자가 붙이는 실제 필드(타입 토큰, `Trait.luau`)이고,
@@ -164,6 +163,7 @@ export type Rng = (min: number, max: number) -> number
 const TYPE_KEY = "__type"
 const TOKEN = Trait.NewType("Arr") :: Trait.Token<"Arr">
 const isHashMap, dispatch = HashMap.isHashMap, Trait.Dispatch
+HashMap.BindArr(TOKEN)
 
 --#region ----------- 내부 헬퍼 -----------
 

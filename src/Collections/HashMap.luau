@@ -355,6 +355,13 @@ end
 -- **사전을 받는 진입점**입니다 — `Arr` 만 "위치 → 값" 으로 따로 읽고, 그 밖의 테이블은
 -- 키 전부를 담습니다. `table.pack(…)` 결과를 넘기면 `"n"` 도 키가 됩니다(그 테이블의 정당한
 -- 키 — 2026-10-02 Gemini 지적, 그대로 둠). 리스트에서 만들려면 `Arr.FromTable`·`Arr.CloneFromTable` 을 거치세요(`HashMap.FromTable(Arr.FromTable(t))`).
+-- 내부 배선: `Arr` 모듈이 로드될 때 자기 토큰을 알려 줍니다. `Arr` 가 이 모듈을 쓰니(`GroupBy` 의 지름길)
+-- 여기서 `Arr` 을 require 할 수 없어 거꾸로 받습니다. `Arr` 가 로드되지 않았다면 `Arr` 값도 없습니다.
+local arrToken: any = nil
+const function BindArr(token: Trait.Token<"Arr">)
+	arrToken = token
+end
+
 const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
@@ -364,10 +371,9 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	-- 유효한 `n` 이 있으면 다른 사본의 Arr 도 위치로 받지만, 사전으로 읽는 이쪽은 어떤 칸이
 	-- 데이터인지 모르니 거절합니다(리뷰 3라운드).
 	const rawToken = rawget(tbl :: any, "__type")
-	-- `Arr` 는 이름으로 알아봅니다(이 사본에 등록된 토큰이고 이름이 "Arr") — `Arr` 모듈이 이 모듈을 쓰니
-	-- (`GroupBy`) 여기서 `Arr` 을 require 할 수 없습니다. `Common.listLength` 도 같은 규칙입니다.
-	const kind = Trait.TokenOf(tbl)
-	const isArr = kind ~= nil and kind.name == "Arr"
+	-- `Arr` 는 **토큰의 정체성**으로 알아봅니다(`arrToken` — 아래 `BindArr`). 이름("Arr")으로 알아봤더니 사용자가
+	-- `Trait.NewType("Arr")` 로 만든 자기 종류가 조용히 빈 맵이 되거나 필드를 잃었습니다(리뷰).
+	const isArr = rawToken ~= nil and rawToken == arrToken
 	if rawToken ~= nil and not isArr then
 		const name = if type(rawToken) == "table" then rawget(rawToken, "name") else nil
 		const what = if Trait.TokenOf(tbl) ~= nil
@@ -440,6 +446,8 @@ const HashMapModule = {
 	FromRecords = FromRecords,
 	Adopt = Adopt,
 	isHashMap = isHashMap,
+	-- 내부 배선(`Arr` 모듈만 부름 — `FromTable` 이 `Arr` 을 알아보게)
+	BindArr = BindArr,
 	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, HashMap.Token, impl)`
 	Token = TOKEN,
 

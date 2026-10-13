@@ -2251,6 +2251,47 @@ do
 	const keyBag = Arr.KeyBy(words, first, newBag<<string>>())
 	assert(keyBag.slots.a == "avocado" and keyBag.sets == 5, "사용자 맵 KeyBy — 원소마다 Set")
 
+	-- ⭐ 구멍과 false 원소는 **목적지가 달라도 같은 규칙**(일반 경로 — 맵의 Get/Set — 에도 지름길과 같은 처리가
+	-- 따로 있음: 구멍을 건너뛰거나 구멍에 키를 부르는 실수가 지름길 쪽 테스트로는 안 잡혔음, 리뷰)
+	const holedWords = Arr.Of<<string?>>("apple", nil, "bob", nil)
+	const holeKey = function(w: string?): string
+		return if w == nil then "hole" else string.sub(w, 1, 1)
+	end
+	const holedTree =
+		Arr.GroupBy(holedWords, holeKey, stl.TreeMap.New<<string, ArrOf<string?>>>(stl.Common.compareString))
+	assert(
+		(stl.TreeMap.Get(holedTree, "hole") :: any).n == 2 and stl.TreeMap.Len(holedTree) == 3,
+		"일반 경로 GroupBy 도 구멍을 담음"
+	)
+	const holedCounts = Arr.CountBy(holedWords, holeKey, stl.TreeMap.New<<string, number>>(stl.Common.compareString))
+	assert(
+		stl.TreeMap.Get(holedCounts, "hole") == 2 and stl.TreeMap.Get(holedCounts, "a") == 1,
+		"일반 경로 CountBy 도 구멍을 셈"
+	)
+	local generalKeyCalls = 0
+	const holedKeyed = Arr.KeyBy(holedWords, function(w: string?): string
+		generalKeyCalls += 1
+		return holeKey(w)
+	end, stl.TreeMap.New<<string, string?>>(stl.Common.compareString))
+	assert(
+		generalKeyCalls == 2 and stl.TreeMap.Len(holedKeyed) == 2 and not stl.TreeMap.Has(holedKeyed, "hole"),
+		"일반 경로 KeyBy 는 구멍을 건너뜀"
+	)
+	const flags = Arr.Of(false, true, false)
+	const flagKey = function(v: boolean): string
+		return tostring(v)
+	end
+	const hashFlags = Arr.KeyBy(flags, flagKey, HashMap.New<<string, boolean>>())
+	const treeFlags = Arr.KeyBy(flags, flagKey, stl.TreeMap.New<<string, boolean>>(stl.Common.compareString))
+	assert(
+		HashMap.Get(hashFlags, "false") == false and HashMap.Len(hashFlags) == 2,
+		"KeyBy 는 false 원소를 담음(지름길)"
+	)
+	assert(
+		stl.TreeMap.Has(treeFlags, "false") and stl.TreeMap.Get(treeFlags, "false") == false,
+		"KeyBy 는 false 원소를 담음(일반 경로)"
+	)
+
 	-- ⭐ 키 함수가 도중에 던져도 넘긴 맵의 크기는 맞음(지름길이 크기를 끝에 한 번 쓰면 틀어졌음, AR)
 	const partial = HashMap.New<<string, ArrOf<string>>>()
 	const okThrow = pcall(function()

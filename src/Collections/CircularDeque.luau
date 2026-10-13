@@ -383,7 +383,7 @@ Trait.Impl(List, TOKEN, CircularDequeModule)
 Trait.Impl(Deque, TOKEN, CircularDequeModule)
 Trait.Impl(Collection, TOKEN, CircularDequeModule)
 
--- `Types` 는 계약 타입만 — 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
+-- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다(`Trait.Impl` 호출만으로는 서명 불일치가 안 잡힘).
 const _ops: List.Impl<CircularDeque<any>, any, number> = CircularDequeModule
 const _deque: Deque.Ops<CircularDeque<any>, any> = CircularDequeModule
 const _collection: Collection.Ops<CircularDeque<any>> = CircularDequeModule

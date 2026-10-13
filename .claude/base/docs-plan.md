@@ -54,7 +54,7 @@ quad 은 UI 프레임워크라 22편짜리 튜토리얼이 필요하지만, 여�
 |---|---|---|---|
 | Getting Started | 22편 | **1~2편** | 설치 + "배열 하나 만들어 써보기" 면 충분 |
 | How-To | 여러 편 | **3~5편** | 아래 목록 |
-| **Reference** | 타입당 1페이지 | **⭐ 여기가 본체** | 컨테이너 7 + 계약 + Common/Algorithm/BSearch |
+| **Reference** | 타입당 1페이지 | **⭐ 여기가 본체** | 컨테이너(Collections/) + 트레이트(Traits/ — 계약·기본 구현·진입점) + 노드·트리부 + Common/BSearch |
 | 설명 트랙 | quadnomicon 11편 | **4~6편** | 아래 목록. `.claude/` 에 이미 내용이 있음 |
 | Overview | 3편 | **1편** | "왜 이게 있나" — Lua 기본 테이블 대비 |
 | Agents/Skills | 있음 | **안 함** | 규모가 아직 아님 |
@@ -71,7 +71,7 @@ quad 은 UI 프레임워크라 22편짜리 튜토리얼이 필요하지만, 여�
 - [ ] `TreeMap` / `TreeSet`
 - [ ] `Heap`
 - [ ] `BSearch`
-- [ ] `Common` (비교자 어댑터) / `Algorithm` (계약 기반 공용 함수)
+- [ ] `Common` (비교자 어댑터) / 트레이트 `List`·`Map`·`Set`·`Collection`·`Deque` (계약 + 종류를 모르는 코드의 진입점)
 - [ ] `Types` — 계약 셋(`ListCore`/`MapCore`/`SetCore`)과 `Record`
 - [ ] **공통 규약 페이지** — 구간 규약, `n` 이 진실인 것, `nil` 구멍,
       checked/unchecked, 위치를 저장하면 안 되는 것

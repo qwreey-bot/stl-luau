@@ -16,8 +16,8 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 인자 명시 — `conventions.md`).
 >
 > ⭐ **2026-10-06 트레이트(질문 AG)**: 공용 알고리즘은 이제 구현을 받지 않고 **트레이트
-> 마커**(`Types.ListMarker<E, I>` = `{ read __list: E, … }`, 타입에만 있는 필드)에서
-> 원소·키·값을 추론합니다 — `Algorithm.Keys(m)` 가 타입 인자 없이 `{ K }`(`spikes/55`).
+> 마커**(`List.Marker<E, I>` = `{ read __list: E, … }`, 타입에만 있는 필드)에서
+> 원소·키·값을 추론합니다 — `Map.Keys(m)` 가 타입 인자 없이 `{ K }`(`spikes/55`).
 > 아래 두 문단은 **함수 묶음을 직접 받는** 함수에 여전히 해당합니다.
 >
 > ⭐ **2026-10-12 키·위치·값을 넘기는 제네릭은 불변 마커(질문 AM, `spikes/61`)**: 읽기 마커는 `read` 필드라 공변 —
@@ -26,7 +26,7 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 키를 넘기는 조회(`lookup<K, V>(m: MapMarker<K, V>, k: K)`)도 `TreeMap<string, …>` 에 숫자 키를 0건으로
 > 넘겨 비교자가 터졌습니다. 타입 **변수**로 받은 키·위치·값을 컨테이너에 **넘기는** 제네릭은
 > `MapMarkerMut` 등(함수 타입 팬텀 `(K, V) -> (K, V)`, 리스트는 `(E, I) -> (E, I)` — 인자 자리가 불변을
-> 만듦)을 받습니다. `==` 비교만 하는 값(`Algorithm.IndexOf(list, item)`)과, 위치를 타입 변수로 두지 않은
+> 만듦)을 받습니다. `==` 비교만 하는 값(`List.IndexOf(list, item)`)과, 위치를 타입 변수로 두지 않은
 > 조회(`ListMarker<E, number>`, `idx: number`)는 넓어질 변수가 없어 읽기 마커로 건전합니다. 팬텀을
 > 읽기·쓰기 필드로 선언해도 불변이 되지만 `m.__mapKey = "x"` 같은 코드가 통과해 함수 타입 쪽을 골랐습니다.
 >
@@ -42,9 +42,9 @@ quad 의 같은 이름 문서(`/code/Projects/quad/.claude/base/typing-limits.md
 > 담을 수 없습니다** — `ListOps<Arr<number?>, number?, number> = Arr` 가 `Get`
 > 불일치. 계약의 `Get: (C, I) -> E?` 에서 `E` 가 이미 `T?` 면 모듈 `Get` 의 `T?`
 > 와 맞추는 역추론이 모순됩니다(옛 교집합 시절 `spikes/46` 의 원인이 함수 묶음
-> 쪽에서 다시 나타남). (2026-10-06: 트레이트 이후 `Algorithm.Keys/Values/IndexOf/Count` 는
+> 쪽에서 다시 나타남). (2026-10-06: 트레이트 이후 `Map.Keys/Values/IndexOf/Count` 는
 > 함수 묶음을 받지 않아 유니온 원소에서도 진단 0건 — 리뷰 확인.)
-> 우회는 캐스트. 추론 경로(`Algorithm.IndexOf(holed, 1)`)는 됩니다.
+> 우회는 캐스트. 추론 경로(`List.IndexOf(holed, 1)`)는 됩니다.
 > `spikes/46` 의 캐비엇 두 줄이 지금 에러인 것을 기록합니다(M0 3라운드).
 >
 > ⚠️ **가변 인자 자리의 꼬리 호출 결과는 검사되지 않습니다** — `Arr.Concat(a,

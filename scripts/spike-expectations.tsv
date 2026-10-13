@@ -60,12 +60,12 @@
 10	.claude/audit/arr-type-redesign/spikes/56-read-covariance.luau	46,47,48,51,54,58,63,66,71,73
 4	.claude/audit/arr-type-redesign/spikes/57-bare-lambda-free-type.luau	43,47,48,52
 20	.claude/audit/arr-type-redesign/spikes/58-arr-m3-surface.luau	60,61,62,63,64,70,73,76,79,82,88,89,92,93,98,101,104,110,113,117
-23	.claude/audit/arr-type-redesign/spikes/59-maps-m4-surface.luau	55,58,59,60,63,64,67,68,71,72,72,72,73,77,78,79,80,83,86,89,92,95,99
+24	.claude/audit/arr-type-redesign/spikes/59-maps-m4-surface.luau	55,58,59,60,63,64,67,68,71,72,72,72,73,77,78,79,80,82,85,88,91,94,97,101
 30	.claude/audit/arr-type-redesign/spikes/60-deque.luau	37,38,39,40,41,44,45,46,47,49,53,56,57,58,111,112,113,114,115,116,117,118,119,122,127,132,134,135,137,139
 12	.claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau	72,73,74,75,76,77,78,79,80,81,85,88
 4	.claude/audit/arr-type-redesign/spikes/62-solver-generic-body-and-literal-key.luau	32,34,34,36
 26	.claude/audit/arr-type-redesign/spikes/63-collection-trait.luau	102,103,107,108,112,113,116,117,118,118,121,125,126,133,137,138,143,144,145,146,147,149,152,155,156,158
-26	.claude/audit/arr-type-redesign/spikes/64-list-algorithms.luau	58,61,64,67,68,69,74,77,82,85,89,90,92,93,96,99,101,104,107,110,123,131,135,176,184,187
+24	.claude/audit/arr-type-redesign/spikes/64-list-algorithms.luau	58,61,64,67,68,69,74,77,82,85,116,117,120,123,125,128,131,134,147,155,159,200,208,211
 34	.claude/audit/arr-type-redesign/spikes/65-linked-deque.luau	42,43,45,46,47,49,51,52,55,56,59,60,60,60,60,60,61,62,63,64,66,67,68,69,71,73,74,75,76,77,78,81,83,89
 17	.claude/audit/arr-type-redesign/spikes/66-trees-nodes.luau	32,33,35,36,37,39,42,43,44,47,48,50,52,54,56,58,60
 22	.claude/audit/arr-type-redesign/spikes/67-treemap-nodes.luau	34,35,36,38,39,40,41,43,44,46,51,52,55,58,67,68,69,70,71,72,72,74

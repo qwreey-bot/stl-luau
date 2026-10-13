@@ -7,7 +7,7 @@
 	추론하는지. 예전엔 `Map.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
 	사용자 컨테이너·사용자 트레이트도 같은 모양으로 들어오는지.
 
-	기대 진단: 21건 (NEG 열아홉이 20건 — neg6 은 두 자리 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 스물다섯 줄 · 26건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, FlatMap, Trait = stl.Arr, stl.HashMap, stl.FlatMap, stl.Trait

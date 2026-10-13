@@ -2901,6 +2901,126 @@ do
 end
 print("PASS")
 
+print(
+	"=== 15. 구조 재배치 리뷰 1라운드 — Module 의 예약 이름, 저절로 따라오는 트레이트의 진입점, Arr 토큰의 정체성 ==="
+)
+do
+	const T = stl.Trait
+	local where = 0
+	-- (1) Module: 트레이트의 자기 필드 이름은 **값이 nil 이어도** 진입점 이름으로 못 씀(예전엔 `defaults`·`required`·
+	--     `dependencies` 가 통과해 진입점이 기본 구현·필수 목록·의존 목록으로 읽혔음), 그리고 거절되면 아무것도 안 얹힘
+	const Bare = T.New<<{ read X: (v: any) -> number }>>("BareForModule", { required = { "X" } })
+	for _, reserved in { "defaults", "required", "dependencies", "derivable", "derived", "impls", "name", "__impl" } do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			T.Module(Bare, { Fine = print, [reserved] = print } :: any)
+		end)
+		assert(
+			not ok
+				and string.find(
+					tostring(err),
+					`Trait: Module got an entry named {reserved}, which the trait already has`,
+					1,
+					true
+				),
+			`{reserved}: {err}`
+		)
+		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `{reserved} 사용자 줄: {err}`)
+		assert(rawget(Bare :: any, "Fine") == nil, `{reserved}: 거절된 Module 은 다른 이름도 얹지 않음`)
+	end
+	assert(
+		rawget(Bare :: any, "defaults") == nil and rawget(Bare :: any, "dependencies") == nil,
+		"트레이트는 그대로"
+	)
+	const BareKind = T.NewType("BareKind")
+	const bareImpl = {
+		X = function(_v: any): number
+			return 7
+		end,
+	}
+	T.Impl(Bare, BareKind, bareImpl)
+	assert(
+		T.ImplOf(Bare, { __type = BareKind }) == bareImpl,
+		"거절 뒤에도 평범한 트레이트(넘긴 표 그대로)"
+	)
+
+	-- (2) 저절로 따라오는 트레이트의 **진입점**을 그 종류에 처음 부름(Dispatch 의 빗나감 경로가 만들어 줘야 함)
+	type SizedFull = { read IsEmpty: (c: any) -> boolean }
+	const SizedBase = T.New<<SizedFull>>("Sized", {
+		dependencies = { stl.Collection },
+		defaults = function(_ops: any, deps: { [any]: any })
+			return {
+				IsEmpty = function(c: any): boolean
+					return deps[stl.Collection].Len(c) == 0
+				end,
+			}
+		end,
+	})
+	const Sized = T.Module(SizedBase, {
+		IsEmpty = function(c: any): boolean
+			return T.Dispatch(SizedBase, c, "IsEmpty").IsEmpty(c)
+		end,
+	})
+	assert(Sized.IsEmpty(stl.Arr.Of<<number>>()) == true, "처음 부르는 진입점 — Arr")
+	assert(Sized.IsEmpty(stl.TreeMap.New<<number, number>>(stl.Common.compareNumber)) == true, "TreeMap")
+	assert(Sized.IsEmpty(stl.LinkedDeque.Of(1)) == false, "LinkedDeque")
+	const okSized, errSized = pcall(function()
+		Sized.IsEmpty(stl.Fut.Resolved(1))
+	end)
+	assert(
+		not okSized
+			and string.find(
+				tostring(errSized),
+				"Sized: IsEmpty needs a Sized — Fut does not implement Sized",
+				1,
+				true
+			),
+		`의존을 못 갖춘 종류: {errSized}`
+	)
+
+	-- (3) `HashMap.FromTable` 은 Arr 을 **토큰의 정체성**으로 알아봄 — 사용자가 "Arr" 라는 이름으로 만든 종류는
+	--     Arr 이 아님(이름으로 알아봤을 땐 조용히 빈 맵이 되거나 필드를 잃었음)
+	const UserArr = T.NewType("Arr")
+	for _, value in
+		{
+			T.Stamp({ n = 3, items = { 10, 20, 30 } }, UserArr),
+			T.Stamp({ n = 0, a = 1, b = 2 }, UserArr),
+			T.Stamp({ n = 2, 10, 20, extra = "e" } :: any, UserArr),
+			T.Stamp({ a = 1 }, UserArr),
+		} :: { any }
+	do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.HashMap.FromTable(value)
+		end)
+		assert(
+			not ok
+				and string.find(
+					tostring(err),
+					"HashMap: FromTable takes a plain table or an Arr, got a Arr container",
+					1,
+					true
+				),
+			`사용자의 "Arr" 종류: {err}`
+		)
+		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
+	end
+	const fromArr = stl.HashMap.FromTable(stl.Arr.Of<<number?>>(10, nil, 30) :: any)
+	assert(stl.HashMap.Len(fromArr) == 2 and stl.HashMap.Get(fromArr, 3) == 30, "진짜 Arr 은 위치 → 값으로")
+
+	-- (4) 진입점의 에러 이름 — 빠져 있던 둘
+	for _, entry in
+		{
+			{ name = "Map: Values needs a Map", call = stl.Map.Values :: any },
+			{ name = "Collection: Clear needs a Collection", call = stl.Collection.Clear :: any },
+		}
+	do
+		const ok, err = pcall(entry.call, 5)
+		assert(not ok and string.find(tostring(err), entry.name, 1, true), `{entry.name}: {err}`)
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (계약) ===")
 

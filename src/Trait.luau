@@ -158,6 +158,8 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 			-- 이미 만들어진 트레이트만 요구할 수 있으니 의존이 돌아 물릴 수 없습니다.
 			-- 숫자 루프로 읽고 **빈 칸·빈 목록을 거절**합니다 — 오타 난 이름(`{ Lisst }`)은 `nil` 이라 빈 목록과
 			-- 구별이 안 되고, 그러면 "의존 없음" 으로 읽혀 아무 종류에나 따라왔습니다(2라운드 리뷰).
+			-- ⚠️ **끝 자리**의 오타(`{ Collection, Colection }`)는 못 봅니다 — 꼬리의 `nil` 은 길이에 안 잡힙니다.
+			-- `--!strict` 의 타입 검사가 정의 안 된 이름을 잡습니다.
 			const list: { any } = {}
 			const count = rawlen(givenDependencies)
 			if count == 0 then
@@ -448,6 +450,18 @@ const function Dispatch<I, C>(trait: Trait<I, C>, value: any, who: string): I
 	return impl
 end
 
+-- 트레이트 객체의 자기 필드 이름(값이 `nil` 인 것 포함) — 진입점 이름으로 못 씁니다.
+const RESERVED: { [any]: true } = {
+	name = true,
+	impls = true,
+	required = true,
+	dependencies = true,
+	defaults = true,
+	derived = true,
+	derivable = true,
+	__impl = true,
+}
+
 -- 트레이트 객체에 **진입점 함수들**을 얹어 돌려줍니다 — 트레이트 파일이 내보내는 모듈이 곧 트레이트라
 -- `Trait.Impl(List, 토큰, 구현)` 과 `List.IndexOf(값, x)` 가 같은 이름으로 됩니다(Rust 의 `List::index_of`).
 -- 트레이트의 자기 필드(`name`·`impls` …)와 겹치는 이름은 에러.
@@ -458,10 +472,15 @@ const function Module<T, E>(trait: T, entries: E): T & E
 	if type(entries) ~= "table" then
 		Common.raise(`Trait: Module needs a table of entry functions, got {typeof(entries)}`)
 	end
-	for entryName, fn in entries :: any do
-		if rawget(trait :: any, entryName) ~= nil then
+	-- 먼저 전부 검사하고 그다음에 얹습니다(도중에 걸리면 반쯤 얹힌 채 남았음 — 리뷰). 겹침은 **예약 이름**으로도
+	-- 봅니다: `required`·`dependencies`·`defaults` 는 없으면 `nil` 이라 `rawget` 검사를 지나, 그 이름의 진입점이
+	-- 트레이트의 동작을 바꿨습니다(진입점이 기본 구현으로 불리고, 의존 목록으로 읽혀 라이브러리 줄에서 죽음).
+	for entryName in entries :: any do
+		if RESERVED[entryName] or rawget(trait :: any, entryName) ~= nil then
 			Common.raise(`Trait: Module got an entry named {tostring(entryName)}, which the trait already has`)
 		end
+	end
+	for entryName, fn in entries :: any do
 		(trait :: any)[entryName] = fn
 	end
 	return trait :: any

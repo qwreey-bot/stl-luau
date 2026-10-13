@@ -6,7 +6,7 @@
 	약속(`V`), 합치기는 **같은 맵 타입**만, `GroupBy`/`CountBy`/`KeyBy` 는 키·원소 타입을 정확히 옮김,
 	`Retain`·`make`·`combine` 콜백은 키·값 타입으로 검사됨.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 20 줄 · 22건 + CANARY 1 — `negCounts` 는 세 건)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 21 줄 · 23건 + CANARY 1 — `negCounts` 는 세 건)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, HashSet, FlatMap, FlatSet, Common =
@@ -71,13 +71,15 @@ HashMap.MergeInplace(m, other)
 local negGroups = Arr.GroupBy(words, first, HashMap.New<<string, Arr<number>>>()) -- 묶음의 원소 타입
 local negCounts = Arr.CountBy(words, first, HashMap.New<<string, string>>()) -- 세는 값은 number
 local negKeyed = Arr.KeyBy(words, first, HashMap.New<<number, string>>()) -- 키 타입
--- 묶기의 목적지(2026-10-13, 질문 AR): 넣은 타입 그대로 돌려줌 / 생략 불가 / 맵이어야 함 / 빌린 읽기 참조는 안 됨
+-- 묶기의 목적지(2026-10-13, 질문 AR): 넣은 타입 그대로 돌려줌 / 생략 불가 / 맵이어야 함 / 셋은 목적지가 아님
 local sortedGroups: stl.FlatMap<string, Arr<string>> =
 	Arr.GroupBy(words, first, stl.FlatMap.New<<string, Arr<string>>>(stl.Common.compareString))
 local negDestKind: stl.FlatMap<string, Arr<string>> = Arr.GroupBy(words, first, HashMap.New<<string, Arr<string>>>())
 local negNoDest = Arr.GroupBy(words, first)
 local negNotMap = Arr.CountBy(words, first, Arr.Of(1))
 local negSetDest = Arr.KeyBy(words, first, stl.HashSet.New<<string>>())
+-- 목적지는 **불변 마커**로 받음 — 키가 좁은 맵에 넓은 키를 넣지 못함(읽기 마커면 0건으로 들어감, 리뷰)
+local negNarrowKey = Arr.GroupBy(words, first, HashMap.New<<"a" | "b", Arr<string>>>())
 
 --[[ NEG — 콜백은 키·값 타입으로 검사 ]]
 HashMap.Retain(m, function(key: number, value: number): boolean
@@ -127,6 +129,7 @@ return {
 	negNoDest,
 	negNotMap,
 	negSetDest,
+	negNarrowKey,
 	negMake,
 	negCombine,
 	canary,

@@ -211,10 +211,13 @@ const dispatch = Trait.Dispatch
 -- 위의 기본 구현이 돕니다. 콜백은 원소와 위치를 받습니다. 종류를 아는 코드는 그 모듈의 함수를 직접
 -- 쓰세요(`Arr.IndexOf`).
 --
--- ⚠️ 콜백 타입의 꼬리 `...unknown` 은 **"구현이 인자를 더 넘길 수 있다"** 는 뜻입니다(`Arr` 는 읽기 뷰를 더
--- 넘김). 이것이 없을 땐 가변인자 함수를 그대로 넘기는 코드가 진단 0건이었습니다 — `List.Fold(flags, 0,
--- bit32.bor)` 가 `Arr` 에서는 라이브러리 줄 에러(넷째 인자가 테이블), `CircularDeque` 에서는 위치가 섞인 틀린 값
--- (2단계 리뷰). 꼬리 덕에 그런 함수는 타입 에러가 됩니다(받는 인자가 `unknown` 이라). 평범한 콜백은 그대로.
+-- ⚠️ **가변인자 함수를 콜백으로 그대로 넘기지 마세요**(`List.Fold(flags, 0, bit32.bor)`, `math.max` …): 콜백은
+-- 원소 뒤에 **위치**를 받고 구현에 따라 인자를 더 받습니다(`Arr` 는 읽기 뷰) — 가변인자 함수는 그것까지 값으로
+-- 삼아 `Arr` 에서는 라이브러리 줄 에러, 덱에서는 위치가 섞인 틀린 값이 됩니다(JS 의 `map(parseInt)` 와 같은
+-- 함정). 람다로 감싸세요: `function(acc, v) return math.max(acc, v) end`. 타입은 이것을 막지 못합니다 — 콜백
+-- 타입에 가변 꼬리(`...unknown`)를 두면 가변인자 함수는 잡히지만 **타입을 적은 평범한 콜백 변수·파라미터**
+-- (`pred: (E, I) -> boolean`)까지 거절돼, 종류를 모르는 코드가 술어를 받아 넘기는 흔한 모양이 막혔습니다
+-- (한 번 넣었다가 리뷰에서 회귀로 확인해 걷음 — `spikes/64` 가 두 쪽을 다 고정).
 
 -- 같은 원소가 처음 나오는 위치. 없으면 nil. 비교는 `==` 입니다 — 값 동등성이 필요하면 호출자가 다른 걸
 -- 써야 합니다. (원소 타입이 다른 `item` 은 타입 에러가 아닙니다 — `E` 가 둘의 합으로 넓어집니다.
@@ -230,27 +233,27 @@ end
 
 -- 세어서 구한 개수(AE, 2026-10-06 — `Len` 은 알고 있는 크기, `Count` 는 셈). 술어가 있으면 참인 원소만.
 -- 길이를 아는 컨테이너는 자기 `Len` 이 빠릅니다(`Collection.Len`).
-const function Count<E, I>(list: Marker<E, I>, pred: ((element: E, idx: I, ...unknown) -> boolean)?): number
+const function Count<E, I>(list: Marker<E, I>, pred: ((element: E, idx: I) -> boolean)?): number
 	return dispatch(List, list, "Count").Count(list, pred)
 end
 
 -- 앞에서부터 접기.
-const function Fold<E, I, U>(list: Marker<E, I>, init: U, fn: (acc: U, element: E, idx: I, ...unknown) -> U): U
+const function Fold<E, I, U>(list: Marker<E, I>, init: U, fn: (acc: U, element: E, idx: I) -> U): U
 	return dispatch(List, list, "Fold").Fold(list, init, fn)
 end
 
 -- 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
-const function Find<E, I>(list: Marker<E, I>, pred: (element: E, idx: I, ...unknown) -> boolean): (E?, I?)
+const function Find<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): (E?, I?)
 	return dispatch(List, list, "Find").Find(list, pred)
 end
 
 -- 하나라도 만족하는가.
-const function Some<E, I>(list: Marker<E, I>, pred: (element: E, idx: I, ...unknown) -> boolean): boolean
+const function Some<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
 	return dispatch(List, list, "Some").Some(list, pred)
 end
 
 -- 전부 만족하는가. 빈 리스트면 참.
-const function Every<E, I>(list: Marker<E, I>, pred: (element: E, idx: I, ...unknown) -> boolean): boolean
+const function Every<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
 	return dispatch(List, list, "Every").Every(list, pred)
 end
 
