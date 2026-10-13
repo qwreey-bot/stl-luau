@@ -1,3 +1,5 @@
+--!nocheck
+-- (벤치는 타입 검사 대상이 아닙니다 — 맨 람다를 일부러 씀)
 -- 시제품의 속도 (papers/07): 기본 구현(프리미티브 경유) 대 직접 구현. `luau -O2`, 여러 번 재서 최소값.
 local stl = require("../../../src")
 local Trait2 = require("./Trait2")
