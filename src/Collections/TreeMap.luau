@@ -436,8 +436,10 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 	return newMap(scheme.FromSorted(keys, values, kept), kept, compare, scheme)
 end
 
--- ⚠️ **입양**: 이미 **키 순서로 정렬돼 있고 중복·NaN·`nil` 키가 없는** 목록(`keys[i]`·`values[i]`, `1..count`)에서
--- O(n) 으로 짓습니다. **검사하지 않습니다** — 호출자 책임입니다(`FlatMap.Adopt`·`HashMap.Adopt` 와 같은 문).
+-- ⚠️ **검사 없이 짓기**: 이미 **키 순서로 정렬돼 있고 중복·NaN·`nil` 키가 없는** 목록(`keys[i]`·`values[i]`,
+-- `1..count`)에서 O(n) 으로 짓습니다. **검사하지 않습니다** — 호출자 책임입니다. `FlatMap.Adopt`·`HashMap.Adopt` 와
+-- 닮은 것은 "전제를 믿는다" 까지입니다: 저쪽은 넘긴 테이블을 **그대로 가집니다**(입양), 여기는 목록을 읽어 노드를
+-- **새로 만듭니다**(넘긴 목록은 그대로 호출자의 것).
 -- `TreeSet` 의 집합 연산처럼 병합 결과가 이미 정렬된 자리를 위한 문이고, 일반 사용자는 `FromRecords` 를 쓰세요.
 const function FromSorted<K, V>(
 	keys: { K },

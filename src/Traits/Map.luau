@@ -1,6 +1,6 @@
 --!strict
 --[[
-	Map — 키로 값을 찾는 컨테이너의 트레이트. `HashMap`/`FlatMap` 이 구현합니다.
+	Map — 키로 값을 찾는 컨테이너의 트레이트. `HashMap`/`TreeMap`/`FlatMap` 이 구현합니다.
 
 	이 파일이 트레이트의 전부입니다: 계약(`Ops`), 타입 마커, 종류를 모르는 코드의 진입점
 	(`Map.Keys(m)`·`Map.Values(m)`·`Map.Records(m)`). 크기와 비우기는 맵만의 것이 아니라 `Collection` 에
