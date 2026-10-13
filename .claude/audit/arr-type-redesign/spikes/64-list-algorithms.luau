@@ -133,12 +133,12 @@ local negEveryElem = stl.List.Every(nums, function(v: string): boolean
 end)
 local negLiteral = stl.List.Count({ 1, 2, 3 })
 
---[[ 구현이 넘기는 표(`ListImpl`) — 필수 다섯 + 재정의는 선택 필드라 서명이 검사됨 ]]
+--[[ 구현이 넘기는 표(`ListProvided`) — 필수 다섯 + 재정의는 선택 필드라 서명이 검사됨 ]]
 -- POS: 모듈이 그대로 들어감(Arr 는 일곱을 재정의, CircularDeque 는 필수만)
-local arrImpl: stl.ListImpl<stl.Arr<number>, number, number> = Arr
-local dequeImpl: stl.ListImpl<stl.CircularDeque<string>, string, number> = CircularDeque
+local arrImpl: stl.ListProvided<stl.Arr<number>, number, number> = Arr
+local dequeImpl: stl.ListProvided<stl.CircularDeque<string>, string, number> = CircularDeque
 -- NEG: 재정의 자리에 함수가 아닌 것 / 반환 타입이 다른 함수 / 필수 함수가 빠짐
-local negOverride: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
+local negOverride: stl.ListProvided<stl.CircularDeque<string>, string, number> = {
 	Get = CircularDeque.Get,
 	FirstIndex = CircularDeque.FirstIndex,
 	LastIndex = CircularDeque.LastIndex,
@@ -146,7 +146,7 @@ local negOverride: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
 	PrevIndex = CircularDeque.PrevIndex,
 	Fold = "not a function",
 }
-local negOverrideReturn: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
+local negOverrideReturn: stl.ListProvided<stl.CircularDeque<string>, string, number> = {
 	Get = CircularDeque.Get,
 	FirstIndex = CircularDeque.FirstIndex,
 	LastIndex = CircularDeque.LastIndex,
@@ -156,7 +156,7 @@ local negOverrideReturn: stl.ListImpl<stl.CircularDeque<string>, string, number>
 		return 1
 	end,
 }
-local negMissing: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
+local negMissing: stl.ListProvided<stl.CircularDeque<string>, string, number> = {
 	Get = CircularDeque.Get,
 	FirstIndex = CircularDeque.FirstIndex,
 	LastIndex = CircularDeque.LastIndex,
@@ -166,7 +166,7 @@ local negMissing: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
 --[[ 1단계 2라운드 리뷰 — 실제 `List` 트레이트에 걸린 검사와 `Some`/`Every` 의 두 모양 ]]
 -- POS: 완성 표 타입(`ListFull` — 꼬리 없는 서명)으로 적은 표도 구현 표로 들어감 / 구간이 선택인 Some
 local asFull: stl.ListFull<stl.CircularDeque<string>, string, number> = nil :: any
-local fullAsImpl: stl.ListImpl<stl.CircularDeque<string>, string, number> = asFull
+local fullAsImpl: stl.ListProvided<stl.CircularDeque<string>, string, number> = asFull
 stl.Trait.Impl(stl.List, stl.Trait.NewToken("FromFull"), asFull)
 local function someOptional(
 	list: stl.CircularDeque<string>,
@@ -175,7 +175,7 @@ local function someOptional(
 ): boolean
 	return pred(CircularDeque.Get(list, start or 1) :: string, start or 1)
 end
-local optionalRange: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
+local optionalRange: stl.ListProvided<stl.CircularDeque<string>, string, number> = {
 	Get = CircularDeque.Get,
 	FirstIndex = CircularDeque.FirstIndex,
 	LastIndex = CircularDeque.LastIndex,
@@ -191,7 +191,7 @@ local function someRequired(
 ): boolean
 	return pred(CircularDeque.Get(list, start) :: string, start)
 end
-local negRequiredRange: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
+local negRequiredRange: stl.ListProvided<stl.CircularDeque<string>, string, number> = {
 	Get = CircularDeque.Get,
 	FirstIndex = CircularDeque.FirstIndex,
 	LastIndex = CircularDeque.LastIndex,

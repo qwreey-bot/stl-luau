@@ -2,7 +2,7 @@
 --[[
 	계약 테스트 — **구현을 모르는 코드가 정말 돌아가는가.**
 
-	`Types` 의 계약 셋(`ListOps` / `MapOps` / `SetOps`)은 **함수 묶음**입니다
+	`Types` 의 계약 셋(`ListCore` / `MapCore` / `SetCore`)은 **함수 묶음**입니다
 	(2026-10-01, 질문 AB). 컨테이너는 메타테이블 없는 평범한 테이블이라 메소드가
 	없고, 디스패치는 **구현 함수 묶음을 컨테이너와 같이 넘기는** 모양입니다 —
 	모듈 테이블이 그대로 구현체입니다(`exerciseMap(stl.HashMap, m, …)`).
@@ -15,14 +15,14 @@
 local stl = require("../src")
 local Common = stl.Common
 
-type ListOps<C, E, I> = stl.ListOps<C, E, I>
-type MapOps<C, K, V> = stl.MapOps<C, K, V>
-type SetOps<C, T> = stl.SetOps<C, T>
+type ListCore<C, E, I> = stl.ListCore<C, E, I>
+type MapCore<C, K, V> = stl.MapCore<C, K, V>
+type SetCore<C, T> = stl.SetCore<C, T>
 
 --[[ 계약만 아는 함수들. 어떤 구현이 오는지 전혀 모릅니다. ]]
 
 -- 순차 컨테이너: 위치 타입 `I` 가 무엇인지도 모른 채 순회합니다.
-local function sumThroughContract<C, I>(ops: ListOps<C, number, I>, list: C): number
+local function sumThroughContract<C, I>(ops: ListCore<C, number, I>, list: C): number
 	local total = 0
 	local idx = ops.FirstIndex(list)
 	while idx ~= nil do
@@ -33,7 +33,7 @@ local function sumThroughContract<C, I>(ops: ListOps<C, number, I>, list: C): nu
 end
 
 -- 맵: 넣고 빼고 세어봅니다.
-local function fillAndCount<C, V>(ops: MapOps<C, string, V>, map: C, value: V): number
+local function fillAndCount<C, V>(ops: MapCore<C, string, V>, map: C, value: V): number
 	ops.Set(map, "하나", value)
 	ops.Set(map, "둘", value)
 	ops.Set(map, "하나", value) -- 덮어쓰기
@@ -47,7 +47,7 @@ local function fillAndCount<C, V>(ops: MapOps<C, string, V>, map: C, value: V): 
 end
 
 -- 셋: 넣고 확인하고 뺍니다.
-local function exerciseSet<C, T>(ops: SetOps<C, T>, set: C, a: T, b: T): string
+local function exerciseSet<C, T>(ops: SetCore<C, T>, set: C, a: T, b: T): string
 	local added = ops.Add(set, a)
 	local again = ops.Add(set, a)
 	ops.Add(set, b)
@@ -57,7 +57,7 @@ local function exerciseSet<C, T>(ops: SetOps<C, T>, set: C, a: T, b: T): string
 	return `{added},{again},{hasA},{removed},{hasAfter},{#ops.Items(set)}`
 end
 
-print("=== 1. ListOps — Arr 가 만족하는가 ===")
+print("=== 1. ListCore — Arr 가 만족하는가 ===")
 do
 	const a = stl.Arr.Of(10, 20, 30)
 	assert(sumThroughContract(stl.Arr, a) == 60, "계약을 통한 합")
@@ -68,7 +68,7 @@ do
 end
 print("PASS")
 
-print("=== 2. ⭐ MapOps — HashMap 과 FlatMap 을 바꿔 끼울 수 있는가 ===")
+print("=== 2. ⭐ MapCore — HashMap 과 FlatMap 을 바꿔 끼울 수 있는가 ===")
 do
 	-- **같은 함수**에 두 구현을 넣습니다. 타입이 갈리면 여기서 진단이 납니다.
 	type H = stl.HashMap<string, number>
@@ -87,8 +87,8 @@ do
 	assert(#stl.Map.Values(hash) == #stl.Map.Values(tree), "Map.Values")
 
 	-- 계약 자리에 모듈을 담아 두고 나중에 쓰는 것도 돼야 합니다
-	const hashOps: MapOps<H, string, number> = stl.HashMap
-	const treeOps: MapOps<T, string, number> = stl.FlatMap
+	const hashOps: MapCore<H, string, number> = stl.HashMap
+	const treeOps: MapCore<T, string, number> = stl.FlatMap
 	assert(
 		hashOps.Get(hash, "하나") == 1 and treeOps.Get(tree, "하나") == 1,
 		"계약 자리에 담긴 뒤에도 동작"
@@ -96,7 +96,7 @@ do
 end
 print("PASS")
 
-print("=== 3. ⭐ SetOps — HashSet 과 FlatSet 을 바꿔 끼울 수 있는가 ===")
+print("=== 3. ⭐ SetCore — HashSet 과 FlatSet 을 바꿔 끼울 수 있는가 ===")
 do
 	const hash = stl.HashSet.New<<number>>()
 	const tree = stl.FlatSet.New<<number>>(Common.compareNumber)
@@ -951,14 +951,16 @@ do
 end
 print("PASS")
 
-print("=== 7. 계약 보강 — 원소 타입 ≠ 위치 타입, Keys/Values 내용, 담아 둔 SetOps (M0 리뷰) ===")
+print(
+	"=== 7. 계약 보강 — 원소 타입 ≠ 위치 타입, Keys/Values 내용, 담아 둔 SetCore (M0 리뷰) ==="
+)
 do
-	-- ListOps 의 반환 타입(I? 대 E?)은 원소와 위치가 둘 다 number 면 우연히 맞아떨어집니다
+	-- ListCore 의 반환 타입(I? 대 E?)은 원소와 위치가 둘 다 number 면 우연히 맞아떨어집니다
 	const s = stl.Arr.Of("x", "y", "z")
 	const pos: number? = stl.List.IndexOf(s, "y")
 	assert(pos == 2, "문자열 배열의 IndexOf")
-	const ops: ListOps<stl.Arr<string>, string, number> = stl.Arr
-	assert(ops.Get(s, 3) == "z" and ops.FirstIndex(s) == 1 and ops.NextIndex(s, 1) == 2, "문자열 배열의 ListOps")
+	const ops: ListCore<stl.Arr<string>, string, number> = stl.Arr
+	assert(ops.Get(s, 3) == "z" and ops.FirstIndex(s) == 1 and ops.NextIndex(s, 1) == 2, "문자열 배열의 ListCore")
 
 	-- Keys/Values 는 개수가 아니라 **내용**을 봅니다(키와 값을 바꿔 돌려줘도 통과했음)
 	const m = stl.FlatMap.FromRecords({ { key = "b", value = 20 }, { key = "a", value = 10 } }, Common.compareString)
@@ -985,7 +987,7 @@ do
 	const function find(m: MyMap, k: string): number?
 		return table.find(m.keys, k)
 	end
-	const myOps: MapOps<MyMap, string, number> = {
+	const myOps: MapCore<MyMap, string, number> = {
 		Get = function(m: MyMap, k: string): number?
 			const at = find(m, k)
 			return if at then m.values[at] else nil
@@ -1165,10 +1167,10 @@ do
 		assert(string.find(tostring(errNew), `spec.contracts.luau:{newLine}:`, 1, true), `사용자 줄: {errNew}`)
 	end
 
-	-- SetOps 자리에 모듈을 담아 두고 쓰기
+	-- SetCore 자리에 모듈을 담아 두고 쓰기
 	const hs = stl.HashSet.Of(1, 2)
-	const setOps: SetOps<stl.HashSet<number>, number> = stl.HashSet
-	assert(setOps.Has(hs, 2) and not setOps.Has(hs, 3), "담아 둔 SetOps")
+	const setOps: SetCore<stl.HashSet<number>, number> = stl.HashSet
+	assert(setOps.Has(hs, 2) and not setOps.Has(hs, 3), "담아 둔 SetCore")
 end
 print("PASS")
 
@@ -1319,7 +1321,7 @@ end
 print("PASS")
 
 print(
-	"=== 10. 컬렉션 트레이트 — 종류를 모르고 크기·비우기, 넓힌 MapOps (2026-10-12, 질문 AO) ==="
+	"=== 10. 컬렉션 트레이트 — 종류를 모르고 크기·비우기, 넓힌 MapCore (2026-10-12, 질문 AO) ==="
 )
 do
 	-- 일곱 컨테이너 전부: Len 은 자기 모듈의 Len 과 같고, Clear 는 **같은 객체**를 비워 돌려줌
@@ -1458,7 +1460,7 @@ do
 		end
 	end
 
-	-- ⭐ 넓힌 MapOps — 종류를 모르는 코드가 Has·Remove·Iter 까지. 두 맵이 같은 답
+	-- ⭐ 넓힌 MapCore — 종류를 모르는 코드가 Has·Remove·Iter 까지. 두 맵이 같은 답
 	local function exercise<K, V>(m: stl.MapMarkerMut<K, V>, present: K, absent: K): (boolean, boolean, V?, V?, number)
 		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
@@ -1488,15 +1490,15 @@ do
 		)
 	end
 	-- 모듈 테이블이 넓힌 계약과 컬렉션 계약을 정적으로 만족
-	const _hmOps: MapOps<stl.HashMap<string, number>, string, number> = stl.HashMap
-	const _tmOps: MapOps<stl.FlatMap<string, number>, string, number> = stl.FlatMap
-	const _c1: stl.CollectionOps<stl.Arr<number>> = stl.Arr
-	const _c2: stl.CollectionOps<stl.CircularDeque<number>> = stl.CircularDeque
-	const _c3: stl.CollectionOps<stl.HashMap<string, number>> = stl.HashMap
-	const _c4: stl.CollectionOps<stl.FlatMap<string, number>> = stl.FlatMap
-	const _c5: stl.CollectionOps<stl.HashSet<number>> = stl.HashSet
-	const _c6: stl.CollectionOps<stl.FlatSet<number>> = stl.FlatSet
-	const _c7: stl.CollectionOps<stl.Heap<number>> = stl.Heap
+	const _hmOps: MapCore<stl.HashMap<string, number>, string, number> = stl.HashMap
+	const _tmOps: MapCore<stl.FlatMap<string, number>, string, number> = stl.FlatMap
+	const _c1: stl.CollectionCore<stl.Arr<number>> = stl.Arr
+	const _c2: stl.CollectionCore<stl.CircularDeque<number>> = stl.CircularDeque
+	const _c3: stl.CollectionCore<stl.HashMap<string, number>> = stl.HashMap
+	const _c4: stl.CollectionCore<stl.FlatMap<string, number>> = stl.FlatMap
+	const _c5: stl.CollectionCore<stl.HashSet<number>> = stl.HashSet
+	const _c6: stl.CollectionCore<stl.FlatSet<number>> = stl.FlatSet
+	const _c7: stl.CollectionCore<stl.Heap<number>> = stl.Heap
 end
 print("PASS")
 

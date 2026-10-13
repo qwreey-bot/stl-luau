@@ -2,7 +2,7 @@
 --[[
 	Map — 키로 값을 찾는 컨테이너의 트레이트. `HashMap`/`TreeMap`/`FlatMap` 이 구현합니다.
 
-	이 파일이 트레이트의 전부입니다: 계약(`Ops`), 타입 마커, 종류를 모르는 코드의 진입점
+	이 파일이 트레이트의 전부입니다: 계약(`Core`), 타입 마커, 종류를 모르는 코드의 진입점
 	(`Map.Keys(m)`·`Map.Values(m)`·`Map.Records(m)`). 크기와 비우기는 맵만의 것이 아니라 `Collection` 에
 	있습니다.
 ]]
@@ -28,7 +28,7 @@ local Collection = require("./Collection")
 --   함수·상태·처음 값 삼중항은 이 타입에 안 들어갑니다 — 클로저로 감싸세요(유니온에 `(...any) -> (K, V)` 를
 --   넣으면 새 솔버가 `() -> (K, V)` 를 못 받았습니다, 실측). 순서는 구현의 것입니다(해시는 약속 없음, 정렬
 --   맵은 키 순서). 도는 동안 맵을 바꾸면 정의되지 않은 동작입니다(conventions).
-export type Ops<C, K, V> = {
+export type Core<C, K, V> = {
 	read Get: (map: C, key: K) -> V?,
 	read Set: (map: C, key: K, value: V) -> (),
 	read Has: (map: C, key: K) -> boolean,
@@ -54,7 +54,7 @@ export type MarkerMut<K, V> = {
 	read __mapMut: (K, V) -> (K, V),
 }
 
-const Map = Trait.New<<Ops<any, any, any>>>("Map", { required = { "Get", "Set", "Has", "Remove", "Iter" } })
+const Map = Trait.New<<Core<any, any, any>>>("Map", { required = { "Get", "Set", "Has", "Remove", "Iter" } })
 const expectImpl = Trait.ExpectImpl
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]

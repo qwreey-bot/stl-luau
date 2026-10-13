@@ -63,8 +63,8 @@ const function firstNode(map: any): any
 	return if root ~= nil then firstOf(root) else nil
 end
 
---#region ----------- 계약 구현 (Set.Ops) -----------
--- 이 모듈 테이블이 그대로 `Set.Ops` 구현체입니다(질문 AB).
+--#region ----------- 계약 구현 (Set.Core) -----------
+-- 이 모듈 테이블이 그대로 `Set.Core` 구현체입니다(질문 AB).
 
 -- 원소를 넣습니다. **새로 들어갔으면 `true`**, 이미 있었으면 `false`. O(log n).
 -- NaN·`nil` 은 받지 않습니다. 여기서 먼저 봅니다 — 맡기면 메시지가 `TreeMap: NaN key` 로 나와, 사용자가 부른
@@ -486,7 +486,7 @@ const TreeSetModule = {
 Trait.Impl(Set, TOKEN, TreeSetModule)
 Trait.Impl(Collection, TOKEN, TreeSetModule)
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
-const _set: Set.Ops<TreeSet<any>, any> = TreeSetModule
-const _collection: Collection.Ops<TreeSet<any>> = TreeSetModule
+const _set: Set.Core<TreeSet<any>, any> = TreeSetModule
+const _collection: Collection.Core<TreeSet<any>> = TreeSetModule
 
 return TreeSetModule

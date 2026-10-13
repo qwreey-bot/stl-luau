@@ -86,7 +86,7 @@ const TOKEN = Trait.NewToken("LinkedDeque") :: Trait.Token<"LinkedDeque">
 -- 이 모듈 안에서는 노드를 칸으로 직접 읽고 씁니다(불투명 핸들 타입은 밖을 위한 것 — 안에서는 `any` 로).
 const VALUE, PREV, NEXT = 1, 2, 3
 
---#region ----------- 계약 구현 (List.Ops) — 위치는 노드 -----------
+--#region ----------- 계약 구현 (List.Core) — 위치는 노드 -----------
 
 const function Get<T>(_self: LinkedDequeRead<T>, node: NodeRead<T>): T?
 	return (node :: any)[VALUE]
@@ -110,7 +110,7 @@ end
 
 --#endregion
 
---#region ----------- 넣기·꺼내기 (Deque.Ops) -----------
+--#region ----------- 넣기·꺼내기 (Deque.Core) -----------
 
 -- 맨 뒤에 넣습니다. O(1). 자기 자신을 돌려줍니다(`Arr.PushBack` 과 같음) — 새 노드가 필요하면 `LastIndex`.
 const function PushBack<T>(self: LinkedDequeData<T>, item: T): LinkedDeque<T>
@@ -384,8 +384,8 @@ Trait.Impl(List, TOKEN, LinkedDequeModule)
 Trait.Impl(Deque, TOKEN, LinkedDequeModule)
 Trait.Impl(Collection, TOKEN, LinkedDequeModule)
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다(`Trait.Impl` 호출만으로는 서명 불일치가 안 잡힘).
-const _list: List.Impl<LinkedDeque<any>, any, NodeRead<any>> = LinkedDequeModule
-const _deque: Deque.Ops<LinkedDeque<any>, any> = LinkedDequeModule
-const _collection: Collection.Ops<LinkedDeque<any>> = LinkedDequeModule
+const _list: List.Provided<LinkedDeque<any>, any, NodeRead<any>> = LinkedDequeModule
+const _deque: Deque.Core<LinkedDeque<any>, any> = LinkedDequeModule
+const _collection: Collection.Core<LinkedDeque<any>> = LinkedDequeModule
 
 return LinkedDequeModule

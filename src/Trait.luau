@@ -42,8 +42,8 @@ Common.registerSource(debug.info(1, "s"))
 export type Token<N> = { read name: N }
 -- 트레이트. `I` 는 **완성 표**(구현이 준 것 + 기본 구현)의 타입 — `ImplOf` 가 돌려주는 것. `C` 는
 -- 구현이 `Impl` 에 넘기는 표의 타입이고, 기본 구현이 없는 트레이트는 `I` 와 같습니다. 둘이 다른 트레이트는
--- 만든 자리에서 캐스트합니다: `Trait.New<<Full>>(name, spec) :: Trait<Full, Core>`.
--- ⚠️ **`Core` 는 "필수 함수 + 재정의할 수 있는 함수는 선택 필드(`?`)"** 로 적으세요(`Traits/List` 의 `Impl` 이 그 모양).
+-- 만든 자리에서 캐스트합니다: `Trait.New<<Full>>(name, spec) :: Trait<Full, Provided>`.
+-- ⚠️ **`Provided` 는 "필수 함수 + 재정의할 수 있는 함수는 선택 필드(`?`)"** 로 적으세요(`Traits/List` 의 `Provided` 가 그 모양).
 -- 필수만 적으면 재정의 자리는 검사되지 않습니다(폭 서브타이핑 — `Describe = "문자열"` 이 0건이고 런타임에
 -- `attempt to call a string value`, 리뷰). ⚠️ 그 캐스트 자체는 검사되지 않습니다(새 솔버는 테이블 → 테이블
 -- 캐스트를 안 봄): `Full` 이 "필수 + 기본 구현이 채우는 것" 과 맞는지는 테스트로 지키세요.

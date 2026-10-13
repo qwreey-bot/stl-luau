@@ -262,8 +262,8 @@ end
 
 --#endregion
 
---#region ----------- 계약 구현 (List.Ops) -----------
--- 이 모듈 테이블이 그대로 `List.Ops` 구현체이고 `List` 트레이트 에 등록됩니다(파일 끝) —
+--#region ----------- 계약 구현 (List.Core) -----------
+-- 이 모듈 테이블이 그대로 `List.Core` 구현체이고 `List` 트레이트 에 등록됩니다(파일 끝) —
 -- `List.IndexOf(a, x)`.
 
 const function Get<T>(self: ArrRead<T>, idx: number): T?
@@ -296,7 +296,7 @@ end
 -- 구간은 "가능한 만큼" 이 자연스럽지만 단일 조회에서 가장 가까운 칸을 주면
 -- 거짓말이 됩니다.
 --
--- `Get` 은 계약(`List.Ops`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
+-- `Get` 은 계약(`List.Core`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
 -- `FirstIndex`/`NextIndex` 로 얻은 위치를 그대로 넣는 자리이고, 거기에 음수
 -- 변환을 끼우면 매 조회에 분기가 붙습니다.
 const function At<T>(self: ArrRead<T>, idx: number): T?
@@ -2862,8 +2862,8 @@ const ArrModule = {
 Trait.Impl(List, TOKEN, ArrModule)
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다 — `Trait.Impl` 호출만으로는 트레이트가 `any` 로
 -- 풀려 함수 대 함수의 서명 불일치가 안 잡힙니다(2단계 리뷰). 재정의 일곱의 서명도 이 줄이 봅니다.
-const _list: List.Impl<Arr<any>, any, number> = ArrModule
-const _collection: Collection.Ops<Arr<any>> = ArrModule
+const _list: List.Provided<Arr<any>, any, number> = ArrModule
+const _collection: Collection.Core<Arr<any>> = ArrModule
 Trait.Impl(Collection, TOKEN, ArrModule)
 
 return ArrModule

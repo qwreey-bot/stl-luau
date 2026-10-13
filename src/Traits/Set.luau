@@ -11,7 +11,7 @@ local Trait = require("../Trait")
 
 --[[ 계약 ]]
 
-export type Ops<C, T> = {
+export type Core<C, T> = {
 	read Add: (set: C, item: T) -> boolean,
 	read Has: (set: C, item: T) -> boolean,
 	read Remove: (set: C, item: T) -> boolean,
@@ -25,6 +25,6 @@ export type Marker<T> = { read __type: Trait.Token<any>, read __setItem: T }
 -- 원소를 **입력으로 받아 넘기는** 제네릭용 불변 마커(질문 AM — 자세한 것은 `Traits/Map` 의 `MarkerMut`).
 export type MarkerMut<T> = { read __type: Trait.Token<any>, read __setItem: T, read __setMut: (T) -> T }
 
-const Set = Trait.New<<Ops<any, any>>>("Set", { required = { "Add", "Has", "Remove", "Items" } })
+const Set = Trait.New<<Core<any, any>>>("Set", { required = { "Add", "Has", "Remove", "Items" } })
 
 return Set

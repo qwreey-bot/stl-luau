@@ -77,8 +77,8 @@ const function tagged(raw: any): any
 	return raw
 end
 
---#region ----------- 계약 구현 (Map.Ops) -----------
--- 이 모듈 테이블이 그대로 `Map.Ops` 구현체입니다(질문 AB).
+--#region ----------- 계약 구현 (Map.Core) -----------
+-- 이 모듈 테이블이 그대로 `Map.Core` 구현체입니다(질문 AB).
 
 -- ⭐ **NaN·`nil` 키는 받지 않습니다.** NaN 은 자기 자신과도 같지 않아 어떤 3방향
 -- 비교자로도 순서가 서지 않고, 조용히 넣으면 **다른 키까지** 못 찾게 되고
@@ -124,7 +124,7 @@ end
 -- 끼워넣기는 뒤를 미는 O(n) 이지만 `table.move` 라 C 안에서 돕니다.
 --
 -- ⭐ **값이 `nil` 이면 삭제입니다** — `HashMap` 과 같은 규칙이고 Lua 의
--- `t[k] = nil` 과 같습니다. 예전엔 `nil` 값을 레코드로 저장해서 같은 `MapOps`
+-- `t[k] = nil` 과 같습니다. 예전엔 `nil` 값을 레코드로 저장해서 같은 `MapCore`
 -- 인데 두 맵의 뜻이 달랐습니다(2026-09-30 리뷰).
 const function Set<K, V>(self: FlatMapData<K, V>, key: K, value: V): ()
 	if unusable(key) then

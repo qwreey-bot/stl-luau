@@ -104,7 +104,7 @@ local function allReads(list: stl.CircularDequeRead<Base>)
 end
 allReads(derived)
 -- 모듈이 빌린 참조용 리스트 계약을 만족
-local readOps: stl.ListOps<stl.CircularDequeRead<Base>, Base, number> = CircularDeque
+local readOps: stl.ListCore<stl.CircularDequeRead<Base>, Base, number> = CircularDeque
 
 --[[ NEG — 빌린 읽기 참조로는 못 씀 ]]
 local function borrowed(list: stl.CircularDequeRead<number?>, base: stl.CircularDequeRead<Base>)

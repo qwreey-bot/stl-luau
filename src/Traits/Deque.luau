@@ -4,7 +4,7 @@
 	구현합니다(2026-10-13 사용자: *"링크드 데큐와 써큘러 데큐를 나눠야하고. 이것도 Trait 으로 몰라도 접근
 	가능한 구조여야"*).
 
-	이 파일이 트레이트의 전부입니다: 계약(`Ops`), 타입 마커, 종류를 모르는 코드의 진입점
+	이 파일이 트레이트의 전부입니다: 계약(`Core`), 타입 마커, 종류를 모르는 코드의 진입점
 	(`Deque.PushBack(d, v)`·`Deque.PopFront(d)` …). 크기와 비우기는 `Collection`, 순회·찾기는 `List` 에
 	있습니다 — 두 구현 모두 셋을 다 구현합니다.
 
@@ -19,7 +19,7 @@ local Trait = require("../Trait")
 
 -- 여섯 다 O(1)(원형의 넣기는 분할 상환). 넣기는 **자기 자신**을 돌려줍니다(`Arr.PushBack` 과 같음).
 -- 꺼내기·보기는 비었으면 `nil` — 구멍(`nil` 원소)을 담은 덱에서는 `Collection.Len` 으로 가르세요.
-export type Ops<C, T> = {
+export type Core<C, T> = {
 	read PushFront: (deque: C, item: T) -> C,
 	read PushBack: (deque: C, item: T) -> C,
 	read PopFront: (deque: C) -> T?,
@@ -36,7 +36,7 @@ export type Marker<T> = { read __type: Trait.Token<any>, read __dequeItem: T }
 -- 넓어집니다). 팬텀은 데이터 타입에만 있어 읽기 전용으로 빌린 참조는 꺼내기도 못 합니다.
 export type MarkerMut<T> = { read __type: Trait.Token<any>, read __dequeItem: T, read __dequeMut: (T) -> T }
 
-const Deque = Trait.New<<Ops<any, any>>>("Deque", {
+const Deque = Trait.New<<Core<any, any>>>("Deque", {
 	required = { "PushFront", "PushBack", "PopFront", "PopBack", "Front", "Back" },
 })
 const expectImpl = Trait.ExpectImpl

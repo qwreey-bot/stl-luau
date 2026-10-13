@@ -75,8 +75,8 @@ const function tagged(raw: any): any
 	return raw
 end
 
---#region ----------- 계약 구현 (Set.Ops) -----------
--- 이 모듈 테이블이 그대로 `Set.Ops` 구현체입니다(질문 AB).
+--#region ----------- 계약 구현 (Set.Core) -----------
+-- 이 모듈 테이블이 그대로 `Set.Core` 구현체입니다(질문 AB).
 
 -- 원소를 넣습니다. **새로 들어갔으면 `true`**, 이미 있었으면 `false`.
 const function Add<T>(self: HashSetData<T>, item: T): boolean

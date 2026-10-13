@@ -3,7 +3,7 @@
 	Collection — 원소를 담는 것이면 무엇이든(2026-10-12, 질문 AM 다 → AO — Java `Collection` 의 결).
 
 	리스트·맵·셋·힙이 전부 구현합니다. 한 종류가 `List` 와 `Collection` 처럼 여러 트레이트를 구현합니다.
-	이 파일이 트레이트의 전부입니다: 계약(`Ops`), 타입 마커, 종류를 모르는 코드의 진입점
+	이 파일이 트레이트의 전부입니다: 계약(`Core`), 타입 마커, 종류를 모르는 코드의 진입점
 	(`Collection.Len(c)`·`Collection.Clear(c)`).
 ]]
 local Common = require("../Common")
@@ -14,7 +14,7 @@ local Trait = require("../Trait")
 
 -- **크기는 알고 있는 값**이어야 합니다(O(1) — 세어서 구하는 것은 `List.Count`).
 -- `Clear` 는 자기 자신을 돌려줍니다(질문 AM 가).
-export type Ops<C> = {
+export type Core<C> = {
 	read Len: (collection: C) -> number,
 	read Clear: (collection: C) -> C,
 }
@@ -31,7 +31,7 @@ export type Marker = { read __type: Trait.Token<any> }
 -- 데이터 타입(`ArrData`·`CircularDequeData`·맵·셋·`HeapData`)에만 있습니다. 새 컨테이너에도 같이 넣으세요.
 export type MarkerMut = { read __type: Trait.Token<any>, read __collectionMut: true }
 
-const Collection = Trait.New<<Ops<any>>>("Collection", { required = { "Len", "Clear" } })
+const Collection = Trait.New<<Core<any>>>("Collection", { required = { "Len", "Clear" } })
 const expectImpl = Trait.ExpectImpl
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]

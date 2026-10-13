@@ -91,8 +91,8 @@ local neg9 = Heap.Push(hp, true)
 	면 `E?` 와 모듈 `Get` 의 `T?` 를 맞추는 역추론이 모순됩니다 — 옛 교집합 시절
 	이 스파이크가 막던 원인이 함수 묶음 쪽에서 다시 나타난 것. 우회는 캐스트.
 	Luau 가 좋아져 통과하기 시작하면 건수가 줄어 배터리가 알려줍니다. ]]
-local caveat1: stl.ListOps<Arr<number?>, number?, number> = Arr
-local caveat2: stl.MapOps<stl.HashMap<string, number?>, string, number?> = HashMap
+local caveat1: stl.ListCore<Arr<number?>, number?, number> = Arr
+local caveat2: stl.MapCore<stl.HashMap<string, number?>, string, number?> = HashMap
 local canary: string = 42
 
 return {

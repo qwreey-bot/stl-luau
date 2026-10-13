@@ -91,8 +91,8 @@ const function rejectKey(key: any): never
 	return Common.raise(if key == nil then "TreeMap: nil key" else "TreeMap: NaN key")
 end
 
---#region ----------- 계약 구현 (Map.Ops) -----------
--- 이 모듈 테이블이 그대로 `Map.Ops` 구현체입니다(질문 AB).
+--#region ----------- 계약 구현 (Map.Core) -----------
+-- 이 모듈 테이블이 그대로 `Map.Core` 구현체입니다(질문 AB).
 
 -- 키의 노드. 없으면 `nil`. 뜨거운 길이라 `Search.Find` 를 거치지 않고 여기서 따라갑니다(호출 하나).
 const function nodeOf<K, V>(self: TreeMapData<K, V>, key: K): any
@@ -479,7 +479,7 @@ const TreeMapModule = {
 Trait.Impl(Map, TOKEN, TreeMapModule)
 Trait.Impl(Collection, TOKEN, TreeMapModule)
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
-const _map: Map.Ops<TreeMap<any, any>, any, any> = TreeMapModule
-const _collection: Collection.Ops<TreeMap<any, any>> = TreeMapModule
+const _map: Map.Core<TreeMap<any, any>, any, any> = TreeMapModule
+const _collection: Collection.Core<TreeMap<any, any>> = TreeMapModule
 
 return TreeMapModule

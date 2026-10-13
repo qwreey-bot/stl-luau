@@ -29,7 +29,7 @@ local rankKeys: { number } = stl.Map.Keys(ranks)
 -- 사용자 리스트: 토큰 + 마커를 타입에 적고 구현을 등록
 type Pair<T> = { read __type: stl.TraitToken<string>, read __list: T, read __listIndex: number, a: T, b: T }
 local PairType = Trait.NewToken("Pair")
-local pairOps: stl.ListOps<Pair<any>, any, number> = {
+local pairOps: stl.ListCore<Pair<any>, any, number> = {
 	Get = function(p: Pair<any>, i: number): any
 		return if i == 1 then p.a elseif i == 2 then p.b else nil
 	end,

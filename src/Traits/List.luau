@@ -2,7 +2,7 @@
 --[[
 	List — 위치로 원소를 읽는 순차 컨테이너의 트레이트. `Arr`·`CircularDeque`·`LinkedDeque`(위치가 노드)가 구현합니다.
 
-	이 파일이 트레이트의 전부입니다: 계약(`Ops` — 위치 프리미티브 다섯), **기본 구현**(프리미티브만으로
+	이 파일이 트레이트의 전부입니다: 계약(`Core` — 위치 프리미티브 다섯), **기본 구현**(프리미티브만으로
 	도는 읽기 알고리즘), 타입 마커, 종류를 모르는 코드의 진입점(`List.IndexOf(list, x)`).
 
 	⭐ **프리미티브 다섯만 구현하면 읽기 알고리즘이 따라옵니다**(2026-10-13, `papers/07`). 같은 이름의
@@ -16,7 +16,7 @@
 	  가 있으면 진입점 → 그 함수 → 진입점으로 끝없이 돕니다(stack overflow).
 	- 같은 이름인데 **뜻이 다른 함수**(값으로 찾는 `Find(self, value)`, 술어를 안 받는 `Count(self)`)가
 	  조용히 재정의가 됩니다 — `List.Count(v, pred)` 가 술어를 무시한 값을 돌려줍니다. 인자를 덜 받는
-	  함수는 `Impl` 타입에도 들어가(Luau 규칙) 타입이 막지 못합니다.
+	  함수는 `Provided` 타입에도 들어가(Luau 규칙) 타입이 막지 못합니다.
 	그런 모듈은 통째로 넘기지 말고 **넘길 것만 든 표**를 만드세요. 재정의는 기본 구현과 같은 뜻·같은
 	인자여야 합니다. (라이브러리 안의 종류가 무엇을 재정의하는지는 `spec.contracts` 13절이 전수로 고정합니다 —
 	모듈에 같은 이름의 함수를 더하면 그 테스트가 알려 줍니다.)
@@ -35,7 +35,7 @@ local Trait = require("../Trait")
 -- 필수 함수 다섯 — 위치 프리미티브. `C` 는 컨테이너 자신의 타입, `E` 는 원소, `I` 는 **위치**.
 -- 배열 기반은 I = number, 연결 기반은 I = 노드. 그래서 "연결 리스트에서 정수 인덱스로 접근" 이
 -- 애초에 **표현 불가능**해집니다(.claude/base/container-design-notes.md 2절).
-export type Ops<C, E, I> = {
+export type Core<C, E, I> = {
 	read Get: (list: C, idx: I) -> E?,
 	read FirstIndex: (list: C) -> I?,
 	read LastIndex: (list: C) -> I?,
@@ -68,14 +68,14 @@ export type Full<C, E, I> = {
 -- 통과했습니다(`Fold = "문자열"` 이 0건, 리뷰).
 -- ⚠️ **어디까지 잡히는가**(2라운드 리뷰 실측): `Trait.Impl(List, 토큰, 표)` 호출에서는 타입 인자가 `any` 라
 -- "필수가 빠짐 / 함수가 아님" 까지만 잡힙니다. 반환·원소·위치 타입과 인자 순서는 **구체 타입으로 적은 대입**
--- (`const _list: List.Impl<Arr<any>, any, number> = ArrModule` — 모듈 끝에 한 줄)이 잡습니다. 인자를 **덜**
+-- (`const _list: List.Provided<Arr<any>, any, number> = ArrModule` — 모듈 끝에 한 줄)이 잡습니다. 인자를 **덜**
 -- 받는 함수(술어를 안 받는 `Count`)는 어느 쪽도 못 잡습니다(Luau 는 덜 받는 함수를 받아 줌).
 -- 콜백 타입의 `...any` 는 "원소와 위치, 그리고 구현이 더 넘길 수도 있음" 입니다(`Arr` 의 콜백은 셋째로 읽기
 -- 뷰를 받음). `Some`/`Every` 는 **두 모양의 합**입니다: 계약 그대로 `(list, pred)` 이거나, 뒤에 **선택** 인자를
 -- 더 받는 것(`Arr` 의 구간 `start?, last?`). 꼬리를 `...any` 하나로 두었더니 꼬리 없는 서명을 손으로 적은 표
 -- (`List.Full` 로 적은 표, 다른 종류의 완성 표)가 거절됐고, 셋째 인자를 **꼭** 받는 재정의는 통과해 진입점이
 -- 부를 때 라이브러리 줄에서 죽었습니다(둘 다 2라운드 리뷰).
-export type Impl<C, E, I> = {
+export type Provided<C, E, I> = {
 	read Get: (list: C, idx: I) -> E?,
 	read FirstIndex: (list: C) -> I?,
 	read LastIndex: (list: C) -> I?,
@@ -203,7 +203,7 @@ end
 const List = Trait.New<<Full<any, any, any>>>("List", {
 	required = { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" },
 	defaults = defaults,
-}) :: Trait.Trait<Full<any, any, any>, Impl<any, any, any>>
+}) :: Trait.Trait<Full<any, any, any>, Provided<any, any, any>>
 const expectImpl = Trait.ExpectImpl
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]

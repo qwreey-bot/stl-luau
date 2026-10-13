@@ -7,22 +7,22 @@
 	  **읽기 전용으로 빌린 참조**(`ArrRead`·`CircularDequeRead`)는 못 받습니다 — 마커가 토큰만 요구하던 시제품에선
 	  빌린 참조가 진단 0건으로 지워졌습니다(AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결).
 	- `Collection.Len` 은 읽기라 빌린 참조도 받고, 토큰 없는 것(리터럴·숫자·`Optional`)은 막습니다.
-	- 모듈 테이블이 `CollectionOps`·넓힌 `MapOps`(`Has`·`Remove`·`Iter`)를 만족하고, 함수가 빠진 구현·다른
+	- 모듈 테이블이 `CollectionCore`·넓힌 `MapCore`(`Has`·`Remove`·`Iter`)를 만족하고, 함수가 빠진 구현·다른
 	  종류의 모듈은 그 타입 자리에 못 들어갑니다(리터럴이든 모듈이든 — **타입 인자가 구체적일 때**).
 	  **모듈의 `Iter` 를 직접** 돌면 루프 변수는 `K`, `V`.
 
 	⚠️ 알려진 경계(맨 아래, 0건):
 	- `Len` 의 마커는 토큰만 봐서 토큰은 있지만 컬렉션이 아닌 `Fut` 이 타입을 지납니다 — 런타임에
 	  `Common.raise`(spec.contracts 10절).
-	- **계약 타입(`MapOps`)을 거친 `ops.Iter(m)` 의 루프 변수는 타입이 없습니다**(`any`) — 계약의 `Iter` 가
+	- **계약 타입(`MapCore`)을 거친 `ops.Iter(m)` 의 루프 변수는 타입이 없습니다**(`any`) — 계약의 `Iter` 가
 	  "테이블 또는 함수" 유니온이 되면서(2026-10-12, 질문 AP 1) 새 솔버가 유니온을 `for … in` 에 넣으면 변수
 	  타입을 잃습니다. 루프 변수에 주석을 달거나(`for key: K, value: V in ops.Iter(m)`) 모듈의 `Iter` 를 직접.
-	- **타입 인자가 `any` 인 계약 자리**(`MapOps<any, any, any>` — 곧 `Trait.Impl(stl.Map, …)` 의 자리)는
+	- **타입 인자가 `any` 인 계약 자리**(`MapCore<any, any, any>` — 곧 `Trait.Impl(stl.Map, …)` 의 자리)는
 	  이름이 맞는 제네릭 함수 필드가 하나만 있어도 통과합니다(`Trait.Impl(stl.Map, K, FlatSet)` 0건, 2라운드
 	  리뷰 — 넓히기 전에도 같았음). 그물은 런타임의 필수 함수 검사(`Trait.New` 의 `required`)뿐입니다.
 	- **`Iter` 가 돌려주는 테이블은 "키-값만 든" 테이블이어야 하지만 타입이 그걸 못 봅니다** — `{ read [K]: V }`
 	  는 폭 서브타이핑이라 `Arr<V>`·`CircularDeque<V>`·`table.pack` 결과도 받고, 그러면 `Map.Keys` 가 `"n"`·
-	  `"__type"` 까지 키로 냅니다(2라운드 리뷰). 규약으로 지킵니다(`Types.MapOps` 주석).
+	  `"__type"` 까지 키로 냅니다(2라운드 리뷰). 규약으로 지킵니다(`Types.MapCore` 주석).
 	- `HashMap.Iter(m)` 의 읽기 전용 타입은 **인덱싱 쓰기**만 막습니다 — `table.clear`·`table.freeze`·
 	  `setmetatable` 같은 내장은 읽기 전용 테이블을 받아 0건입니다(Luau 내장 타입의 한계).
 
@@ -65,8 +65,8 @@ local function borrowedLen(list: stl.ArrRead<number?>, queue: stl.CircularDequeR
 	return stl.Collection.Len(list) + stl.Collection.Len(queue)
 end
 -- 모듈 테이블이 계약을 만족
-local colOps: stl.CollectionOps<stl.HashMap<string, number>> = HashMap
-local mapOps: stl.MapOps<stl.FlatMap<string, number>, string, number> = FlatMap
+local colOps: stl.CollectionCore<stl.HashMap<string, number>> = HashMap
+local mapOps: stl.MapCore<stl.FlatMap<string, number>, string, number> = FlatMap
 -- 레코드 목록은 계약이 아니라 알고리즘으로(2026-10-13 — `Records` 를 계약에서 뺌)
 local recs: { Record<string, number> } = stl.Map.Records(tm)
 local has: boolean = mapOps.Has(tm, "x")
@@ -118,24 +118,24 @@ local negLenLiteral = stl.Collection.Len({ size = 0 })
 local negLenOptional = stl.Collection.Len(stl.Optional.Present(1))
 
 --[[ NEG — 계약 ]]
-local negColOps: stl.CollectionOps<stl.Arr<number>> = HashMap
+local negColOps: stl.CollectionCore<stl.Arr<number>> = HashMap
 -- 맵이 아닌 모듈·함수가 빠진 **모듈**(리터럴 아님)도 계약 자리에 못 들어감. 키·값 타입은 그 모듈에
 -- 맞게 적어 "빠진 함수" 만 이유가 되게(리뷰: `Iter` 의 타입에 `(...any) -> …` 가 있던 때는 `Iter` 필드만
 -- 있으면 **나머지가 없어도 0건**이었고, 예전 줄은 `Remove` 반환 타입이 우연히 어긋나서 에러였음)
-local negMapOps: stl.MapOps<stl.HashSet<number>, number, boolean> = HashSet
-local negMapOpsList: stl.MapOps<stl.Arr<number>, number, number> = Arr
+local negMapOps: stl.MapCore<stl.HashSet<number>, number, boolean> = HashSet
+local negMapOpsList: stl.MapCore<stl.Arr<number>, number, number> = Arr
 local noRemove = {
 	Get = HashMap.Get,
 	Set = HashMap.Set,
 	Has = HashMap.Has,
 	Iter = HashMap.Iter,
 }
-local negNoRemove: stl.MapOps<stl.HashMap<string, number>, string, number> = noRemove
-local function putVia<C, K, V>(ops: stl.MapOps<C, K, V>, map: C, key: K, value: V)
+local negNoRemove: stl.MapCore<stl.HashMap<string, number>, string, number> = noRemove
+local function putVia<C, K, V>(ops: stl.MapCore<C, K, V>, map: C, key: K, value: V)
 	ops.Set(map, key, value)
 end
 putVia<<stl.HashSet<number>, number, boolean>>(HashSet, hs, 3, true)
-local negPartial: stl.MapOps<stl.HashMap<string, number>, string, number> = {
+local negPartial: stl.MapCore<stl.HashMap<string, number>, string, number> = {
 	Get = HashMap.Get,
 	Set = HashMap.Set,
 	Iter = HashMap.Iter,
@@ -164,7 +164,7 @@ for _, value in mapOps.Iter(tm) do
 	local _untyped: string = value
 end
 --[[ 알려진 경계 — 타입 인자가 any 인 계약 자리는 헐거움(런타임의 필수 함수 검사가 그물) ]]
-local looseOps: stl.MapOps<any, any, any> = FlatSet
+local looseOps: stl.MapCore<any, any, any> = FlatSet
 local function looseImpl()
 	stl.Trait.Impl(stl.Map, stl.Trait.NewToken("Loose"), FlatSet)
 end
@@ -185,7 +185,7 @@ local vecIter = {
 		return m.items
 	end,
 }
-local vecOps: stl.MapOps<VecMap, number, number> = vecIter
+local vecOps: stl.MapCore<VecMap, number, number> = vecIter
 --[[ 알려진 경계 — 읽기 전용 테이블을 받는 내장으로는 쓰기가 됨 ]]
 local function builtinWrites()
 	table.clear(HashMap.Iter(hm))

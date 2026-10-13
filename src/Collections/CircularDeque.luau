@@ -146,7 +146,7 @@ end
 
 --#endregion
 
---#region ----------- 계약 구현 (List.Ops) -----------
+--#region ----------- 계약 구현 (List.Core) -----------
 -- 위치는 논리 위치(1..size). 알고리즘이 준 위치만 받는 자리라 검사하지 않습니다(`Arr` 과 같음).
 -- 읽기만 하니 `CircularDequeRead`(공변) — 조회 절의 함수들과 `ToArr`·`Clone`(새 컨테이너를 만듦)도 같습니다.
 
@@ -384,8 +384,8 @@ Trait.Impl(Deque, TOKEN, CircularDequeModule)
 Trait.Impl(Collection, TOKEN, CircularDequeModule)
 
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다(`Trait.Impl` 호출만으로는 서명 불일치가 안 잡힘).
-const _ops: List.Impl<CircularDeque<any>, any, number> = CircularDequeModule
-const _deque: Deque.Ops<CircularDeque<any>, any> = CircularDequeModule
-const _collection: Collection.Ops<CircularDeque<any>> = CircularDequeModule
+const _ops: List.Provided<CircularDeque<any>, any, number> = CircularDequeModule
+const _deque: Deque.Core<CircularDeque<any>, any> = CircularDequeModule
+const _collection: Collection.Core<CircularDeque<any>> = CircularDequeModule
 
 return CircularDequeModule
