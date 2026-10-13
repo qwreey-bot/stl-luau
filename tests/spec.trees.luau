@@ -13,6 +13,7 @@
 local stl = require("../src")
 local Node = stl.Node
 local Binary = Node.Binary
+local Traverse = stl.Traverse
 
 -- 두 방식의 노드를 같은 시나리오로 다루려고 느슨하게(타입은 `spikes/66` 이 지킴)
 type RbNode = any
@@ -75,7 +76,7 @@ local function check(root: RbRead?, label: string): { number }
 	end
 	-- 노드 도구의 순회도 같은 순서(앞으로·뒤로)
 	local at = 0
-	for node in Binary.InOrder(root) do
+	for node in Traverse.InOrder(root) do
 		at += 1
 		assert((node :: any)[5] == keys[at], `{label}: InOrder {at}`)
 	end
@@ -381,7 +382,7 @@ do
 	-- 이진: 회전은 부모의 자식 칸과 부모 칸 셋을 다 고치고, 중위 순서를 바꾸지 않음
 	local function inorder(root: stl.BinaryNodeRead<number>): string
 		const out: { string } = {}
-		for node in Binary.InOrder(root) do
+		for node in Traverse.InOrder(root) do
 			table.insert(out, tostring(Binary.Value(node)))
 		end
 		return table.concat(out, ",")
@@ -447,7 +448,7 @@ do
 	Binary.SetValue(newRoot, 2)
 	assert(Binary.Value(newRoot) == 2, "SetValue")
 	local never = 0
-	for _ in Binary.InOrder(nil :: stl.BinaryNodeRead<number>?) do
+	for _ in Traverse.InOrder(nil :: stl.BinaryNodeRead<number>?) do
 		never += 1
 	end
 	assert(never == 0, "InOrder(nil)")
@@ -459,6 +460,197 @@ do
 		"계약의 칸과 같음"
 	)
 	assert(Binary.Value(rbRoot) == 7, "트리 노드는 이진 노드의 도구에도 들어감")
+end
+print("PASS")
+
+print("=== 6. Traverse — 전위·중위·후위·층별 순회자 (2026-10-13) ===")
+do
+	-- 대조군: 재귀로 쓴 네 순회(칸을 직접 읽음 — `2` = 왼쪽, `3` = 오른쪽).
+	local function refPre(node: any, out: { any })
+		if node ~= nil then
+			table.insert(out, node)
+			refPre(node[2], out)
+			refPre(node[3], out)
+		end
+	end
+	local function refIn(node: any, out: { any })
+		if node ~= nil then
+			refIn(node[2], out)
+			table.insert(out, node)
+			refIn(node[3], out)
+		end
+	end
+	local function refPost(node: any, out: { any })
+		if node ~= nil then
+			refPost(node[2], out)
+			refPost(node[3], out)
+			table.insert(out, node)
+		end
+	end
+	local function refLevel(root: any, out: { any })
+		local layer = if root ~= nil then { root } else {}
+		while #layer > 0 do
+			const nextLayer = {}
+			for _, node in layer do
+				table.insert(out, node)
+				if node[2] ~= nil then
+					table.insert(nextLayer, node[2])
+				end
+				if node[3] ~= nil then
+					table.insert(nextLayer, node[3])
+				end
+			end
+			layer = nextLayer
+		end
+	end
+	const orders = {
+		{ name = "PreOrder", walk = Traverse.PreOrder, ref = refPre },
+		{ name = "InOrder", walk = Traverse.InOrder, ref = refIn },
+		{ name = "PostOrder", walk = Traverse.PostOrder, ref = refPost },
+		{ name = "LevelOrder", walk = Traverse.LevelOrder, ref = refLevel },
+	}
+	-- 한 부분 트리를 네 순회로 돌아 대조군과 **같은 노드가 같은 순서로** 나오는지(값이 아니라 노드의 정체성).
+	local function same(root: any, label: string)
+		for _, order in orders do
+			const want: { any } = {}
+			order.ref(root, want)
+			local at = 0
+			for node in (order.walk :: any)(root) do
+				at += 1
+				assert(node == want[at], `{label} {order.name}: {at}번째가 다름`)
+			end
+			assert(at == #want, `{label} {order.name}: {at}개를 냄, 기대 {#want}`)
+		end
+	end
+
+	-- (1) 손으로 지은 트리 — 순서를 값으로 고정(키·값·위치가 서로 다르게: 값은 10 단위)
+	--            40
+	--        20      60
+	--      10  30      70
+	--            35  65
+	const n40, n20, n60 = Binary.New(40), Binary.New(20), Binary.New(60)
+	const n10, n30, n70, n35, n65 = Binary.New(10), Binary.New(30), Binary.New(70), Binary.New(35), Binary.New(65)
+	Binary.SetLeft(n40, n20)
+	Binary.SetRight(n40, n60)
+	Binary.SetLeft(n20, n10)
+	Binary.SetRight(n20, n30)
+	Binary.SetRight(n30, n35)
+	Binary.SetRight(n60, n70)
+	Binary.SetLeft(n70, n65)
+	local function values(
+		walk: (stl.BinaryNode<number>?) -> () -> stl.BinaryNode<number>?,
+		root: stl.BinaryNode<number>?
+	): string
+		const out: { string } = {}
+		for node in walk(root) do
+			table.insert(out, tostring(Binary.Value(node)))
+		end
+		return table.concat(out, ",")
+	end
+	assert(values(Traverse.PreOrder, n40) == "40,20,10,30,35,60,70,65", `PreOrder: {values(Traverse.PreOrder, n40)}`)
+	assert(values(Traverse.InOrder, n40) == "10,20,30,35,40,60,65,70", `InOrder: {values(Traverse.InOrder, n40)}`)
+	assert(values(Traverse.PostOrder, n40) == "10,35,30,20,65,70,60,40", `PostOrder: {values(Traverse.PostOrder, n40)}`)
+	assert(
+		values(Traverse.LevelOrder, n40) == "40,20,60,10,30,70,35,65",
+		`LevelOrder: {values(Traverse.LevelOrder, n40)}`
+	)
+
+	-- (2) ⭐ 부분 트리 안에서만 — 가운데 노드를 넘기면 그 위(부모·형제)로 나가지 않음.
+	--     부모 칸을 따라 올라가는 구현이라 멈출 자리를 놓치면 트리 전체를 돕니다.
+	assert(values(Traverse.PreOrder, n20) == "20,10,30,35", `부분 PreOrder: {values(Traverse.PreOrder, n20)}`)
+	assert(values(Traverse.InOrder, n20) == "10,20,30,35", `부분 InOrder: {values(Traverse.InOrder, n20)}`)
+	assert(values(Traverse.PostOrder, n20) == "10,35,30,20", `부분 PostOrder: {values(Traverse.PostOrder, n20)}`)
+	assert(values(Traverse.LevelOrder, n20) == "20,10,30,35", `부분 LevelOrder: {values(Traverse.LevelOrder, n20)}`)
+	-- 오른쪽 부분 트리(왼쪽 형제가 있는 쪽), 잎 하나, 오른쪽 자식만 있는 가운데 노드
+	assert(
+		values(Traverse.PreOrder, n60) == "60,70,65" and values(Traverse.PostOrder, n60) == "65,70,60",
+		"오른쪽 부분"
+	)
+	assert(
+		values(Traverse.InOrder, n60) == "60,65,70" and values(Traverse.LevelOrder, n60) == "60,70,65",
+		"오른쪽 부분 2"
+	)
+	for _, order in orders do
+		assert(values(order.walk :: any, n10) == "10", `잎 하나 {order.name}`)
+		assert(
+			values(order.walk :: any, n30) == "30,35" or order.name == "PostOrder",
+			`오른쪽 자식만 {order.name}`
+		)
+		same(n30, "오른쪽 자식만")
+		same(n70, "왼쪽 자식만")
+	end
+	assert(values(Traverse.PostOrder, n30) == "35,30", "오른쪽 자식만 PostOrder")
+
+	-- (3) 빈 트리, 노드 하나
+	for _, order in orders do
+		local never = 0
+		for _ in (order.walk :: any)(nil) do
+			never += 1
+		end
+		assert(never == 0, `{order.name}(nil)`)
+		-- 끝난 순회자를 더 불러도 계속 `nil`
+		const walk = (order.walk :: any)(n10)
+		assert(walk() == n10 and walk() == nil and walk() == nil, `{order.name}: 끝난 뒤에도 nil`)
+	end
+	same(nil, "빈 트리")
+	same(Binary.New(5), "노드 하나")
+
+	-- (4) 한쪽으로만 뻗은 트리(왼쪽 사슬·오른쪽 사슬·지그재그) — 올라가기 루프의 양 끝
+	for _, shape in { "left", "right", "zigzag" } do
+		const top = Binary.New(1000)
+		local tip = top
+		for step = 1, 40 do
+			const fresh = Binary.New(1000 + step * 10)
+			const goLeft = shape == "left" or (shape == "zigzag" and step % 2 == 1)
+			if goLeft then
+				Binary.SetLeft(tip, fresh)
+			else
+				Binary.SetRight(tip, fresh)
+			end
+			tip = fresh
+		end
+		same(top, shape)
+		same(Binary.Left(top) or Binary.Right(top), `{shape} 의 부분`)
+	end
+
+	-- (5) 무작위 모양 — 두 균형 방식이 지은 트리(넣고 빼기를 섞어 모양을 흔듦)와 그 안의 **모든 부분 트리**
+	local seed = 20261013
+	local function rand(limit: number): number
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed % limit
+	end
+	for _, scheme in { stl.RedBlack :: any, stl.Avl :: any } do
+		for round = 1, 30 do
+			local root: any = nil
+			const size = 1 + rand(120)
+			for _ = 1, size do
+				root = (scheme.Insert(root, rand(400) * 10, rand(9), stl.Common.compareNumber))
+			end
+			for _ = 1, rand(size) do
+				const victim = stl.Search.Find(root, rand(400) * 10, stl.Common.compareNumber)
+				if victim ~= nil then
+					root = scheme.Remove(root, victim)
+				end
+			end
+			same(root, `무작위 {round}`)
+			const all: { any } = {}
+			refPre(root, all)
+			for _, node in all do
+				same(node, `무작위 {round} 의 부분 트리`)
+			end
+		end
+	end
+
+	-- (6) 트리부의 노드도 그대로 — 중위 순회는 키 순서
+	local rb: stl.RbNode<number, string>? = nil
+	for _, key in { 50, 20, 80, 10, 30, 70, 90 } do
+		rb = (stl.RedBlack.Insert(rb, key, `v{key}`, stl.Common.compareNumber))
+	end
+	const seen: { string } = {}
+	for node in Traverse.InOrder(rb) do
+		table.insert(seen, `{stl.Search.Key(node)}={stl.Search.Value(node)}`)
+	end
+	assert(table.concat(seen, ",") == "10=v10,20=v20,30=v30,50=v50,70=v70,80=v80,90=v90", table.concat(seen, ","))
 end
 print("PASS")
 

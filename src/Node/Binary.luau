@@ -197,19 +197,7 @@ const function Replace<T>(old: Node<T>, fresh: Node<T>?): boolean
 	return false
 end
 
--- 중위 순서로 노드를 하나씩: `for node in Node.Binary.InOrder(root) do`. `root` 가 `nil` 이면 돌지 않습니다.
--- 다음 노드는 지금 노드를 **낸 뒤에** 찾습니다 — 도는 동안 트리를 바꾸면 정의되지 않은 동작입니다(회전이
--- 길을 바꿈. 지우며 돌려면 `Next` 를 먼저 읽어 두세요).
-const function InOrder<N>(root: (N & Kind)?): () -> N?
-	local cursor: any = if root ~= nil then First(root :: any) else nil
-	return function(): N?
-		const node = cursor
-		if node ~= nil then
-			cursor = Next(node)
-		end
-		return node
-	end
-end
+-- (순회자 — 전위·중위·후위·층별 — 는 `Trees/Traverse` 에 있습니다. 여기에는 노드 하나에서 이웃으로 가는 도구만.)
 
 -- 부분 트리의 높이(빈 트리는 0). O(n) — 검사·디버깅용.
 const function Height(node: Kind?): number
@@ -228,5 +216,5 @@ return {
 	SetLeft = SetLeft, SetRight = SetRight,
 	First = First, Last = Last, Next = Next, Prev = Prev,
 	RotateLeft = RotateLeft, RotateRight = RotateRight, Replace = Replace,
-	InOrder = InOrder, Height = Height,
+	Height = Height,
 }

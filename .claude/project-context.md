@@ -83,11 +83,12 @@ src/
     init.luau        Node.Single / Node.Double / Node.Binary 로 묶음
     Single.luau      단방향 `{ 값, 다음 }` — Value·Next·InsertNext·RemoveNext·Walk·Count
     Double.luau      양방향 `{ 값, 앞, 뒤 }` — Value·Prev·Next·InsertNext·InsertPrev·Unlink·Walk·WalkBack·Count
-    Binary.luau      이진 `{ 값, 왼쪽, 오른쪽, 부모 }` — 회전, 중위 Next·Prev, First·Last, Replace, SetLeft·SetRight, InOrder
+    Binary.luau      이진 `{ 값, 왼쪽, 오른쪽, 부모 }` — 회전, 중위 Next·Prev, First·Last, Replace, SetLeft·SetRight
   Trees/           ⭐ 2층 트리부 — 노드 도구로 짠 균형 방식. 컨테이너가 아니라 뿌리 노드를 받는 함수들
     Search.luau      탐색 트리 노드의 칸 배치(이진 + `5` = 키, `6` = 균형 정보), Key·Value·Next·Prev·First·Last,
                      균형 방식과 무관한 공유 조각(Find·LowerBound·UpperBound·Clone)
     Balance.luau     자가 균형의 계약(Balance.Scheme)과 조립하는 쪽의 인자 확인(Balance.Expect)
+    Traverse.luau    순회자 — PreOrder·InOrder·PostOrder·LevelOrder (받은 부분 트리 안에서만, 스택 없이 부모 칸으로)
     RedBlack.luau    레드블랙 — Insert·Remove·FromSorted (제품의 기본)
     Avl.luau         AVL — 같은 표면
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
@@ -156,7 +157,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `Heap` | 완성 | `spikes/44` |
 | `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |
 | `LinkedDeque` / `Node` / 트레이트 `Deque` | 2026-10-13 — 리뷰 대기 | `spikes/65` |
-| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`·`Balance`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
+| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`·`Balance`·`Traverse`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 

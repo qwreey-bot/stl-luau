@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 28 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 31 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -102,6 +102,15 @@ local avlFound: stl.AvlNodeRead<string, number> = Avl.Find(avlRoot, "a", compare
 Avl.Insert(avlRoot, "b", "not a number", compare)
 local negAvlRemove = Avl.Remove(Avl.Find(avlRoot, "a", compare), avlRoot)
 
+--[[ Traverse — 순회자는 받은 노드의 타입 그대로 냄(레드블랙 노드를 돌면 레드블랙 노드 — 그 방식의 Remove 에 넘길 수 있음) ]]
+local okTraverse: RbNode? = stl.Traverse.PreOrder(root)()
+local okTraverseRead: stl.RbNodeRead<string, number>? = stl.Traverse.InOrder(found)()
+local okTraverseRemove: RbNode? = RedBlack.Remove(root, stl.Traverse.PostOrder(root)() :: RbNode)
+-- NEG: 다른 방식의 노드로 받기 / 양방향 노드는 이진 순회에 못 들어감 / 읽기 노드를 돌아 얻은 것은 고칠 수 있는 노드가 아님
+local negTraverseScheme: stl.AvlNode<string, number>? = stl.Traverse.PostOrder(root)()
+local negTraverseKind = stl.Traverse.LevelOrder(Node.Double.New(1))
+local negTraverseRead: RbNode? = stl.Traverse.InOrder(found)()
+
 local canary: string = 42
 
 return {
@@ -136,5 +145,11 @@ return {
 	negSharedValue,
 	avlFound,
 	negAvlRemove,
+	okTraverse,
+	okTraverseRead,
+	okTraverseRemove,
+	negTraverseScheme,
+	negTraverseKind,
+	negTraverseRead,
 	canary,
 }
