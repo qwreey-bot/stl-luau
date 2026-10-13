@@ -9,6 +9,12 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 fail=0
 
+# ⚠️ 자원 상한 — 이 스크립트가 띄우는 모든 프로세스에 걸립니다(2026-10-13 사고: 연결을 고치는 돌연변이가 노드를
+# 고리로 이어 `luau tests/run.luau` 가 12GB 까지 커졌고, 컨테이너가 30분 스래싱해 호스트에서 죽여야 했음).
+# 정상 실행은 128MB 안에서 돕니다(실측) — 넘으면 무한 루프·폭주로 보고 실패시킵니다. 시간 상한은 아래 luau 실행에.
+ulimit -v 4194304
+TEST_TIMEOUT=300
+
 # tests 를 넣으면 require 로 src 도 같이 끌려와 같은 파일이 "src/arr.luau" 와
 # "./src/arr.luau" 두 경로로 중복 보고됩니다. 정규화 후 중복을 지웁니다.
 out=$(luau-analyze src tests 2>&1 | sed "s|^$PWD/||; s|^\./||" | sort -u)
@@ -232,13 +238,16 @@ fi
 
 echo
 echo "=== luau tests/run.luau"
-luau tests/run.luau || fail=1
+timeout "$TEST_TIMEOUT" luau tests/run.luau || {
+	echo "  → 테스트 실패(exit $?). 124 = 시간 초과, 134·137·143 또는 'not enough memory' = 자원 상한(무한 루프·폭주 의심)"
+	fail=1
+}
 
 # -O2 는 로컬 함수를 인라인해 프레임 수가 바뀝니다 — 에러가 "사용자 줄" 을
 # 가리키는지가 최적화 수준에 따라 갈렸습니다(2026-10-02, quad 탐사 C). 라이브
 # Roblox 는 -O2 가 기본이라 같은 테스트를 그 수준으로도 돌립니다.
 echo
 echo "=== luau -O2 tests/run.luau"
-luau -O2 tests/run.luau >/dev/null || fail=1
+timeout "$TEST_TIMEOUT" luau -O2 tests/run.luau >/dev/null || fail=1
 
 exit "$fail"
