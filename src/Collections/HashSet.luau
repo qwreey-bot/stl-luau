@@ -355,5 +355,10 @@ const HashSetModule = {
 -- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.
 Trait.Impl(Set, TOKEN, HashSetModule)
 Trait.Impl(Collection, TOKEN, HashSetModule)
+-- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다(`Trait.Impl` 호출만으로는 서명 불일치가 안 잡힘).
+-- ⚠️ **구체 타입으로** 적습니다(키 `string`·값 `number` 처럼 서로 다르게): `any` 로 적었던 때는 반환 타입만 잡히고
+-- 인자 수·인자 타입·자리 바뀜이 0건이었습니다(2라운드 리뷰 — 인자가 `any` 인 함수 타입 자리는 서명을 안 견줌).
+const _set: Set.Core<HashSet<string>, string> = HashSetModule
+const _collection: Collection.Core<HashSet<string>> = HashSetModule
 
 return HashSetModule

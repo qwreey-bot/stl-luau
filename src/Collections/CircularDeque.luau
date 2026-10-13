@@ -384,8 +384,8 @@ Trait.Impl(Deque, TOKEN, CircularDequeModule)
 Trait.Impl(Collection, TOKEN, CircularDequeModule)
 
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다(`Trait.Impl` 호출만으로는 서명 불일치가 안 잡힘).
-const _ops: List.Provided<CircularDeque<any>, any, number> = CircularDequeModule
-const _deque: Deque.Core<CircularDeque<any>, any> = CircularDequeModule
-const _collection: Collection.Core<CircularDeque<any>> = CircularDequeModule
+const _ops: List.Provided<CircularDeque<string>, string, number> = CircularDequeModule
+const _deque: Deque.Core<CircularDeque<string>, string> = CircularDequeModule
+const _collection: Collection.Core<CircularDeque<string>> = CircularDequeModule
 
 return CircularDequeModule

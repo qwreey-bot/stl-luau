@@ -493,7 +493,7 @@ const TreeSetModule = {
 Trait.Impl(Set, TOKEN, TreeSetModule)
 Trait.Impl(Collection, TOKEN, TreeSetModule)
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
-const _set: Set.Core<TreeSet<any>, any> = TreeSetModule
-const _collection: Collection.Core<TreeSet<any>> = TreeSetModule
+const _set: Set.Core<TreeSet<string>, string> = TreeSetModule
+const _collection: Collection.Core<TreeSet<string>> = TreeSetModule
 
 return TreeSetModule

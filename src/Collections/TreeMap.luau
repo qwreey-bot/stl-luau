@@ -480,7 +480,7 @@ const TreeMapModule = {
 Trait.Impl(Map, TOKEN, TreeMapModule)
 Trait.Impl(Collection, TOKEN, TreeMapModule)
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
-const _map: Map.Core<TreeMap<any, any>, any, any> = TreeMapModule
-const _collection: Collection.Core<TreeMap<any, any>> = TreeMapModule
+const _map: Map.Core<TreeMap<string, number>, string, number> = TreeMapModule
+const _collection: Collection.Core<TreeMap<string, number>> = TreeMapModule
 
 return TreeMapModule

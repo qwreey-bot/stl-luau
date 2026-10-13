@@ -2865,8 +2865,8 @@ const ArrModule = {
 Trait.Impl(List, TOKEN, ArrModule)
 -- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다 — `Trait.Impl` 호출만으로는 트레이트가 `any` 로
 -- 풀려 함수 대 함수의 서명 불일치가 안 잡힙니다(2단계 리뷰). 재정의 일곱의 서명도 이 줄이 봅니다.
-const _list: List.Provided<Arr<any>, any, number> = ArrModule
-const _collection: Collection.Core<Arr<any>> = ArrModule
+const _list: List.Provided<Arr<string>, string, number> = ArrModule
+const _collection: Collection.Core<Arr<string>> = ArrModule
 Trait.Impl(Collection, TOKEN, ArrModule)
 
 return ArrModule
