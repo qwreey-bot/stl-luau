@@ -48,6 +48,17 @@ if [ -n "$lint" ]; then
 	fail=1
 fi
 
+# tests 의 린트는 대부분 제외하지만 **중복된 테이블 키**(TableLiteral)는 실패로 칩니다 — 표로 짠 테스트에서 키가
+# 겹치면 앞의 항목이 조용히 사라집니다. 2026-10-13 이름 바꾸기(`Arr.FromTable` → `Adopt`, `CloneFromTable` →
+# `FromTable`)가 "모든 생성 경로가 토큰을 붙이는가" 표에 `FromTable` 키를 둘 만들어 `Arr.Adopt` 가 검사에서 빠졌는데
+# 테스트는 통과했습니다.
+dupkeys=$(printf '%s\n' "$out" | grep -E '^tests/[^(]+\([0-9]+,[0-9]+\): TableLiteral: ')
+if [ -n "$dupkeys" ]; then
+	echo "  → tests 에 중복된 테이블 키가 있습니다(앞의 항목이 덮여 검사에서 빠짐):"
+	printf '%s\n' "$dupkeys" | sed 's/^/     /'
+	fail=1
+fi
+
 # ⭐ 음성 대조군 배터리 — 이 저장소에서 가장 중요한 게이트다.
 # 진단 건수가 0 이 되는 것은 "타입이 완벽해졌다" 가 아니라 보통 "타입 검사가
 # 죽었다" 는 뜻이다(2026-08-31 에 실제로 0/6 이었다). 스파이크마다 나와야 할

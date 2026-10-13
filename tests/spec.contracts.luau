@@ -172,7 +172,7 @@ do
 	const arrResults: { [string]: any } = {
 		Of = a(),
 		Sized = Arr.Sized(2, 0),
-		FromTable = Arr.Adopt({ 1, 2 }),
+		Adopt = Arr.Adopt({ 1, 2 }),
 		FromTable = Arr.FromTable({ 1, 2 }),
 		FromIter = Arr.FromIter<<number>>(ipairs({ 1, 2 })),
 		-- 테이블을 받는 갈래는 따로 돌려줌(4라운드 리뷰 — 토큰 없는 결과를 `any` 로 만들어도 통과했음)
