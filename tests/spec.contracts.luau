@@ -461,7 +461,7 @@ do
 		for _, v in { nil, 1, "x", true, {}, { n = 0 }, { [oldTags[idx]] = true } } :: { any } do
 			assert(not case.is(v), `{case.name}: {typeof(v)} 를 받아들임`)
 		end
-		assert(not case.is({ __type = stl.Trait.NewType(case.name) }), `{case.name}: 이름만 같은 토큰`)
+		assert(not case.is({ __type = stl.Trait.NewToken(case.name) }), `{case.name}: 이름만 같은 토큰`)
 		assert(not case.is({ __type = { name = case.name } }), `{case.name}: 직렬화했다 되읽은 토큰`)
 		-- 토큰을 베껴 넣으면 그 종류(위조는 계약 밖 — 막지 않음)
 		assert(case.is({ __type = case.token }), `{case.name}: 토큰을 가진 테이블`)
@@ -567,7 +567,7 @@ do
 		assert(T.TokenOf({ __type = bogus }) == nil, `토큰 아닌 __type: {tostring(bogus)}`)
 	end
 	-- Stamp 로 사용자 값에 토큰
-	const MyKind = T.NewType("MyKind")
+	const MyKind = T.NewToken("MyKind")
 	const stamped = T.Stamp({}, MyKind)
 	assert(T.TokenOf(stamped) == MyKind and not stl.isArr(stamped), "Stamp")
 	-- 공용 알고리즘의 에러는 토큰 아닌 `__type` 에서도 규약대로(리뷰 1라운드 — 라이브러리 줄에서
@@ -615,7 +615,7 @@ do
 		{
 			name = "이름이 문자열이 아님",
 			run = function()
-				T.NewType(nil :: any)
+				T.NewToken(nil :: any)
 			end,
 		},
 		{
@@ -840,7 +840,7 @@ do
 	assert(string.find(listReservedMsg, "got x", 1, true) ~= nil, `FromList 예약 필드: {listReservedMsg}`)
 	-- (4라운드) 같은 사본의 사용자 컨테이너가 `n` 을 가져도 리스트가 아님 — 링 버퍼처럼 `n` 이 개수면
 	-- 1..n 으로 조용히 잘못 읽었음. 이름이 Arr 가 아니면 `n` 과 상관없이 거절.
-	const Ring = T.NewType("Ring")
+	const Ring = T.NewToken("Ring")
 	const ring = T.Stamp({ n = 3, head = 3, [1] = "c", [3] = "a", [4] = "b" }, Ring)
 	const ringRuns: { () -> () } = {
 		function()
@@ -904,7 +904,7 @@ do
 	end
 	-- 구현 테이블은 **인라인으로**(따로 쥐는 지역 변수 없이) — 쥐고 있으면 `"kv"` 로 잘못 써도
 	-- 남아 돌연변이가 살아남았음.
-	const keptToken = T.NewType("Kept")
+	const keptToken = T.NewToken("Kept")
 	T.Impl(
 		stl.List,
 		keptToken,
@@ -924,7 +924,7 @@ do
 	})
 	local registered = 0
 	for _ = 1, 50 do
-		const tok = T.NewType("Temp")
+		const tok = T.NewToken("Temp")
 		T.Impl(stl.List, tok, stl.Arr)
 		registered += 1
 	end
@@ -981,7 +981,7 @@ do
 		keys: { string },
 		values: { number },
 	}
-	const MyMapType = stl.Trait.NewType("MyMap")
+	const MyMapType = stl.Trait.NewToken("MyMap")
 	const function find(m: MyMap, k: string): number?
 		return table.find(m.keys, k)
 	end
@@ -1102,7 +1102,7 @@ do
 		Set = myOps.Set,
 		Iter = myOps.Iter,
 	}
-	const PartialType = stl.Trait.NewType("PartialMap")
+	const PartialType = stl.Trait.NewToken("PartialMap")
 	local partialLine = 0
 	const okPartial, errPartial = pcall(function()
 		partialLine = debug.info(1, "l") + 1
@@ -1125,7 +1125,7 @@ do
 			{ impl = "impl", needle = "needs a table of functions for Collection, got string" },
 		} :: { { impl: any, needle: string } }
 	do
-		const BadType = stl.Trait.NewType("BadCollection")
+		const BadType = stl.Trait.NewToken("BadCollection")
 		const okBad, errBad = pcall(function()
 			badLine = debug.info(1, "l") + 1
 			stl.Trait.Impl(stl.Collection, BadType, bad.impl)
@@ -1136,11 +1136,11 @@ do
 	end
 	-- 필수 목록이 없는 사용자 트레이트는 예전처럼 아무 구현이나 받고, 목록의 모양은 `New` 가 봄
 	const Loose = stl.Trait.New<<{ read Show: (any) -> string }>>("Loose")
-	stl.Trait.Impl(Loose, stl.Trait.NewType("LooseKind"), {} :: any)
+	stl.Trait.Impl(Loose, stl.Trait.NewToken("LooseKind"), {} :: any)
 	const names = { "Show" }
 	const Strict = stl.Trait.New<<{ read Show: (any) -> string }>>("Strict", { required = names })
 	names[1] = "Other" -- 넘긴 목록을 나중에 바꿔도 트레이트는 그대로(사본)
-	const StrictKind = stl.Trait.NewType("StrictKind")
+	const StrictKind = stl.Trait.NewToken("StrictKind")
 	assert(not pcall(function()
 		stl.Trait.Impl(Strict, StrictKind, { Other = function() end } :: any)
 	end), "필수 목록은 넘긴 때의 것")
@@ -1562,7 +1562,7 @@ do
 			fnCount += 1
 			const partial = table.clone(builtin.full)
 			partial[missing] = nil
-			const Kind = T.NewType("Partial")
+			const Kind = T.NewToken("Partial")
 			const ok, err = pcall(function()
 				where = debug.info(1, "l") + 1
 				T.Impl(builtin.trait, Kind, partial)
@@ -1578,12 +1578,12 @@ do
 		-- 목록이 계약의 함수 수와 같음(더 많이 요구하지도 않음) — 다 갖춘 구현은 등록됨
 		assert(#builtin.trait.required == fnCount, `{builtin.name} 의 필수 목록 길이`)
 		assert(table.isfrozen(builtin.trait.required), `{builtin.name} 의 필수 목록은 얼어 있음`)
-		T.Impl(builtin.trait, T.NewType("Full"), table.clone(builtin.full))
+		T.Impl(builtin.trait, T.NewToken("Full"), table.clone(builtin.full))
 	end
 
 	-- ⭐ 사용자 컬렉션(가방) — Len·Clear·(맵이면) 미리 잡기 경로를 사용자 구현으로
 	type Bag = { read __type: stl.TraitToken<string>, read __collectionMut: true, items: { number } }
-	const BagType = T.NewType("Bag")
+	const BagType = T.NewToken("Bag")
 	T.Impl(
 		stl.Collection,
 		BagType,
@@ -1609,7 +1609,7 @@ do
 	-- 맵이면서 컬렉션인 사용자 구현: `Len` 이 엉터리여도(음수·NaN·너무 큼·숫자 아님) Keys/Values 는 됨
 	-- (리뷰: `table.create` 가 라이브러리 줄에서 죽었음). 실제보다 크거나 작아도 결과는 같음.
 	type Sized = { read __type: stl.TraitToken<string>, read __mapKey: string, read __mapValue: number, len: any }
-	const SizedType = T.NewType("SizedMap")
+	const SizedType = T.NewToken("SizedMap")
 	const pairsOf = { a = 10, b = 20, c = 30 }
 	T.Impl(
 		stl.Map,
@@ -1687,8 +1687,8 @@ do
 			}
 		end,
 	}) :: stl.Trait<CounterOps, any>
-	const Plain = T.NewType("PlainCounter")
-	const Fast = T.NewType("FastCounter")
+	const Plain = T.NewToken("PlainCounter")
+	const Fast = T.NewToken("FastCounter")
 	local plainIncCalls = 0
 	T.Impl(CounterTrait, Plain, {
 		Get = function(c: Counter): number
@@ -1734,7 +1734,7 @@ do
 	local where = 0
 	const okMissing, errMissing = pcall(function()
 		where = debug.info(1, "l") + 1
-		T.Impl(CounterTrait, T.NewType("NoInc"), {
+		T.Impl(CounterTrait, T.NewToken("NoInc"), {
 			Get = function(c: Counter): number
 				return c.n
 			end,
@@ -1767,7 +1767,7 @@ do
 	assert(shown ~= nil and shown.Show(plain) == "<14>" and shown.Shout(plain) == "<14>!", "저절로 따라온 Show")
 	assert(rawequal(T.ImplOf(ShowTrait, plain), shown), "만들어 둔 표를 다시 돌려줌")
 	-- 의존을 안 갖춘 종류에는 안 따라옴(토큰만 있는 값, 내장 컨테이너, 테이블 아님)
-	const Other = T.NewType("Other")
+	const Other = T.NewToken("Other")
 	for _, value in { { __type = Other }, stl.Arr.Of(1), 5, "x", {} } :: { any } do
 		assert(T.ImplOf(ShowTrait, value) == nil and not T.Implements(ShowTrait, value), "의존이 없으면 없음")
 	end
@@ -1803,7 +1803,7 @@ do
 	)
 	assert(string.find(tostring(errTwice), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errTwice}`)
 	-- 의존을 안 갖춘 종류를 명시적으로 등록하면 사용자 줄 에러
-	const Lonely = T.NewType("Lonely")
+	const Lonely = T.NewToken("Lonely")
 	const okDep, errDep = pcall(function()
 		where = debug.info(1, "l") + 1
 		T.Impl(ShowTrait, Lonely, {} :: any)
@@ -1827,7 +1827,7 @@ do
 			}
 		end,
 	})
-	const fresh: Counter = { __type = T.NewType("FreshCounter"), n = 2 } :: any
+	const fresh: Counter = { __type = T.NewToken("FreshCounter"), n = 2 } :: any
 	T.Impl(CounterTrait, rawget(fresh :: any, "__type"), { Get = plainOps.Get, Inc = plainOps.Inc })
 	assert((T.ImplOf(LoudTrait, fresh) :: any).Loud(fresh) == "<2>!!!", "의존의 의존")
 	-- Show 가 나중에 재정의되면 Loud 도 따라감(의존 표를 부를 때 꺼내므로)
@@ -1852,7 +1852,7 @@ do
 	)
 	-- 필수 함수가 있는 트레이트는 기본 구현이 있어도 저절로 따라오지 않음
 	assert(
-		T.ImplOf(CounterTrait, { __type = T.NewType("Unregistered") }) == nil,
+		T.ImplOf(CounterTrait, { __type = T.NewToken("Unregistered") }) == nil,
 		"필수 함수가 있으면 등록해야"
 	)
 
@@ -1896,7 +1896,7 @@ do
 	const T = stl.Trait
 	local where = 0
 	const BaseTrait = T.New<<{ read Get: (v: any) -> number }>>("ReviewBase", { required = { "Get" } })
-	const Kind = T.NewType("ReviewKind")
+	const Kind = T.NewToken("ReviewKind")
 	T.Impl(BaseTrait, Kind, {
 		Get = function(_v: any): number
 			return 7
@@ -1983,7 +1983,7 @@ do
 			return "own"
 		end,
 	}, { __index = parent })
-	const InheritKind = T.NewType("InheritKind")
+	const InheritKind = T.NewToken("InheritKind")
 	T.Impl(Shaped, InheritKind, child)
 	const shaped = T.ImplOf(Shaped, { __type = InheritKind })
 	assert(shaped ~= nil and shaped.Get == parent.Get, "물려받은 필수 함수가 완성 표에")
@@ -2071,7 +2071,7 @@ do
 		return "n"
 	end
 	-- (a) 없는 멤버를 읽으면 에러를 내는 엄격한 모듈: 프리미티브만 구현해도 등록됨(기본 구현 이름을 묻다 죽었음)
-	const StrictKind = T.NewType("StrictGreeter")
+	const StrictKind = T.NewToken("StrictGreeter")
 	const strict = setmetatable({ Name = nameOf }, {
 		__index = function(_self: any, key: any)
 			error(`Strict has no member {tostring(key)}`, 2)
@@ -2086,7 +2086,7 @@ do
 	-- 필수 함수가 빠진 엄격한 모듈은 그 모듈의 에러가 아니라 트레이트의 메시지(사용자 줄)
 	const okStrict, errStrict = pcall(function()
 		where = debug.info(1, "l") + 1
-		T.Impl(Greeter, T.NewType("StrictEmpty"), setmetatable({}, getmetatable(strict :: any)) :: any)
+		T.Impl(Greeter, T.NewToken("StrictEmpty"), setmetatable({}, getmetatable(strict :: any)) :: any)
 	end)
 	assert(
 		not okStrict
@@ -2095,7 +2095,7 @@ do
 		`엄격한 모듈의 필수 누락: {errStrict}`
 	)
 	-- (b) 값을 지어내는 프록시: 기본 구현을 갈아치우지 않음
-	const ProxyKind = T.NewType("ProxyGreeter")
+	const ProxyKind = T.NewToken("ProxyGreeter")
 	const proxy = setmetatable({ Name = nameOf }, {
 		__index = function(_self: any, key: any)
 			return function(): string
@@ -2109,7 +2109,7 @@ do
 		"프록시가 지어낸 값은 재정의가 아님"
 	)
 	-- (c) 테이블 사슬은 여러 단이어도 따라감: 필수도 재정의도
-	const ChainKind = T.NewType("ChainGreeter")
+	const ChainKind = T.NewToken("ChainGreeter")
 	const grand = { Name = nameOf }
 	const parentOps = setmetatable({
 		Bye = function(_v: any): string
@@ -2135,7 +2135,7 @@ do
 			}
 		end,
 	})
-	const AutoKind = T.NewType("AutoKind2")
+	const AutoKind = T.NewToken("AutoKind2")
 	const autoValue = { __type = AutoKind }
 	const before = T.ImplOf(Auto2, autoValue) :: any
 	assert(before.Hello() == "auto-hello" and T.Implements(Auto2, autoValue), "저절로 따라옴")
@@ -2162,7 +2162,7 @@ do
 	assert(not okReimpl, "제자리 재정의 뒤에는 명시 등록 — 다시 등록은 에러")
 	-- 저절로 따라올 수 없는 트레이트의 빗나감은 그냥 nil(만들기 경로를 타지 않음 — perf 32절)
 	assert(
-		T.ImplOf(BaseTrait, { __type = T.NewType("Stranger") }) == nil,
+		T.ImplOf(BaseTrait, { __type = T.NewToken("Stranger") }) == nil,
 		"필수 함수가 있는 트레이트의 빗나감"
 	)
 
@@ -2199,7 +2199,7 @@ do
 	const both = T.ImplOf(Both, value)
 	assert(both ~= nil and both.Use(value) == "use7" and puts == 1, "둘 다 갖추면 따라오고 둘 다 받음")
 	-- 의존 있는 트레이트를 **저절로 만들어지기 전에** 명시 등록(모듈을 불러올 때 등록하는 보통 순서)
-	const EarlyKind = T.NewType("EarlyKind")
+	const EarlyKind = T.NewToken("EarlyKind")
 	T.Impl(BaseTrait, EarlyKind, {
 		Get = function(_v: any): number
 			return 3
@@ -2221,7 +2221,7 @@ do
 	-- **넘긴 표는 고치지 않음** — 완성 표는 다른 표(모듈 테이블을 그대로 넘겨도 모듈에 기본 구현이 써지지 않음)
 	assert(not rawequal(early, givenEarly) and rawget(givenEarly :: any, "Use") == nil, "넘긴 표는 그대로")
 	-- 얼린 표를 넘겨도 됨
-	const FrozenKind = T.NewType("FrozenKind")
+	const FrozenKind = T.NewToken("FrozenKind")
 	T.Impl(
 		BaseTrait,
 		FrozenKind,
@@ -2242,7 +2242,7 @@ do
 	-- 합치는 트레이트에 표가 아닌 구현 — 사용자 줄
 	const okNum, errNum = pcall(function()
 		where = debug.info(1, "l") + 1
-		T.Impl(Both, T.NewType("NumKind"), 5 :: any)
+		T.Impl(Both, T.NewToken("NumKind"), 5 :: any)
 	end)
 	assert(not okNum and string.find(tostring(errNum), "needs a table of functions for Both", 1, true), `{errNum}`)
 	assert(string.find(tostring(errNum), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errNum}`)
@@ -2270,7 +2270,7 @@ do
 	const Marked = T.New<<{}>>("Marked", { dependencies = { BaseTrait } })
 	assert(T.Implements(Marked, value) and not T.Implements(Marked, stl.Arr.Of(1)), "표식 트레이트")
 	assert(not pcall(function()
-		T.Impl(Marked, T.NewType("Unmarked"), {})
+		T.Impl(Marked, T.NewToken("Unmarked"), {})
 	end), "의존을 못 갖춘 종류의 표식 등록은 거절")
 	-- `required = {}`(빈 필수 목록) + 의존 — 필수가 없는 것으로 읽혀 따라옴
 	const EmptyRequired = T.New<<{ read Id: (v: any) -> number }>>("EmptyRequired", {
@@ -2314,7 +2314,7 @@ do
 		read __list: number?,
 		read __listIndex: ChainNode,
 	}
-	const ChainType = T.NewType("Chain")
+	const ChainType = T.NewToken("Chain")
 	T.Impl(stl.List, ChainType, {
 		Get = function(_c: Chain, node: ChainNode): number?
 			return node.value
@@ -2514,7 +2514,7 @@ do
 	end
 
 	-- 기본 구현이 부르는 다른 기본 구현은 재정의된 판(Contains → IndexOf)
-	const OddType = T.NewType("OddChain")
+	const OddType = T.NewToken("OddChain")
 	local indexOfCalls = 0
 	T.Impl(
 		stl.List,
@@ -2733,7 +2733,7 @@ end
 print("PASS")
 
 print(
-	"=== 14. 트레이트 모듈 — 트레이트 객체에 진입점을 얹음, Dispatch (2026-10-13, 구조 재배치) ==="
+	"=== 14. 트레이트 모듈 — 트레이트 객체에 진입점을 얹음, ExpectImpl (2026-10-13, 구조 재배치) ==="
 )
 do
 	const T = stl.Trait
@@ -2752,13 +2752,13 @@ do
 		end,
 	}) :: stl.Trait<GaugeFull, GaugeImpl>
 	const function Label(g: Gauge): string
-		return T.Dispatch(GaugeBase, g, "Label").Label(g)
+		return T.ExpectImpl(GaugeBase, g, "Label").Label(g)
 	end
-	const Gauge = T.Module(GaugeBase, { Label = Label })
+	const Gauge = T.Expose(GaugeBase, { Label = Label })
 	assert(Gauge == GaugeBase :: any, "Module 은 같은 트레이트 객체를 돌려줌(정체성 유지)")
 	assert(Gauge.name == "Gauge" and Gauge.Label == Label, "트레이트의 필드와 진입점이 한 표에")
 
-	const PlainKind, LoudKind, OtherKind = T.NewType("PlainGauge"), T.NewType("LoudGauge"), T.NewType("NotGauge")
+	const PlainKind, LoudKind, OtherKind = T.NewToken("PlainGauge"), T.NewToken("LoudGauge"), T.NewToken("NotGauge")
 	T.Impl(Gauge, PlainKind, {
 		Read = function(g: Gauge): number
 			return g.level
@@ -2778,9 +2778,9 @@ do
 	assert(Gauge.Label(loud) == "LEVEL 7", "재정의")
 	assert(T.ImplOf(Gauge, plain) ~= nil and T.Implements(Gauge, loud), "Module 을 거친 트레이트도 조회됨")
 
-	-- Dispatch 의 빗나감: 메시지 머리는 **트레이트 이름**. 세 갈래(구현 없음 / 모르는 토큰 / 토큰 없음).
+	-- ExpectImpl 의 빗나감: 메시지 머리는 **트레이트 이름**. 세 갈래(구현 없음 / 모르는 토큰 / 토큰 없음).
 	-- 줄은 "라이브러리 파일이 아닌 첫 프레임" — 사용자 트레이트의 진입점은 사용자 파일이라 그 진입점 안의
-	-- Dispatch 줄을 가리키고, 내장 트레이트의 진입점은 부른 줄을 가리킵니다(아래에서 정확한 줄로).
+	-- ExpectImpl 줄을 가리키고, 내장 트레이트의 진입점은 부른 줄을 가리킵니다(아래에서 정확한 줄로).
 	local where = 0
 	const misses: { { value: any, gauge: string, map: string } } = {
 		{
@@ -2808,7 +2808,7 @@ do
 		const okGauge, errGauge = pcall(function()
 			Gauge.Label(miss.value)
 		end)
-		assert(not okGauge and string.find(tostring(errGauge), miss.gauge, 1, true), `Dispatch 메시지: {errGauge}`)
+		assert(not okGauge and string.find(tostring(errGauge), miss.gauge, 1, true), `ExpectImpl 메시지: {errGauge}`)
 		assert(string.find(tostring(errGauge), "spec.contracts.luau:", 1, true), `사용자 파일의 줄: {errGauge}`)
 		const okMap, errMap = pcall(function()
 			where = debug.info(1, "l") + 1
@@ -2855,31 +2855,31 @@ do
 		{
 			call = function()
 				where = debug.info(1, "l") + 1
-				T.Module({} :: any, {})
+				T.Expose({} :: any, {})
 			end,
-			want = "Trait: Module needs a trait (from Trait.New), got table",
+			want = "Trait: Expose needs a trait (from Trait.New), got table",
 		},
 		{
 			call = function()
 				where = debug.info(1, "l") + 1
-				T.Module(SpareTrait, 5 :: any)
+				T.Expose(SpareTrait, 5 :: any)
 			end,
-			want = "Trait: Module needs a table of entry functions, got number",
+			want = "Trait: Expose needs a table of entry functions, got number",
 		},
 		{
 			call = function()
 				where = debug.info(1, "l") + 1
-				T.Module(SpareTrait, { Fine = print, impls = print })
+				T.Expose(SpareTrait, { Fine = print, impls = print })
 			end,
-			want = "Trait: Module got an entry named impls, which the trait already has",
+			want = "Trait: Expose got an entry named impls, which the trait already has",
 		},
 		{
 			-- 같은 이름을 두 번 얹는 것도(이미 얹은 진입점과 겹침)
 			call = function()
 				where = debug.info(1, "l") + 1
-				T.Module(Gauge, { Label = print })
+				T.Expose(Gauge, { Label = print })
 			end,
-			want = "Trait: Module got an entry named Label, which the trait already has",
+			want = "Trait: Expose got an entry named Label, which the trait already has",
 		},
 	}
 	for _, case in moduleErrors do
@@ -2913,13 +2913,13 @@ do
 	for _, reserved in { "defaults", "required", "dependencies", "derivable", "derived", "impls", "name", "__impl" } do
 		const ok, err = pcall(function()
 			where = debug.info(1, "l") + 1
-			T.Module(Bare, { Fine = print, [reserved] = print } :: any)
+			T.Expose(Bare, { Fine = print, [reserved] = print } :: any)
 		end)
 		assert(
 			not ok
 				and string.find(
 					tostring(err),
-					`Trait: Module got an entry named {reserved}, which the trait already has`,
+					`Trait: Expose got an entry named {reserved}, which the trait already has`,
 					1,
 					true
 				),
@@ -2932,7 +2932,7 @@ do
 		rawget(Bare :: any, "defaults") == nil and rawget(Bare :: any, "dependencies") == nil,
 		"트레이트는 그대로"
 	)
-	const BareKind = T.NewType("BareKind")
+	const BareKind = T.NewToken("BareKind")
 	const bareImpl = {
 		X = function(_v: any): number
 			return 7
@@ -2944,7 +2944,7 @@ do
 		"거절 뒤에도 평범한 트레이트(넘긴 표 그대로)"
 	)
 
-	-- (2) 저절로 따라오는 트레이트의 **진입점**을 그 종류에 처음 부름(Dispatch 의 빗나감 경로가 만들어 줘야 함)
+	-- (2) 저절로 따라오는 트레이트의 **진입점**을 그 종류에 처음 부름(ExpectImpl 의 빗나감 경로가 만들어 줘야 함)
 	type SizedFull = { read IsEmpty: (c: any) -> boolean }
 	const SizedBase = T.New<<SizedFull>>("Sized", {
 		dependencies = { stl.Collection },
@@ -2956,9 +2956,9 @@ do
 			}
 		end,
 	})
-	const Sized = T.Module(SizedBase, {
+	const Sized = T.Expose(SizedBase, {
 		IsEmpty = function(c: any): boolean
-			return T.Dispatch(SizedBase, c, "IsEmpty").IsEmpty(c)
+			return T.ExpectImpl(SizedBase, c, "IsEmpty").IsEmpty(c)
 		end,
 	})
 	assert(Sized.IsEmpty(stl.Arr.Of<<number>>()) == true, "처음 부르는 진입점 — Arr")
@@ -2980,7 +2980,7 @@ do
 
 	-- (3) `HashMap.FromTable` 은 Arr 을 **토큰의 정체성**으로 알아봄 — 사용자가 "Arr" 라는 이름으로 만든 종류는
 	--     Arr 이 아님(이름으로 알아봤을 땐 조용히 빈 맵이 되거나 필드를 잃었음)
-	const UserArr = T.NewType("Arr")
+	const UserArr = T.NewToken("Arr")
 	for _, value in
 		{
 			T.Stamp({ n = 3, items = { 10, 20, 30 } }, UserArr),

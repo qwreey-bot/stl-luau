@@ -1514,7 +1514,7 @@ do
 	const flags = Arr.FromIter<<boolean>>({ a = false, b = false })
 	assert(flags.n == 2 and flags[1] == false and flags[2] == false, "FromIter(false 값들)")
 	-- 컨테이너 자체는 거절(그 종류의 Iter 를 넘겨야 함) — 다른 종류도
-	const userKind = stl.Trait.Stamp({ items = {} }, stl.Trait.NewType("UserKind"))
+	const userKind = stl.Trait.Stamp({ items = {} }, stl.Trait.NewToken("UserKind"))
 	const lockedArr = setmetatable(Arr.Of(1, 2) :: any, { __metatable = "locked" })
 	const callableArr = setmetatable(Arr.Of(1, 2) :: any, { __call = function() end })
 	for _, container in
@@ -2219,7 +2219,7 @@ do
 		slots: { [string]: V },
 		sets: number,
 	}
-	const BagKind = stl.Trait.NewType("Bag")
+	const BagKind = stl.Trait.NewToken("Bag")
 	stl.Trait.Impl(stl.Map, BagKind, {
 		Get = function(bag: Bag<any>, key: string): any
 			return bag.slots[key]

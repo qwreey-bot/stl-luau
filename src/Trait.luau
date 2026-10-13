@@ -2,8 +2,8 @@
 --[[
 	Trait — 타입 토큰과 트레이트 **시스템**.
 
-	여기에는 장치만 있습니다: 토큰(`NewType`·`TokenOf`·`Stamp`), 트레이트 만들기(`New`), 구현 등록·조회
-	(`Impl`·`ImplOf`·`Implements`), 트레이트 모듈을 짜는 도구(`Dispatch`·`Module`). **트레이트 하나하나**
+	여기에는 장치만 있습니다: 토큰(`NewToken`·`TokenOf`·`Stamp`), 트레이트 만들기(`New`), 구현 등록·조회
+	(`Impl`·`ImplOf`·`Implements`), 트레이트 모듈을 짜는 도구(`ExpectImpl`·`Expose`). **트레이트 하나하나**
 	(`List`·`Map`·`Set`·`Collection` — 계약 타입, 마커, 기본 구현, 종류를 모르는 코드의 진입점)는
 	`src/Traits/` 에 파일 하나씩 있습니다(2026-10-13 사용자: *"trait 은 trait 시스템만 담고 … 인터페이스
 	파일처럼"*).
@@ -11,7 +11,7 @@
 	⭐ **값에는 타입 토큰 하나**(`__type` 필드), **구현은 트레이트가 듭니다**(2026-10-06,
 	사용자와 설계 — quad 의 Brand 를 "값 단위" 가 아니라 "타입 단위" 로).
 	- **타입 토큰**: 컨테이너 종류마다 하나인 공유 테이블 — **그 종류의 모듈이 만들어 듭니다**
-	  (`const TOKEN = Trait.NewType("Arr")`, 밖에서는 `Arr.Token`). 값은 `__type = 토큰` 으로 자기 종류를
+	  (`const TOKEN = Trait.NewToken("Arr")`, 밖에서는 `Arr.Token`). 값은 `__type = 토큰` 으로 자기 종류를
 	  가리킵니다 — 생성 비용은 예전 문자열 태그(`__arr__ = true`)와 같은 필드 하나.
 	- **트레이트**: 공유 테이블 하나가 `[타입 토큰] = 구현 테이블` 을 듭니다(quad Brand 의
 	  `[값] = true` 자리에 구현이 들어간 모양). 함수가 바깥(서비스)에 있으니 값(엔티티)이 아니라
@@ -36,7 +36,7 @@
 local Common = require("./Common")
 Common.registerSource(debug.info(1, "s"))
 
--- 타입 토큰(`NewType` 이 만듦). `N` 은 이름의 리터럴 타입 — 종류마다 구조가 달라 정적으로도 갈립니다.
+-- 타입 토큰(`NewToken` 이 만듦). `N` 은 이름의 리터럴 타입 — 종류마다 구조가 달라 정적으로도 갈립니다.
 -- 트레이트 마커가 이것을 요구합니다 — 토큰 없는 평범한 테이블이 마커만 흉내 내면 타입은 통과하고
 -- 런타임에 터졌습니다(2026-10-06 Gemini 트레이트 검토).
 export type Token<N> = { read name: N }
@@ -67,7 +67,7 @@ export type Trait<I, C = I> = {
 -- 꺼내야** 합니다(여기서 지역 변수로 붙잡아 두면 나중의 재정의를 못 봅니다).
 export type Defaults = (ops: any, deps: { [any]: any }) -> { [string]: any }
 -- `Trait.New` 의 둘째 인자.
-export type TraitSpec = {
+export type Spec = {
 	read required: { string }?,
 	read dependencies: { any }?,
 	read defaults: Defaults?,
@@ -79,7 +79,7 @@ export type TraitSpec = {
 -- **리터럴로** 다시 적습니다 — 이 값을 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느렸습니다.
 const TYPE_KEY = "__type"
 
--- `NewType`·`New` 가 만든 것만 토큰·트레이트로 칩니다(약한 키 — 버려진 사용자 토큰은
+-- `NewToken`·`New` 가 만든 것만 토큰·트레이트로 칩니다(약한 키 — 버려진 사용자 토큰은
 -- 수거됨). 얼린 아무 테이블, 토큰 모음 테이블, 숫자·문자열 `__type` 이 토큰 행세를 하면
 -- 에러 메시지가 라이브러리 줄에서 터졌습니다(리뷰 1라운드). 만드는 일이 드물어 비용 없음.
 -- 약한 키 + **줄어들 수 있음**(`s`) — `k` 만이면 항목이 수거돼도 칸 수가 안 줄어, 종류를 많이 만들었다 버리는
@@ -89,9 +89,9 @@ const tokens: { [any]: true } = setmetatable({}, WEAK_KEYS) :: any
 const traits: { [any]: true } = setmetatable({}, WEAK_KEYS) :: any
 
 -- 새 타입 토큰. 사용자 컨테이너도 이걸로 만듭니다.
-const function NewType(name: string): Token<string>
+const function NewToken(name: string): Token<string>
 	if type(name) ~= "string" then
-		Common.raise(`Trait: NewType needs a name string, got {typeof(name)}`)
+		Common.raise(`Trait: NewToken needs a name string, got {typeof(name)}`)
 	end
 	const token = table.freeze({ name = name })
 	tokens[token] = true
@@ -114,7 +114,7 @@ end
 -- 종류면 처음 쓸 때 기본 구현으로 완성 표를 만들어 둡니다(Rust 의 `impl<T: A + B> C for T`). 사용자:
 -- *"A가 된다면 이게 된다가 자연히 따라오는 방식 … 인터페이스 자신이 필요한건 자신이 아니까."* 컨테이너를
 -- 만드는 쪽은 자기가 아는 트레이트만 등록하고, 나중에 누가 새 트레이트를 더해도 컨테이너를 고치지 않습니다.
-const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
+const function New<I>(name: string, spec: Spec?): Trait<I, I>
 	if type(name) ~= "string" then
 		Common.raise(`Trait: New needs a name string, got {typeof(name)}`)
 	end
@@ -299,7 +299,7 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 		Common.raise(`Trait: Impl needs a trait (from Trait.New), got {typeof(trait)}`)
 	end
 	if not tokens[token] then
-		Common.raise(`Trait: Impl needs a type token (from Trait.NewType), got {typeof(token)}`)
+		Common.raise(`Trait: Impl needs a type token (from Trait.NewToken), got {typeof(token)}`)
 	end
 	if impl == nil then
 		Common.raise(`Trait: Impl needs an implementation for {trait.name}`)
@@ -405,7 +405,7 @@ end
 -- 접기를 받으려고 `"__type"` 리터럴로 직접 붙입니다).
 const function Stamp<T>(value: T, token: Token<any>): T
 	if not tokens[token] then
-		Common.raise(`Trait: Stamp needs a type token (from Trait.NewType), got {typeof(token)}`)
+		Common.raise(`Trait: Stamp needs a type token (from Trait.NewToken), got {typeof(token)}`)
 	end
 	if type(value) ~= "table" or table.isfrozen(value :: any) then
 		Common.raise(`Trait: Stamp needs a table that is not frozen, got {typeof(value)}`)
@@ -417,7 +417,7 @@ end
 --[[ 트레이트 모듈을 짜는 도구 — `src/Traits/*` 와 사용자 트레이트가 씁니다 ]]
 
 -- 구현을 못 찾았을 때. 저절로 따라오는 트레이트면 여기서 만들어지고, 아니면 사용자 줄 에러.
-const function dispatchMiss(trait: any, value: any, who: string): any
+const function expectImplMiss(trait: any, value: any, who: string): any
 	const derived = if trait.derivable then resolve(trait, TokenOf(value)) else nil
 	if derived ~= nil then
 		return derived
@@ -439,13 +439,13 @@ const function dispatchMiss(trait: any, value: any, who: string): any
 end
 
 -- 값의 종류가 구현한 `trait` 의 완성 표. 없으면 **사용자 줄 에러**(`"List: IndexOf needs a List — …"`) —
--- 종류를 모르는 코드의 진입점이 씁니다: `Dispatch(List, list, "IndexOf").IndexOf(list, item)`.
+-- 종류를 모르는 코드의 진입점이 씁니다: `ExpectImpl(List, list, "IndexOf").IndexOf(list, item)`.
 -- `who` 는 에러 메시지에 적을 진입점 이름. `ImplOf` 와 달리 트레이트 인자를 검사하지 않습니다(진입점이
 -- 자기 트레이트를 넘기는 자리 — 원소 수와 무관하게 호출당 조회 하나, perf 21절).
-const function Dispatch<I, C>(trait: Trait<I, C>, value: any, who: string): I
+const function ExpectImpl<I, C>(trait: Trait<I, C>, value: any, who: string): I
 	const impl = if type(value) == "table" then (trait.impls :: any)[rawget(value, TYPE_KEY)] else nil
 	if impl == nil then
-		return dispatchMiss(trait, value, who)
+		return expectImplMiss(trait, value, who)
 	end
 	return impl
 end
@@ -465,19 +465,19 @@ const RESERVED: { [any]: true } = {
 -- 트레이트 객체에 **진입점 함수들**을 얹어 돌려줍니다 — 트레이트 파일이 내보내는 모듈이 곧 트레이트라
 -- `Trait.Impl(List, 토큰, 구현)` 과 `List.IndexOf(값, x)` 가 같은 이름으로 됩니다(Rust 의 `List::index_of`).
 -- 트레이트의 자기 필드(`name`·`impls` …)와 겹치는 이름은 에러.
-const function Module<T, E>(trait: T, entries: E): T & E
+const function Expose<T, E>(trait: T, entries: E): T & E
 	if not traits[trait] then
-		Common.raise(`Trait: Module needs a trait (from Trait.New), got {typeof(trait)}`)
+		Common.raise(`Trait: Expose needs a trait (from Trait.New), got {typeof(trait)}`)
 	end
 	if type(entries) ~= "table" then
-		Common.raise(`Trait: Module needs a table of entry functions, got {typeof(entries)}`)
+		Common.raise(`Trait: Expose needs a table of entry functions, got {typeof(entries)}`)
 	end
 	-- 먼저 전부 검사하고 그다음에 얹습니다(도중에 걸리면 반쯤 얹힌 채 남았음 — 리뷰). 겹침은 **예약 이름**으로도
 	-- 봅니다: `required`·`dependencies`·`defaults` 는 없으면 `nil` 이라 `rawget` 검사를 지나, 그 이름의 진입점이
 	-- 트레이트의 동작을 바꿨습니다(진입점이 기본 구현으로 불리고, 의존 목록으로 읽혀 라이브러리 줄에서 죽음).
 	for entryName in entries :: any do
 		if RESERVED[entryName] or rawget(trait :: any, entryName) ~= nil then
-			Common.raise(`Trait: Module got an entry named {tostring(entryName)}, which the trait already has`)
+			Common.raise(`Trait: Expose got an entry named {tostring(entryName)}, which the trait already has`)
 		end
 	end
 	for entryName, fn in entries :: any do
@@ -489,7 +489,7 @@ end
 -- stylua: ignore
 return {
 	TYPE_KEY = TYPE_KEY,
-	NewType = NewType, New = New, Impl = Impl,
+	NewToken = NewToken, New = New, Impl = Impl,
 	TokenOf = TokenOf, ImplOf = ImplOf, Implements = Implements, Stamp = Stamp,
-	Dispatch = Dispatch, Module = Module,
+	ExpectImpl = ExpectImpl, Expose = Expose,
 }

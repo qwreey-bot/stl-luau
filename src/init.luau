@@ -84,7 +84,7 @@ export type TreeBalance = Search.Balance
 export type KeyNodeRead<K, V> = Search.KeyNodeRead<K, V>
 export type TraitToken<N> = Trait.Token<N>
 export type Trait<I, C = I> = Trait.Trait<I, C>
-export type TraitSpec = Trait.TraitSpec
+export type Spec = Trait.Spec
 export type TraitDefaults = Trait.Defaults
 
 -- 컨테이너 타입

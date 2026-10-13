@@ -86,7 +86,7 @@ type Arr<T> = Arr.Arr<T>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("CircularDeque") :: Trait.Token<"CircularDeque">
+const TOKEN = Trait.NewToken("CircularDeque") :: Trait.Token<"CircularDeque">
 
 -- 처음 칸 수. 0 이면 두 배로 늘릴 수 없어 바닥을 둡니다.
 const MIN_CAPACITY = 4

@@ -62,7 +62,7 @@ export type HashMapData<K, V> = {
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("HashMap") :: Trait.Token<"HashMap">
+const TOKEN = Trait.NewToken("HashMap") :: Trait.Token<"HashMap">
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
 const function tagged(raw: any): any
@@ -372,7 +372,7 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	-- 데이터인지 모르니 거절합니다(리뷰 3라운드).
 	const rawToken = rawget(tbl :: any, "__type")
 	-- `Arr` 는 **토큰의 정체성**으로 알아봅니다(`arrToken` — 아래 `BindArr`). 이름("Arr")으로 알아봤더니 사용자가
-	-- `Trait.NewType("Arr")` 로 만든 자기 종류가 조용히 빈 맵이 되거나 필드를 잃었습니다(리뷰).
+	-- `Trait.NewToken("Arr")` 로 만든 자기 종류가 조용히 빈 맵이 되거나 필드를 잃었습니다(리뷰).
 	const isArr = rawToken ~= nil and rawToken == arrToken
 	if rawToken ~= nil and not isArr then
 		const name = if type(rawToken) == "table" then rawget(rawToken, "name") else nil

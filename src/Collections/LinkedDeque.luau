@@ -80,7 +80,7 @@ export type LinkedDequeRead<T> = {
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("LinkedDeque") :: Trait.Token<"LinkedDeque">
+const TOKEN = Trait.NewToken("LinkedDeque") :: Trait.Token<"LinkedDeque">
 
 -- 노드의 칸 배치(`Node.Double` 의 계약 — `1` = 값, `2` = 앞, `3` = 뒤). 지역 상수로 다시 적어 접히게 합니다.
 -- 이 모듈 안에서는 노드를 칸으로 직접 읽고 씁니다(불투명 핸들 타입은 밖을 위한 것 — 안에서는 `any` 로).

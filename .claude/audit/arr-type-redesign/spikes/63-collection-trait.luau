@@ -166,7 +166,7 @@ end
 --[[ 알려진 경계 — 타입 인자가 any 인 계약 자리는 헐거움(런타임의 필수 함수 검사가 그물) ]]
 local looseOps: stl.MapOps<any, any, any> = FlatSet
 local function looseImpl()
-	stl.Trait.Impl(stl.Map, stl.Trait.NewType("Loose"), FlatSet)
+	stl.Trait.Impl(stl.Map, stl.Trait.NewToken("Loose"), FlatSet)
 end
 --[[ 알려진 경계 — Iter 가 이름 붙은 필드가 섞인 테이블(Arr)을 돌려줘도 계약 타입은 받음 ]]
 type VecMap = { read __type: stl.TraitToken<string>, items: stl.Arr<number> }

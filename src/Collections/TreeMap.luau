@@ -73,7 +73,7 @@ export type TreeMap<K, V> = TreeMapData<K, V>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("TreeMap") :: Trait.Token<"TreeMap">
+const TOKEN = Trait.NewToken("TreeMap") :: Trait.Token<"TreeMap">
 
 -- 노드의 칸 배치(`Trees/Search` 머리 — `1` = 값, `2` = 왼쪽, `3` = 오른쪽, `5` = 키. 지역 상수라 접힘)와 도구.
 -- 이 모듈 안에서는 노드를 칸으로 직접 읽으니 도구를 느슨한 타입으로 받습니다.

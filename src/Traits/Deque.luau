@@ -39,45 +39,45 @@ export type MarkerMut<T> = { read __type: Trait.Token<any>, read __dequeItem: T,
 const Deque = Trait.New<<Ops<any, any>>>("Deque", {
 	required = { "PushFront", "PushBack", "PopFront", "PopBack", "Front", "Back" },
 })
-const dispatch = Trait.Dispatch
+const expectImpl = Trait.ExpectImpl
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 -- 종류를 아는 코드는 그 모듈의 함수를 직접 쓰세요(`CircularDeque.PushBack`) — 구현 찾기가 호출마다 붙습니다.
 
 -- 맨 앞에 넣고 **넣은 타입 그대로** 돌려줍니다.
 const function PushFront<C, T>(deque: C & MarkerMut<T>, item: T): C
-	dispatch(Deque, deque, "PushFront").PushFront(deque, item)
+	expectImpl(Deque, deque, "PushFront").PushFront(deque, item)
 	return deque
 end
 
 -- 맨 뒤에 넣고 넣은 타입 그대로 돌려줍니다.
 const function PushBack<C, T>(deque: C & MarkerMut<T>, item: T): C
-	dispatch(Deque, deque, "PushBack").PushBack(deque, item)
+	expectImpl(Deque, deque, "PushBack").PushBack(deque, item)
 	return deque
 end
 
 -- 맨 앞을 꺼냅니다. 비었으면 `nil`.
 const function PopFront<T>(deque: MarkerMut<T>): T?
-	return dispatch(Deque, deque, "PopFront").PopFront(deque)
+	return expectImpl(Deque, deque, "PopFront").PopFront(deque)
 end
 
 -- 맨 뒤를 꺼냅니다. 비었으면 `nil`.
 const function PopBack<T>(deque: MarkerMut<T>): T?
-	return dispatch(Deque, deque, "PopBack").PopBack(deque)
+	return expectImpl(Deque, deque, "PopBack").PopBack(deque)
 end
 
 -- 맨 앞을 봅니다(꺼내지 않음). 비었으면 `nil`.
 const function Front<T>(deque: Marker<T>): T?
-	return dispatch(Deque, deque, "Front").Front(deque)
+	return expectImpl(Deque, deque, "Front").Front(deque)
 end
 
 -- 맨 뒤를 봅니다. 비었으면 `nil`.
 const function Back<T>(deque: Marker<T>): T?
-	return dispatch(Deque, deque, "Back").Back(deque)
+	return expectImpl(Deque, deque, "Back").Back(deque)
 end
 
 -- stylua: ignore
-return Trait.Module(Deque, {
+return Trait.Expose(Deque, {
 	PushFront = PushFront, PushBack = PushBack, PopFront = PopFront, PopBack = PopBack,
 	Front = Front, Back = Back,
 })

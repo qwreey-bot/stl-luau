@@ -55,7 +55,7 @@ export type MarkerMut<K, V> = {
 }
 
 const Map = Trait.New<<Ops<any, any, any>>>("Map", { required = { "Get", "Set", "Has", "Remove", "Iter" } })
-const dispatch = Trait.Dispatch
+const expectImpl = Trait.ExpectImpl
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 -- 맵의 키들·값들·레코드들. 순서는 구현의 순회 순서(`HashMap` 은 약속 없음, `FlatMap` 은 키 순서)이고 세
@@ -81,7 +81,7 @@ const function sizedList(map: any): { any }
 end
 
 const function Keys<K, V>(map: Marker<K, V>): { K }
-	const ops = dispatch(Map, map, "Keys")
+	const ops = expectImpl(Map, map, "Keys")
 	const out: { K } = sizedList(map)
 	local count = 0
 	for key in ops.Iter(map) do
@@ -92,7 +92,7 @@ const function Keys<K, V>(map: Marker<K, V>): { K }
 end
 
 const function Values<K, V>(map: Marker<K, V>): { V }
-	const ops = dispatch(Map, map, "Values")
+	const ops = expectImpl(Map, map, "Values")
 	const out: { V } = sizedList(map)
 	local count = 0
 	for _, value in ops.Iter(map) do
@@ -105,7 +105,7 @@ end
 -- 키-값 레코드의 목록(`{ { key, value } }`). 레코드는 **새로 만든 것**이라 받은 쪽이 고쳐도 맵은
 -- 그대로입니다. 종류를 아는 코드는 `HashMap.Records`/`FlatMap.Records` 를 직접 쓰세요.
 const function Records<K, V>(map: Marker<K, V>): { Types.Record<K, V> }
-	const ops = dispatch(Map, map, "Records")
+	const ops = expectImpl(Map, map, "Records")
 	const out: { Types.Record<K, V> } = sizedList(map)
 	local count = 0
 	for key, value in ops.Iter(map) do
@@ -116,6 +116,6 @@ const function Records<K, V>(map: Marker<K, V>): { Types.Record<K, V> }
 end
 
 -- stylua: ignore
-return Trait.Module(Map, {
+return Trait.Expose(Map, {
 	Keys = Keys, Values = Values, Records = Records,
 })

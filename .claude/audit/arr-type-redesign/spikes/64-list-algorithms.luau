@@ -167,7 +167,7 @@ local negMissing: stl.ListImpl<stl.CircularDeque<string>, string, number> = {
 -- POS: 완성 표 타입(`ListFull` — 꼬리 없는 서명)으로 적은 표도 구현 표로 들어감 / 구간이 선택인 Some
 local asFull: stl.ListFull<stl.CircularDeque<string>, string, number> = nil :: any
 local fullAsImpl: stl.ListImpl<stl.CircularDeque<string>, string, number> = asFull
-stl.Trait.Impl(stl.List, stl.Trait.NewType("FromFull"), asFull)
+stl.Trait.Impl(stl.List, stl.Trait.NewToken("FromFull"), asFull)
 local function someOptional(
 	list: stl.CircularDeque<string>,
 	pred: (item: string, idx: number) -> boolean,
@@ -199,7 +199,7 @@ local negRequiredRange: stl.ListImpl<stl.CircularDeque<string>, string, number> 
 	PrevIndex = CircularDeque.PrevIndex,
 	Some = someRequired,
 }
-stl.Trait.Impl(stl.List, stl.Trait.NewType("BadFold"), {
+stl.Trait.Impl(stl.List, stl.Trait.NewToken("BadFold"), {
 	Get = CircularDeque.Get,
 	FirstIndex = CircularDeque.FirstIndex,
 	LastIndex = CircularDeque.LastIndex,

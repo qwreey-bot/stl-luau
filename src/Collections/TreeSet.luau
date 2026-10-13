@@ -45,7 +45,7 @@ export type TreeSet<T> = TreeSetData<T>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("TreeSet") :: Trait.Token<"TreeSet">
+const TOKEN = Trait.NewToken("TreeSet") :: Trait.Token<"TreeSet">
 
 -- 노드의 칸 배치(`Trees/Search` 머리 — `5` = 키. 지역 상수라 접힘)와 도구(이 모듈 안에서는 칸으로 직접 읽음).
 const KEY = 5

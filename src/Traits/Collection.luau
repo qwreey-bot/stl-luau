@@ -32,23 +32,23 @@ export type Marker = { read __type: Trait.Token<any> }
 export type MarkerMut = { read __type: Trait.Token<any>, read __collectionMut: true }
 
 const Collection = Trait.New<<Ops<any>>>("Collection", { required = { "Len", "Clear" } })
-const dispatch = Trait.Dispatch
+const expectImpl = Trait.ExpectImpl
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 
 -- 알고 있는 크기(O(1)). 리스트·맵·셋·힙 어느 것이든. 읽기라 빌린 참조(`ArrRead`·`CircularDequeRead`)도 받습니다.
 const function Len(collection: Marker): number
-	return dispatch(Collection, collection, "Len").Len(collection)
+	return expectImpl(Collection, collection, "Len").Len(collection)
 end
 
 -- 비우고 **같은 컨테이너를 그 타입 그대로** 돌려줍니다(`HashMap<string, number>` 를 넣으면 그 타입).
 -- 맵 종류를 모르고 "비우고 다시 채우기" 를 쓸 때. 읽기 전용으로 빌린 참조는 못 넣습니다(`MarkerMut`).
 const function Clear<C>(collection: C & MarkerMut): C
-	dispatch(Collection, collection, "Clear").Clear(collection)
+	expectImpl(Collection, collection, "Clear").Clear(collection)
 	return collection
 end
 
 -- stylua: ignore
-return Trait.Module(Collection, {
+return Trait.Expose(Collection, {
 	Len = Len, Clear = Clear,
 })

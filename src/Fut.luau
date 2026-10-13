@@ -99,7 +99,7 @@ export type FutData = {
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB).
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("Fut") :: Trait.Token<"Fut">
+const TOKEN = Trait.NewToken("Fut") :: Trait.Token<"Fut">
 
 -- 즉시 실행. 순수 luau 의 기본값.
 --

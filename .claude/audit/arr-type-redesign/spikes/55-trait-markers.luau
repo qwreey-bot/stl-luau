@@ -28,7 +28,7 @@ local values: { number } = stl.Map.Values(ages)
 local rankKeys: { number } = stl.Map.Keys(ranks)
 -- 사용자 리스트: 토큰 + 마커를 타입에 적고 구현을 등록
 type Pair<T> = { read __type: stl.TraitToken<string>, read __list: T, read __listIndex: number, a: T, b: T }
-local PairType = Trait.NewType("Pair")
+local PairType = Trait.NewToken("Pair")
 local pairOps: stl.ListOps<Pair<any>, any, number> = {
 	Get = function(p: Pair<any>, i: number): any
 		return if i == 1 then p.a elseif i == 2 then p.b else nil
@@ -126,7 +126,7 @@ local ShapeTrait = Trait.New<<ShapeFull>>("Shape", {
 		}
 	end,
 }) :: stl.Trait<ShapeFull, ShapeCore>
-local SquareType = Trait.NewType("Square")
+local SquareType = Trait.NewToken("Square")
 -- 구현은 필수 함수만(ShapeCore) — 완성 표(ShapeFull)의 Describe 는 기본 구현이 채움
 Trait.Impl(ShapeTrait, SquareType, {
 	Area = function(s: Shape): number
@@ -137,7 +137,7 @@ local square: Shape = { __type = SquareType, side = 3 } :: any
 local shapeOps = Trait.ImplOf(ShapeTrait, square)
 local described: string? = if shapeOps then shapeOps.Describe(square) else nil
 -- 맞는 재정의는 통과
-Trait.Impl(ShapeTrait, Trait.NewType("Round"), {
+Trait.Impl(ShapeTrait, Trait.NewToken("Round"), {
 	Area = function(s: Shape): number
 		return s.side
 	end,
@@ -146,12 +146,12 @@ Trait.Impl(ShapeTrait, Trait.NewType("Round"), {
 	end,
 })
 -- NEG: 넘기는 표의 타입이 어긋남 / 재정의 자리 / 완성 표의 함수 타입 / 없는 함수
-Trait.Impl(ShapeTrait, Trait.NewType("Bad"), { Area = "not a function" })
+Trait.Impl(ShapeTrait, Trait.NewToken("Bad"), { Area = "not a function" })
 local function area(s: Shape): number
 	return s.side
 end
-Trait.Impl(ShapeTrait, Trait.NewType("BadOverride"), { Area = area, Describe = "not a function" })
-Trait.Impl(ShapeTrait, Trait.NewType("BadReturn"), {
+Trait.Impl(ShapeTrait, Trait.NewToken("BadOverride"), { Area = area, Describe = "not a function" })
+Trait.Impl(ShapeTrait, Trait.NewToken("BadReturn"), {
 	Area = area,
 	Describe = function(_s: Shape): number
 		return 12345
@@ -159,28 +159,28 @@ Trait.Impl(ShapeTrait, Trait.NewType("BadReturn"), {
 })
 -- 캐스트하지 않은 평범한 트레이트도 `Impl` 이 표를 검사함(완성 표 전체를 요구)
 local PlainTrait = Trait.New<<{ read Show: (v: Shape) -> string }>>("PlainShow", { required = { "Show" } })
-Trait.Impl(PlainTrait, Trait.NewType("BadPlain"), { Show = 5 })
+Trait.Impl(PlainTrait, Trait.NewToken("BadPlain"), { Show = 5 })
 -- 인자 하나짜리 `Trait<I>` 자리에는 기본 구현 달린 트레이트(`Trait<Full, Core>`)가 안 들어감
 local negOneParam: stl.Trait<ShapeFull> = ShapeTrait
 local negDescribed: number? = if shapeOps then shapeOps.Describe(square) else nil
 local negNoSuch = if shapeOps then shapeOps.Perimeter(square) else nil
 
---[[ 트레이트 모듈 — 트레이트 객체에 진입점을 얹은 것(`Trait.Module`), `Trait.Dispatch` ]]
+--[[ 트레이트 모듈 — 트레이트 객체에 진입점을 얹은 것(`Trait.Expose`), `Trait.ExpectImpl` ]]
 local function describe(s: Shape): string
-	return Trait.Dispatch(ShapeTrait, s, "Describe").Describe(s)
+	return Trait.ExpectImpl(ShapeTrait, s, "Describe").Describe(s)
 end
-local ShapeModule = Trait.Module(ShapeTrait, { Describe = describe })
+local ShapeModule = Trait.Expose(ShapeTrait, { Describe = describe })
 -- POS: 진입점 호출, 그리고 모듈이 그대로 트레이트로 쓰임(Impl·ImplOf)
 local viaModule: string = ShapeModule.Describe(square)
-Trait.Impl(ShapeModule, Trait.NewType("ViaModule"), { Area = area })
+Trait.Impl(ShapeModule, Trait.NewToken("ViaModule"), { Area = area })
 local moduleOps = Trait.ImplOf(ShapeModule, square)
 local moduleArea: number? = if moduleOps then moduleOps.Area(square) else nil
--- NEG: 진입점의 반환 타입 / 인자 타입 / 없는 진입점 / 모듈을 거친 Impl 도 표를 검사 / Dispatch 의 완성 표 타입
+-- NEG: 진입점의 반환 타입 / 인자 타입 / 없는 진입점 / 모듈을 거친 Impl 도 표를 검사 / ExpectImpl 의 완성 표 타입
 local negEntryReturn: number = ShapeModule.Describe(square)
 local negEntryArg = ShapeModule.Describe(12345)
 local negEntryMissing = ShapeModule.Perimeter(square)
-Trait.Impl(ShapeModule, Trait.NewType("BadViaModule"), { Area = "not a function" })
-local negDispatch: number = Trait.Dispatch(ShapeTrait, square, "Describe").Describe(square)
+Trait.Impl(ShapeModule, Trait.NewToken("BadViaModule"), { Area = "not a function" })
+local negDispatch: number = Trait.ExpectImpl(ShapeTrait, square, "Describe").Describe(square)
 -- 내장 트레이트 모듈: 없는 진입점
 local negListEntry = stl.List.NoSuchEntry(Arr.Of(1))
 

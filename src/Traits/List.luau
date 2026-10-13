@@ -204,7 +204,7 @@ const List = Trait.New<<Full<any, any, any>>>("List", {
 	required = { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" },
 	defaults = defaults,
 }) :: Trait.Trait<Full<any, any, any>, Impl<any, any, any>>
-const dispatch = Trait.Dispatch
+const expectImpl = Trait.ExpectImpl
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 -- 그 종류의 완성 표를 부릅니다 — `Arr` 처럼 자기 구현이 있는 종류는 그것이(빠름), `CircularDeque`·사용자 리스트는
@@ -223,42 +223,42 @@ const dispatch = Trait.Dispatch
 -- 써야 합니다. (원소 타입이 다른 `item` 은 타입 에러가 아닙니다 — `E` 가 둘의 합으로 넓어집니다.
 -- 건전하고(그냥 nil), 예전 판도 같았습니다.)
 const function IndexOf<E, I>(list: Marker<E, I>, item: E): I?
-	return dispatch(List, list, "IndexOf").IndexOf(list, item)
+	return expectImpl(List, list, "IndexOf").IndexOf(list, item)
 end
 
 -- 같은 원소가 있는가(`==` 비교).
 const function Contains<E, I>(list: Marker<E, I>, item: E): boolean
-	return dispatch(List, list, "Contains").Contains(list, item)
+	return expectImpl(List, list, "Contains").Contains(list, item)
 end
 
 -- 세어서 구한 개수(AE, 2026-10-06 — `Len` 은 알고 있는 크기, `Count` 는 셈). 술어가 있으면 참인 원소만.
 -- 길이를 아는 컨테이너는 자기 `Len` 이 빠릅니다(`Collection.Len`).
 const function Count<E, I>(list: Marker<E, I>, pred: ((element: E, idx: I) -> boolean)?): number
-	return dispatch(List, list, "Count").Count(list, pred)
+	return expectImpl(List, list, "Count").Count(list, pred)
 end
 
 -- 앞에서부터 접기.
 const function Fold<E, I, U>(list: Marker<E, I>, init: U, fn: (acc: U, element: E, idx: I) -> U): U
-	return dispatch(List, list, "Fold").Fold(list, init, fn)
+	return expectImpl(List, list, "Fold").Fold(list, init, fn)
 end
 
 -- 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
 const function Find<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): (E?, I?)
-	return dispatch(List, list, "Find").Find(list, pred)
+	return expectImpl(List, list, "Find").Find(list, pred)
 end
 
 -- 하나라도 만족하는가.
 const function Some<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
-	return dispatch(List, list, "Some").Some(list, pred)
+	return expectImpl(List, list, "Some").Some(list, pred)
 end
 
 -- 전부 만족하는가. 빈 리스트면 참.
 const function Every<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
-	return dispatch(List, list, "Every").Every(list, pred)
+	return expectImpl(List, list, "Every").Every(list, pred)
 end
 
 -- stylua: ignore
-return Trait.Module(List, {
+return Trait.Expose(List, {
 	IndexOf = IndexOf, Contains = Contains, Count = Count,
 	Fold = Fold, Find = Find, Some = Some, Every = Every,
 })

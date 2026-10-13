@@ -161,8 +161,8 @@ export type Rng = (min: number, max: number) -> number
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewType("Arr") :: Trait.Token<"Arr">
-const isHashMap, dispatch = HashMap.isHashMap, Trait.Dispatch
+const TOKEN = Trait.NewToken("Arr") :: Trait.Token<"Arr">
+const isHashMap, expectImpl = HashMap.isHashMap, Trait.ExpectImpl
 HashMap.BindArr(TOKEN)
 
 --#region ----------- 내부 헬퍼 -----------
@@ -2351,7 +2351,7 @@ const function GroupBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: 
 		end
 		return into
 	end
-	const ops = dispatch(MapTrait, into, "Arr.GroupBy")
+	const ops = expectImpl(MapTrait, into, "Arr.GroupBy")
 	const get, set = ops.Get, ops.Set
 	for idx = 1, self.n do
 		const item = self[idx]
@@ -2387,7 +2387,7 @@ const function CountBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: 
 		end
 		return into
 	end
-	const ops = dispatch(MapTrait, into, "Arr.CountBy")
+	const ops = expectImpl(MapTrait, into, "Arr.CountBy")
 	const get, set = ops.Get, ops.Set
 	for idx = 1, self.n do
 		const k = key(self[idx])
@@ -2419,7 +2419,7 @@ const function KeyBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C 
 		end
 		return into
 	end
-	const ops = dispatch(MapTrait, into, "Arr.KeyBy")
+	const ops = expectImpl(MapTrait, into, "Arr.KeyBy")
 	const set = ops.Set
 	for idx = 1, self.n do
 		const item = self[idx]
