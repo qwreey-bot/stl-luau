@@ -1,0 +1,462 @@
+--!strict
+--[[
+	TreeMap — 키 순서를 유지하는 맵. **자가 균형 이진 트리**(기본 레드블랙)로 조립합니다(2026-10-13).
+
+	## 층 (`papers/07` 9-4)
+
+	이 모듈은 3층(조립)입니다: 노드는 1층 `Node`, 구조 제어는 2층 `src/Trees/`(`RedBlack` — 뿌리 노드를 받아
+	고치고 새 뿌리를 돌려주는 함수들). 여기에는 **크기·타입 토큰·키 검사·맵의 표면**만 있습니다.
+	균형 방식은 고를 수 있습니다(사용자: *"default 가 있고, 직접 선택도 가능한 구조"*):
+
+	```lua
+	local m = TreeMap.New<<string, number>>(Common.compareString)        -- 레드블랙(기본)
+	local a = TreeMap.New<<string, number>>(Common.compareString, stl.Avl)  -- AVL
+	```
+
+	## `FlatMap` 과 무엇이 다른가 (perf 37절)
+
+	표면은 같습니다(같은 `Map` 트레이트, 같은 함수 이름과 뜻). `FlatMap` 은 정렬 배열(예전 `TreeMap`)이고
+	이쪽은 노드 트리입니다:
+	- **넣고 빼기가 섞이면 이쪽**: 넣기·지우기가 O(log n) — 정렬 배열은 뒤를 밀어 O(n)(1만 개에서 4배, 10만
+	  개에서 13배 차이). `PopFirst` 도 O(log n).
+	- 조회는 이쪽이 조금 빠릅니다(0.6~0.7배).
+	- 순회와 "이미 정렬된 순서로 넣기", 메모리는 `FlatMap` 이 낫습니다 — 작거나, 한 번에 지어 읽기만 하는
+	  쓰임이면 `FlatMap`.
+
+	## 표현
+
+	```lua
+	{ root: 노드?, size: number, compare: Comparator<K>, balance: 균형 방식 }
+	```
+
+	## 키
+
+	NaN·`nil` 키는 받지 않습니다(넣기는 에러, 조회·삭제는 "없음" — `FlatMap` 과 같은 정책, conventions).
+	값이 `nil` 이면 삭제입니다(`Set(m, k, nil)` — `HashMap` 과 같은 규칙).
+
+	## 콜백·순회 중 변경
+
+	`Retain` 의 콜백이나 `Iter` 로 도는 동안 이 맵을 바꾸면 정의되지 않은 동작입니다(conventions — 검사 없음).
+]]
+local Types = require("../Types")
+local Common = require("../Common")
+Common.registerSource(debug.info(1, "s"))
+local Trait = require("../Trait")
+local Node = require("../Node")
+local Search = require("../Trees/Search")
+local RedBlack = require("../Trees/RedBlack")
+local Map = require("../Traits/Map")
+local Collection = require("../Traits/Collection")
+
+type Record<K, V> = Types.Record<K, V>
+type Comparator<K> = Types.Comparator<K>
+type Balance = Search.Balance
+type KeyNode<K, V> = Search.KeyNodeRead<K, V>
+
+export type TreeMapData<K, V> = {
+	-- 뿌리 노드(읽기 타입 — 연결을 고치는 것은 균형 방식만). 비었으면 `nil`.
+	root: KeyNode<K, V>?,
+	size: number,
+	compare: Comparator<K>,
+	-- 자가 균형(`Search.Balance` — `RedBlack`·`Avl` 모듈이 그 모양). 노드를 만든 방식과 같아야 합니다.
+	balance: Balance,
+	read __type: Trait.Token<"TreeMap">,
+	read __mapKey: K,
+	read __mapValue: V,
+	-- 쓰는 제네릭용 불변 팬텀(`Map.MarkerMut`, 질문 AM) — 타입에만 있습니다.
+	read __mapMut: (K, V) -> (K, V),
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`) — 타입에만 있습니다.
+	read __collectionMut: true,
+}
+-- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
+export type TreeMap<K, V> = TreeMapData<K, V>
+
+-- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
+const TYPE_KEY = "__type"
+const TOKEN = Trait.NewType("TreeMap") :: Trait.Token<"TreeMap">
+
+-- `Node.Binary` 의 칸 규칙(지역 상수라 접힘)과 도구.
+const LEFT, RIGHT = 1, 2
+const firstOf, lastOf, nextOf, prevOf = Node.Binary.First, Node.Binary.Last, Node.Binary.Next, Node.Binary.Prev
+const lowerBound, upperBound = Search.LowerBound, Search.UpperBound
+
+const function unusable(key: any): boolean
+	return key == nil or key ~= key
+end
+
+const function rejectKey(key: any): never
+	return Common.raise(if key == nil then "TreeMap: nil key" else "TreeMap: NaN key")
+end
+
+--#region ----------- 계약 구현 (Map.Ops) -----------
+-- 이 모듈 테이블이 그대로 `Map.Ops` 구현체입니다(질문 AB).
+
+-- 키의 노드. 없으면 `nil`. 뜨거운 길이라 `Search.Find` 를 거치지 않고 여기서 따라갑니다(호출 하나).
+const function nodeOf<K, V>(self: TreeMapData<K, V>, key: K): KeyNode<K, V>?
+	const compare = self.compare
+	local cursor = self.root
+	while cursor ~= nil do
+		const order = compare(key, cursor.key)
+		if order == 0 then
+			return cursor
+		end
+		cursor = if order < 0 then cursor[LEFT] else cursor[RIGHT]
+	end
+	return nil
+end
+
+const function Get<K, V>(self: TreeMapData<K, V>, key: K): V?
+	if unusable(key) then
+		return nil
+	end
+	const node = nodeOf(self, key)
+	return if node ~= nil then node.value else nil
+end
+
+-- 지우고 값을 돌려줍니다(키 검사는 부른 쪽이).
+const function removeNode<K, V>(self: TreeMapData<K, V>, node: KeyNode<K, V>): V
+	self.root = self.balance.Remove(self.root, node)
+	self.size -= 1
+	return node.value
+end
+
+-- 값을 넣습니다. 이미 있으면 덮어씁니다. O(log n).
+-- ⭐ **값이 `nil` 이면 삭제입니다** — `HashMap`·`FlatMap` 과 같은 규칙이고 Lua 의 `t[k] = nil` 과 같습니다.
+const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
+	if unusable(key) then
+		rejectKey(key)
+	end
+	if value == nil then
+		const node = nodeOf(self, key)
+		if node ~= nil then
+			removeNode(self, node)
+		end
+		return
+	end
+	const root, _, isNew = self.balance.Insert(self.root, key, value, self.compare)
+	self.root = root
+	if isNew then
+		self.size += 1
+	end
+end
+
+const function Has<K, V>(self: TreeMapData<K, V>, key: K): boolean
+	return not unusable(key) and nodeOf(self, key) ~= nil
+end
+
+-- 키를 지우고 **지워진 값**을 돌려줍니다. 없었으면 `nil`. O(log n).
+const function Remove<K, V>(self: TreeMapData<K, V>, key: K): V?
+	if unusable(key) then
+		return nil
+	end
+	const node = nodeOf(self, key)
+	if node == nil then
+		return nil
+	end
+	return removeNode(self, node)
+end
+
+-- 키 순서로 `(key, value)`: `for key, value in TreeMap.Iter(m) do`. 상태는 클로저에 담습니다(`Iter()` 한 번에
+-- 클로저 하나). `(K, V)` 비옵셔널 선언인 것은 `ipairs` 와 같은 이유입니다.
+const function Iter<K, V>(self: TreeMapData<K, V>): () -> (K, V)
+	const root = self.root
+	local cursor = if root ~= nil then firstOf(root :: any) :: any else nil
+	return function(): (K, V)
+		const node = cursor
+		if node == nil then
+			return nil :: any, nil :: any
+		end
+		cursor = nextOf(node)
+		return node.key, node.value
+	end
+end
+
+--#endregion
+
+--#region ----------- 조회 -----------
+
+const function GetOr<K, V>(self: TreeMapData<K, V>, key: K, fallback: V): V
+	const value = Get(self, key)
+	return if value == nil then fallback else value
+end
+
+const function Len<K, V>(self: TreeMapData<K, V>): number
+	return self.size
+end
+
+const function Empty<K, V>(self: TreeMapData<K, V>): boolean
+	return self.size == 0
+end
+
+-- 키-값 쌍의 목록. **키 순서이고, 레코드는 새로 만든 것**입니다(받은 쪽이 고쳐도 맵은 그대로).
+const function Records<K, V>(self: TreeMapData<K, V>): { Record<K, V> }
+	const out = table.create(self.size) :: { Record<K, V> }
+	const root = self.root
+	local at, node: any = 0, if root ~= nil then firstOf(root :: any) else nil
+	while node ~= nil do
+		at += 1
+		out[at] = { key = node.key, value = node.value }
+		node = nextOf(node)
+	end
+	return out
+end
+
+-- 키만, **키 순서로**.
+const function Keys<K, V>(self: TreeMapData<K, V>): { K }
+	const out = table.create(self.size) :: { K }
+	const root = self.root
+	local at, node: any = 0, if root ~= nil then firstOf(root :: any) else nil
+	while node ~= nil do
+		at += 1
+		out[at] = node.key
+		node = nextOf(node)
+	end
+	return out
+end
+
+-- 값만, 키 순서로.
+const function Values<K, V>(self: TreeMapData<K, V>): { V }
+	const out = table.create(self.size) :: { V }
+	const root = self.root
+	local at, node: any = 0, if root ~= nil then firstOf(root :: any) else nil
+	while node ~= nil do
+		at += 1
+		out[at] = node.value
+		node = nextOf(node)
+	end
+	return out
+end
+
+-- 가장 작은 키의 쌍(새 레코드). 비어 있으면 `nil`.
+const function First<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+	const root = self.root
+	if root == nil then
+		return nil
+	end
+	const node: any = firstOf(root :: any)
+	return { key = node.key, value = node.value }
+end
+
+-- 가장 큰 키의 쌍. 비어 있으면 `nil`.
+const function Last<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+	const root = self.root
+	if root == nil then
+		return nil
+	end
+	const node: any = lastOf(root :: any)
+	return { key = node.key, value = node.value }
+end
+
+-- `key` **이상**인 키 중 가장 작은 것. 없으면 `nil`.
+const function CeilingKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if unusable(key) then
+		return nil
+	end
+	const node = lowerBound(self.root, key, self.compare)
+	return if node ~= nil then node.key else nil
+end
+
+-- `key` 보다 **큰** 키 중 가장 작은 것(엄격). 없으면 `nil`.
+const function HigherKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if unusable(key) then
+		return nil
+	end
+	const node = upperBound(self.root, key, self.compare)
+	return if node ~= nil then node.key else nil
+end
+
+-- `bound`(어떤 경계의 첫 노드 — 없으면 끝을 넘은 것)의 바로 앞 노드의 키.
+const function keyBefore<K, V>(self: TreeMapData<K, V>, bound: KeyNode<K, V>?): K?
+	const root = self.root
+	if root == nil then
+		return nil
+	end
+	const node: any = if bound ~= nil then prevOf(bound :: any) else lastOf(root :: any)
+	return if node ~= nil then node.key else nil
+end
+
+-- `key` **이하**인 키 중 가장 큰 것. 없으면 `nil`.
+const function FloorKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if unusable(key) then
+		return nil
+	end
+	return keyBefore(self, upperBound(self.root, key, self.compare))
+end
+
+-- `key` 보다 **작은** 키 중 가장 큰 것(엄격). 없으면 `nil`.
+const function LowerKey<K, V>(self: TreeMapData<K, V>, key: K): K?
+	if unusable(key) then
+		return nil
+	end
+	return keyBefore(self, lowerBound(self.root, key, self.compare))
+end
+
+-- 키 구간 `[fromKey, toKey]` 의 쌍들. **양끝 포함**이고 키 순서입니다. 구간이 뒤집혀 있으면 빈 목록
+-- (이 저장소의 구간 규약). O(log n + 결과 수).
+const function RangeRecords<K, V>(self: TreeMapData<K, V>, fromKey: K, toKey: K): { Record<K, V> }
+	const out: { Record<K, V> } = {}
+	if unusable(fromKey) or unusable(toKey) then
+		return out
+	end
+	const compare = self.compare
+	local at, node: any = 0, lowerBound(self.root, fromKey, compare)
+	while node ~= nil and compare(node.key, toKey) <= 0 do
+		at += 1
+		out[at] = { key = node.key, value = node.value }
+		node = nextOf(node)
+	end
+	return out
+end
+
+--#endregion
+
+--#region ----------- 변형 -----------
+
+-- 가장 작은 키의 쌍을 **꺼냅니다**. 비었으면 `nil`. O(log n).
+const function PopFirst<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+	const root = self.root
+	if root == nil then
+		return nil
+	end
+	const node: any = firstOf(root :: any)
+	const record = { key = node.key, value = node.value }
+	removeNode(self, node)
+	return record
+end
+
+-- 가장 큰 키의 쌍을 꺼냅니다. O(log n).
+const function PopLast<K, V>(self: TreeMapData<K, V>): Record<K, V>?
+	const root = self.root
+	if root == nil then
+		return nil
+	end
+	const node: any = lastOf(root :: any)
+	const record = { key = node.key, value = node.value }
+	removeNode(self, node)
+	return record
+end
+
+-- 조건을 만족하는 쌍만 **남깁니다**(제자리, 키 순서로 부름). 콜백은 `(key, value)`. 자기 자신을 돌려줍니다.
+-- ⚠️ Java `retainAll` 과 달리 술어를 받습니다(질문 W).
+-- ⚠️ 콜백 안에서 이 맵을 바꾸면 정의되지 않은 동작입니다(질문 AL 1). 지울 것은 `false` 로 돌려주세요.
+const function Retain<K, V>(self: TreeMapData<K, V>, fn: (key: K, value: V) -> boolean): TreeMap<K, V>
+	const root = self.root
+	local node: any = if root ~= nil then firstOf(root :: any) else nil
+	while node ~= nil do
+		-- 지우기가 회전으로 길을 바꾸니 다음 노드를 먼저 읽습니다(다음 노드 자체는 남음)
+		const after = nextOf(node)
+		if not fn(node.key, node.value) then
+			removeNode(self, node)
+		end
+		node = after
+	end
+	return self
+end
+
+-- 비우고 **자기 자신을 돌려줍니다**. O(1).
+const function Clear<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
+	self.root = nil
+	self.size = 0
+	return self
+end
+
+const function newMap<K, V>(root: any, size: number, compare: Comparator<K>, balance: Balance): TreeMap<K, V>
+	return { root = root, size = size, compare = compare, balance = balance, [TYPE_KEY] = TOKEN } :: any
+end
+
+-- 얕은 복사(노드는 새로, 키·값은 같은 것 — 구조째 베껴 O(n)). 비교자와 균형 방식은 같은 것.
+const function Clone<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
+	return newMap(self.balance.Clone(self.root), self.size, self.compare, self.balance)
+end
+
+--#endregion
+
+--#region ----------- 생성자 -----------
+
+-- ⚠️ **값 타입을 직접 알려줘야 합니다**(비교자에서 `K` 는 뽑히지만 `V` 는 나올 자리가 없음):
+--
+--     local m = TreeMap.New<<number, string>>(Common.compareNumber)
+--
+-- `balance` 는 자가 균형 방식(선택 — 기본 레드블랙). `stl.Avl` 이나 `Search.Balance` 모양의 바깥 구현.
+const function New<K, V>(compare: Comparator<K>, balance: Balance?): TreeMap<K, V>
+	return newMap(nil, 0, compare, balance or RedBlack)
+end
+
+-- 키-값 쌍 목록에서 만듭니다. **정렬해서 한 번에 짓고(O(n log n) 정렬 + O(n) 짓기) 중복 키는 뒤엣것이
+-- 이깁니다.** 마지막 값이 `nil` 인 키는 없는 것으로 봅니다(`Set` 과 같은 규칙).
+-- 동점(비교자가 0 을 돌려주는 두 키)에서 뒤엣것이 이기도록 원래 위치를 타이브레이커로 씁니다(`table.sort`
+-- 는 안정 정렬이 아님).
+const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K>, balance: Balance?): TreeMap<K, V>
+	const scheme = balance or RedBlack
+	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀).
+	const records, count = Common.denseList(source)
+	if count == 0 then
+		return newMap(nil, 0, compare, scheme)
+	end
+	const order = table.create(count) :: { number }
+	for idx = 1, count do
+		if unusable(records[idx].key) then
+			rejectKey(records[idx].key)
+		end
+		order[idx] = idx
+	end
+	table.sort(order, function(x: number, y: number): boolean
+		const diff = compare(records[x].key, records[y].key)
+		if diff ~= 0 then
+			return diff < 0
+		end
+		return x < y
+	end)
+	const keys = table.create(count) :: { K }
+	const values = table.create(count) :: { V }
+	local size = 0
+	for pos = 1, count do
+		const rec = records[order[pos]]
+		-- 같은 키가 이어지면 뒤엣것으로 덮어씁니다.
+		if size == 0 or compare(keys[size], rec.key) ~= 0 then
+			size += 1
+		end
+		keys[size] = rec.key
+		values[size] = rec.value
+	end
+	-- 마지막 값이 nil 인 키는 뺍니다.
+	local kept = 0
+	for pos = 1, size do
+		if values[pos] ~= nil then
+			kept += 1
+			keys[kept] = keys[pos]
+			values[kept] = values[pos]
+		end
+	end
+	return newMap(scheme.FromSorted(keys, values, kept), kept, compare, scheme)
+end
+
+const function isTreeMap(value: any): boolean
+	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
+end
+
+--#endregion
+
+-- stylua: ignore
+const TreeMapModule = {
+	New = New,
+	FromRecords = FromRecords,
+	isTreeMap = isTreeMap,
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, TreeMap.Token, impl)`
+	Token = TOKEN,
+
+	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
+	First = First, Last = Last, FloorKey = FloorKey, CeilingKey = CeilingKey,
+	RangeRecords = RangeRecords, Remove = Remove, Clear = Clear, Clone = Clone, Get = Get, Set = Set,
+	Records = Records,
+	LowerKey = LowerKey, HigherKey = HigherKey, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
+}
+
+-- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.
+Trait.Impl(Map, TOKEN, TreeMapModule)
+Trait.Impl(Collection, TOKEN, TreeMapModule)
+-- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
+const _map: Map.Ops<TreeMap<any, any>, any, any> = TreeMapModule
+const _collection: Collection.Ops<TreeMap<any, any>> = TreeMapModule
+
+return TreeMapModule
