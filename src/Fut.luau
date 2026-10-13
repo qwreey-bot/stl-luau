@@ -99,7 +99,7 @@ export type FutData = {
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB).
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.Types.Fut
+const TOKEN = Trait.NewType("Fut") :: Trait.Token<"Fut">
 
 -- 즉시 실행. 순수 luau 의 기본값.
 --
@@ -520,6 +520,8 @@ return {
 	All = All,
 	UseProvider = UseProvider,
 	isFut = isFut,
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, Fut.Token, impl)`
+	Token = TOKEN,
 
 	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`Fut.X(f, …)`) — 콜론 호출은
 	-- 없습니다(질문 AB).

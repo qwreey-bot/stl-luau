@@ -77,7 +77,7 @@ type Arr<T> = Arr.Arr<T>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.Types.Deque
+const TOKEN = Trait.NewType("Deque") :: Trait.Token<"Deque">
 
 -- 처음 칸 수. 0 이면 두 배로 늘릴 수 없어 바닥을 둡니다.
 const MIN_CAPACITY = 4
@@ -359,6 +359,8 @@ end
 -- stylua: ignore
 const DequeModule = {
 	New = New, FromList = FromList, Of = Of, isDeque = isDeque,
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, Deque.Token, impl)`
+	Token = TOKEN,
 
 	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`Deque.X(d, …)`) — 콜론 호출은 없습니다(질문 AB).
 	PushBack = PushBack, PushFront = PushFront, PopBack = PopBack, PopFront = PopFront,

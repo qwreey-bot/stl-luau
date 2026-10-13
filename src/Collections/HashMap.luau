@@ -62,7 +62,7 @@ export type HashMapData<K, V> = {
 -- 테이블(엔티티), 연산은 이 모듈의 네임스페이스 함수(서비스)입니다.
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.Types.HashMap
+const TOKEN = Trait.NewType("HashMap") :: Trait.Token<"HashMap">
 
 -- 날 테이블에 태그를 붙입니다. 생성자들이 공유합니다.
 const function tagged(raw: any): any
@@ -364,7 +364,11 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	-- 유효한 `n` 이 있으면 다른 사본의 Arr 도 위치로 받지만, 사전으로 읽는 이쪽은 어떤 칸이
 	-- 데이터인지 모르니 거절합니다(리뷰 3라운드).
 	const rawToken = rawget(tbl :: any, "__type")
-	if rawToken ~= nil and rawToken ~= Trait.Types.Arr then
+	-- `Arr` 는 이름으로 알아봅니다(이 사본에 등록된 토큰이고 이름이 "Arr") — `Arr` 모듈이 이 모듈을 쓰니
+	-- (`GroupBy`) 여기서 `Arr` 을 require 할 수 없습니다. `Common.listLength` 도 같은 규칙입니다.
+	const kind = Trait.TokenOf(tbl)
+	const isArr = kind ~= nil and kind.name == "Arr"
+	if rawToken ~= nil and not isArr then
 		const name = if type(rawToken) == "table" then rawget(rawToken, "name") else nil
 		const what = if Trait.TokenOf(tbl) ~= nil
 			then `a {name} container`
@@ -372,7 +376,7 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 			else `a table with a reserved __type field ({tostring(rawToken)})`
 		Common.raise(`HashMap: FromTable takes a plain table or an Arr, got {what}`)
 	end
-	if rawToken == Trait.Types.Arr then
+	if isArr then
 		-- `Arr` 는 "위치 → 값" 으로 읽습니다 — `pairs` 로 돌면 `n` 과 태그 키까지
 		-- 키가 됐습니다(M0 3라운드). 구멍은 키가 아닙니다.
 		const list = tbl :: any
@@ -436,6 +440,8 @@ const HashMapModule = {
 	FromRecords = FromRecords,
 	Adopt = Adopt,
 	isHashMap = isHashMap,
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, HashMap.Token, impl)`
+	Token = TOKEN,
 
 	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`HashMap.X(v, …)`) — 콜론 호출은
 	-- 없습니다(질문 AB). `local` 로 받아 부르면 더 빠릅니다(perf 14·16절).

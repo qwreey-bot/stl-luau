@@ -10,7 +10,8 @@
 
 	⭐ **값에는 타입 토큰 하나**(`__type` 필드), **구현은 트레이트가 듭니다**(2026-10-06,
 	사용자와 설계 — quad 의 Brand 를 "값 단위" 가 아니라 "타입 단위" 로).
-	- **타입 토큰**: 컨테이너 종류마다 하나인 공유 테이블. 값은 `__type = 토큰` 으로 자기 종류를
+	- **타입 토큰**: 컨테이너 종류마다 하나인 공유 테이블 — **그 종류의 모듈이 만들어 듭니다**
+	  (`const TOKEN = Trait.NewType("Arr")`, 밖에서는 `Arr.Token`). 값은 `__type = 토큰` 으로 자기 종류를
 	  가리킵니다 — 생성 비용은 예전 문자열 태그(`__arr__ = true`)와 같은 필드 하나.
 	- **트레이트**: 공유 테이블 하나가 `[타입 토큰] = 구현 테이블` 을 듭니다(quad Brand 의
 	  `[값] = true` 자리에 구현이 들어간 모양). 함수가 바깥(서비스)에 있으니 값(엔티티)이 아니라
@@ -173,7 +174,7 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 		end
 	end
 	-- `impls` 는 **약한 키** — 버린 사용자 토큰은 등록했어도 수거됩니다(아무도 그 토큰을 쥐지
-	-- 않으면 조회될 일도 없음). 내장 토큰은 `Trait.Types` 가 붙잡습니다. ⚠️ Luau 의 약한 키는
+	-- 않으면 조회될 일도 없음). 내장 토큰은 각 컨테이너 모듈이 붙잡습니다(`Arr.Token`). ⚠️ Luau 의 약한 키는
 	-- ephemeron 이 아니라 구현 테이블이 토큰을 참조하면 남습니다(리뷰 2라운드 실측).
 	-- `derived` 는 "등록 없이 저절로 만들어진" 종류의 표시입니다(그 위에는 재정의를 등록할 수 있음).
 	-- 저절로 따라올 수 있는가: 필수 함수가 없고, 따라올 것(의존이나 기본 구현)이 있을 때. 의존 목록이 비어 있고
@@ -437,22 +438,10 @@ const function Module<T, E>(trait: T, entries: E): T & E
 	return trait :: any
 end
 
-const BuiltinTypes = table.freeze({
-	Arr = NewType("Arr") :: Token<"Arr">,
-	HashMap = NewType("HashMap") :: Token<"HashMap">,
-	HashSet = NewType("HashSet") :: Token<"HashSet">,
-	TreeMap = NewType("TreeMap") :: Token<"TreeMap">,
-	TreeSet = NewType("TreeSet") :: Token<"TreeSet">,
-	Heap = NewType("Heap") :: Token<"Heap">,
-	Fut = NewType("Fut") :: Token<"Fut">,
-	Deque = NewType("Deque") :: Token<"Deque">,
-})
-
 -- stylua: ignore
 return {
 	TYPE_KEY = TYPE_KEY,
 	NewType = NewType, New = New, Impl = Impl,
 	TokenOf = TokenOf, ImplOf = ImplOf, Implements = Implements, Stamp = Stamp,
 	Dispatch = Dispatch, Module = Module,
-	Types = BuiltinTypes,
 }

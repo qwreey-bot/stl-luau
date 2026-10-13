@@ -407,14 +407,14 @@ do
 	-- **우연**은 막힙니다: 모양만 같은 테이블, 옛 문자열 태그, 직렬화했다 되읽은 것
 	-- (토큰의 정체성을 잃음)은 그 종류가 아닙니다.
 	const predicates: { { name: string, is: (any) -> boolean, token: any } } = {
-		{ name = "Arr", is = stl.isArr, token = stl.Trait.Types.Arr },
-		{ name = "HashMap", is = stl.isHashMap, token = stl.Trait.Types.HashMap },
-		{ name = "HashSet", is = stl.isHashSet, token = stl.Trait.Types.HashSet },
-		{ name = "TreeMap", is = stl.isTreeMap, token = stl.Trait.Types.TreeMap },
-		{ name = "TreeSet", is = stl.isTreeSet, token = stl.Trait.Types.TreeSet },
-		{ name = "Heap", is = stl.isHeap, token = stl.Trait.Types.Heap },
-		{ name = "Fut", is = stl.isFut, token = stl.Trait.Types.Fut },
-		{ name = "Deque", is = stl.isDeque, token = stl.Trait.Types.Deque },
+		{ name = "Arr", is = stl.isArr, token = stl.Arr.Token },
+		{ name = "HashMap", is = stl.isHashMap, token = stl.HashMap.Token },
+		{ name = "HashSet", is = stl.isHashSet, token = stl.HashSet.Token },
+		{ name = "TreeMap", is = stl.isTreeMap, token = stl.TreeMap.Token },
+		{ name = "TreeSet", is = stl.isTreeSet, token = stl.TreeSet.Token },
+		{ name = "Heap", is = stl.isHeap, token = stl.Heap.Token },
+		{ name = "Fut", is = stl.isFut, token = stl.Fut.Token },
+		{ name = "Deque", is = stl.isDeque, token = stl.Deque.Token },
 	}
 	const oldTags =
 		{ "__arr__", "__hashmap__", "__hashset__", "__treemap__", "__treeset__", "__heap__", "__fut__", "__deque__" }
@@ -444,7 +444,7 @@ do
 	-- 트레이트를 구현(문자열 태그 하나로는 하드코딩이 필요했던 것)
 	type Show = { read Show: (any) -> string }
 	const ShowTrait = stl.Trait.New<<Show>>("Show")
-	stl.Trait.Impl(ShowTrait, stl.Trait.Types.Arr, {
+	stl.Trait.Impl(ShowTrait, stl.Arr.Token, {
 		Show = function(a: any): string
 			return `Arr({a.n})`
 		end,
@@ -519,7 +519,7 @@ do
 		assert(T.ImplOf(stl.Map, case.value) == case.map, `{case.name} 의 Map 구현`)
 		assert(T.ImplOf(stl.Set, case.value) == case.set, `{case.name} 의 Set 구현`)
 		assert(T.Implements(stl.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
-		assert(T.TokenOf(case.value) == (T.Types :: any)[case.name], `{case.name} 의 TokenOf`)
+		assert(T.TokenOf(case.value) == (stl :: any)[case.name].Token, `{case.name} 의 TokenOf`)
 	end
 	-- TokenOf 는 토큰이 아닌 `__type`(숫자·문자열·아무 테이블)을 토큰으로 돌려주지 않음
 	for _, bogus in { 5, true, "Player", 0 / 0, {}, table.freeze({ name = "Arr" }) } :: { any } do
@@ -550,7 +550,7 @@ do
 		{
 			name = "토큰 모음 테이블",
 			run = function()
-				T.Impl(stl.List, T.Types :: any, stl.Arr)
+				T.Impl(stl.List, { Arr = stl.Arr.Token } :: any, stl.Arr)
 			end,
 		},
 		{
@@ -580,7 +580,7 @@ do
 		{
 			name = "같은 토큰을 두 번(내장 덮어쓰기)",
 			run = function()
-				T.Impl(stl.List, T.Types.Arr, {} :: any)
+				T.Impl(stl.List, stl.Arr.Token, {} :: any)
 			end,
 		},
 		{
@@ -589,7 +589,7 @@ do
 			name = "같은 토큰을 두 번(다 갖춘 구현)",
 			needle = "Arr already implements List",
 			run = function()
-				T.Impl(stl.List, T.Types.Arr, table.clone(stl.Arr) :: any)
+				T.Impl(stl.List, stl.Arr.Token, table.clone(stl.Arr) :: any)
 			end,
 		},
 		{
@@ -876,7 +876,7 @@ do
 		} :: any
 	)
 	const ShowKept = T.New<<{ read Show: (any) -> string }>>("ShowKept")
-	T.Impl(ShowKept, T.Types.Arr, {
+	T.Impl(ShowKept, stl.Arr.Token, {
 		Show = function(_: any): string
 			return "kept"
 		end,

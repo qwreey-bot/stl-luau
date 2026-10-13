@@ -52,7 +52,7 @@ local inPair: number? = stl.List.IndexOf(pair, "y")
 -- 사용자 트레이트를 우리 Arr 에 붙이기 — 구현 타입이 ImplOf 로 돌아옴
 type Show = { read Show: (any) -> string }
 local ShowTrait = Trait.New<<Show>>("Show")
-Trait.Impl(ShowTrait, Trait.Types.Arr, {
+Trait.Impl(ShowTrait, stl.Arr.Token, {
 	Show = function(_: any): string
 		return "arr"
 	end,

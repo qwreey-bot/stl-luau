@@ -149,7 +149,7 @@ luau-analyze src tests      # 타입 검사 + 린트
   하세요. 안쪽을 직접 다뤄야 하는 구현(예: `HashSet` 이 자기 `HashMap` 을)은
   같은 저장소 안이라 괜찮지만, 그게 아니면 공개 메소드를 쓰세요.
 
-런타임 판별은 **타입 토큰 비교 하나**입니다(`rawget(v, "__type") == Trait.Types.Arr`). 구현은
+런타임 판별은 **타입 토큰 비교 하나**입니다(`rawget(v, "__type") == TOKEN` — 토큰은 그 종류의 모듈이 만들어 듦, 밖에서는 `Arr.Token`). 구현은
 트레이트(`src/Traits/` 의 `List`/`Map`/`Set`/`Collection`)가 `[토큰] = 구현 표` 로 들고, 공용 알고리즘은 그걸로
 구현을 찾습니다. 트레이트는 필수 함수 + 기본 구현 + 의존을 가질 수 있고(2026-10-13, `papers/07`), 기본 구현이
 있는 트레이트(`List`)의 구현 표는 "모듈이 준 것 + 기본 구현" 을 합친 완성 표입니다. (예전: `Arr` 만 문자열 태그, 나머지는 메타테이블 동일성 — M0 에서 메타테이블을
@@ -173,7 +173,7 @@ export type XxxData<T> = {                   -- 데이터부 = 전체형
 export type Xxx<T> = XxxData<T>
 
 const TYPE_KEY = "__type"                    -- 리터럴(상수 접기)
-const TOKEN = Trait.Types.Xxx
+const TOKEN = Trait.NewType("Xxx") :: Trait.Token<"Xxx">   -- 모듈 테이블에 Token = TOKEN 으로도 내보냄
 
 const function Foo<T>(self: XxxData<T>, …) … end   -- 이름 붙은 top-level 함수들(서비스)
 

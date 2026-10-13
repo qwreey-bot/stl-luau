@@ -52,7 +52,7 @@
 - **모듈 패턴**: 이름 붙은 top-level 함수들(첫 인자가 데이터) + **순수 테이블
   네임스페이스** `return { … }` + 판별용 **타입 토큰**(`__type`). ⭐ **트레이트**
   (2026-10-06 사용자 결정, 질문 AG — `papers/06`, `src/Trait.luau`):
-  - **값에는 타입 토큰 하나**: 생성자가 `__type = Trait.Types.Arr`(얼린 공유 테이블)를
+  - **값에는 타입 토큰 하나**: 생성자가 `__type = TOKEN`(그 종류의 모듈이 `Trait.NewType("Arr")` 로 만든 얼린 공유 테이블 — 밖에서는 `Arr.Token`)을
     붙입니다. **모든 생성·반환 경로**가 붙여야 합니다(`spec.contracts` 5절이 전수로 지킴).
     키 문자열 `"__type"` 은 모듈마다 **리터럴로** 적습니다 — `Trait.TYPE_KEY` 를 받아
     쓰면 상수 접기가 안 돼 생성이 7~11% 느렸습니다.
@@ -105,7 +105,7 @@
     ⚠️ 그래서 `Trait.ImplOf(List, v)` 는 모듈 테이블이 아니라 **완성 표**(모듈이 준 것 + 기본 구현)입니다 —
     `== stl.Arr` 로 견주지 마세요(기본 구현이 없는 `Map`·`Set`·`Collection` 은 여전히 모듈 그대로).
     값의 토큰은 `Trait.TokenOf(v)` — `type…` 이름은 Lua 내장 `type`/`typeof` 와 겹쳐 피합니다
-    (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewType`, `Trait.Types`)은
+    (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewType`)은
     트레이트를 구현하지 않는 종류(`Fut` — `Heap` 은 `Collection` 만 구현)도 쓰는 바탕이지만 `Trait` 밑에 둡니다.
     모듈을 불러올 때 `Trait.Impl(List, TOKEN, ArrModule)` 한 줄. 한 종류가 여러
     트레이트를, 바깥 트레이트를 우리 종류에, 바깥 종류를 우리 트레이트에 — 이름이 아니라
