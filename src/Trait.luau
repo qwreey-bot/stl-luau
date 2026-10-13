@@ -48,7 +48,7 @@ export type Trait<I, C = I> = {
 	read name: string,
 	read impls: { [any]: I },
 	read required: { string }?,
-	read requires: { any }?, -- 의존 트레이트들(자기 자신을 다른 인자로 가리키는 재귀 타입은 Luau 가 받지 않음)
+	read dependencies: { any }?, -- 의존 트레이트들(자기 자신을 다른 인자로 가리키는 재귀 타입은 Luau 가 받지 않음)
 	read defaults: Defaults?,
 	read derived: { [any]: true },
 	read derivable: boolean, -- 등록 없이 저절로 따라올 수 있는 트레이트인가(`New` 가 한 번 계산)
@@ -64,7 +64,7 @@ export type Defaults = (ops: any, deps: { [any]: any }) -> { [string]: any }
 -- `Trait.New` 의 둘째 인자.
 export type TraitSpec = {
 	read required: { string }?,
-	read requires: { any }?,
+	read dependencies: { any }?,
 	read defaults: Defaults?,
 }
 
@@ -102,7 +102,7 @@ end
 -- - **`defaults`** — 기본 구현(provided method). 구현이 필수 함수만 주면 나머지는 이것이 채우고, 구현이
 --   같은 이름을 주면 그것이 이깁니다(재정의). **등록할 때 한 번** 합쳐 완성 표를 만들어 두므로 호출
 --   비용은 조회 하나 그대로입니다.
--- - **`requires`** — 의존 트레이트(supertrait / `where`). 그것들을 구현한 종류만 이 트레이트를 구현할 수
+-- - **`dependencies`** — 의존 트레이트(supertrait / `where`). 그것들을 구현한 종류만 이 트레이트를 구현할 수
 --   있고, 기본 구현은 의존의 완성 표를 받아 씁니다.
 --
 -- ⭐ **저절로 따라오는 구현**: 필수 함수가 없는 트레이트는 **등록이 필요 없습니다** — 의존을 다 갖춘
@@ -114,18 +114,18 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 		Common.raise(`Trait: New needs a name string, got {typeof(name)}`)
 	end
 	if spec ~= nil and type(spec) ~= "table" then
-		Common.raise(`Trait: New needs a spec table (required / requires / defaults), got {typeof(spec)}`)
+		Common.raise(`Trait: New needs a spec table (required / dependencies / defaults), got {typeof(spec)}`)
 	end
 	local required: { string }? = nil
-	local requires: { any }? = nil
+	local dependencies: { any }? = nil
 	local defaults: Defaults? = nil
 	if spec ~= nil then
 		-- 모르는 필드는 거절합니다 — 한 글자 오타(`require = …`)나 옛 호출 모양(이름 목록을 그대로)이 조용히
 		-- 통과해 필수 검사·의존이 사라졌습니다(오타 난 의존은 "의존 없음" 으로 읽혀 아무 값에나 따라옴, 리뷰).
 		for field in spec :: any do
-			if field ~= "required" and field ~= "requires" and field ~= "defaults" then
+			if field ~= "required" and field ~= "dependencies" and field ~= "defaults" then
 				Common.raise(
-					`Trait: New got an unknown spec field {tostring(field)} (expected required, requires or defaults)`
+					`Trait: New got an unknown spec field {tostring(field)} (expected required, dependencies or defaults)`
 				)
 			end
 		end
@@ -145,20 +145,20 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 			end
 			required = table.freeze(names)
 		end
-		const givenRequires: any = rawget(spec :: any, "requires")
-		if givenRequires ~= nil then
-			if type(givenRequires) ~= "table" then
-				Common.raise(`Trait: New needs a list of traits in requires, got {typeof(givenRequires)}`)
+		const givenDependencies: any = rawget(spec :: any, "dependencies")
+		if givenDependencies ~= nil then
+			if type(givenDependencies) ~= "table" then
+				Common.raise(`Trait: New needs a list of traits in dependencies, got {typeof(givenDependencies)}`)
 			end
 			-- 이미 만들어진 트레이트만 요구할 수 있으니 의존이 돌아 물릴 수 없습니다.
 			const list: { any } = {}
-			for _, dep in givenRequires do
+			for _, dep in givenDependencies do
 				if not traits[dep] then
-					Common.raise(`Trait: New needs a list of traits in requires, got a {typeof(dep)} in it`)
+					Common.raise(`Trait: New needs a list of traits in dependencies, got a {typeof(dep)} in it`)
 				end
 				table.insert(list, dep)
 			end
-			requires = table.freeze(list)
+			dependencies = table.freeze(list)
 		end
 		const givenDefaults: any = rawget(spec :: any, "defaults")
 		if givenDefaults ~= nil then
@@ -174,12 +174,13 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 	-- `derived` 는 "등록 없이 저절로 만들어진" 종류의 표시입니다(그 위에는 재정의를 등록할 수 있음).
 	-- 저절로 따라올 수 있는가: 필수 함수가 없고, 따라올 것(의존이나 기본 구현)이 있을 때. 의존 목록이 비어 있고
 	-- 기본 구현도 없으면 만들 것이 없습니다(빈 표가 모든 값에 따라오던 것을 막음, 리뷰).
-	const derivable = (required == nil or #required == 0) and ((requires ~= nil and #requires > 0) or defaults ~= nil)
+	const derivable = (required == nil or #required == 0)
+		and ((dependencies ~= nil and #dependencies > 0) or defaults ~= nil)
 	const trait = {
 		name = name,
 		impls = setmetatable({}, WEAK_KEYS),
 		required = required,
-		requires = requires,
+		dependencies = dependencies,
 		defaults = defaults,
 		derived = setmetatable({}, WEAK_KEYS),
 		derivable = derivable,
@@ -192,9 +193,9 @@ end
 local resolve: (trait: any, token: any) -> any
 const function depsOf(trait: any, token: any): ({ [any]: any }?, any)
 	const deps: { [any]: any } = {}
-	const requires = trait.requires
-	if requires then
-		for _, dep in requires do
+	const dependencies = trait.dependencies
+	if dependencies then
+		for _, dep in dependencies do
 			const depImpl = resolve(dep, token)
 			if depImpl == nil then
 				return nil, dep
@@ -274,7 +275,7 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 		Common.raise(`Trait: {token.name} already implements {trait.name}`)
 	end
 	const required = trait.required
-	const merges = trait.defaults ~= nil or trait.requires ~= nil
+	const merges = trait.defaults ~= nil or trait.dependencies ~= nil
 	if required or merges then
 		if type(impl) ~= "table" then
 			Common.raise(`Trait: Impl needs a table of functions for {trait.name}, got {typeof(impl)}`)

@@ -1672,7 +1672,7 @@ do
 	-- ⭐ 저절로 따라오는 구현: Show 는 필수 함수가 없고 Counter 를 요구 — **아무도 등록하지 않음**
 	type ShowOps = { read Show: (c: Counter) -> string, read Shout: (c: Counter) -> string }
 	const ShowTrait = T.New<<ShowOps>>("ShowCounter", {
-		requires = { CounterTrait },
+		dependencies = { CounterTrait },
 		defaults = function(ops: any, deps: { [any]: any })
 			const counter = deps[CounterTrait]
 			return {
@@ -1740,7 +1740,7 @@ do
 
 	-- 의존의 의존: Loud 는 Show 를 요구하고 Show 는 Counter 를 요구 — 한 번에 풀림
 	const LoudTrait = T.New<<{ read Loud: (c: Counter) -> string }>>("Loud", {
-		requires = { ShowTrait },
+		dependencies = { ShowTrait },
 		defaults = function(_ops: any, deps: { [any]: any })
 			const show = deps[ShowTrait]
 			return {
@@ -1783,8 +1783,8 @@ do
 	for _, bad in
 		{
 			{ spec = 5, needle = "needs a spec table" },
-			{ spec = { requires = 5 }, needle = "list of traits in requires, got number" },
-			{ spec = { requires = { {} } }, needle = "list of traits in requires, got a table in it" },
+			{ spec = { dependencies = 5 }, needle = "list of traits in dependencies, got number" },
+			{ spec = { dependencies = { {} } }, needle = "list of traits in dependencies, got a table in it" },
 			{ spec = { defaults = {} }, needle = "needs a function for defaults, got table" },
 		} :: { { spec: any, needle: string } }
 	do
@@ -1795,10 +1795,10 @@ do
 		assert(not okSpec and string.find(tostring(errSpec), bad.needle, 1, true), `spec: {errSpec}`)
 		assert(string.find(tostring(errSpec), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errSpec}`)
 	end
-	-- 넘긴 requires 목록을 나중에 바꿔도 트레이트는 그대로(사본)
+	-- 넘긴 dependencies 목록을 나중에 바꿔도 트레이트는 그대로(사본)
 	const deps = { CounterTrait }
 	const Snap = T.New<<{ read Id: (c: Counter) -> number }>>("Snap", {
-		requires = deps,
+		dependencies = deps,
 		defaults = function(_ops: any, got: { [any]: any })
 			return {
 				Id = function(c: Counter): number
@@ -1808,7 +1808,7 @@ do
 		end,
 	})
 	deps[1] = nil :: any
-	assert((T.ImplOf(Snap, plain) :: any).Id(plain) == 14, "requires 는 넘긴 때의 것")
+	assert((T.ImplOf(Snap, plain) :: any).Id(plain) == 14, "dependencies 는 넘긴 때의 것")
 end
 print("PASS")
 
@@ -1831,7 +1831,7 @@ do
 	-- 저절로 따라오는 트레이트에서는 처음 물은 자리에서 드러납니다.
 	for _, returned in { "nil", 5, "text", true } :: { any } do
 		const Forgot = T.New<<{ read Show: (v: any) -> string }>>("Forgot", {
-			requires = { BaseTrait },
+			dependencies = { BaseTrait },
 			defaults = (function(_ops: any, _deps: any): any
 				if returned == "nil" then
 					return nil
@@ -1919,7 +1919,7 @@ do
 	-- 저절로 만들어진 표 위에 물려받은 재정의를 얹는 것도
 	type AutoOps = { read Hello: (v: any) -> string, read Twice: (v: any) -> string }
 	const Auto = T.New<<AutoOps>>("AutoShape", {
-		requires = { BaseTrait },
+		dependencies = { BaseTrait },
 		defaults = function(ops: any)
 			return {
 				Hello = function(_v: any): string
@@ -1959,7 +1959,7 @@ do
 	end
 
 	-- 의존 목록이 **비어 있고** 기본 구현도 없으면 저절로 따라올 것이 없음(예전엔 빈 표가 모든 값에 따라왔음)
-	const Hollow = T.New<<{}>>("Hollow", { requires = {} })
+	const Hollow = T.New<<{}>>("Hollow", { dependencies = {} })
 	assert(
 		T.ImplOf(Hollow, value) == nil and not T.Implements(Hollow, value),
 		"빈 의존만으로는 따라오지 않음"
@@ -1974,7 +1974,7 @@ do
 	-- 의존이 **둘**: 하나만 갖춘 종류는 따라오지 않고, 거절 메시지는 빠진 그 의존을 말함
 	const SecondTrait = T.New<<{ read Put: (v: any) -> () }>>("ReviewSecond", { required = { "Put" } })
 	const Both = T.New<<{ read Use: (v: any) -> string }>>("Both", {
-		requires = { BaseTrait, SecondTrait },
+		dependencies = { BaseTrait, SecondTrait },
 		defaults = function(_ops: any, deps: { [any]: any })
 			return {
 				Use = function(v: any): string
@@ -2071,7 +2071,7 @@ do
 	end
 	assert(T.ImplOf(Anyone, nil) == nil, "nil 에도")
 	-- **의존만** 있는 트레이트(표식): 의존을 갖춘 종류에 빈 표가 따라오고, 못 갖춘 종류의 명시 등록은 거절
-	const Marked = T.New<<{}>>("Marked", { requires = { BaseTrait } })
+	const Marked = T.New<<{}>>("Marked", { dependencies = { BaseTrait } })
 	assert(T.Implements(Marked, value) and not T.Implements(Marked, stl.Arr.Of(1)), "표식 트레이트")
 	assert(not pcall(function()
 		T.Impl(Marked, T.NewType("Unmarked"), {})
@@ -2079,7 +2079,7 @@ do
 	-- `required = {}`(빈 필수 목록) + 의존 — 필수가 없는 것으로 읽혀 따라옴
 	const EmptyRequired = T.New<<{ read Id: (v: any) -> number }>>("EmptyRequired", {
 		required = {},
-		requires = { BaseTrait },
+		dependencies = { BaseTrait },
 		defaults = function(_ops: any, deps: { [any]: any })
 			return {
 				Id = function(v: any): number
@@ -2091,7 +2091,7 @@ do
 	assert((T.ImplOf(EmptyRequired, value) :: any).Id(value) == 7, "빈 필수 목록은 저절로 따라옴")
 	-- 넘긴 의존 목록은 사본이고 얼어 있음
 	assert(
-		table.isfrozen(Both.requires :: any) and table.isfrozen(BaseTrait.required :: any),
+		table.isfrozen(Both.dependencies :: any) and table.isfrozen(BaseTrait.required :: any),
 		"사본은 얼어 있음"
 	)
 	-- `Algorithm.Records` 의 에러 메시지(예전엔 에러가 나는지만 봤음 — 함수 이름이 틀려도 통과)
