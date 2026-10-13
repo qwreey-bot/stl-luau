@@ -261,6 +261,12 @@ end
 -- 함수를 나눠 쓰세요.
 const function sameOrder<T>(a: FlatSetData<T>, b: FlatSetData<T>)
 	-- 상대가 같은 종류인지 먼저(타입 없는 코드가 표면이 같은 `TreeSet` 을 섞으면 라이브러리 줄에서 죽었음, 리뷰)
+	-- **첫 인자도** 봅니다(2라운드 리뷰 — 둘째만 보던 때는 섞인 쪽이 첫 인자면 그대로 통과했음. 다른 함수들은
+	-- 첫 인자의 종류를 검사하지 않지만, 여기는 두 인자가 대칭이고 검사가 이미 도는 자리입니다)
+	if type(a) ~= "table" or rawget(a :: any, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(a)
+		Common.raise(`FlatSet: set operations need a FlatSet, got {if kind then kind.name else typeof(a)}`)
+	end
 	if type(b) ~= "table" or rawget(b :: any, TYPE_KEY) ~= TOKEN then
 		const kind = Trait.TokenOf(b)
 		Common.raise(`FlatSet: set operations need another FlatSet, got {if kind then kind.name else typeof(b)}`)

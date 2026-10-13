@@ -204,7 +204,7 @@ const function Retain<T>(self: TreeSetData<T>, fn: (item: T) -> boolean): TreeSe
 		-- 지우기가 회전으로 길을 바꾸니 다음 노드를 먼저 읽습니다
 		const after = nextOf(node)
 		if not fn(node[KEY]) then
-			map.root = map.balance.Remove(map.root, node)
+			map.root = (map.balance :: any).Remove(map.root, node)
 			map.size -= 1
 		end
 		node = after
@@ -227,6 +227,12 @@ end
 const function sameOrder<T>(a: TreeSetData<T>, b: TreeSetData<T>)
 	-- 상대가 같은 종류인지 먼저(타입 없는 코드 — 표면이 같은 `FlatSet` 을 섞으면 `map.root` 가 없어 **빈 셋으로
 	-- 읽혀** `Union` 이 한쪽만 돌려주고 `IsDisjointFrom` 이 참이었습니다, 리뷰)
+	-- **첫 인자도** 봅니다(2라운드 리뷰 — 둘째만 보던 때는 섞인 쪽이 첫 인자면 그대로 통과했음. 다른 함수들은
+	-- 첫 인자의 종류를 검사하지 않지만, 여기는 두 인자가 대칭이고 검사가 이미 도는 자리입니다)
+	if type(a) ~= "table" or rawget(a :: any, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(a)
+		Common.raise(`TreeSet: set operations need a TreeSet, got {if kind then kind.name else typeof(a)}`)
+	end
 	if type(b) ~= "table" or rawget(b :: any, TYPE_KEY) ~= TOKEN then
 		const kind = Trait.TokenOf(b)
 		Common.raise(`TreeSet: set operations need another TreeSet, got {if kind then kind.name else typeof(b)}`)

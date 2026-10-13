@@ -24,8 +24,8 @@ local foundKey: string? = if found then stl.Search.Key(found) else nil
 local after: RbNode? = RedBlack.Remove(root, node)
 local avlRoot: stl.AvlNode<string, number> = (Avl.Insert(nil :: stl.AvlNode<string, number>?, "a", 1, compare))
 local nextNode: stl.BinaryNodeRead<number>? = Node.Binary.Next(Node.Binary.New(1))
--- 트리 노드를 따라갈 땐 `Search` 의 것(키 타입이 그대로). `Node.Binary.Next(트리노드)` 는 `NodeRead<K | V>` 로 넓어짐
-local viaSearch: stl.RbNodeRead<string, number>? = stl.Search.Next(found :: stl.RbNodeRead<string, number>) :: any
+-- 트리 노드를 따라가도 그 타입 그대로(`Search.Next` 든 `Node.Binary.Next` 든 — 예전엔 뒤의 것이 `NodeRead<K | V>` 로 넓어졌음)
+local viaSearch: stl.RbNodeRead<string, number>? = if found then Node.Binary.Next(found) else nil
 local nextKey: stl.KeyNodeRead<string, number>? = stl.Search.Next(root)
 local firstKey: string = stl.Search.Key(stl.Search.First(root))
 local asBalance: stl.TreeBalance = RedBlack

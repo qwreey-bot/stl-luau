@@ -442,6 +442,9 @@ end
 -- 처럼 위에 얹히는 구현이 중간 배열을 한 번 더 만들지 않게 둔 문이고, 일반
 -- 사용자는 `FromRecords` 를 쓰세요(M0 4라운드 — 계약 문서가 없었음).
 const function adopt<K, V>(records: { Record<K, V> }, size: number, compare: Comparator<K>): FlatMap<K, V>
+	-- 비교자만은 확인합니다(`TreeMap.FromSorted` 와 같게 — 빈 맵에서는 비교가 일어나지 않아 엉뚱한 값이 통과하고
+	-- 둘째 넣기에서 라이브러리 줄의 에러였습니다, 2라운드 리뷰).
+	Common.expectComparator(compare, "FlatMap: Adopt")
 	return tagged({
 		records = records,
 		size = size,

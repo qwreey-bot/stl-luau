@@ -6,7 +6,7 @@
 	경계 조회(`FloorKey` …)는 옵셔널 키 / `PopFirst` 는 옵셔널 레코드 / `Retain` 콜백의 타입 / 뿌리 노드는
 	읽기 전용 / 균형 방식 자리에 계약과 다른 것은 안 들어감 / 순회 변수의 타입.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 30 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 34 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local TreeMap = stl.TreeMap
@@ -88,6 +88,29 @@ for _, again in stl.TreeSet.Iter(ranks) do
 	print(negAgain)
 end
 
+--[[ 균형 계약 — 서명이 다른 방식은 안 들어감(2라운드 리뷰: 계약의 인자가 `any` 이던 때는 아래 넷이 전부 0건) ]]
+local okScheme: stl.TreeBalance = stl.Avl
+local shortInsert = {
+	Insert = function(_root: any, _key: any, _value: any, _order: any): (number, number)
+		return 1, 2
+	end,
+	Remove = stl.Avl.Remove,
+	FromSorted = stl.Avl.FromSorted,
+	Clone = stl.Avl.Clone,
+}
+local noRoot = {
+	Insert = stl.Avl.Insert,
+	Remove = function(_root: any, _node: any) end,
+	FromSorted = stl.Avl.FromSorted,
+	Clone = stl.Avl.Clone,
+}
+local partial = { Insert = stl.Avl.Insert, FromSorted = stl.Avl.FromSorted, Clone = stl.Avl.Clone }
+-- NEG: `Insert` 가 셋째 반환을 안 줌 / `Remove` 가 새 뿌리를 안 돌려줌 / 함수 하나가 빠진 표(리터럴이 아님) / 찾기 모듈
+local negShortInsert: stl.TreeBalance = shortInsert
+local negNoRoot: stl.TreeBalance = noRoot
+local negPartial: stl.TreeBalance = partial
+local negSearch: stl.TreeBalance = stl.Search
+
 local canary: string = 42
 
 return {
@@ -122,5 +145,10 @@ return {
 	negSetPop,
 	negSetFloor,
 	negSetBalance,
+	okScheme,
+	negShortInsert,
+	negNoRoot,
+	negPartial,
+	negSearch,
 	canary,
 }

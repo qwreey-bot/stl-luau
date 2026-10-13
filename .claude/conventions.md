@@ -246,7 +246,8 @@
 - **리스트를 받는 진입점의 길이 규약**: `{ T }` 를 받는 함수(`FromList`,
   `FromRecords`, `Arr.FromTable` …)는 **`Common.listLength`**(`n` 이 0 이상의
   정수면 그것, 아니면 `#`)로 길이를 재고 숫자 루프로 돕니다 — `#`/`pairs` 로
-  읽으면 `Arr` 의 `n`·태그 키까지 원소가 되거나 구멍 뒤를 잃었습니다(M0 3라운드).
+  읽으면 `Arr` 의 `n`·태그 키까지 원소가 되거나 구멍 뒤를 잃었습니다(M0 3라운드). 테이블이 아닌 값(`nil`·숫자 …)은
+  `stl: expected a list …, got nil` 로 사용자 줄에서 알립니다(2라운드 리뷰 — 예전엔 `rawget` 이 라이브러리 줄에서 죽음).
   구멍을 건너뛴 조밀한 사본이 필요하면 `Common.denseList`.
   ⚠️ `n` 이 없으면 **`#` 규칙**입니다 — `t[1] = 10; t[3] = 30` 처럼 대입으로 만든
   구멍 든 테이블은 `#` 가 경계 중 아무 곳이나 돌려줘 뒤가 잘릴 수 있습니다(Lua
@@ -295,7 +296,9 @@
   함수들**) → **3층 조립**(`src/Collections/` — 크기·타입 토큰·키 검사는 여기). 도구는 노드끼리의 연결만 고치고,
   머리·꼬리·뿌리·크기는 그것을 가진 쪽이 돌려받은 것을 보고 고칩니다. **자가 균형은 계약입니다**(`Balance.Scheme` —
   `Insert`·`Remove`·`FromSorted`·`Clone`): 트리를 조립하는 쪽은 기본(레드블랙)을 두고 다른 것을 받을 수 있게
-  합니다. 새 균형 방식은 `src/Trees/` 에 파일 하나 + 끝에 `const _balance: Balance.Scheme = Module`, 테스트는
+  합니다. 새 균형 방식은 `src/Trees/` 에 파일 하나 + 끝에 `const _balance: Balance.Scheme = Module`(⚠️ 계약 타입의 인자는 `never`, 반환은 `unknown` — 인자를 `any` 로 적었더니 반환이
+  모자란 방식·함수가 빠진 모듈·`Search` 모듈까지 0건으로 들어갔음, 2라운드 리뷰. 그래서 조립하는 쪽은 `(scheme :: any).Insert(…)`
+  로 부릅니다. **함수 묶음 계약의 인자를 `any` 로 적지 마세요** — 그 자리는 서명이 검사되지 않습니다), 테스트는
   `spec.trees` 의 방식 목록에 한 줄(같은 시나리오가 돕니다 — 균형 검사 함수만 그 방식의 것으로).
   트리 순회자는 **`Trees/Traverse`**(`PreOrder`·`InOrder`·`PostOrder`·`LevelOrder` — 사용자: *"트리 순회자 그런것도 Trees
   폴더에"*): 받은 **부분 트리 안에서만** 돌고(가운데 노드를 넘겨도 위로 안 나감), 부모 칸을 따라가 스택을 만들지
@@ -362,8 +365,8 @@
   지어 읽기만 하면 `FlatMap`(`Keys`·순회가 빠름) — perf 37절. `TreeMap.New(compare, balance?)` 의 둘째 인자로 균형
   방식을 고릅니다(기본 레드블랙). **생성자는 비교자와 균형 방식 인자를 확인합니다**(`Common.expectComparator`,
   `Balance.Expect` — 빈 구조에서는 비교도 넣기도 일어나지 않아 엉뚱한 인자가 조용히 통과하고 나중에 라이브러리
-  줄에서 죽었음. `nil` 키와 같은 모양), 집합 연산은 **상대가 같은 종류인지** 봅니다(표면이 같은 `FlatSet` 을 섞으면
-  빈 셋으로 읽혔음). 정렬 구조의 생성자를 더하면 같이. 아래 규약에서 "트리 계열" 이라 한 것(`nil`·NaN 키 정책 등)은 **둘 다**에 그대로
+  줄에서 죽었음. `nil` 키와 같은 모양), 집합 연산은 **두 인자가 다 같은 종류인지** 봅니다(표면이 같은 `FlatSet` 을 섞으면
+  빈 셋으로 읽혔음 — 2라운드 리뷰: 둘째만 보던 때는 섞인 쪽이 첫 인자면 `Equal({10,20}, {20,30})` 이 참이었음). 정렬 구조의 생성자를 더하면 같이. 아래 규약에서 "트리 계열" 이라 한 것(`nil`·NaN 키 정책 등)은 **둘 다**에 그대로
   적용됩니다 — 에러 머리만 자기 이름(`TreeMap: nil key` / `FlatMap: nil key`). 한쪽에 함수를 더하면 다른 쪽에도.
 - **의존 방향**: `LinkedDeque → Arr`(`ToArr`)·`Node`, `TreeMap → Trees/RedBlack → Node`, `Arr → HashMap`(묶기의 지름길이 `HashMap` 의 안쪽을 앎, 2026-10-07), `CircularDeque → Arr`
   (`ToArr`), `HashSet → HashMap`, `TreeSet → TreeMap`, `FlatSet → FlatMap`. 반대 방향(`HashMap` 이 `Arr` 을 아는 것)은 만들지

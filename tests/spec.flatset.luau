@@ -339,6 +339,35 @@ do
 				`{op.name} 종류 사용자 줄: {errKind}`
 			)
 		end
+		-- (2라운드 리뷰) 섞인 쪽이 **첫 인자**여도 에러 — 둘째만 보던 때는 조용히 틀린 결과(다른 종류의 셋이 빈 셋으로
+		-- 읽힘)이거나 라이브러리 줄의 원시 에러였습니다.
+		const firsts: { any } = { other, 5, stl.Arr.Of(1), false }
+		for _, bad in firsts do
+			const okFirst, errFirst = pcall(function()
+				where = debug.info(1, "l") + 1
+				run(bad, s)
+			end)
+			assert(
+				not okFirst and string.find(tostring(errFirst), "FlatSet: set operations need a FlatSet, got", 1, true),
+				`{op.name} 첫 인자의 종류: {errFirst}`
+			)
+			assert(
+				string.find(tostring(errFirst), `spec.flatset.luau:{where}:`, 1, true),
+				`{op.name} 첫 인자 사용자 줄: {errFirst}`
+			)
+		end
+		const okNil, errNil = pcall(function()
+			where = debug.info(1, "l") + 1
+			run(nil :: any, s)
+		end)
+		assert(
+			not okNil and string.find(tostring(errNil), "FlatSet: set operations need a FlatSet, got nil", 1, true),
+			`{op.name} 첫 인자 nil: {errNil}`
+		)
+		assert(
+			string.find(tostring(errNil), `spec.flatset.luau:{where}:`, 1, true),
+			`{op.name} nil 사용자 줄: {errNil}`
+		)
 	end
 	assert(
 		string.find(tostring(select(2, pcall(FlatSet.Union, s, other))), "got TreeSet", 1, true),

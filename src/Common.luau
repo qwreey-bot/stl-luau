@@ -40,6 +40,11 @@ local exports = {}
 -- `Arr` 의 `n` 과 태그 키까지 원소로 담거나(`HashSet.FromList(Arr.Of(10, 20))` 의
 -- 크기가 4) 구멍 뒤를 잃었습니다(`FromTable`). `Fut.All` 이 먼저 쓰던 규칙입니다.
 function exports.listLength(list: any): number
+	-- 테이블이 아닌 값(타입 없는 코드에서 가장 흔한 것이 `nil`)은 아래 `rawget` 이 라이브러리 줄에서 죽었습니다
+	-- (2라운드 리뷰). 호출마다 검사 하나 — 원소마다가 아닙니다.
+	if type(list) ~= "table" then
+		exports.raise(`stl: expected a list (plain table, table.pack result or Arr), got {typeof(list)}`)
+	end
 	const n = rawget(list, "n")
 	-- 유효한 `n` 은 한 번만 판정합니다 — 두 갈래에 따로 적었더니 한쪽만 줄이는 실수를 테스트가
 	-- 못 잡을 자리가 생겼습니다(리뷰 5라운드).

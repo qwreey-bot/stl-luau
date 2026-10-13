@@ -119,7 +119,7 @@ end
 
 -- 지우고 값을 돌려줍니다(키 검사는 부른 쪽이).
 const function removeNode<K, V>(self: TreeMapData<K, V>, node: any): V
-	self.root = self.balance.Remove(self.root, node)
+	self.root = (self.balance :: any).Remove(self.root, node)
 	self.size -= 1
 	return node[VALUE]
 end
@@ -137,7 +137,7 @@ const function Set<K, V>(self: TreeMapData<K, V>, key: K, value: V): ()
 		end
 		return
 	end
-	const root, _, isNew = self.balance.Insert(self.root, key, value, self.compare)
+	const root, _, isNew = (self.balance :: any).Insert(self.root, key, value, self.compare)
 	self.root = root
 	if isNew then
 		self.size += 1
@@ -370,7 +370,7 @@ end
 
 -- 얕은 복사(노드는 새로, 키·값은 같은 것 — 구조째 베껴 O(n)). 비교자와 균형 방식은 같은 것.
 const function Clone<K, V>(self: TreeMapData<K, V>): TreeMap<K, V>
-	return newMap(self.balance.Clone(self.root), self.size, self.compare, self.balance)
+	return newMap((self.balance :: any).Clone(self.root), self.size, self.compare, self.balance)
 end
 
 --#endregion
@@ -434,7 +434,7 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 			values[kept] = values[pos]
 		end
 	end
-	return newMap(scheme.FromSorted(keys, values, kept), kept, compare, scheme)
+	return newMap((scheme :: any).FromSorted(keys, values, kept), kept, compare, scheme)
 end
 
 -- ⚠️ **검사 없이 짓기**: 이미 **키 순서로 정렬돼 있고 중복·NaN·`nil` 키가 없는** 목록(`keys[i]`·`values[i]`,
@@ -451,7 +451,7 @@ const function FromSorted<K, V>(
 ): TreeMap<K, V>
 	Common.expectComparator(compare, "TreeMap: FromSorted")
 	const scheme = Balance.Expect(balance, RedBlack, "TreeMap: FromSorted")
-	return newMap(scheme.FromSorted(keys, values, count), count, compare, scheme)
+	return newMap((scheme :: any).FromSorted(keys, values, count), count, compare, scheme)
 end
 
 const function isTreeMap(value: any): boolean

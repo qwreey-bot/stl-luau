@@ -3023,6 +3023,165 @@ do
 end
 print("PASS")
 
+print(
+	"=== 16. 2라운드 리뷰(2026-10-13) — 리스트 자리의 비테이블, Adopt 의 비교자, 균형 계약의 배선 ==="
+)
+do
+	const cmp = Common.compareNumber
+	local where = 0
+	-- (1) `{ T }` 를 받는 진입점에 테이블이 아닌 값: 예전엔 `Common.listLength` 의 `rawget` 이 라이브러리 줄에서
+	--     죽었습니다(`invalid argument #1 to 'rawget'`). 타입 없는 코드에서 가장 흔한 것이 `nil` 입니다.
+	const listSites: { { name: string, call: (any) -> () } } = {
+		{
+			name = "Arr.FromTable",
+			call = function(bad)
+				where = debug.info(1, "l") + 1
+				stl.Arr.FromTable(bad)
+			end,
+		},
+		{
+			name = "HashSet.FromList",
+			call = function(bad)
+				where = debug.info(1, "l") + 1
+				stl.HashSet.FromList(bad)
+			end,
+		},
+		{
+			name = "TreeMap.FromRecords",
+			call = function(bad)
+				where = debug.info(1, "l") + 1
+				stl.TreeMap.FromRecords(bad, cmp)
+			end,
+		},
+		{
+			name = "FlatMap.FromRecords",
+			call = function(bad)
+				where = debug.info(1, "l") + 1
+				stl.FlatMap.FromRecords(bad, cmp)
+			end,
+		},
+		{
+			name = "TreeSet.FromList",
+			call = function(bad)
+				where = debug.info(1, "l") + 1
+				stl.TreeSet.FromList(bad, cmp)
+			end,
+		},
+		{
+			name = "LinkedDeque.FromList",
+			call = function(bad)
+				where = debug.info(1, "l") + 1
+				stl.LinkedDeque.FromList(bad)
+			end,
+		},
+		{
+			name = "Heap.FromList",
+			call = function(bad)
+				where = debug.info(1, "l") + 1
+				stl.Heap.FromList(bad, function(a: number, b: number)
+					return a < b
+				end)
+			end,
+		},
+	}
+	const bads: { { value: any, kind: string } } = {
+		{ value = nil, kind = "nil" },
+		{ value = 5, kind = "number" },
+		{ value = "list", kind = "string" },
+		{ value = false, kind = "boolean" },
+	}
+	for _, site in listSites do
+		for _, bad in bads do
+			const ok, err = pcall(site.call, bad.value)
+			assert(
+				not ok
+					and string.find(
+						tostring(err),
+						`stl: expected a list (plain table, table.pack result or Arr), got {bad.kind}`,
+						1,
+						true
+					),
+				`{site.name}({bad.kind}): {err}`
+			)
+			assert(
+				string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true),
+				`{site.name}({bad.kind}) 사용자 줄: {err}`
+			)
+		end
+	end
+
+	-- (2) `FlatMap.Adopt` 도 비교자를 확인(닮은 문인 `TreeMap.FromSorted` 는 확인했음 — 빈 맵에서는 비교가 일어나지
+	--     않아 엉뚱한 값이 통과하고 둘째 넣기에서 라이브러리 줄의 `attempt to call a nil value` 였습니다)
+	for _, bad in { "compare" :: any, 5 :: any, {} :: any } do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.FlatMap.Adopt({}, 0, bad)
+		end)
+		assert(
+			not ok and string.find(tostring(err), "FlatMap: Adopt needs a comparator function, got", 1, true),
+			`Adopt: {err}`
+		)
+		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `Adopt 사용자 줄: {err}`)
+	end
+	const okNoCompare, errNoCompare = pcall(function()
+		where = debug.info(1, "l") + 1
+		stl.FlatMap.Adopt({}, 0, nil :: any)
+	end)
+	assert(
+		not okNoCompare
+			and string.find(tostring(errNoCompare), "FlatMap: Adopt needs a comparator function, got nil", 1, true),
+		`Adopt nil: {errNoCompare}`
+	)
+	assert(
+		string.find(tostring(errNoCompare), `spec.contracts.luau:{where}:`, 1, true),
+		`Adopt nil 사용자 줄: {errNoCompare}`
+	)
+	-- 맞는 비교자면 그대로 입양
+	const adopted = stl.FlatMap.Adopt({ { key = 10, value = "a" }, { key = 20, value = "b" } }, 2, cmp)
+	assert(stl.FlatMap.Get(adopted, 20) == "b" and stl.FlatMap.Len(adopted) == 2, "Adopt 정상")
+
+	-- (3) 균형 계약의 배선 — 배럴의 `stl.Balance`(이 줄을 지워도 아무 테스트도 안 깨졌음), `Expect` 가 함수 넷을
+	--     **각각** 보는지(테스트의 나쁜 값이 `Insert` 만 없는 것뿐이었음), `FromSorted` 의 확인.
+	assert(stl.Balance ~= nil and type(stl.Balance.Expect) == "function", "stl.Balance")
+	assert(stl.Balance.Expect(nil, stl.RedBlack, "X: Y") == stl.RedBlack, "Expect(nil) 은 fallback")
+	assert(stl.Balance.Expect(stl.Avl, stl.RedBlack, "X: Y") == stl.Avl, "Expect 는 받은 것을 그대로")
+	for _, missing in { "Insert", "Remove", "FromSorted", "Clone" } do
+		const partial: any = table.clone(stl.Avl)
+		partial[missing] = nil
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.Balance.Expect(partial, stl.RedBlack, "Probe: New")
+		end)
+		assert(
+			not ok
+				and string.find(
+					tostring(err),
+					"Probe: New needs a balance scheme with Insert, Remove, FromSorted and Clone",
+					1,
+					true
+				),
+			`Expect({missing} 없음): {err}`
+		)
+		assert(
+			string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true),
+			`Expect({missing} 없음) 사용자 줄: {err}`
+		)
+	end
+	const okSorted, errSorted = pcall(function()
+		where = debug.info(1, "l") + 1
+		stl.TreeMap.FromSorted({ 10 }, { "a" }, 1, cmp, "avl" :: any)
+	end)
+	assert(
+		not okSorted and string.find(tostring(errSorted), "TreeMap: FromSorted needs a balance scheme", 1, true),
+		`FromSorted 균형: {errSorted}`
+	)
+	assert(
+		string.find(tostring(errSorted), `spec.contracts.luau:{where}:`, 1, true),
+		`FromSorted 균형 사용자 줄: {errSorted}`
+	)
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (계약) ===")
 

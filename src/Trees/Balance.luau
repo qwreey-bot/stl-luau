@@ -24,11 +24,18 @@ type Comparator<T> = Types.Comparator<T>
 -- - `FromSorted(keys, values, count)` → 정렬된 목록에서 O(n) 으로 지은 뿌리. `Clone(root)` → 구조째 베낀 뿌리.
 -- 바깥에서 만드는 방식의 노드는 **탐색 트리 노드의 칸 배치**(`Trees/Search` 머리)를 따라야 합니다(조립하는 쪽이 값·왼쪽·오른쪽·부모·키 칸 — `1`~`5` — 을
 -- 직접 읽음).
+-- ⚠️ **인자는 `never`, 반환은 `unknown` 으로 적습니다**(2라운드 리뷰). 인자를 `any` 로 적었던 때는 반환 수·반환 타입·
+-- 인자 수가 다른 함수가 전부 0건으로 들어갔습니다 — `Insert` 가 셋째 반환을 안 주는 방식, `Remove` 가 새 뿌리를
+-- 안 돌려주는 방식, 함수가 하나 빠진 모듈, 심지어 `Search` 모듈까지(파라미터가 `any` 인 함수 타입 자리는 Luau 가
+-- 서명을 견주지 않음). `never` 인자는 "무엇을 받든 됨"(어떤 노드 타입의 함수든 들어옴), `unknown` 반환은 "무엇을
+-- 주든 되지만 **줘야 함**" 입니다. 대신 이 타입으로는 부를 수 없어, 조립하는 쪽은 `(scheme :: any).Insert(…)` 로
+-- 부릅니다(`TreeMap`). 음성 대조군은 `spikes/67`. 남는 경계: 반환을 **`any` 로 적은** 함수는 반환 수가 달라도
+-- 통과합니다(`any` 는 무엇에든 맞음) — 노드 타입을 적은 방식이면 잡힙니다.
 export type Scheme = {
-	read Insert: (root: any, key: any, value: any, compare: Comparator<any>) -> (any, any, boolean),
-	read Remove: (root: any, node: any) -> any,
-	read FromSorted: (keys: { any }, values: { any }, count: number) -> any,
-	read Clone: (root: any) -> any,
+	read Insert: (root: never, key: never, value: never, compare: never) -> (unknown, unknown, boolean),
+	read Remove: (root: never, node: never) -> unknown,
+	read FromSorted: (keys: never, values: never, count: number) -> unknown,
+	read Clone: (root: never) -> unknown,
 }
 
 -- 균형 방식 인자를 확인해 돌려줍니다(`nil` 이면 `fallback`). 트리를 조립하는 쪽의 생성자가 씁니다 — 엉뚱한 값

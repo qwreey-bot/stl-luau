@@ -22,7 +22,6 @@ Roblox 엔진 언어 **Luau**용 표준 라이브러리 스타일 유틸리티 �
 | `CircularDeque<T>` / `LinkedDeque<T>` | 양끝 큐 — 링 버퍼 / 노드를 이은 것(가운데도 O(1)). 종류를 몰라도 `Deque` 트레이트로 |
 | `TreeSet<T>` | `TreeMap` 위에 얹은 정렬 셋(집합 연산은 두 트리를 나란히 훑는 병합) |
 | `Heap<T>` | 이진 힙. 기본은 최소 힙, 비교자를 뒤집으면 최대 힙 |
-| `CircularDeque<T>` | 링 버퍼 양끝 큐. 양끝 넣기·빼기 O(1) |
 | `Optional<T>` | `nil` 구멍을 값으로 — `Optional.Present(v)` / `Optional.Absent` |
 | `Fut<T...>` | 코루틴 래퍼(프로미스). 스케줄러 주입, 다중 반환 |
 | `BSearch` | 정렬된 일반 배열 위의 이분 탐색 (컨테이너를 모름) |
