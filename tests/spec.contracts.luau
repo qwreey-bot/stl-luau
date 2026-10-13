@@ -1784,7 +1784,7 @@ do
 		{
 			{ spec = 5, needle = "needs a spec table" },
 			{ spec = { dependencies = 5 }, needle = "list of traits in dependencies, got number" },
-			{ spec = { dependencies = { {} } }, needle = "list of traits in dependencies, got a table in it" },
+			{ spec = { dependencies = { {} } }, needle = "list of traits in dependencies, got a table at 1" },
 			{ spec = { defaults = {} }, needle = "needs a function for defaults, got table" },
 		} :: { { spec: any, needle: string } }
 	do
@@ -1958,12 +1958,131 @@ do
 		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
 	end
 
-	-- 의존 목록이 **비어 있고** 기본 구현도 없으면 저절로 따라올 것이 없음(예전엔 빈 표가 모든 값에 따라왔음)
-	const Hollow = T.New<<{}>>("Hollow", { dependencies = {} })
+	-- 의존 목록의 **빈 칸·빈 목록은 에러**(2라운드 리뷰): 오타 난 트레이트 이름은 nil 이라 빈 목록과 구별이 안 되고,
+	-- 그러면 "의존 없음" 으로 읽혀 아무 종류에나 따라왔음(부를 때 라이브러리 줄에서 죽음)
+	for _, bad in
+		{
+			{ spec = { dependencies = {} }, needle = "got an empty dependencies list" },
+			{ spec = { dependencies = { (T :: any).Lisst } }, needle = "got an empty dependencies list" },
+			{ spec = { dependencies = { nil, BaseTrait } :: any }, needle = "in dependencies, got a nil at 1" },
+			{ spec = { dependencies = { BaseTrait, 5 } :: any }, needle = "in dependencies, got a number at 2" },
+		} :: { { spec: any, needle: string } }
+	do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			T.New("BadDeps", bad.spec)
+		end)
+		assert(not ok and string.find(tostring(err), bad.needle, 1, true), `의존 목록: {err}`)
+		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
+	end
+
+	--[[ 2라운드: 물려받기는 `__index` 가 **테이블**인 사슬만 — 함수형 `__index` 는 자기 키만 봄 ]]
+	const Greeter = T.New<<{ [string]: any }>>("Greeter2", {
+		required = { "Name" },
+		defaults = function(ops: any)
+			return {
+				Hello = function(v: any): string
+					return `hello {ops.Name(v)}`
+				end,
+				Bye = function(v: any): string
+					return `bye {ops.Name(v)}`
+				end,
+			}
+		end,
+	})
+	const nameOf = function(_v: any): string
+		return "n"
+	end
+	-- (a) 없는 멤버를 읽으면 에러를 내는 엄격한 모듈: 프리미티브만 구현해도 등록됨(기본 구현 이름을 묻다 죽었음)
+	const StrictKind = T.NewType("StrictGreeter")
+	const strict = setmetatable({ Name = nameOf }, {
+		__index = function(_self: any, key: any)
+			error(`Strict has no member {tostring(key)}`, 2)
+		end,
+	})
+	T.Impl(Greeter, StrictKind, strict :: any)
+	const strictOps = T.ImplOf(Greeter, { __type = StrictKind }) :: any
 	assert(
-		T.ImplOf(Hollow, value) == nil and not T.Implements(Hollow, value),
-		"빈 의존만으로는 따라오지 않음"
+		strictOps.Name == nameOf and strictOps.Hello({ __type = StrictKind }) == "hello n",
+		"엄격한 모듈도 기본 구현을 받음"
 	)
+	-- 필수 함수가 빠진 엄격한 모듈은 그 모듈의 에러가 아니라 트레이트의 메시지(사용자 줄)
+	const okStrict, errStrict = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(Greeter, T.NewType("StrictEmpty"), setmetatable({}, getmetatable(strict :: any)) :: any)
+	end)
+	assert(
+		not okStrict
+			and string.find(tostring(errStrict), "StrictEmpty is missing Name for Greeter2", 1, true)
+			and string.find(tostring(errStrict), `spec.contracts.luau:{where}:`, 1, true),
+		`엄격한 모듈의 필수 누락: {errStrict}`
+	)
+	-- (b) 값을 지어내는 프록시: 기본 구현을 갈아치우지 않음
+	const ProxyKind = T.NewType("ProxyGreeter")
+	const proxy = setmetatable({ Name = nameOf }, {
+		__index = function(_self: any, key: any)
+			return function(): string
+				return `fabricated-{tostring(key)}`
+			end
+		end,
+	})
+	T.Impl(Greeter, ProxyKind, proxy :: any)
+	assert(
+		(T.ImplOf(Greeter, { __type = ProxyKind }) :: any).Hello({ __type = ProxyKind }) == "hello n",
+		"프록시가 지어낸 값은 재정의가 아님"
+	)
+	-- (c) 테이블 사슬은 여러 단이어도 따라감: 필수도 재정의도
+	const ChainKind = T.NewType("ChainGreeter")
+	const grand = { Name = nameOf }
+	const parentOps = setmetatable({
+		Bye = function(_v: any): string
+			return "inherited-bye"
+		end,
+	}, { __index = grand })
+	T.Impl(Greeter, ChainKind, setmetatable({}, { __index = parentOps }) :: any)
+	const chainOps2 = T.ImplOf(Greeter, { __type = ChainKind }) :: any
+	assert(
+		chainOps2.Name == nameOf and chainOps2.Bye({}) == "inherited-bye" and chainOps2.Hello({}) == "hello n",
+		"두 단 위에서 물려받은 필수·재정의"
+	)
+	-- (d) 저절로 따라온 표 위의 재정의(제자리 경로): **새 이름도 얹고**, 엄격한 모듈이어도 됨, 반쯤 적용되지 않음
+	const Auto2 = T.New<<{ [string]: any }>>("Auto2", {
+		defaults = function()
+			return {
+				Hello = function(): string
+					return "auto-hello"
+				end,
+				Bye = function(): string
+					return "auto-bye"
+				end,
+			}
+		end,
+	})
+	const AutoKind = T.NewType("AutoKind2")
+	const autoValue = { __type = AutoKind }
+	const before = T.ImplOf(Auto2, autoValue) :: any
+	assert(before.Hello() == "auto-hello" and T.Implements(Auto2, autoValue), "저절로 따라옴")
+	T.Impl(
+		Auto2,
+		AutoKind,
+		setmetatable({
+			Hello = function(): string
+				return "own-hello"
+			end,
+			Extra = function(): string
+				return "own-extra"
+			end,
+		}, getmetatable(strict :: any)) :: any
+	)
+	const after = T.ImplOf(Auto2, autoValue) :: any
+	assert(after == before, "같은 표를 제자리에서 고침")
+	assert(after.Hello() == "own-hello" and after.Bye() == "auto-bye", "재정의한 것만 바뀜")
+	const extra = rawget(after, "Extra") :: (() -> string)?
+	assert(extra ~= nil and extra() == "own-extra", "기본 구현에 없던 새 이름도 얹힘")
+	const okReimpl = pcall(function()
+		T.Impl(Auto2, AutoKind, { Hello = print } :: any)
+	end)
+	assert(not okReimpl, "제자리 재정의 뒤에는 명시 등록 — 다시 등록은 에러")
 	-- 저절로 따라올 수 없는 트레이트의 빗나감은 그냥 nil(만들기 경로를 타지 않음 — perf 32절)
 	assert(
 		T.ImplOf(BaseTrait, { __type = T.NewType("Stranger") }) == nil,

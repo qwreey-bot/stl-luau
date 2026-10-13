@@ -156,12 +156,21 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 				Common.raise(`Trait: New needs a list of traits in dependencies, got {typeof(givenDependencies)}`)
 			end
 			-- 이미 만들어진 트레이트만 요구할 수 있으니 의존이 돌아 물릴 수 없습니다.
+			-- 숫자 루프로 읽고 **빈 칸·빈 목록을 거절**합니다 — 오타 난 이름(`{ Lisst }`)은 `nil` 이라 빈 목록과
+			-- 구별이 안 되고, 그러면 "의존 없음" 으로 읽혀 아무 종류에나 따라왔습니다(2라운드 리뷰).
 			const list: { any } = {}
-			for _, dep in givenDependencies do
+			const count = rawlen(givenDependencies)
+			if count == 0 then
+				Common.raise(
+					"Trait: New got an empty dependencies list (a misspelled trait name reads as nil) — leave the field out for no dependencies"
+				)
+			end
+			for at = 1, count do
+				const dep = rawget(givenDependencies, at)
 				if not traits[dep] then
-					Common.raise(`Trait: New needs a list of traits in dependencies, got a {typeof(dep)} in it`)
+					Common.raise(`Trait: New needs a list of traits in dependencies, got a {typeof(dep)} at {at}`)
 				end
-				table.insert(list, dep)
+				list[at] = dep
 			end
 			dependencies = table.freeze(list)
 		end
@@ -177,10 +186,8 @@ const function New<I>(name: string, spec: TraitSpec?): Trait<I, I>
 	-- 않으면 조회될 일도 없음). 내장 토큰은 각 컨테이너 모듈이 붙잡습니다(`Arr.Token`). ⚠️ Luau 의 약한 키는
 	-- ephemeron 이 아니라 구현 테이블이 토큰을 참조하면 남습니다(리뷰 2라운드 실측).
 	-- `derived` 는 "등록 없이 저절로 만들어진" 종류의 표시입니다(그 위에는 재정의를 등록할 수 있음).
-	-- 저절로 따라올 수 있는가: 필수 함수가 없고, 따라올 것(의존이나 기본 구현)이 있을 때. 의존 목록이 비어 있고
-	-- 기본 구현도 없으면 만들 것이 없습니다(빈 표가 모든 값에 따라오던 것을 막음, 리뷰).
-	const derivable = (required == nil or #required == 0)
-		and ((dependencies ~= nil and #dependencies > 0) or defaults ~= nil)
+	-- 저절로 따라올 수 있는가: 필수 함수가 없고, 따라올 것(의존이나 기본 구현)이 있을 때.
+	const derivable = (required == nil or #required == 0) and (dependencies ~= nil or defaults ~= nil)
 	const trait = {
 		name = name,
 		impls = setmetatable({}, WEAK_KEYS),
@@ -211,8 +218,29 @@ const function depsOf(trait: any, token: any): ({ [any]: any }?, any)
 	return deps, nil
 end
 
+-- 구현 표에서 이름 하나를 찾습니다: 자기 키, 없으면 **`__index` 가 테이블인 사슬**을 따라(클래스처럼 물려받은
+-- 모듈). `impl[name]` 으로 읽지 않습니다 — `__index` 가 **함수**인 표에서, 없는 멤버를 읽으면 에러를 내는
+-- 엄격한 모듈은 기본 구현 이름을 묻는 순간 라이브러리 줄에서 죽었고(프리미티브만 구현한 모듈이 등록 불가),
+-- 값을 지어내는 프록시는 기본 구현을 전부 갈아치웠습니다(2라운드 리뷰). 그런 표는 자기 키만 봅니다.
+const function lookup(impl: any, name: string): any
+	local cursor = impl
+	for _ = 1, 100 do -- Lua 의 `__index` 사슬 한도와 같음(돌아 물린 사슬 방지)
+		const own = rawget(cursor, name)
+		if own ~= nil then
+			return own
+		end
+		const meta = getmetatable(cursor)
+		const parent = if type(meta) == "table" then rawget(meta, "__index") else nil
+		if type(parent) ~= "table" then
+			return nil
+		end
+		cursor = parent
+	end
+	return nil
+end
+
 -- 완성 표의 빈 자리를 기본 구현으로 채웁니다(기본 구현이 없는 트레이트면 아무 일도 안 함).
--- `impl` 은 구현이 넘긴 표(저절로 만들 땐 nil) — 기본 구현과 같은 이름을 **`__index` 로 물려받고** 있으면
+-- `impl` 은 구현이 넘긴 표(저절로 만들 땐 nil) — 기본 구현과 같은 이름을 **물려받고** 있으면(`lookup`)
 -- 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히 기본 구현에 졌습니다, 리뷰).
 const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps: { [any]: any })
 	const defaults: Defaults? = trait.defaults
@@ -226,7 +254,7 @@ const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps
 	end
 	for fnName, fn in provided do
 		if full[fnName] == nil then
-			const inherited = if impl ~= nil then impl[fnName] else nil
+			const inherited = if impl ~= nil then lookup(impl, fnName) else nil
 			full[fnName] = if inherited ~= nil then inherited else fn
 		end
 	end
@@ -262,7 +290,8 @@ end
 -- 있는 쪽(의존으로 받은 다른 트레이트의 기본 구현 포함)도 새 함수를 보게 됩니다.
 --
 -- 저장되는 것: 기본 구현도 의존도 없는 트레이트는 **넘긴 표 그대로**(모듈 테이블이 곧 구현체), 그 밖에는
--- "넘긴 것 + 기본 구현" 을 합친 새 표입니다.
+-- 새 표입니다: 넘긴 표의 **자기 키 전부** + 필수·기본 구현 이름 중 물려받은 것(`__index` 가 테이블인 사슬) +
+-- 기본 구현. (그 밖의 이름으로 물려받은 함수는 옮기지 않습니다 — 완성 표는 트레이트의 함수를 부르는 곳.)
 const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 	if not traits[trait] then
 		Common.raise(`Trait: Impl needs a trait (from Trait.New), got {typeof(trait)}`)
@@ -288,7 +317,7 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 	end
 	if required then
 		for _, fnName in required do
-			if type((impl :: any)[fnName]) ~= "function" then
+			if type(lookup(impl, fnName)) ~= "function" then
 				Common.raise(`Trait: {token.name} is missing {fnName} for {trait.name}`)
 			end
 		end
@@ -308,7 +337,7 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 			existing[fnName] = fn
 		end
 		for fnName in existing do
-			const inherited = (impl :: any)[fnName]
+			const inherited = lookup(impl, fnName)
 			if inherited ~= nil then
 				existing[fnName] = inherited
 			end
@@ -322,11 +351,11 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 		full[fnName] = fn
 	end
 	if required then
-		-- 필수 함수는 `impl[name]` 으로 — 위의 검사가 `__index` 를 타고 통과했으니 완성 표에도 그렇게 넣습니다
+		-- 필수 함수는 `lookup` 으로 — 위의 검사가 물려받은 것도 인정했으니 완성 표에도 그렇게 넣습니다
 		-- (자기 키만 옮겼더니 물려받은 필수 함수가 완성 표에 없었습니다, 리뷰).
 		for _, fnName in required do
 			if full[fnName] == nil then
-				full[fnName] = (impl :: any)[fnName]
+				full[fnName] = lookup(impl, fnName)
 			end
 		end
 	end

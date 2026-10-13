@@ -11,7 +11,7 @@
 	- 콜백은 원소와 위치를 받고, 주석을 단 콜백의 원소 타입이 어긋나면 에러.
 	- 리스트가 아닌 것(맵·셋·리터럴)은 못 들어옴.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 23 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 25 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, Deque, HashMap, HashSet = stl.Arr, stl.Deque, stl.HashMap, stl.HashSet
@@ -139,6 +139,51 @@ local negMissing: stl.ListImpl<stl.Deque<string>, string, number> = {
 	NextIndex = Deque.NextIndex,
 }
 
+--[[ 1단계 2라운드 리뷰 — 실제 `List` 트레이트에 걸린 검사와 `Some`/`Every` 의 두 모양 ]]
+-- POS: 완성 표 타입(`ListFull` — 꼬리 없는 서명)으로 적은 표도 구현 표로 들어감 / 구간이 선택인 Some
+local asFull: stl.ListFull<stl.Deque<string>, string, number> = nil :: any
+local fullAsImpl: stl.ListImpl<stl.Deque<string>, string, number> = asFull
+stl.Trait.Impl(stl.List, stl.Trait.NewType("FromFull"), asFull)
+local function someOptional(
+	list: stl.Deque<string>,
+	pred: (item: string, idx: number) -> boolean,
+	start: number?
+): boolean
+	return pred(Deque.Get(list, start or 1) :: string, start or 1)
+end
+local optionalRange: stl.ListImpl<stl.Deque<string>, string, number> = {
+	Get = Deque.Get,
+	FirstIndex = Deque.FirstIndex,
+	LastIndex = Deque.LastIndex,
+	NextIndex = Deque.NextIndex,
+	PrevIndex = Deque.PrevIndex,
+	Some = someOptional,
+}
+-- NEG: 셋째 인자를 **꼭** 받는 Some(진입점은 둘만 넘김) / `Trait.Impl(stl.List, …)` 호출 자체가 재정의 자리를 봄
+local function someRequired(
+	list: stl.Deque<string>,
+	pred: (item: string, idx: number) -> boolean,
+	start: number
+): boolean
+	return pred(Deque.Get(list, start) :: string, start)
+end
+local negRequiredRange: stl.ListImpl<stl.Deque<string>, string, number> = {
+	Get = Deque.Get,
+	FirstIndex = Deque.FirstIndex,
+	LastIndex = Deque.LastIndex,
+	NextIndex = Deque.NextIndex,
+	PrevIndex = Deque.PrevIndex,
+	Some = someRequired,
+}
+stl.Trait.Impl(stl.List, stl.Trait.NewType("BadFold"), {
+	Get = Deque.Get,
+	FirstIndex = Deque.FirstIndex,
+	LastIndex = Deque.LastIndex,
+	NextIndex = Deque.NextIndex,
+	PrevIndex = Deque.PrevIndex,
+	Fold = "not a function",
+})
+
 local canary: string = 42
 
 return {
@@ -181,5 +226,8 @@ return {
 	negFoldAt,
 	negEveryElem,
 	negLiteral,
+	fullAsImpl,
+	optionalRange,
+	negRequiredRange,
 	canary,
 }

@@ -64,10 +64,17 @@ export type Full<C, E, I> = {
 }
 
 -- 구현이 **`Trait.Impl` 에 넘기는 표**의 타입: 필수 다섯 + **재정의할 수 있는 것은 선택 필드**.
--- 선택 필드로 적어 두어야 재정의의 서명이 검사됩니다 — 필수만 적은 타입이면 재정의 자리는 폭 서브타이핑으로
--- 아무 값이나 통과했습니다(`Fold = "문자열"` 이 0건, 리뷰). 콜백 타입의 `...any` 는 "원소와 위치, 그리고 구현이
--- 더 넘길 수도 있음" 입니다 — `Arr` 의 콜백은 셋째로 읽기 뷰를 받고 `Some`/`Every` 는 구간 인자도 받는데,
--- Luau 는 인자 수가 다른 함수 타입을 서로 넣어 주지 않아 꼬리가 없으면 `Arr` 모듈이 이 타입에 못 들어갑니다(실측).
+-- 선택 필드로 적어 두어야 재정의 자리가 검사됩니다 — 필수만 적은 타입이면 폭 서브타이핑으로 아무 값이나
+-- 통과했습니다(`Fold = "문자열"` 이 0건, 리뷰).
+-- ⚠️ **어디까지 잡히는가**(2라운드 리뷰 실측): `Trait.Impl(List, 토큰, 표)` 호출에서는 타입 인자가 `any` 라
+-- "필수가 빠짐 / 함수가 아님" 까지만 잡힙니다. 반환·원소·위치 타입과 인자 순서는 **구체 타입으로 적은 대입**
+-- (`const _list: List.Impl<Arr<any>, any, number> = ArrModule` — 모듈 끝에 한 줄)이 잡습니다. 인자를 **덜**
+-- 받는 함수(술어를 안 받는 `Count`)는 어느 쪽도 못 잡습니다(Luau 는 덜 받는 함수를 받아 줌).
+-- 콜백 타입의 `...any` 는 "원소와 위치, 그리고 구현이 더 넘길 수도 있음" 입니다(`Arr` 의 콜백은 셋째로 읽기
+-- 뷰를 받음). `Some`/`Every` 는 **두 모양의 합**입니다: 계약 그대로 `(list, pred)` 이거나, 뒤에 **선택** 인자를
+-- 더 받는 것(`Arr` 의 구간 `start?, last?`). 꼬리를 `...any` 하나로 두었더니 꼬리 없는 서명을 손으로 적은 표
+-- (`List.Full` 로 적은 표, 다른 종류의 완성 표)가 거절됐고, 셋째 인자를 **꼭** 받는 재정의는 통과해 진입점이
+-- 부를 때 라이브러리 줄에서 죽었습니다(둘 다 2라운드 리뷰).
 export type Impl<C, E, I> = {
 	read Get: (list: C, idx: I) -> E?,
 	read FirstIndex: (list: C) -> I?,
@@ -79,8 +86,14 @@ export type Impl<C, E, I> = {
 	read IndexOf: ((list: C, item: E) -> I?)?,
 	read Contains: ((list: C, item: E) -> boolean)?,
 	read Count: ((list: C, pred: ((item: E, idx: I, ...any) -> boolean)?) -> number)?,
-	read Some: ((list: C, pred: (item: E, idx: I, ...any) -> boolean, ...any) -> boolean)?,
-	read Every: ((list: C, pred: (item: E, idx: I, ...any) -> boolean, ...any) -> boolean)?,
+	read Some: (
+		((list: C, pred: (item: E, idx: I, ...any) -> boolean) -> boolean)
+		| ((list: C, pred: (item: E, idx: I, ...any) -> boolean, ...nil) -> boolean)
+	)?,
+	read Every: (
+		((list: C, pred: (item: E, idx: I, ...any) -> boolean) -> boolean)
+		| ((list: C, pred: (item: E, idx: I, ...any) -> boolean, ...nil) -> boolean)
+	)?,
 }
 
 --[[ 마커 — 타입에만 있는 필드 ]]
