@@ -7,8 +7,19 @@
 
 	⭐ **프리미티브 다섯만 구현하면 읽기 알고리즘이 따라옵니다**(2026-10-13, `papers/07`). 같은 이름의
 	함수를 가진 구현은 그것이 기본 구현을 대신합니다(`Arr` 는 모듈을 그대로 등록해 전부 자기 직접
-	구현으로). 기본 구현은 **바깥에서 리스트를 구현하는 쪽을 위한 것**이기도 합니다 — 라이브러리 안의
-	종류가 전부 재정의하더라도 둡니다(사용자 방침).
+	구현으로, `Deque` 는 재정의 없이 기본 구현을 받음). 기본 구현은 **바깥에서 리스트를 구현하는 쪽을
+	위한 것**이기도 합니다 — 라이브러리 안의 종류가 전부 재정의하더라도 둡니다(사용자 방침).
+
+	⚠️ **`Trait.Impl` 에 넘긴 표의 같은 이름은 전부 재정의입니다** — 모듈 테이블을 통째로 넘길 때 조심할 것
+	(2단계 리뷰가 재현, 진단 0건):
+	- 같은 이름으로 **진입점에 위임하는 함수**(`function M.IndexOf(self, x) return List.IndexOf(self, x) end`)
+	  가 있으면 진입점 → 그 함수 → 진입점으로 끝없이 돕니다(stack overflow).
+	- 같은 이름인데 **뜻이 다른 함수**(값으로 찾는 `Find(self, value)`, 술어를 안 받는 `Count(self)`)가
+	  조용히 재정의가 됩니다 — `List.Count(v, pred)` 가 술어를 무시한 값을 돌려줍니다. 인자를 덜 받는
+	  함수는 `Impl` 타입에도 들어가(Luau 규칙) 타입이 막지 못합니다.
+	그런 모듈은 통째로 넘기지 말고 **넘길 것만 든 표**를 만드세요. 재정의는 기본 구현과 같은 뜻·같은
+	인자여야 합니다. (라이브러리 안의 종류가 무엇을 재정의하는지는 `spec.contracts` 13절이 전수로 고정합니다 —
+	모듈에 같은 이름의 함수를 더하면 그 테스트가 알려 줍니다.)
 
 	⚠️ **기본 구현은 느린 게 정상입니다.** 원소마다 프리미티브를 간접 호출하므로 직접 구현의 1.1~3.8배
 	입니다(perf 31절) — Luau 제네릭은 지워지므로 C++ 템플릿처럼 공짜가 아닙니다. 각 컨테이너 자신의
@@ -186,6 +197,11 @@ const dispatch = Trait.Dispatch
 -- 그 종류의 완성 표를 부릅니다 — `Arr` 처럼 자기 구현이 있는 종류는 그것이(빠름), `Deque`·사용자 리스트는
 -- 위의 기본 구현이 돕니다. 콜백은 원소와 위치를 받습니다. 종류를 아는 코드는 그 모듈의 함수를 직접
 -- 쓰세요(`Arr.IndexOf`).
+--
+-- ⚠️ 콜백 타입의 꼬리 `...unknown` 은 **"구현이 인자를 더 넘길 수 있다"** 는 뜻입니다(`Arr` 는 읽기 뷰를 더
+-- 넘김). 이것이 없을 땐 가변인자 함수를 그대로 넘기는 코드가 진단 0건이었습니다 — `List.Fold(flags, 0,
+-- bit32.bor)` 가 `Arr` 에서는 라이브러리 줄 에러(넷째 인자가 테이블), `Deque` 에서는 위치가 섞인 틀린 값
+-- (2단계 리뷰). 꼬리 덕에 그런 함수는 타입 에러가 됩니다(받는 인자가 `unknown` 이라). 평범한 콜백은 그대로.
 
 -- 같은 원소가 처음 나오는 위치. 없으면 nil. 비교는 `==` 입니다 — 값 동등성이 필요하면 호출자가 다른 걸
 -- 써야 합니다. (원소 타입이 다른 `item` 은 타입 에러가 아닙니다 — `E` 가 둘의 합으로 넓어집니다.
@@ -201,27 +217,27 @@ end
 
 -- 세어서 구한 개수(AE, 2026-10-06 — `Len` 은 알고 있는 크기, `Count` 는 셈). 술어가 있으면 참인 원소만.
 -- 길이를 아는 컨테이너는 자기 `Len` 이 빠릅니다(`Collection.Len`).
-const function Count<E, I>(list: Marker<E, I>, pred: ((element: E, idx: I) -> boolean)?): number
+const function Count<E, I>(list: Marker<E, I>, pred: ((element: E, idx: I, ...unknown) -> boolean)?): number
 	return dispatch(List, list, "Count").Count(list, pred)
 end
 
 -- 앞에서부터 접기.
-const function Fold<E, I, U>(list: Marker<E, I>, init: U, fn: (acc: U, element: E, idx: I) -> U): U
+const function Fold<E, I, U>(list: Marker<E, I>, init: U, fn: (acc: U, element: E, idx: I, ...unknown) -> U): U
 	return dispatch(List, list, "Fold").Fold(list, init, fn)
 end
 
 -- 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
-const function Find<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): (E?, I?)
+const function Find<E, I>(list: Marker<E, I>, pred: (element: E, idx: I, ...unknown) -> boolean): (E?, I?)
 	return dispatch(List, list, "Find").Find(list, pred)
 end
 
 -- 하나라도 만족하는가.
-const function Some<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
+const function Some<E, I>(list: Marker<E, I>, pred: (element: E, idx: I, ...unknown) -> boolean): boolean
 	return dispatch(List, list, "Some").Some(list, pred)
 end
 
 -- 전부 만족하는가. 빈 리스트면 참.
-const function Every<E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean): boolean
+const function Every<E, I>(list: Marker<E, I>, pred: (element: E, idx: I, ...unknown) -> boolean): boolean
 	return dispatch(List, list, "Every").Every(list, pred)
 end
 

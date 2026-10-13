@@ -2860,6 +2860,10 @@ const ArrModule = {
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
 Trait.Impl(List, TOKEN, ArrModule)
+-- 구현이 계약을 만족하는지 여기서 정적으로 확인합니다 — `Trait.Impl` 호출만으로는 트레이트가 `any` 로
+-- 풀려 함수 대 함수의 서명 불일치가 안 잡힙니다(2단계 리뷰). 재정의 일곱의 서명도 이 줄이 봅니다.
+const _list: List.Impl<Arr<any>, any, number> = ArrModule
+const _collection: Collection.Ops<Arr<any>> = ArrModule
 Trait.Impl(Collection, TOKEN, ArrModule)
 
 return ArrModule

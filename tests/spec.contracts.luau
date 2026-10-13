@@ -2403,6 +2403,129 @@ do
 		not okLine and string.find(tostring(errLine), `spec.contracts.luau:{where}:`, 1, true),
 		`사용자 줄: {errLine}`
 	)
+
+	--[[ 2단계 리뷰 1라운드가 짚은 공백(돌연변이 생존) ]]
+	const add = function(acc: number, v: number?): number
+		return acc + (v or 0)
+	end
+	const tens: { number? } = { 10, 20, 30, 40 }
+	const kinds: { { name: string, list: any } } = {
+		{ name = "Arr", list = stl.Arr.Of(10, 20, 30, 40) },
+		{ name = "Deque", list = stl.Deque.Of(10, 20, 30, 40) },
+		{ name = "Chain", list = chainOf(tens, 4) },
+	}
+	for _, kind in kinds do
+		-- Fold 는 **손으로 센 값**과 견줌(기준값이 진입점 자신이면 "항상 init 을 돌려줌" 이 통과했음)
+		assert(stl.List.Fold(kind.list, 0, add) == 100, `{kind.name} Fold 합`)
+		assert(stl.List.Fold(kind.list, 5, add) == 105, `{kind.name} Fold 초기값`)
+		-- 술어는 **위치**도 받음(Count·Every·Some·Find 전부) — 위치가 nil 이면 여기서 걸림
+		local withPosition = 0
+		assert(stl.List.Count(kind.list, function(_v: any, at: any): boolean
+			withPosition += if at ~= nil then 1 else 0
+			return at ~= nil
+		end) == 4 and withPosition == 4, `{kind.name} Count 의 술어가 위치를 받음`)
+		assert(
+			stl.List.Every(kind.list, function(_v: any, at: any): boolean
+				return at ~= nil
+			end),
+			`{kind.name} Every 의 술어가 위치를 받음`
+		)
+		assert(
+			stl.List.Some(kind.list, function(_v: any, at: any): boolean
+				return at ~= nil
+			end),
+			`{kind.name} Some 의 술어가 위치를 받음`
+		)
+		-- 못 찾은 Find 는 값 **둘**(nil, nil)
+		assert(select(
+			"#",
+			stl.List.Find(kind.list, function(): boolean
+				return false
+			end)
+		) == 2, `{kind.name} Find 못 찾음은 값 둘`)
+		-- Some 은 술어의 참 값이 아니라 불리언
+		assert(stl.List.Some(kind.list, function(): any
+			return "truthy"
+		end) == true, `{kind.name} Some 은 불리언`)
+	end
+	assert(stl.Arr.Fold(stl.Arr.Of(10, 20, 30, 40), 0, add) == 100, "Arr.Fold 직접 호출과 같은 값")
+
+	-- 구멍: 술어는 구멍에도 불림(nil 을 받음) — 기본 구현(Deque·Chain)과 Arr 이 같은 답
+	const isHole = function(v: any): boolean
+		return v == nil
+	end
+	const holedKinds: { { name: string, list: any } } = {
+		{ name = "Arr", list = stl.Arr.Of<<number?>>(10, nil, 30, nil) },
+		{ name = "Deque", list = stl.Deque.Of<<number?>>(10, nil, 30, nil) },
+		{ name = "Chain", list = chainOf({ 10, nil, 30, nil }, 4) },
+	}
+	for _, kind in holedKinds do
+		assert(stl.List.Count(kind.list, isHole) == 2, `{kind.name} Count(구멍)`)
+		assert(stl.List.Some(kind.list, isHole), `{kind.name} Some(구멍)`)
+		assert(not stl.List.Every(kind.list, isHole), `{kind.name} Every(구멍)`)
+		const item, at = stl.List.Find(kind.list, isHole)
+		assert(item == nil and at ~= nil, `{kind.name} Find(구멍) 은 nil 과 그 위치`)
+		assert(stl.List.Contains(kind.list, nil) == true, `{kind.name} Contains(nil)`)
+		assert(stl.List.IndexOf(kind.list, nil) ~= nil, `{kind.name} IndexOf(nil)`)
+		assert(stl.List.Contains(kind.list, 30) and not stl.List.Contains(kind.list, 99), `{kind.name} Contains`)
+	end
+
+	-- ⭐ 내장 종류가 **무엇을 재정의하는지 전수로 고정**: 모듈 테이블을 통째로 등록하므로 모듈에 같은 이름의
+	-- 함수가 생기면 조용히 재정의가 됩니다(뜻이 다른 함수, 진입점에 위임하는 함수 — 무한 재귀, 리뷰).
+	-- 여기가 깨지면 "그 함수가 기본 구현과 같은 뜻인가" 를 확인하고 목록을 고치세요.
+	const defaultNames = { "Fold", "Find", "IndexOf", "Contains", "Count", "Some", "Every" }
+	const overrides: { { name: string, module: any, value: any, own: { [string]: boolean } } } = {
+		{
+			name = "Arr",
+			module = stl.Arr,
+			value = stl.Arr.Of(1),
+			own = { Fold = true, Find = true, IndexOf = true, Contains = true, Count = true, Some = true, Every = true },
+		},
+		{ name = "Deque", module = stl.Deque, value = stl.Deque.Of(1), own = {} },
+	}
+	for _, case in overrides do
+		const ops = T.ImplOf(stl.List, case.value) :: any
+		for _, fnName in defaultNames do
+			assert(type(ops[fnName]) == "function", `{case.name} 완성 표에 {fnName}`)
+			if case.own[fnName] then
+				assert(ops[fnName] == case.module[fnName], `{case.name}.{fnName} 은 자기 구현(재정의)`)
+			else
+				assert(
+					case.module[fnName] == nil,
+					`{case.name} 모듈에 {fnName} 이 생김 — 재정의가 맞는지 확인할 것`
+				)
+			end
+		end
+	end
+
+	-- 에러 메시지의 진입점 이름: 일곱 전부
+	const namedCalls: { { name: string, call: (any) -> any } } = {
+		{
+			name = "IndexOf",
+			call = function(v: any): any
+				return stl.List.IndexOf(v, 1)
+			end,
+		},
+		{
+			name = "Count",
+			call = function(v: any): any
+				return stl.List.Count(v)
+			end,
+		},
+		{
+			name = "Some",
+			call = function(v: any): any
+				return stl.List.Some(v, alwaysTrue)
+			end,
+		},
+	}
+	for _, entry in namedCalls do
+		const ok, err = pcall(entry.call, stl.HashMap.New())
+		assert(
+			not ok and string.find(tostring(err), `List: {entry.name} needs a List — HashMap does not`, 1, true),
+			`{entry.name} 이름: {err}`
+		)
+	end
 end
 print("PASS")
 

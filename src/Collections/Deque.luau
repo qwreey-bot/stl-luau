@@ -374,7 +374,7 @@ Trait.Impl(List, TOKEN, DequeModule)
 Trait.Impl(Collection, TOKEN, DequeModule)
 
 -- `Types` 는 계약 타입만 — 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
-const _ops: List.Ops<Deque<any>, any, number> = DequeModule
+const _ops: List.Impl<Deque<any>, any, number> = DequeModule
 const _collection: Collection.Ops<Deque<any>> = DequeModule
 
 return DequeModule

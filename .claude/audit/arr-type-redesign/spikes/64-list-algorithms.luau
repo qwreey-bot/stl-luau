@@ -11,7 +11,7 @@
 	- 콜백은 원소와 위치를 받고, 주석을 단 콜백의 원소 타입이 어긋나면 에러.
 	- 리스트가 아닌 것(맵·셋·리터럴)은 못 들어옴.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 13 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 23 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, Deque, HashMap, HashSet = stl.Arr, stl.Deque, stl.HashMap, stl.HashSet
@@ -48,10 +48,9 @@ local every: boolean = stl.List.Every(queue, function(v: string): boolean
 end)
 -- 읽기 전용으로 빌린 참조도(넓은 원소 타입으로)
 local function borrowed(list: stl.ArrRead<number?>, dq: stl.DequeRead<string>): number
-	return stl.List.Count(list)
-		+ stl.List.Fold(dq, 0, function(acc: number, v: string): number
-			return acc + #v
-		end)
+	return stl.List.Count(list) + stl.List.Fold(dq, 0, function(acc: number, v: string): number
+		return acc + #v
+	end)
 end
 local viaBorrow: number = borrowed(nums, queue)
 
@@ -84,6 +83,31 @@ local negMap = stl.List.Fold(HashMap.New<<string, number>>(), 0, function(acc: n
 	return acc
 end)
 local negSet = stl.List.Contains(HashSet.Of(1), 1)
+
+--[[ 2단계 리뷰가 짚은 공백 — 지키는 NEG 가 없던 성질들 ]]
+-- 가변인자 함수를 콜백으로: 구현이 인자를 더 넘길 수 있어(Arr 는 읽기 뷰) 틀린 값·라이브러리 줄 에러였음(0건)
+local negVariadic = stl.List.Fold(nums, 0, math.max)
+local negVariadicBits = stl.List.Fold(Deque.Of(1, 1, 4), 0, bit32.bor)
+-- Count: 반환은 number / 술어의 원소·위치 타입 / 리스트가 아닌 것
+local negCountReturn: string = stl.List.Count(nums)
+local negCountElem = stl.List.Count(nums, function(v: string): boolean
+	return v == "x"
+end)
+local negCountAt = stl.List.Count(nums, function(_v: number, at: string): boolean
+	return at == "x"
+end)
+local negCountMap = stl.List.Count(HashMap.New<<string, number>>())
+-- Find 의 둘째 반환(위치)도 옵셔널 / 콜백의 위치 타입 / 리터럴은 리스트가 아님
+local _, negFindAt: number = stl.List.Find(nums, function(v: number): boolean
+	return v > 1
+end)
+local negFoldAt = stl.List.Fold(nums, 0, function(acc: number, _v: number, at: string): number
+	return acc + #at
+end)
+local negEveryElem = stl.List.Every(nums, function(v: string): boolean
+	return v == "x"
+end)
+local negLiteral = stl.List.Count({ 1, 2, 3 })
 
 --[[ 구현이 넘기는 표(`ListImpl`) — 필수 다섯 + 재정의는 선택 필드라 서명이 검사됨 ]]
 -- POS: 모듈이 그대로 들어감(Arr 는 일곱을 재정의, Deque 는 필수만)
@@ -147,5 +171,15 @@ return {
 	negOverride,
 	negOverrideReturn,
 	negMissing,
+	negVariadic,
+	negVariadicBits,
+	negCountReturn,
+	negCountElem,
+	negCountAt,
+	negCountMap,
+	negFindAt,
+	negFoldAt,
+	negEveryElem,
+	negLiteral,
 	canary,
 }
