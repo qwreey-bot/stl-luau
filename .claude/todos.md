@@ -181,6 +181,8 @@ local f = nested:Flat<<number>>()
 | ~~M5~~ | **✅ 2026-10-07** 리뷰 소진(2라운드 — 결함 0 → 0, 테스트 공백·Clear 성능만). 모양은 질문 AK(`DequeRead` 는 10-12 에 넣음, 나머지 확인 대기) **`Deque`**(링 버퍼) — 리스트 진입점이 Deque 를 받을지는 AK 에서 잠정 "안 받음(`ToArr`)", `Algorithm` 은 받음 | 세 출처 공통. 새 컨테이너 = 새 음성 대조군 스파이크 |
 | **M6** | `Multiset`, `OrderedMap` — ⚠️ 트레이트 메모: Multiset 은 `SetOps.Add -> boolean`(새로 들어갔나)과 의미가 안 맞음. 맵 종류를 모르고 다루는 표면(`Trait.Collection`, `MapOps` 다섯 + `Algorithm.Records`)은 **2026-10-12 에 앞당겨 넣음**(질문 AO) — 새 컨테이너는 `Collection` 을 구현하고 `__collectionMut` 팬텀을 넣을 것 | M4 위에 얇게. 부르는 곳이 보이면 |
 | **M7** | `Fut` — `Race`, `AllSettled`, `Finally`, `Retry`, `Timeout`(provider 에 타이머 필요) | 부르는 곳 기준(기존 방침) |
+| **나중** | **B-Tree, B+Tree**(2026-10-13 사용자: *"나중 todo 로 B-Tree, B+Tree 도 잡아둬줘"*) — 다진 트리라 이진 `SearchTree`(`Join`)와는 다른 계약. 노드는 같은 일반 노드(번호 칸 여럿)를 쓸 수 있는지, 칸을 배열로 든 노드가 나은지부터 잼. B+Tree 는 잎을 이어 구간 순회 | 4단계(노드·이진 트리) 뒤 |
+| **나중** | **트라이, 블룸필터** 등 탐색용 자료형(2026-10-13 사용자 — 게임의 검색에 씀, 최종 목표에 포함) | 같은 구조(`Collections/` 에 파일 하나 + 토큰 + 트레이트 등록)로 |
 | 연구 | `buffer` 기반 `BitSet`/packed 숫자 배열, `Freeze`, 비교 없는 정렬 | 실측 주제. 수요가 보이면 |
 | **마지막** | **문서 사이트** — *"다른거 다 구현되면, quad처럼 마지막 스테이지에서 하자."* `base/docs-plan.md` | 사용자 결정 |
 
