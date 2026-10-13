@@ -59,14 +59,14 @@
 - **모듈 패턴**: 이름 붙은 top-level 함수들(첫 인자가 데이터) + **순수 테이블
   네임스페이스** `return { … }` + 판별용 **타입 토큰**(`__type`). ⭐ **트레이트**
   (2026-10-06 사용자 결정, 질문 AG — `papers/06`, `src/Trait.luau`):
-  - **값에는 타입 토큰 하나**: 생성자가 `__type = TOKEN`(그 종류의 모듈이 `Trait.NewType("Arr")` 로 만든 얼린 공유 테이블 — 밖에서는 `Arr.Token`)을
+  - **값에는 타입 토큰 하나**: 생성자가 `__type = TOKEN`(그 종류의 모듈이 `Trait.NewToken("Arr")` 로 만든 얼린 공유 테이블 — 밖에서는 `Arr.Token`)을
     붙입니다. **모든 생성·반환 경로**가 붙여야 합니다(`spec.contracts` 5절이 전수로 지킴).
     키 문자열 `"__type"` 은 모듈마다 **리터럴로** 적습니다 — `Trait.TYPE_KEY` 를 받아
     쓰면 상수 접기가 안 돼 생성이 7~11% 느렸습니다.
   - ⭐ **파일 구조**(2026-10-13 사용자 결정): `src/Trait.luau` 는 **시스템만**(토큰, `New`·`Impl`·`ImplOf`,
-    `Dispatch`·`Module`). **트레이트 하나하나는 `src/Traits/<이름>.luau`** 에 — 계약 타입(`Ops`·`Full`·`Impl`), 마커
+    `ExpectImpl`·`Expose`). **트레이트 하나하나는 `src/Traits/<이름>.luau`** 에 — 계약 타입(`Core`·`Full`·`Provided`), 마커
     (`Marker`·`MarkerMut`), 기본 구현, **종류를 모르는 코드의 진입점**이 한 파일에 있습니다(*"인터페이스 파일처럼 …
-    Adt 보고싶은데 Trait.luau 봐야하는건 조금 문제"*). 그 모듈이 **곧 트레이트 객체**입니다(`Trait.Module(트레이트,
+    Adt 보고싶은데 Trait.luau 봐야하는건 조금 문제"*). 그 모듈이 **곧 트레이트 객체**입니다(`Trait.Expose(트레이트,
     { 진입점 })`): `Trait.Impl(List, TOKEN, ArrModule)` 과 `List.IndexOf(값, x)` 가 같은 이름(Rust 의 `List::index_of`).
     예전의 `Algorithm.luau`(진입점 모음)와 `Types.luau` 의 계약·마커는 여기로 갈라져 없어졌습니다. 컨테이너는
     `src/Collections/`, 컨테이너를 모르는 알고리즘(`BSearch`, 곧 정렬들)은 `src/Algorithms/`. **확장할 수 있게만**
@@ -86,8 +86,10 @@
       (사용자: *"A가 된다면 이게 된다가 자연히 따라오는 방식 … 인터페이스 자신이 필요한건 자신이 아니까"*).
       **컨테이너는 자기가 아는 트레이트만 등록합니다.** 저절로 따라온 것 위에 빠른 판을 등록하는 것은 되고(같은 표가
       제자리에서 바뀜), 명시적으로 등록한 것을 또 등록하면 에러입니다.
-    - 타입: 완성 표와 구현이 넘기는 표가 다르면 `Trait.New<<Full>>(…) :: Trait<Full, Core>`. ⚠️ **`Core` 는
-      "필수 함수 + 재정의할 수 있는 함수는 선택 필드(`?`)"** 로 적습니다(`List.Impl` 이 그 모양) — 필수만
+    - 타입: 한 트레이트의 타입은 셋입니다 — **`Core`**(필수 함수만) / **`Full`**(필수 + 기본 구현 = 완성 표,
+      `ImplOf` 가 돌려주는 것) / **`Provided`**(구현이 `Trait.Impl` 에 넘기는 표). 기본 구현이 없는 트레이트는 `Core`
+      하나뿐입니다(셋이 같음). 완성 표와 넘기는 표가 다르면 `Trait.New<<Full>>(…) :: Trait<Full, Provided>`. ⚠️ **`Provided` 는
+      "필수 함수 + 재정의할 수 있는 함수는 선택 필드(`?`)"** 로 적습니다(`List.Provided` 가 그 모양) — 필수만
       적으면 재정의 자리가 검사되지 않아 `Fold = "문자열"` 이 0건이었습니다(1단계 리뷰, `spikes/55`·`64`). 콜백을
       받는 재정의의 타입에는 `...any` 꼬리를 둡니다(구현이 인자를 더 넘길 수 있음 — 없으면 `Arr` 모듈이 안 들어감).
       그 캐스트 자체는 검사되지 않으니(새 솔버) `Full` 과 "필수 + 기본 구현" 의 일치는 테스트로. 트레이트를
@@ -116,19 +118,19 @@
     모듈을 통째로 넘길 때 같은 이름으로 진입점에 위임하는 함수는 **무한 재귀**, 뜻이 다른 같은 이름
     (값으로 찾는 `Find`, 술어를 안 받는 `Count`)은 조용히 틀린 결과입니다. 그런 모듈은 넘길 것만 든 표를
     만드세요. 내장 종류가 무엇을 재정의하는지는 `spec.contracts` 13절이 전수로 고정하고, 계약 만족은 모듈
-    끝의 `const _list: List.Impl<…> = Module` 줄이 봅니다(`Trait.Impl` 호출만으로는 함수 대 함수의 서명
+    끝의 `const _list: List.Provided<…> = Module` 줄이 봅니다(`Trait.Impl` 호출만으로는 함수 대 함수의 서명
     불일치가 안 잡힘). ⚠️ **가변인자 함수(`math.max`, `bit32.bor`)를 진입점의 콜백으로 그대로 넘기지 마세요** — 위치
     (와 `Arr` 의 읽기 뷰)까지 값으로 삼아 틀린 값·라이브러리 줄 에러가 됩니다. 타입은 못 막습니다: 콜백 타입에
     `...unknown` 꼬리를 두면 잡히지만 **타입을 적은 콜백 변수·파라미터**(`pred: (E, I) -> boolean`)가 전부 거절돼
     걷었습니다(구조 재배치 리뷰 — `spikes/64` 가 두 쪽을 다 고정). 람다로 감싸세요.
-    `Trait.Module` 은 트레이트의 자기 필드 이름(`defaults`·`required` … — 값이 `nil` 이어도)을 진입점 이름으로
+    `Trait.Expose` 는 트레이트의 자기 필드 이름(`defaults`·`required` … — 값이 `nil` 이어도)을 진입점 이름으로
     받지 않고, 하나라도 걸리면 아무것도 얹지 않습니다.
     알고리즘은 **작게 시작해 점점 늘립니다**(사용자 결정) — 새로 올릴 땐
-    `Traits/List` 의 `Full`·`Impl`·`defaults`·진입점, `spec.contracts` 13절의 대조에 같이.
+    `Traits/List` 의 `Full`·`Provided`·`defaults`·진입점, `spec.contracts` 13절의 대조에 같이.
     ⚠️ 그래서 `Trait.ImplOf(List, v)` 는 모듈 테이블이 아니라 **완성 표**(모듈이 준 것 + 기본 구현)입니다 —
     `== stl.Arr` 로 견주지 마세요(기본 구현이 없는 `Map`·`Set`·`Collection` 은 여전히 모듈 그대로).
     값의 토큰은 `Trait.TokenOf(v)` — `type…` 이름은 Lua 내장 `type`/`typeof` 와 겹쳐 피합니다
-    (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewType`)은
+    (질문 AH, quad 가 `Brand` 로 지은 이유와 같음). 토큰(`Trait.NewToken`)은
     트레이트를 구현하지 않는 종류(`Fut` — `Heap` 은 `Collection` 만 구현)도 쓰는 바탕이지만 `Trait` 밑에 둡니다.
     모듈을 불러올 때 `Trait.Impl(List, TOKEN, ArrModule)` 한 줄. 한 종류가 여러
     트레이트를, 바깥 트레이트를 우리 종류에, 바깥 종류를 우리 트레이트에 — 이름이 아니라
@@ -169,12 +171,12 @@
   돌려줄 땐 `return self :: any`. (예전엔 전체형에 섞인 계약 조각 때문에 이게
   **필수**였습니다 — 지금은 전체형이 곧 데이터부라 같은 뜻입니다.)
 
-- **계약은 함수 묶음입니다**(`List.Ops<C, E, I>` 등) — 트레이트에 등록되는 구현의
+- **계약은 함수 묶음입니다**(`List.Core<C, E, I>` 등) — 트레이트에 등록되는 구현의
   모양입니다. 필드는 **`read`** — 그래야 모듈 테이블(제네릭 함수들)이 그대로 구현체로
   들어갑니다(실측). 공용 알고리즘은 **구현을 손으로 받지 않습니다**:
   `List.IndexOf(a, x)`, `Map.Keys(m)` — 트레이트 마커에서 타입을 추론하니
   타입 인자도 필요 없습니다(예전 `Algorithm.Keys<<HashMap<…>, K, V>>(HashMap, m)`).
-  ⚠️ 함수 묶음을 **직접** 받는 사용자 제네릭 함수(`put<C, V>(ops: MapOps<C, string, V>,
+  ⚠️ 함수 묶음을 **직접** 받는 사용자 제네릭 함수(`put<C, V>(ops: MapCore<C, string, V>,
   …)`)는 여전히 타입 인자가 필요합니다 — 트레이트 마커를 받는 모양으로 쓰세요.
   ⭐ **키·위치·값을 입력으로 받는 제네릭은 불변 마커**(2026-10-12 사용자 결정, 질문 AM — `spikes/61`):
   `MapMarker`/`SetMarker`/`ListMarker` 는 `read`(공변)라 **꺼내기만 하는** 알고리즘용입니다(`Keys`·`Count`).
@@ -235,8 +237,14 @@
   (질문 V → Z: `any` 로 뺐더니 `any` 가 콜백 반환을 타고 결과 타입으로
   샜습니다. `base/typing-limits.md`).
 
+- ⭐ **`FromTable` 은 복사, `Adopt` 는 입양**(2026-10-13 사용자 확인, 질문 AU): `Arr.FromTable(t)`·`HashMap.FromTable(t)` 는
+  넘긴 테이블을 **복사**하고, `Arr.Adopt(t)`·`HashMap.Adopt(data, size)`·`FlatMap.Adopt(…)` 는 **그대로 가집니다**(넘긴
+  쪽이 뒤에서 건드리면 같이 바뀜). 예전에는 `Arr.FromTable` 이 입양이고 복사 판이 `CloneFromTable` 이라 같은 이름이 두
+  모듈에서 소유권이 반대였습니다. `TreeMap.FromSorted` 는 어느 쪽도 아닙니다 — 전제(정렬됨)를 검사하지 않을 뿐, 목록을
+  읽어 노드를 **새로 만듭니다**. 생성자를 더할 때 이름을 이 뜻대로.
+
 - **리스트를 받는 진입점의 길이 규약**: `{ T }` 를 받는 함수(`FromList`,
-  `FromRecords`, `CloneFromTable` …)는 **`Common.listLength`**(`n` 이 0 이상의
+  `FromRecords`, `Arr.FromTable` …)는 **`Common.listLength`**(`n` 이 0 이상의
   정수면 그것, 아니면 `#`)로 길이를 재고 숫자 루프로 돕니다 — `#`/`pairs` 로
   읽으면 `Arr` 의 `n`·태그 키까지 원소가 되거나 구멍 뒤를 잃었습니다(M0 3라운드).
   구멍을 건너뛴 조밀한 사본이 필요하면 `Common.denseList`.
@@ -283,11 +291,11 @@
   넣고(읽기 타입에는 앞의 것만) `Trait.Impl(Deque, TOKEN, Module)`.
 - ⭐ **층은 셋입니다**(2026-10-13 사용자 결정 — `papers/07` 9-4): **1층 노드단 도구**(`src/Node/` — 연결 방식별 노드와
   도구 `Node.Single`·`Node.Double`·`Node.Binary`) → **2층 트리부**(`src/Trees/` — 노드 도구로 짠 균형
-  방식 `RedBlack`·`Avl`, 공유 조각 `Search`. 컨테이너가 아니라 **뿌리 노드와 비교자를 받아 새 뿌리를 돌려주는
+  방식 `RedBlack`·`Avl`, 찾기 조각 `Search`, 균형 계약 `Balance`. 컨테이너가 아니라 **뿌리 노드와 비교자를 받아 새 뿌리를 돌려주는
   함수들**) → **3층 조립**(`src/Collections/` — 크기·타입 토큰·키 검사는 여기). 도구는 노드끼리의 연결만 고치고,
-  머리·꼬리·뿌리·크기는 그것을 가진 쪽이 돌려받은 것을 보고 고칩니다. **자가 균형은 계약입니다**(`Search.Balance` —
+  머리·꼬리·뿌리·크기는 그것을 가진 쪽이 돌려받은 것을 보고 고칩니다. **자가 균형은 계약입니다**(`Balance.Scheme` —
   `Insert`·`Remove`·`FromSorted`·`Clone`): 트리를 조립하는 쪽은 기본(레드블랙)을 두고 다른 것을 받을 수 있게
-  합니다. 새 균형 방식은 `src/Trees/` 에 파일 하나 + 끝에 `const _balance: Search.Balance = Module`, 테스트는
+  합니다. 새 균형 방식은 `src/Trees/` 에 파일 하나 + 끝에 `const _balance: Balance.Scheme = Module`, 테스트는
   `spec.trees` 의 방식 목록에 한 줄(같은 시나리오가 돕니다 — 균형 검사 함수만 그 방식의 것으로).
   트리 순회자 같은 트리 공용 조각도 `src/Trees/` 에 둡니다(사용자). 떼어 낸 노드는 연결을 끊고, 자식이 둘인 노드를
   지울 땐 **노드를 옮깁니다**(값만 베끼면 쥐고 있던 위치가 다른 키를 가리킴).
@@ -345,7 +353,7 @@
   대조)이라 쓰임으로 고릅니다: 넣고 빼기가 섞이면 `TreeMap`(1만 개에서 4.5배, 10만 개에서 19배 — perf 38-3절), 작거나 한 번에
   지어 읽기만 하면 `FlatMap`(`Keys`·순회가 빠름) — perf 37절. `TreeMap.New(compare, balance?)` 의 둘째 인자로 균형
   방식을 고릅니다(기본 레드블랙). **생성자는 비교자와 균형 방식 인자를 확인합니다**(`Common.expectComparator`,
-  `Search.ExpectBalance` — 빈 구조에서는 비교도 넣기도 일어나지 않아 엉뚱한 인자가 조용히 통과하고 나중에 라이브러리
+  `Balance.Expect` — 빈 구조에서는 비교도 넣기도 일어나지 않아 엉뚱한 인자가 조용히 통과하고 나중에 라이브러리
   줄에서 죽었음. `nil` 키와 같은 모양), 집합 연산은 **상대가 같은 종류인지** 봅니다(표면이 같은 `FlatSet` 을 섞으면
   빈 셋으로 읽혔음). 정렬 구조의 생성자를 더하면 같이. 아래 규약에서 "트리 계열" 이라 한 것(`nil`·NaN 키 정책 등)은 **둘 다**에 그대로
   적용됩니다 — 에러 머리만 자기 이름(`TreeMap: nil key` / `FlatMap: nil key`). 한쪽에 함수를 더하면 다른 쪽에도.

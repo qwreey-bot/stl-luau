@@ -175,7 +175,7 @@ export type XxxData<T> = {                   -- 데이터부 = 전체형
 export type Xxx<T> = XxxData<T>
 
 const TYPE_KEY = "__type"                    -- 리터럴(상수 접기)
-const TOKEN = Trait.NewType("Xxx") :: Trait.Token<"Xxx">   -- 모듈 테이블에 Token = TOKEN 으로도 내보냄
+const TOKEN = Trait.NewToken("Xxx") :: Trait.Token<"Xxx">   -- 모듈 테이블에 Token = TOKEN 으로도 내보냄
 
 const function Foo<T>(self: XxxData<T>, …) … end   -- 이름 붙은 top-level 함수들(서비스)
 

@@ -58,7 +58,7 @@ src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
   Types.luau       작은 공용 타입(비교자, 레코드). **말단 모듈** — 아무것도 require 안 함
   Common.luau      에러 규약(raise), 비교자 어댑터와 기본 3방향 비교자, 리스트 길이 규약
-  Trait.luau       ⭐ 트레이트 **시스템만** — 토큰, New·Impl·ImplOf, Dispatch·Module
+  Trait.luau       ⭐ 트레이트 **시스템만** — 토큰(NewToken), New·Impl·ImplOf, ExpectImpl·Expose
   Traits/          ⭐ 트레이트 하나하나 — 계약 타입·마커·기본 구현·종류를 모르는 코드의 진입점이 한 파일에.
                    모듈이 곧 트레이트 객체(`Trait.Impl(List, …)` 와 `List.IndexOf(v, x)` 가 같은 이름)
     List.luau        위치 프리미티브 다섯 + 읽기 알고리즘의 기본 구현 일곱
@@ -86,7 +86,8 @@ src/
     Binary.luau      이진 `{ 값, 왼쪽, 오른쪽, 부모 }` — 회전, 중위 Next·Prev, First·Last, Replace, SetLeft·SetRight, InOrder
   Trees/           ⭐ 2층 트리부 — 노드 도구로 짠 균형 방식. 컨테이너가 아니라 뿌리 노드를 받는 함수들
     Search.luau      탐색 트리 노드의 칸 배치(이진 + `5` = 키, `6` = 균형 정보), Key·Value·Next·Prev·First·Last,
-                     균형 방식과 무관한 공유 조각(Find·LowerBound·UpperBound·Clone), 자가 균형의 계약(Balance)
+                     균형 방식과 무관한 공유 조각(Find·LowerBound·UpperBound·Clone)
+    Balance.luau     자가 균형의 계약(Balance.Scheme)과 조립하는 쪽의 인자 확인(Balance.Expect)
     RedBlack.luau    레드블랙 — Insert·Remove·FromSorted (제품의 기본)
     Avl.luau         AVL — 같은 표면
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
@@ -146,7 +147,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
-| `Types` / `Common` / `Trait` / `Traits/*` | 트레이트 2026-10-06, 불변 마커·`Collection`·넓힌 `MapOps` 10-12, **기본 구현·의존·저절로 따라오기 + 리스트 알고리즘의 기본 구현** 10-13(`papers/07` — 들이는 중), 같은 날 **구조 재배치**(`Traits/`·`Collections/`·`Algorithms/`, `Algorithm.luau` 는 트레이트 파일로 분화) | `spikes/55`, `61`, `63`, `64` |
+| `Types` / `Common` / `Trait` / `Traits/*` | 트레이트 2026-10-06, 불변 마커·`Collection`·넓힌 `Map.Core`(그때 이름 `MapOps`) 10-12, **기본 구현·의존·저절로 따라오기 + 리스트 알고리즘의 기본 구현** 10-13(`papers/07` — 들이는 중), 같은 날 **구조 재배치**(`Traits/`·`Collections/`·`Algorithms/`, `Algorithm.luau` 는 트레이트 파일로 분화) | `spikes/55`, `61`, `63`, `64` |
 | `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
 | `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |
@@ -155,7 +156,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `Heap` | 완성 | `spikes/44` |
 | `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |
 | `LinkedDeque` / `Node` / 트레이트 `Deque` | 2026-10-13 — 리뷰 대기 | `spikes/65` |
-| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
+| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`·`Balance`) | 2026-10-13 — 전부 번호 칸·불투명 핸들(질문 AT), `TreeMap`·`TreeSet` 에 조립됨. 리뷰 1라운드 반영(런타임 결함 0) | `spikes/66` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 

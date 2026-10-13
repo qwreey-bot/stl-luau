@@ -1206,7 +1206,15 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 
 ---
 
-### AU. 이름 검토 — 네 시선(sonnet 외부자·내부자, Gemini 외부자·내부자)의 결과 — **[열림, 2026-10-13]**
+### AU. 이름 검토 — 네 시선(sonnet 외부자·내부자, Gemini 외부자·내부자)의 결과 — **[2026-10-13 사용자 확인: 권장 묶음 1·2 반영, 3 은 열림]**
+
+> 결정(2026-10-13): *"확인. 그렇게 바꾸자."* → 아래 "제 권장 묶음" 의 1·2 를 제가 적은 이름대로 반영했습니다:
+> `NewType` → **`NewToken`**, `Dispatch` → **`ExpectImpl`**, `Module` → **`Expose`**, `TraitSpec` → **`Spec`**, 타입 `Ops`/`Full`/`Impl` →
+> **`Core`/`Full`/`Provided`**(배럴의 `ListOps` 등은 `ListCore`, `ListImpl` 은 `ListProvided`), 균형 계약을 **`Trees/Balance`** 로
+> (`Balance.Scheme`·`Balance.Expect`), `Arr.FromTable` → **`Arr.Adopt`** 와 `Arr.CloneFromTable` → **`Arr.FromTable`**(이름의 뜻이 뒤집힘 —
+> 이제 `HashMap` 과 같이 `FromTable` 은 복사, `Adopt` 는 입양). 커밋 `8bc01bf`·`c7edcd7`·`98c0b14`·`bb9195e`.
+> **묶음 3 은 제가 권장을 적지 않은 것이라 손대지 않았습니다**(`FlatMap`, `Collections/`, `Node.Double`, `GroupBy` 에 `Into`, `to`/`into`,
+> `LowerBound` 대 `LowerKey`, `Is` 접두). 아래 표의 이름은 **검토 당시의 것**입니다.
 
 > 사용자(2026-10-13): *"이름은 지금 혹시 agy 테스트해볼래? 나 말고 sonnet/gemini 내부/외부자 시선으로 보는게 나아."*
 > 같은 이름 목록(이름 + 그것이 무엇인가, 지은 이유는 뺌)을 넷에게 줬습니다. 외부자는 설계 문서를 읽지 않고, 내부자는
