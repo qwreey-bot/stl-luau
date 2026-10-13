@@ -8,7 +8,7 @@
 	⚠️ 아래 "캐비엇" 절은 **일부러 에러가 안 나는 것들**입니다. 잡히기 시작하면
 	Luau 가 좋아진 것이니 기대 건수를 올리고 캐비엇을 지우세요.
 
-	기대 진단: 12건 (NEG 11 + CANARY 1)
+	기대 진단: 15건 (NEG 14 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local HashMap = stl.HashMap
@@ -47,6 +47,13 @@ local okSetClone: HashSet<string> = HashSet.Clone(names)
 for _item in HashSet.Iter(names) do
 	okSum += 1
 end
+-- 셋의 Iter 는 안쪽 테이블 그대로(원소 → 원소, 2026-10-13) — 두 모양 모두 원소 타입
+for item in HashSet.Iter(names) do
+	local _okItem: string = item
+end
+for _, item in HashSet.Iter(names) do
+	local _okItem: string = item
+end
 -- 계약만 아는 공용 알고리즘이 맵 위에서 동작해야 합니다
 local okAlgoKeys: { string } = stl.Algorithm.Keys(ages)
 
@@ -62,6 +69,11 @@ local neg8: number = HashSet.Has(names, "철수") -- 술어는 boolean
 local neg9 = HashSet.NoSuchMethod(names)
 local neg10 = HashSet.Union(names, ages) -- 셋 자리에 맵
 local neg11 = HashSet.Set(names, "철수", 1) -- 셋에는 맵의 어휘가 없어야 함
+for item, same in HashSet.Iter(names) do
+	local _neg12: number = item -- 원소는 string
+	local _neg13: boolean = same -- 둘째 값도 원소(더미 true 가 아님)
+end
+HashSet.Iter(names).x = "y" -- neg14: Iter 가 돌려준 테이블은 읽기 전용
 
 --[[ 캐비엇: 지금은 **일부러** 안 잡히는 것들 ]]
 -- 테이블 리터럴은 `{ [string]: number }` 가 아니라 이름 붙은 속성을 가진
@@ -74,9 +86,35 @@ HashMap.Set(literalMap, true, "아무거나") -- 키가 boolean 인데 안 잡�
 local canary: string = 42
 
 return {
-	okGet, okOr, okHas, okLen, okKeys, okValues, okRemoved, okRecords,
-	okFirstKey, okFirstValue, okClone, okSum, okAdd, okSetHas, okItems,
-	okUnion, okSubset, okSetClone, okAlgoKeys,
-	neg1, neg2, neg3, neg4, neg6, neg7, neg8, neg9, neg10, neg11,
-	caveat1, canary,
+	okGet,
+	okOr,
+	okHas,
+	okLen,
+	okKeys,
+	okValues,
+	okRemoved,
+	okRecords,
+	okFirstKey,
+	okFirstValue,
+	okClone,
+	okSum,
+	okAdd,
+	okSetHas,
+	okItems,
+	okUnion,
+	okSubset,
+	okSetClone,
+	okAlgoKeys,
+	neg1,
+	neg2,
+	neg3,
+	neg4,
+	neg6,
+	neg7,
+	neg8,
+	neg9,
+	neg10,
+	neg11,
+	caveat1,
+	canary,
 }

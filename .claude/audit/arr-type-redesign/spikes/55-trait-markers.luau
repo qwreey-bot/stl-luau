@@ -71,7 +71,7 @@ local neg6: number = if shown then shown.Show(nums) else "" -- ImplOf 가 구현
 -- 마커도 같이 빠져 토큰을 지워도 안 잡혔음)
 type ArrLike = { n: number, read __list: number, read __listIndex: number, [number]: number }
 type MapLike = { data: { [string]: number }, size: number, read __mapKey: string, read __mapValue: number }
-type SetLike = { map: stl.HashMap<number, true>, read __setItem: number }
+type SetLike = { map: stl.HashMap<number, number>, read __setItem: number }
 local neg7: Arr<number> = (nil :: any) :: ArrLike
 local neg8: stl.HashMap<string, number> = (nil :: any) :: MapLike
 local neg9: stl.HashSet<number> = (nil :: any) :: SetLike

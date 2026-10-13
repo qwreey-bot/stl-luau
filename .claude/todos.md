@@ -45,6 +45,9 @@ HashMap 에서 자기 `Keys` 와 같은 속도). **리뷰 소진**(opus 하나�
 받음" 두 자리에서 — 뒤쪽은 라운드마다 한 겹씩 깊어져(`"__type"` 키 → `__call` → 잠긴 메타테이블) 4라운드에 "현실적인
 입력에서 틀린 결과만 결함" 으로 경계를 줌).
 
+**2026-10-13 — `HashSet.Iter` 도 안쪽 테이블 그대로**(사용자 결정, 질문 AQ): 안쪽을 `원소 → 원소` 로 저장해 순회가
+그대로 `(item, item)` — 공개 모양 변화 없이 순회 0.10배(perf 29절). `TreeSet` 은 그대로.
+
 **M0(호출 모양을 네임스페이스 하나로, 질문 AB) 끝 — 리뷰 소진(여덟 라운드, 2026-10-01).**
 
 **quad 탐사 끝(2026-10-02, `papers/05`)** — 고친 것 둘(`-O2` 에러 줄 →
@@ -146,12 +149,6 @@ C++ 식 제자리 아님), `Retain`(술어를 받음, Java `retainAll` 아님).
   질문 AP 2) — ① `Trait.ImplOf(Trait.Map, m)` 가 `MapOps<any, any, any>` 라 `ops.Set(m, 1, "bad")` 가 안 잡힘
   (후보: 타입 있는 구현 꺼내기 `MapOf(m)` — 다른 맵에 쓰는 구멍, `Algorithm.Get/Set` 래퍼 — 맵·셋 이름 충돌).
   ② 계약 타입을 거친 `ops.Iter(m)` 의 루프 변수가 `any`(유니온 순회). 부르는 곳이 보이면 같이.
-- **`HashSet.Iter` 의 반환 상태가 읽기·쓰기 안쪽 테이블**(기존, 2라운드 리뷰 참고) — `local _, state = HashSet.Iter(s);
-  state[30] = true` 가 0건이고 크기가 틀어집니다. 아래 항목과 같이.
-- **`HashSet.Iter` 도 테이블로?** — `(item, item)` 을 주는 설계(`TreeSet` 과 `for _, item in` 모양을 맞추려고)라 Luau
-  래퍼가 남아 있습니다. 테이블을 돌려주면 `for item in HashSet.Iter(s)` 는 같은 9배를 얻지만 `for _, item in` 모양은
-  `true` 를 받게 됩니다(타입은 잡음). 모양이 바뀌어 여쭤야 함.
-
 - **`TreeMap` 의 `GetOrInsert(With)`·`Accumulate`**(AL 4, 사용자: 필요해지면) — 지금은 HashMap 만.
 - **mlua(Rust) 바인딩** — 이 프로젝트가 갈라져 나온 출처. 사용자 판단으로
   *"얹는 구조로 나중에"*. 설계를 여기에 맞추지 않습니다.

@@ -33,6 +33,7 @@ Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너�
   `Records`·`Iter`)/`Set`/`Collection`(`Len`·`Clear` — 일곱 컨테이너 전부, 2026-10-12). 컨테이너를 **바꾸는** 제네릭은
   원소 타입이 안 흘러들어도 `CollectionMarkerMut` — 읽기로 빌린 `ArrRead`·`DequeRead` 가 `Clear` 를 얻으면 안 됨.
   `HashMap.Iter(m)` 은 안쪽 테이블을 그대로 돌려줌(읽기 전용 타입 — Luau 가 직접 돌아 9배, 사용자 결정).
+  `HashSet` 도 같음 — 안쪽이 `원소 → 원소`(더미 `true` 가 아님)라 순회가 `(item, item)`. 셋은 `for item in X.Iter(s)`.
 - **구멍은 타입에 `T?` 로 드러냄**(질문 T): `Arr` 은 `{ n, [number]: T }` 이고 1..n 사이에
   `nil` 이 있을 수 있음. 콜백은 `nil` 을 그대로 받음, 집계·정렬은 런타임 그물로 건너뜀,
   `?` 를 떼는 길은 `Compact`/`FillHoles`.

@@ -47,7 +47,7 @@ local neg3: stl.HashMap<string, number> = { data = { a = 1 }, size = 0 }
 local neg4: stl.Heap<number> = { items = {}, size = 0, less = function(a: number, b: number): boolean
 	return a < b
 end }
-local neg16: stl.HashSet<number> = { map = HashMap.New<<number, true>>() }
+local neg16: stl.HashSet<number> = { map = HashMap.New<<number, number>>() }
 local neg17: stl.TreeSet<number> = { map = TreeMap.New<<number, true>>(stl.Common.compareNumber) }
 local neg18 = TreeMap.Clone({ records = {}, size = 0, compare = stl.Common.compareString, probe = (nil :: any) })
 -- ArrRead self 우회로 — 리터럴·table.pack·읽기 전용 뷰가 Arr 로 둔갑하면 안 됨

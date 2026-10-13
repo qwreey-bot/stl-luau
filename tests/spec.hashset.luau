@@ -196,6 +196,86 @@ do
 end
 print("PASS")
 
+print("=== Iter 는 안쪽 테이블 그대로 — 원소 → 원소 (2026-10-13, 사용자 결정) ===")
+do
+	-- 안쪽 테이블이 `원소 → 원소` 라 그대로 돌려줘도 순회가 `(item, item)` — 공개 모양은 그대로이고
+	-- Luau 가 직접 돌아 10배 빠름(perf 29절). **값이 키와 같다**는 불변식을 모든 생성·변형 경로에서 봅니다
+	-- (`true` 를 넣는 자리가 하나라도 남으면 `for _, item in` 과 `FromIter` 가 `true` 를 받음).
+	local function checkPairs<T>(set: HashSet<T>, label: string)
+		local count = 0
+		for key, value in HashSet.Iter(set) do
+			assert(key == value, `{label}: 값이 원소가 아님({tostring(key)} → {tostring(value)})`)
+			count += 1
+		end
+		assert(count == HashSet.Len(set), `{label}: 순회 수 {count} 대 Len {HashSet.Len(set)}`)
+	end
+	const a = HashSet.Of(10, 20, 30)
+	const b = HashSet.FromList({ 20, 30, 40 })
+	const grown = HashSet.New<<number>>()
+	HashSet.Add(grown, 70)
+	HashSet.Add(grown, 80)
+	HashSet.Add(grown, 70)
+	HashSet.Remove(grown, 80)
+	HashSet.Add(grown, 90)
+	const retained = HashSet.Retain(HashSet.Of(1, 2, 3, 4), function(item: number): boolean
+		return item % 2 == 0
+	end)
+	const cleared = HashSet.Clear(HashSet.Of(5, 6))
+	HashSet.Add(cleared, 7)
+	const cases: { { label: string, set: HashSet<number> } } = {
+		{ label = "Of", set = a },
+		{ label = "FromList", set = b },
+		{ label = "New + Add/Remove", set = grown },
+		{ label = "Clone", set = HashSet.Clone(a) },
+		{ label = "Union", set = HashSet.Union(a, b) },
+		{ label = "Intersect", set = HashSet.Intersect(a, b) },
+		{ label = "Difference", set = HashSet.Difference(a, b) },
+		{ label = "SymmetricDifference", set = HashSet.SymmetricDifference(a, b) },
+		{ label = "Retain", set = retained },
+		{ label = "Clear 뒤 Add", set = cleared },
+		{ label = "빈 것", set = HashSet.New<<number>>() },
+	}
+	for _, case in cases do
+		checkPairs(case.set, case.label)
+	end
+	-- 같은 테이블(사본 아님)이고 함수가 아님
+	const iterable, extra = (HashSet.Iter :: any)(a)
+	assert(type(iterable) == "table" and extra == nil, "Iter 는 테이블 하나")
+	assert(rawequal(iterable, a.map.data) and rawequal(HashSet.Iter(a), HashSet.Iter(a)), "안쪽 테이블 그대로")
+	-- ⭐ `Arr.FromIter(HashSet.Iter(s))` 는 원소를 모음(안쪽이 `원소 → true` 였다면 `true` 들이 됐을 것)
+	const viaFromIter = stl.Arr.FromIter<<number>>(HashSet.Iter(a))
+	assert(viaFromIter.n == 3 and stl.Arr.Sum(viaFromIter) == 60, "FromIter(HashSet.Iter)")
+	-- `false` 도 원소가 됨(`Has` 는 nil 이 아닌지를 봄)
+	const flags = HashSet.Of(false, true)
+	assert(HashSet.Len(flags) == 2 and HashSet.Has(flags, false) and HashSet.Has(flags, true), "false 원소")
+	checkPairs(flags, "boolean 셋")
+	assert(HashSet.Remove(flags, false) and not HashSet.Has(flags, false) and HashSet.Len(flags) == 1, "false 빼기")
+	assert(HashSet.Add(flags, false) and not HashSet.Add(flags, false), "false 다시 넣기")
+	const falseArr = stl.Arr.FromIter<<boolean>>(HashSet.Iter(HashSet.Of(false)))
+	assert(falseArr.n == 1 and falseArr[1] == false, "FromIter 가 false 원소를 담음")
+	-- 문자열·섞인 타입, Items 와 같은 내용
+	const words = HashSet.Of("p", "q", "r")
+	checkPairs(words, "문자열 셋")
+	local joined = {}
+	for _, word in HashSet.Iter(words) do
+		table.insert(joined, word)
+	end
+	table.sort(joined)
+	const items = HashSet.Items(words)
+	table.sort(items)
+	assert(
+		table.concat(joined, ",") == "p,q,r" and table.concat(items, ",") == "p,q,r",
+		"Iter 와 Items 가 같은 내용"
+	)
+	-- 도는 동안 지금 원소를 지우는 것은 됨(Lua 의 next 규칙 — 관측)
+	const draining = HashSet.Of(1, 2, 3, 4, 5)
+	for item in HashSet.Iter(draining) do
+		HashSet.Remove(draining, item)
+	end
+	assert(HashSet.Len(draining) == 0 and next(draining.map.data) == nil, "순회 중 지금 원소 지우기")
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (HashSet) ===")
 

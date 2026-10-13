@@ -5,13 +5,20 @@
 	## ⭐ HashMap 위에 **단방향으로** 얹혀 있습니다
 
 	```lua
-	{ map: HashMap<T, true> }
+	{ map: HashMap<T, T> }   -- 원소 → 원소
 	```
 
-	원소를 키로, 더미 값으로 `true` 를 넣습니다. Rust 의 `BTreeSet` 이
+	원소를 키로 넣고 **값에도 그 원소**를 넣습니다. Rust 의 `BTreeSet` 이
 	`BTreeMap<T, ()>` 을, Java 의 `HashSet` 이 `HashMap` + 더미 객체를 쓰는
-	것과 같습니다. 같은 저자의 예전 C++ 과제도 결국 같은 경로를 갔습니다
+	것과 같은 결입니다. 같은 저자의 예전 C++ 과제도 결국 같은 경로를 갔습니다
 	(빈 구조체를 값으로, 셋 메소드는 전부 한 줄 위임).
+
+	⭐ 더미 `true` 가 아니라 **원소 자신**을 값으로 두는 이유(2026-10-13 사용자 결정): 안쪽 테이블을
+	`Iter` 가 그대로 돌려줘도 순회가 `(item, item)` 을 냅니다 — Luau 가 테이블을 직접 돌아 순회 함수보다
+	10배 빠르고(perf 29절), `for item in`·`for _, item in`(`TreeSet` 과 같은 모양)·
+	`Arr.FromIter(HashSet.Iter(s))` 가 전부 그대로 됩니다. `true` 였다면 둘째 값과 `FromIter` 가 `true` 를
+	받았을 것입니다. 메모리는 같습니다(값 한 칸). **모든 쓰기 자리가 `out[item] = item`** 이어야 합니다
+	(`spec.hashset` 이 생성·변형 경로 전수로 지킴).
 
 	**단방향입니다** — `HashSet` 이 `HashMap` 을 require 하고 그 반대는 없어
 	순환이 원천적으로 불가능합니다.
@@ -29,7 +36,7 @@
 	`other.map.data[item]` 로 **바로 읽을 수 있기** 때문입니다. 계층을 넘는
 	것이 아니라 자기 것을 읽는 것입니다.
 
-	남는 진짜 비용은 **원소마다 더미 값 `true` 한 칸**뿐입니다.
+	남는 진짜 비용은 **원소마다 값 한 칸**(원소 자신)뿐입니다.
 	수치는 `.claude/base/perf-measurements.md`.
 ]]
 local HashMap = require("./HashMap")
@@ -41,7 +48,7 @@ type HashMapType<K, V> = HashMap.HashMap<K, V>
 
 -- `__setMut` 는 쓰는 제네릭용 불변 팬텀(`Types.SetMarkerMut`, 질문 AM) — 타입에만 있습니다.
 export type HashSetData<T> = {
-	map: HashMapType<T, true>,
+	map: HashMapType<T, T>,
 	read __type: Trait.Token<"HashSet">,
 	read __setItem: T,
 	read __setMut: (T) -> T,
@@ -70,7 +77,7 @@ const function Add<T>(self: HashSetData<T>, item: T): boolean
 	if data[item] ~= nil then
 		return false
 	end
-	data[item] = true
+	data[item] = item
 	self.map.size += 1
 	return true
 end
@@ -107,19 +114,17 @@ const function Empty<T>(self: HashSetData<T>): boolean
 	return self.map.size == 0
 end
 
--- `for _, item in HashSet.Iter(set) do … end`  (또는 `for item in …`)
+-- `for item in HashSet.Iter(set) do … end`  (또는 `for _, item in …` — `TreeSet.Iter` 와 같은 모양)
 --
--- ⭐ **원소를 두 자리 모두에 돌려줍니다.** 안쪽이 `{ [T]: true }` 라 `next` 가
--- 키를 제어 변수로 써야 해서 첫 자리를 비울 수 없는데, 둘째에 더미 `true` 를
--- 두면 `TreeSet`(인덱스로 도는 구조라 `for _, item in` 인 것)과 형태가 갈려
--- 바꿔 끼울 수 없게 됩니다. 같은 값을 두 번 돌려주면 **양쪽 형태가 다 됩니다.**
-const function iterStep<T>(data: { [T]: true }, item: T?): (T, T)
-	const nextItem = (next :: any)(data, item)
-	return nextItem, nextItem
-end
-
-const function Iter<T>(self: HashSetData<T>): (typeof(iterStep), { [T]: true }, T?)
-	return iterStep, self.map.data, nil
+-- ⭐ **안쪽 테이블을 그대로 돌려줍니다**(2026-10-13 사용자 결정 — `HashMap.Iter` 와 같은 결). 안쪽이
+-- `원소 → 원소` 라 순회가 `(item, item)` 을 내고, Luau 가 테이블을 직접 돌아 예전의 순회 함수(원소마다
+-- Luau 호출)보다 10배 빠릅니다(perf 29절). 반환은 **함수가 아닙니다** — `Arr.FromIter(HashSet.Iter(s))`
+-- 는 그대로 되고, 손으로 걸으려면 `next(HashSet.Iter(s) :: any, item)`.
+-- 타입은 읽기 전용(`{ read [T]: T }`) — 받은 테이블에 인덱싱으로 쓰면 크기가 틀어지니 타입이 막습니다
+-- (예전엔 돌려준 상태가 읽기·쓰기라 `state[30] = true` 가 0건이었음). `table.clear` 같은 내장은 못
+-- 막습니다 — 읽기만 하세요. 도는 동안 넣는 것은 정의되지 않은 동작입니다.
+const function Iter<T>(self: HashSetData<T>): { read [T]: T }
+	return self.map.data
 end
 
 --#endregion
@@ -157,22 +162,22 @@ end
 -- 상대 셋의 `map.data` 를 직접 읽습니다. 계층을 넘는 게 아니라 이 모듈이
 -- 주인인 자기 표현을 읽는 것입니다 — 그래서 맵을 한 겹 거치는 비용이 없습니다.
 
-const function newFrom<T>(data: { [T]: true }, size: number): HashSet<T>
-	const map: HashMapType<T, true> = HashMap.Adopt(data, size)
+const function newFrom<T>(data: { [T]: T }, size: number): HashSet<T>
+	const map: HashMapType<T, T> = HashMap.Adopt(data, size)
 	return tagged({ map = map })
 end
 
 -- 합집합. 양쪽에 있는 것 전부.
 const function Union<T>(self: HashSetData<T>, other: HashSetData<T>): HashSet<T>
-	const out: { [T]: true } = {}
+	const out: { [T]: T } = {}
 	local count = 0
 	for item in self.map.data do
-		out[item] = true
+		out[item] = item
 		count += 1
 	end
 	for item in other.map.data do
 		if out[item] == nil then
-			out[item] = true
+			out[item] = item
 			count += 1
 		end
 	end
@@ -185,11 +190,11 @@ const function Intersect<T>(self: HashSetData<T>, other: HashSetData<T>): HashSe
 	const smaller = if self.map.size <= other.map.size then self else other
 	const larger = if smaller == self then other else self
 	const largerData = larger.map.data
-	const out: { [T]: true } = {}
+	const out: { [T]: T } = {}
 	local count = 0
 	for item in smaller.map.data do
 		if largerData[item] ~= nil then
-			out[item] = true
+			out[item] = item
 			count += 1
 		end
 	end
@@ -199,11 +204,11 @@ end
 -- 차집합. 이쪽에는 있고 저쪽에는 없는 것.
 const function Difference<T>(self: HashSetData<T>, other: HashSetData<T>): HashSet<T>
 	const otherData = other.map.data
-	const out: { [T]: true } = {}
+	const out: { [T]: T } = {}
 	local count = 0
 	for item in self.map.data do
 		if otherData[item] == nil then
-			out[item] = true
+			out[item] = item
 			count += 1
 		end
 	end
@@ -214,17 +219,17 @@ end
 const function SymmetricDifference<T>(self: HashSetData<T>, other: HashSetData<T>): HashSet<T>
 	const selfData = self.map.data
 	const otherData = other.map.data
-	const out: { [T]: true } = {}
+	const out: { [T]: T } = {}
 	local count = 0
 	for item in selfData do
 		if otherData[item] == nil then
-			out[item] = true
+			out[item] = item
 			count += 1
 		end
 	end
 	for item in otherData do
 		if selfData[item] == nil then
-			out[item] = true
+			out[item] = item
 			count += 1
 		end
 	end
@@ -283,16 +288,16 @@ export type HashSet<T> = HashSetData<T>
 --#region ----------- 생성자 -----------
 
 const function New<T>(): HashSet<T>
-	return newFrom({} :: { [T]: true }, 0)
+	return newFrom({} :: { [T]: T }, 0)
 end
 
 const function Of<T>(...: T): HashSet<T>
-	const out: { [T]: true } = {}
+	const out: { [T]: T } = {}
 	local count = 0
 	for idx = 1, select("#", ...) do
 		const item: T = select(idx, ...)
 		if item ~= nil and out[item] == nil then
-			out[item] = true
+			out[item] = item
 			count += 1
 		end
 	end
@@ -301,7 +306,7 @@ end
 
 -- 평범한 Lua 배열의 원소로 만듭니다. 중복은 하나로 접힙니다.
 const function FromList<T>(list: { T }): HashSet<T>
-	const out: { [T]: true } = {}
+	const out: { [T]: T } = {}
 	local count = 0
 	-- 길이는 `Common.listLength` 규약(`n` 우선) — `pairs` 로 돌면 `Arr` 의 `n`·태그도
 	-- 원소가 됐습니다(M0 3라운드). 구멍은 건너뜁니다.
@@ -309,7 +314,7 @@ const function FromList<T>(list: { T }): HashSet<T>
 	for idx = 1, itemCount do
 		const item = items[idx]
 		if out[item] == nil then
-			out[item] = true
+			out[item] = item
 			count += 1
 		end
 	end

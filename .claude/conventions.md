@@ -195,6 +195,11 @@
   `n`·`__type` 같은 다른 필드가 섞인 테이블(`Arr`·`Deque`·`table.pack` 결과)을 내주면 타입은 통과하고 순회가 그
   필드까지 돕니다(2라운드 리뷰 — `Algorithm.Keys` 가 `"n"`·`"__type"` 을 키로 냄). 읽기 전용 타입은 인덱싱 쓰기만
   막고 `table.clear` 같은 내장은 못 막습니다.
+  **`HashSet` 도 같습니다**(2026-10-13 사용자 결정, 질문 AQ — perf 29절): 안쪽을 **`원소 → 원소`** 로 저장해
+  `HashSet.Iter(s)` 가 안쪽 테이블을 그대로 돌려줘도 순회가 `(item, item)` 입니다(`for item in`·`for _, item in`·
+  `Arr.FromIter(HashSet.Iter(s))` 전부 그대로). `HashSet` 안의 쓰기는 전부 `data[item] = item` — `true` 를 넣는
+  자리가 하나라도 생기면 둘째 값이 `true` 가 됩니다(`spec.hashset` 이 생성·변형 경로 전수로 지킴). 셋을 도는
+  권장 모양은 **`for item in X.Iter(s)`**(`HashSet`·`TreeSet` 공통).
 
 - **맵·셋의 `nil`·NaN 키**(2026-10-12 전수 점검, 질문 AN): **넣기는 에러, 조회·삭제는 "없음"**. 트리 계열은
   `Common.raise`(`TreeMap: nil key`, `TreeSet: NaN item` — 사용자 줄)로, 조회는 비교자를 부르지 않고 "없음"(`nil`/`false`, `GetOr` 는 fallback, 구간은 빈 목록).

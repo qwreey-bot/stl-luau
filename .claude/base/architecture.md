@@ -132,7 +132,7 @@ luau-analyze src tests      # 타입 검사 + 린트
 |---|---|---|
 | `Arr` | `{ n: number, [number]: T }` | 연속 정수 인덱스. `#` 는 희소 배열에서 정의되지 않으므로 `n` 을 신뢰 |
 | `HashMap` | `{ data: { [K]: V }, size: number }` | 키를 `self` 에 바로 넣으면 `Set("size", v)` 가 길이 필드를 덮어씀 |
-| `HashSet` | `{ map: HashMap<T, true> }` | 맵 위에 단방향 |
+| `HashSet` | `{ map: HashMap<T, T> }` | 맵 위에 단방향. 값은 원소 자신(`원소 → 원소`, 2026-10-13) — `Iter` 가 안쪽 테이블을 그대로 돌려줘도 `(item, item)` |
 | `TreeMap` | `{ records: { Record }, size, compare, probe }` | 정렬 레코드 배열 + 이분 탐색 |
 | `TreeSet` | `{ map: TreeMap<T, true> }` | 맵 위에 단방향 |
 | `Heap` | `{ items: { T }, size, less }` | 배열에 담은 완전이진트리 |
@@ -262,7 +262,7 @@ M0(질문 AB)에서 메타테이블과 콜론 메소드를 없애며 전부 필�
 | `__index` | **쓰지 않습니다**(M0 — 예전엔 콜론 메소드 배선). 메타테이블이 붙으면 `t[i]` 가 1.59배 느려집니다(perf 16절) |
 | `__eq` | **쓰지 않습니다.** 양쪽 메타테이블이 같아야만 불리는 제약이 있어, 비교는 명시적인 `Arr.Equal(a, b)` 같은 네임스페이스 함수로 둡니다 |
 | `__len` | `#` — **쓰지 않습니다.** 이 저장소는 `self.n` 을 신뢰합니다(희소 배열) |
-| `__iter` | **쓰지 않습니다.** 각 모듈의 `X.Iter(v)` 가 `for … in` 에 넣을 것을 돌려줍니다 — 순회 함수(삼중항 `Arr`·`Deque`·`HashSet`, 클로저 `TreeMap`·`TreeSet`) 또는 **테이블 그대로**(`HashMap`, 2026-10-12 — Luau 가 직접 돌아 5~9배, perf 27절) |
+| `__iter` | **쓰지 않습니다.** 각 모듈의 `X.Iter(v)` 가 `for … in` 에 넣을 것을 돌려줍니다 — 순회 함수(삼중항 `Arr`·`Deque`, 클로저 `TreeMap`·`TreeSet`) 또는 **테이블 그대로**(`HashMap` 2026-10-12, `HashSet` 2026-10-13 — Luau 가 직접 돌아 5~10배, perf 27·29절) |
 | `__call` | **쓰지 않습니다.** 제네릭 생성자에서 타입 인자를 잃습니다(실측) |
 | `__lt`, `__le` | 정렬 가능한 컨테이너에서 검토 대상 |
 | `__tostring` | 디버깅 편의. 미착수 |
