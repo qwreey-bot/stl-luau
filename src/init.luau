@@ -27,6 +27,9 @@ local Set = require("@self/Traits/Set")
 local Collection = require("@self/Traits/Collection")
 local Deque = require("@self/Traits/Deque")
 local Node = require("@self/Node")
+local RedBlack = require("@self/Trees/RedBlack")
+local Avl = require("@self/Trees/Avl")
+local Search = require("@self/Trees/Search")
 local BSearch = require("@self/Algorithms/BSearch")
 local Arr = require("@self/Collections/Arr")
 local HashMap = require("@self/Collections/HashMap")
@@ -63,6 +66,12 @@ export type DequeMarker<T> = Deque.Marker<T>
 export type DequeMarkerMut<T> = Deque.MarkerMut<T>
 export type Node<T> = Node.Node<T>
 export type NodeRead<T> = Node.NodeRead<T>
+export type RbNode<K, V> = RedBlack.RbNode<K, V>
+export type RbNodeRead<K, V> = RedBlack.RbNodeRead<K, V>
+export type AvlNode<K, V> = Avl.AvlNode<K, V>
+export type AvlNodeRead<K, V> = Avl.AvlNodeRead<K, V>
+export type TreeBalance = Search.Balance
+export type KeyNodeRead<K, V> = Search.KeyNodeRead<K, V>
 export type TraitToken<N> = Trait.Token<N>
 export type Trait<I, C = I> = Trait.Trait<I, C>
 export type TraitSpec = Trait.TraitSpec
@@ -104,6 +113,9 @@ return {
 
 	-- 컨테이너 밖의 노드 조각(연결 리스트·트리가 조립해 씀)
 	Node = Node,
+	-- 트리부 — 노드 도구로 짠 균형 방식(컨테이너가 아니라 뿌리 노드를 받는 함수들). `TreeMap` 등이 조립해 씀
+	RedBlack = RedBlack,
+	Avl = Avl,
 
 	-- 컨테이너 네임스페이스. **순수 테이블입니다** — 콜러블로 만들면 제네릭
 	-- 생성자가 타입 인자를 잃고 모듈 오타도 못 잡습니다(실측).

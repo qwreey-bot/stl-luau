@@ -77,7 +77,16 @@ src/
     LinkedDeque.luau    노드를 양방향으로 이은 양끝 큐. 위치가 노드 — 가운데도 O(1) 로 넣고 뺌
   Algorithms/      컨테이너를 모르는 알고리즘
     BSearch.luau     이분 탐색. Tree 계열의 백엔드
-  Node.luau        ⭐ 컨테이너 밖의 노드 조각 — 값 필드 + 번호 칸 연결(Node·NodeRead), Walk·Count
+  Node/            ⭐ 1층 노드단 도구(컨테이너 밖의 조각) — 값 필드 + 번호 칸 연결
+    init.luau        타입 재수출 + New·Walk·Count, 아래 셋을 Node.Single/Double/Binary 로 묶음
+    Types.luau       Node(고칠 수 있음)·NodeRead(읽기)
+    Single.luau      단방향(칸 1 = 다음) — InsertNext·RemoveNext
+    Double.luau      양방향(1 = 앞, 2 = 뒤) — InsertNext·InsertPrev·Unlink
+    Binary.luau      이진(1 = 왼쪽, 2 = 오른쪽, 3 = 부모) — 회전, 중위 Next·Prev, First·Last, Replace, InOrder
+  Trees/           ⭐ 2층 트리부 — 노드 도구로 짠 균형 방식. 컨테이너가 아니라 뿌리 노드를 받는 함수들
+    Search.luau      균형 방식과 무관한 공유 조각(Find·LowerBound·UpperBound·Clone) + 자가 균형의 계약(Balance)
+    RedBlack.luau    레드블랙 — Insert·Remove·FromSorted (제품의 기본)
+    Avl.luau         AVL — 같은 표면
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
   Fut.luau         코루틴 래퍼(프로미스). provider, 다중 반환, All → Arr
 
@@ -91,6 +100,7 @@ tests/
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
   spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
   spec.circulardeque.luau  spec.linkeddeque.luau  (Node·Deque 트레이트 포함)
+  spec.trees.luau  (RedBlack·Avl 을 같은 시나리오로 + Node 도구)
   spec.optional.luau  spec.fut.luau
 scripts/
   check.sh               타입 + 음성 대조군 배터리 + require + 포맷 + 테스트
@@ -141,6 +151,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `Heap` | 완성 | `spikes/44` |
 | `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |
 | `LinkedDeque` / `Node` / 트레이트 `Deque` | 2026-10-13 — 리뷰 대기 | `spikes/65` |
+| `Node` 도구(단방향·양방향·이진) / `Trees`(`RedBlack`·`Avl`·`Search`) | 2026-10-13 — 리뷰 대기. 아직 `TreeMap` 에 조립하지 않음 | `spikes/66` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 

@@ -26,14 +26,25 @@
 	- `Node<T>` — 값과 연결을 고칠 수 있음. 그 노드를 가진 컨테이너의 구현이 씁니다.
 
 	노드에는 타입 토큰이 없습니다 — 값(엔티티)의 종류는 그것을 든 컨테이너가 가집니다.
+
+	## 층 (2026-10-13 사용자 결정 — `papers/07` 9-4)
+
+	이 폴더가 **1층(노드단 도구)**입니다: 일반 노드(이 파일 — 타입은 `Types.luau`)와 연결 방식별 도구 파일 셋 —
+	`Single.luau`(단방향), `Double.luau`(양방향), `Binary.luau`(이진 — 회전·중위 다음/이전). 밖에서는
+	`Node.Single.InsertNext(…)` 처럼 이 모듈 하나로 받습니다(사용자: *"Trees 처럼, Node 폴더 만들고 분리해두는게
+	코드베이스 관리성에 … 더 나을듯"*). 그 위에 2층 `src/Trees/`(이 도구로
+	짠 균형 방식 — AVL·레드블랙), 3층 `src/Collections/`(그 조각들로 조립한 자료형)가 섭니다.
+	도구는 **노드끼리의 연결만** 고칩니다 — 머리·꼬리·뿌리·크기는 그것을 가진 쪽이 돌려받은 것을 보고 고칩니다.
 ]]
 local Common = require("./Common")
 Common.registerSource(debug.info(1, "s"))
+local Types = require("@self/Types")
+local Single = require("@self/Single")
+local Double = require("@self/Double")
+local Binary = require("@self/Binary")
 
--- 고칠 수 있는 노드.
-export type Node<T> = { value: T, [number]: Node<T>? }
--- 읽기만 하는 노드. `Node<T>` 는 그대로 이 자리에 들어갑니다.
-export type NodeRead<T> = { read value: T, read [number]: NodeRead<T>? }
+export type Node<T> = Types.Node<T>
+export type NodeRead<T> = Types.NodeRead<T>
 
 -- 연결이 없는 새 노드. `links` 는 미리 잡아 둘 연결 칸 수(양방향·이진이면 2) — 배열 부분을 한 번에
 -- 잡습니다. 뜨거운 자리에서는 생성자를 직접 쓰세요(머리 주석).
@@ -70,4 +81,6 @@ end
 -- stylua: ignore
 return {
 	New = New, Walk = Walk, Count = Count,
+	-- 연결 방식별 도구
+	Single = Single, Double = Double, Binary = Binary,
 }
