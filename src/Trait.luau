@@ -244,7 +244,21 @@ end
 -- 완성 표의 빈 자리를 기본 구현으로 채웁니다(기본 구현이 없는 트레이트면 아무 일도 안 함).
 -- `impl` 은 구현이 넘긴 표(저절로 만들 땐 nil) — 기본 구현과 같은 이름을 **물려받고** 있으면(`lookup`)
 -- 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히 기본 구현에 졌습니다, 리뷰).
-const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps: { [any]: any }): { [string]: any }?
+-- 재정의 자리의 값은 함수여야 합니다 — 필수 이름은 등록 때 확인하는데 재정의 이름은 안 봐서, 등록은 통과하고 부를 때
+-- 라이브러리 줄의 `attempt to call a number value` 였습니다(4라운드 리뷰).
+const function notFunction(trait: any, token: any, fnName: any, value: any): never
+	return Common.raise(
+		`Trait: {token.name} gave a {typeof(value)} as {tostring(fnName)} for {trait.name} — it must be a function`
+	)
+end
+
+const function fillDefaults(
+	trait: any,
+	token: any,
+	impl: any,
+	full: { [string]: any },
+	deps: { [any]: any }
+): { [string]: any }?
 	const defaults: Defaults? = trait.defaults
 	if defaults == nil then
 		return nil
@@ -257,6 +271,10 @@ const function fillDefaults(trait: any, impl: any, full: { [string]: any }, deps
 	for fnName, fn in provided do
 		if full[fnName] == nil then
 			const inherited = if impl ~= nil then lookup(impl, fnName) else nil
+			-- 물려받은 재정의도 함수여야 합니다(자기 키만 보던 때는 등록을 통과하고 부를 때 죽었음 — 5라운드 리뷰)
+			if inherited ~= nil and type(inherited) ~= "function" then
+				notFunction(trait, token, fnName, inherited)
+			end
 			full[fnName] = if inherited ~= nil then inherited else fn
 		end
 	end
@@ -278,7 +296,7 @@ function resolve(trait: any, token: any): any
 		return nil
 	end
 	const full: { [string]: any } = {}
-	fillDefaults(trait, nil, full, deps)
+	fillDefaults(trait, token, nil, full, deps)
 	trait.impls[token] = full
 	trait.derived[token] = true
 	return full
@@ -303,14 +321,6 @@ end
 const function unknownName(trait: any, token: any, fnName: any): never
 	return Common.raise(
 		`Trait: {token.name} gave {tostring(fnName)} to {trait.name}, which {trait.name} does not have — pass a table of only that trait's functions (not a whole module)`
-	)
-end
-
--- 재정의 자리의 값은 함수여야 합니다 — 필수 이름은 등록 때 확인하는데 재정의 이름은 안 봐서, 등록은 통과하고 부를 때
--- 라이브러리 줄의 `attempt to call a number value` 였습니다(4라운드 리뷰).
-const function notFunction(trait: any, token: any, fnName: any, value: any): never
-	return Common.raise(
-		`Trait: {token.name} gave a {typeof(value)} as {tostring(fnName)} for {trait.name} — it must be a function`
 	)
 end
 
@@ -370,6 +380,13 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 			end
 		end
 		-- (자기 키를 따로 옮기지 않습니다 — 위에서 전부 표에 있는 이름임을 확인했으니 아래 루프의 `lookup` 이 자기 키부터 찾습니다)
+		-- 물려받은 것까지 먼저 다 확인하고(함수인지) 그다음에 고칩니다 — 실패하면 아무것도 적용되지 않게
+		for fnName in existing do
+			const inherited = lookup(impl, fnName)
+			if inherited ~= nil and type(inherited) ~= "function" then
+				notFunction(trait, token, fnName, inherited)
+			end
+		end
 		for fnName in existing do
 			const inherited = lookup(impl, fnName)
 			if inherited ~= nil then
@@ -393,7 +410,7 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 			end
 		end
 	end
-	const provided = fillDefaults(trait, impl, full, deps :: any)
+	const provided = fillDefaults(trait, token, impl, full, deps :: any)
 	-- 모르는 이름: 필수도 아니고 기본 구현의 이름(재정의할 수 있는 것)도 아닌 키
 	for fnName, fn in impl :: any do
 		if not (required and table.find(required, fnName)) and not (provided and provided[fnName] ~= nil) then

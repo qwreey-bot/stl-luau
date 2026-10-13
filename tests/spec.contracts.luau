@@ -3672,6 +3672,57 @@ do
 	)
 	assert(string.find(tostring(errMerge), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errMerge}`)
 	assert(T.ImplOf(stl.List, { __type = Gadget }) == nil, "실패한 등록은 남지 않음")
+	-- 물려받은(`__index` 사슬) 재정의도 함수여야 함(5라운드 리뷰 — 자기 키만 봐서, 물려받은 `Fold = 5` 는 등록을
+	-- 통과하고 부를 때 라이브러리 줄에서 죽었음). 필수 이름은 원래 물려받은 것까지 봤습니다.
+	const Heir = T.NewToken("Heir")
+	const okHeir, errHeir = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(
+			stl.List,
+			Heir,
+			setmetatable({
+				Get = print,
+				FirstIndex = print,
+				LastIndex = print,
+				NextIndex = print,
+				PrevIndex = print,
+			}, { __index = { Fold = 5 } }) :: any
+		)
+	end)
+	assert(
+		not okHeir
+			and string.find(
+				tostring(errHeir),
+				"Trait: Heir gave a number as Fold for List — it must be a function",
+				1,
+				true
+			),
+		`물려받은 함수 아닌 재정의: {errHeir}`
+	)
+	assert(string.find(tostring(errHeir), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errHeir}`)
+	assert(T.ImplOf(stl.List, { __type = Heir }) == nil, "실패한 등록은 남지 않음(물려받은 것)")
+	const okHeirStack, errHeirStack = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(stl.Stack, Widget, setmetatable({}, { __index = { Pop = "pop" } }) :: any)
+	end)
+	assert(
+		not okHeirStack
+			and string.find(
+				tostring(errHeirStack),
+				"Trait: Widget gave a string as Pop for Stack — it must be a function",
+				1,
+				true
+			),
+		`저절로 따라온 표 위의 물려받은 함수 아닌 재정의: {errHeirStack}`
+	)
+	assert(
+		string.find(tostring(errHeirStack), `spec.contracts.luau:{where}:`, 1, true),
+		`사용자 줄: {errHeirStack}`
+	)
+	assert(
+		(stl.Stack :: any).derived[Widget],
+		"실패한 재정의는 저절로 따라온 상태를 바꾸지 않음(물려받은 것)"
+	)
 
 	-- (3) Stack·Queue 의 진입점 여섯: 에러 메시지의 진입점 이름, `Push` 는 재정의가 무엇을 돌려주든 넣은 것을 돌려줌
 	const entries: { { trait: string, name: string, call: (v: any) -> any } } = {

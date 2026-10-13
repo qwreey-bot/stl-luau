@@ -1139,6 +1139,42 @@ do
 		assert(Sorted.RemoveAt(work, 1, 1).tag == "c" and work[1] == nil, "하나 남은 것")
 	end
 
+	-- (3b) SplitOff·Append — 떼어 낸 것이 0개·**딱 하나**·여럿·전부. 남은 쪽의 뒤 칸이 비었는지, 다시 이으면 원래대로
+	--      (5라운드 리뷰: "하나만 떼어 냄" 이 어느 테스트에도 없어 `moved > 0` 을 `> 1` 로 바꿔도 통과했음)
+	for _, cut in { 1, 2, 4, 5, 6 } do
+		const work: { Rec } = {}
+		for idx = 1, 5 do
+			work[idx] = { key = idx * 10, tag = `t{idx}` }
+		end
+		const high = Sorted.SplitOff(work, 5, cut)
+		const moved = 5 - cut + 1
+		assert(#high == moved and #work == cut - 1, `SplitOff@{cut}: 남은 {#work}, 떼어 낸 {#high}`)
+		for idx = 1, cut - 1 do
+			assert(work[idx].key == idx * 10, `SplitOff@{cut}: 남은 쪽 {idx}`)
+		end
+		for idx = cut, 6 do
+			assert(work[idx] == nil, `SplitOff@{cut}: 남은 쪽의 뒤 칸 {idx} 가 안 비었음`)
+		end
+		for idx = 1, moved do
+			assert(
+				high[idx].key == (cut + idx - 1) * 10 and high[idx].tag == `t{cut + idx - 1}`,
+				`SplitOff@{cut}: 떼어 낸 쪽 {idx}`
+			)
+		end
+		assert(high[moved + 1] == nil, `SplitOff@{cut}: 떼어 낸 쪽의 뒤 칸`)
+		Sorted.Append(work, cut - 1, high, moved)
+		assert(show(work, 5) == "10t1,20t2,30t3,40t4,50t5" and work[6] == nil, `Append@{cut}: {show(work, 5)}`)
+		assert(#high == moved, `Append@{cut}: 상대는 그대로`)
+	end
+	do
+		const empty: { Rec } = {}
+		assert(#Sorted.SplitOff(empty, 0, 1) == 0, "빈 배열의 SplitOff")
+		Sorted.Append(empty, 0, { { key = 7, tag = "x" } }, 1)
+		assert(show(empty, 1) == "7x", "빈 배열에 Append")
+		Sorted.Append(empty, 1, {} :: { Rec }, 0)
+		assert(show(empty, 1) == "7x" and empty[2] == nil, "빈 것을 Append")
+	end
+
 	-- (4) 무작위: Locate → InsertAt / RemoveAt 로 짠 맵을 평범한 사전과 대조. 걸음마다 순서·개수·끝 칸
 	do
 		local seed = 5150
@@ -1301,6 +1337,34 @@ do
 	do
 		const small, found, large = stl.Balance.Split(M, nil, 10, compare)
 		assert(small == nil and found == nil and large == nil, `{name} 빈 트리의 Split`)
+	end
+
+	-- (2b) 비교자가 **몇 번째 비교에서 던지든** 트리는 그대로(관측 — 계약은 아님): 비교를 내려가며 다 하고 나서
+	--      올라오며 고칩니다. 예전엔 떼어 낸 뒤에 견줘서, 첫 비교에서 던져도 1000개 맵이 조각났습니다(5라운드 리뷰).
+	do
+		const root = build(10, 200, 10)
+		const before = check(root, "던지기 전")
+		for failAt = 1, 12 do
+			local calls = 0
+			const ok = pcall(function()
+				stl.Balance.Split(M, root, 1005, function(a: number, b: number): number
+					calls += 1
+					if calls == failAt then
+						error("boom")
+					end
+					return compare(a, b)
+				end)
+			end)
+			if ok then
+				break -- 비교가 failAt 번에 못 미쳐 끝남: 트리는 갈라졌으니 여기서 멈춤
+			end
+			same(
+				check(root, `{failAt}번째 비교에서 던진 뒤`),
+				before,
+				`{failAt}번째 비교에서 던진 뒤`
+			)
+			assert(calls == failAt, `{name}: 던진 뒤에 비교를 더 함`)
+		end
 	end
 
 	-- (3) 무작위: 넣고 빼서 모양을 흔든 트리를 가르고, 다시 잇고, 그 뒤에도 넣기·지우기가 멀쩡한지

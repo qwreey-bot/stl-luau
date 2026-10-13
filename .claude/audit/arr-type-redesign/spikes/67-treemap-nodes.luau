@@ -6,7 +6,7 @@
 	경계 조회(`FloorKey` …)는 옵셔널 키 / `PopFirst` 는 옵셔널 레코드 / `Retain` 콜백의 타입 / 뿌리 노드는
 	읽기 전용 / 균형 방식 자리에 계약과 다른 것은 안 들어감 / 순회 변수의 타입.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 41 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 44 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local TreeMap = stl.TreeMap
@@ -96,15 +96,15 @@ local shortInsert = {
 	end,
 	Remove = stl.Avl.Remove,
 	FromSorted = stl.Avl.FromSorted,
-	Clone = stl.Avl.Clone,
+	Clone = stl.Avl.Clone, Join = stl.Avl.Join, AsRoot = stl.Avl.AsRoot,
 }
 local noRoot = {
 	Insert = stl.Avl.Insert,
 	Remove = function(_root: any, _node: any) end,
 	FromSorted = stl.Avl.FromSorted,
-	Clone = stl.Avl.Clone,
+	Clone = stl.Avl.Clone, Join = stl.Avl.Join, AsRoot = stl.Avl.AsRoot,
 }
-local partial = { Insert = stl.Avl.Insert, FromSorted = stl.Avl.FromSorted, Clone = stl.Avl.Clone }
+local partial = { Insert = stl.Avl.Insert, FromSorted = stl.Avl.FromSorted, Clone = stl.Avl.Clone, Join = stl.Avl.Join, AsRoot = stl.Avl.AsRoot }
 -- NEG: `Insert` 가 셋째 반환을 안 줌 / `Remove` 가 새 뿌리를 안 돌려줌 / 함수 하나가 빠진 표(리터럴이 아님) / 찾기 모듈
 local negShortInsert: stl.TreeBalance = shortInsert
 local negNoRoot: stl.TreeBalance = noRoot
@@ -118,9 +118,9 @@ local wrongThird = {
 	end,
 	Remove = stl.Avl.Remove,
 	FromSorted = stl.Avl.FromSorted,
-	Clone = stl.Avl.Clone,
+	Clone = stl.Avl.Clone, Join = stl.Avl.Join, AsRoot = stl.Avl.AsRoot,
 }
-local noClone = { Insert = stl.Avl.Insert, Remove = stl.Avl.Remove, FromSorted = stl.Avl.FromSorted }
+local noClone = { Insert = stl.Avl.Insert, Remove = stl.Avl.Remove, FromSorted = stl.Avl.FromSorted, Join = stl.Avl.Join, AsRoot = stl.Avl.AsRoot }
 local negWrongThird: stl.TreeBalance = wrongThird
 local negNoClone: stl.TreeBalance = noClone
 
@@ -134,6 +134,16 @@ local negHigh: TreeMap<number, number> = TreeMap.SplitOff(scores, 5)
 TreeMap.Join(scores, TreeMap.New<<number, number>>(cmp))
 TreeMap.Join(scores, stl.FlatMap.New<<number, string>>(cmp))
 stl.FlatMap.SplitOff(stl.FlatMap.New<<number, string>>(cmp), "five")
+
+--[[ 균형 계약의 `Join`·`AsRoot`(5라운드 리뷰 — 이 둘의 서명을 지키는 NEG 가 없었음) ]]
+local noJoin = { Insert = stl.Avl.Insert, Remove = stl.Avl.Remove, FromSorted = stl.Avl.FromSorted, Clone = stl.Avl.Clone, AsRoot = stl.Avl.AsRoot }
+local noAsRoot = { Insert = stl.Avl.Insert, Remove = stl.Avl.Remove, FromSorted = stl.Avl.FromSorted, Clone = stl.Avl.Clone, Join = stl.Avl.Join }
+local function joinNothing(_left: any, _mid: any, _right: any) end
+local voidJoin = { Insert = stl.Avl.Insert, Remove = stl.Avl.Remove, FromSorted = stl.Avl.FromSorted, Clone = stl.Avl.Clone, Join = joinNothing, AsRoot = stl.Avl.AsRoot }
+-- NEG: `Join` 이 빠짐 / `AsRoot` 가 빠짐 / `Join` 이 새 뿌리를 안 돌려줌
+local negNoJoin: stl.TreeBalance = noJoin
+local negNoAsRoot: stl.TreeBalance = noAsRoot
+local negVoidJoin: stl.TreeBalance = voidJoin
 
 local canary: string = 42
 
@@ -179,5 +189,8 @@ return {
 	okJoined,
 	okFlatHigh,
 	negHigh,
+	negNoJoin,
+	negNoAsRoot,
+	negVoidJoin,
 	canary,
 }

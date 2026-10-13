@@ -435,6 +435,12 @@ end
 -- **`other` 의 전부를 이 맵 뒤에 잇고** 이 맵을 돌려줍니다 — `other` 의 모든 키가 이 맵의 모든 키보다 커야 합니다
 -- (아니면 에러). `other` 는 빈 맵이 됩니다. 두 맵은 같은 비교자여야 합니다.
 const function Join<K, V>(self: FlatMapData<K, V>, other: FlatMapData<K, V>): FlatMap<K, V>
+	-- 첫 인자도 봅니다(표면이 같은 Tree/Flat 을 섞기 쉬움 — 예전엔 라이브러리 줄의 원시 에러이거나 엉뚱한 메시지, 5라운드 리뷰)
+	const mine: any = self
+	if type(mine) ~= "table" or rawget(mine, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(mine)
+		Common.raise(`FlatMap: Join needs a FlatMap, got {if kind then kind.name else typeof(mine)}`)
+	end
 	const rest: any = other
 	if type(rest) ~= "table" or rawget(rest, TYPE_KEY) ~= TOKEN then
 		const kind = Trait.TokenOf(rest)

@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 53 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 56 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -164,6 +164,16 @@ stl.SortedArray.InsertAt(sortedList, 2, 1, "ten")
 stl.SortedArray.Locate(sortedList, 2, "20", probeNumber)
 local negRemovedType: string = stl.SortedArray.RemoveAt(sortedList, 2, 1)
 
+--[[ Balance.Split — 받은 뿌리의 타입 그대로 셋을 돌려줌(5라운드 리뷰: 전부 `any` 라 키 타입·노드 핸들을 잃었음) ]]
+local splitRoot = (RedBlack.Insert(nil :: RbNode?, "m", 1, compare))
+local okSmall, okMid, okLarge = stl.Balance.Split(RedBlack, splitRoot, "k", compare)
+local okSmallTyped: RbNode? = okSmall
+local okRejoined: RbNode? = if okMid then RedBlack.Join(okSmall, okMid, okLarge) else okLarge
+-- NEG: 키 타입 / 돌려받은 뿌리를 다른 타입으로 / 가운데 노드는 옵셔널
+stl.Balance.Split(RedBlack, splitRoot, 5, compare)
+local negSplitRoot: string = okSmall
+local negSplitMid: RbNode = okMid
+
 local canary: string = 42
 
 return {
@@ -224,5 +234,9 @@ return {
 	negLocatePos,
 	negLocateFound,
 	negRemovedType,
+	okSmallTyped,
+	okRejoined,
+	negSplitRoot,
+	negSplitMid,
 	canary,
 }

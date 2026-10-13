@@ -227,6 +227,12 @@ end
 -- **`other` 의 전부를 이 셋 뒤에 잇고** 이 셋을 돌려줍니다 — `other` 의 모든 원소가 이 셋의 모든 원소보다 커야 합니다.
 -- `other` 는 빈 셋이 됩니다. O(log n). 같은 비교자·같은 균형 방식.
 const function Join<T>(self: TreeSetData<T>, other: TreeSetData<T>): TreeSet<T>
+	-- 첫 인자도 봅니다(표면이 같은 Tree/Flat 을 섞기 쉬움 — 예전엔 라이브러리 줄의 원시 에러이거나 엉뚱한 메시지, 5라운드 리뷰)
+	const mine: any = self
+	if type(mine) ~= "table" or rawget(mine, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(mine)
+		Common.raise(`TreeSet: Join needs a TreeSet, got {if kind then kind.name else typeof(mine)}`)
+	end
 	const rest: any = other
 	if type(rest) ~= "table" or rawget(rest, TYPE_KEY) ~= TOKEN then
 		const kind = Trait.TokenOf(rest)

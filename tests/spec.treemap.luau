@@ -959,6 +959,17 @@ do
 			expect(none, "", "맨 뒤보다 크게: 빈 것")
 			const fromEmpty = kind.splitOff(low, 10)
 			expect(fromEmpty, "", "빈 것을 가름")
+			-- 딱 하나만 떼어 냄(맨 끝 키에서) / 딱 하나만 남김(둘째 키에서) — 5라운드 리뷰의 테스트 공백
+			const five = filled(1, 5)
+			const lastOne = kind.splitOff(five, 50)
+			expect(five, "10,20,30,40", "하나만 떼어 냄: 남은 쪽")
+			expect(lastOne, "50", "하나만 떼어 냄: 떼어 낸 쪽")
+			kind.put(lastOne, 60)
+			kind.drop(five, 40)
+			expect(lastOne, "50,60", "하나짜리에 넣기")
+			const rest = kind.splitOff(five, 20)
+			expect(five, "10", "하나만 남김: 남은 쪽")
+			expect(rest, "20,30", "하나만 남김: 떼어 낸 쪽")
 			-- 한쪽이 훨씬 큰 경우(크기를 "작은 쪽만 세서" 정하는 길의 양쪽)
 			const big = filled(1, 300)
 			const tail = kind.splitOff(big, 2985)
@@ -1029,6 +1040,21 @@ do
 					call = function()
 						where = debug.info(1, "l") + 1
 						kind.join(low, kind.other())
+					end,
+				},
+				{
+					-- 섞인 쪽이 **첫 인자**여도(5라운드 리뷰 — 예전엔 라이브러리 줄의 원시 에러이거나 엉뚱한 메시지)
+					want = `{kind.head}: Join needs a {kind.head}, got`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(kind.other(), low)
+					end,
+				},
+				{
+					want = `{kind.head}: Join needs a {kind.head}, got nil`,
+					call = function()
+						where = debug.info(1, "l") + 1
+						kind.join(nil, low)
 					end,
 				},
 				{

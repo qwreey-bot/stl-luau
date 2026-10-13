@@ -418,6 +418,12 @@ end
 -- (아니면 에러: 겹치는 맵을 합치는 것은 `Merge`). `other` 는 빈 맵이 됩니다(노드가 이쪽으로 옮겨 옴).
 -- O(log n) — 원소를 하나씩 옮기지 않습니다. 두 맵은 같은 비교자·같은 균형 방식이어야 합니다.
 const function Join<K, V>(self: TreeMapData<K, V>, other: TreeMapData<K, V>): TreeMap<K, V>
+	-- 첫 인자도 봅니다(표면이 같은 Tree/Flat 을 섞기 쉬움 — 예전엔 라이브러리 줄의 원시 에러이거나 엉뚱한 메시지, 5라운드 리뷰)
+	const mine: any = self
+	if type(mine) ~= "table" or rawget(mine, TYPE_KEY) ~= TOKEN then
+		const kind = Trait.TokenOf(mine)
+		Common.raise(`TreeMap: Join needs a TreeMap, got {if kind then kind.name else typeof(mine)}`)
+	end
 	const rest: any = other
 	if type(rest) ~= "table" or rawget(rest, TYPE_KEY) ~= TOKEN then
 		const kind = Trait.TokenOf(rest)
