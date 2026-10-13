@@ -64,7 +64,8 @@ src/
     List.luau        위치 프리미티브 다섯 + 읽기 알고리즘의 기본 구현 일곱
     Map.luau         Get·Set·Has·Remove·Iter + Keys·Values·Records
     Set.luau         Add·Has·Remove·Items
-    Collection.luau  Len·Clear (일곱 컨테이너 전부)
+    Collection.luau  Len·Clear (컨테이너 전부)
+    Deque.luau       양끝 큐 — PushFront·PushBack·PopFront·PopBack·Front·Back (원형·연결 둘이 구현)
   Collections/     컨테이너
     Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 목적지 맵을 인자로 받음) + 생성자 8
     HashMap.luau     해시 맵. { data, size } 래퍼
@@ -72,9 +73,11 @@ src/
     TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색(노드 트리로 바꿀 예정 — papers/07)
     TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
     Heap.luau        이진 힙. Collection 만 구현(크기·비우기)
-    CircularDeque.luau       링 버퍼 양끝 큐(M5). List 구현, 리스트 진입점은 안 받음(ToArr)
+    CircularDeque.luau  링 버퍼 양끝 큐(M5 — 예전 이름 Deque). List·Deque·Collection 구현, 리스트 진입점은 안 받음(ToArr)
+    LinkedDeque.luau    노드를 양방향으로 이은 양끝 큐. 위치가 노드 — 가운데도 O(1) 로 넣고 뺌
   Algorithms/      컨테이너를 모르는 알고리즘
     BSearch.luau     이분 탐색. Tree 계열의 백엔드
+  Node.luau        ⭐ 컨테이너 밖의 노드 조각 — 값 필드 + 번호 칸 연결(Node·NodeRead), Walk·Count
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
   Fut.luau         코루틴 래퍼(프로미스). provider, 다중 반환, All → Arr
 
@@ -87,7 +90,7 @@ tests/
   spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
   spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
-  spec.circulardeque.luau
+  spec.circulardeque.luau  spec.linkeddeque.luau  (Node·Deque 트레이트 포함)
   spec.optional.luau  spec.fut.luau
 scripts/
   check.sh               타입 + 음성 대조군 배터리 + require + 포맷 + 테스트
@@ -136,7 +139,8 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `BSearch` | 완성 | `spikes/42` |
 | `TreeMap` / `TreeSet` | 완성 — M4 Lower/Higher·Pop·Retain | `spikes/43`, `59` |
 | `Heap` | 완성 | `spikes/44` |
-| `CircularDeque` | 2026-10-07 (M5) | `spikes/60` |
+| `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |
+| `LinkedDeque` / `Node` / 트레이트 `Deque` | 2026-10-13 — 리뷰 대기 | `spikes/65` |
 | `Optional` | 완성 | `spikes/45`, `47` |
 | `Fut` | `All` 까지(`Race`/재시도 없음) | `spikes/48` |
 

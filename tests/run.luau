@@ -28,6 +28,7 @@ require("./spec.treemap")
 require("./spec.treeset")
 require("./spec.heap")
 require("./spec.circulardeque")
+require("./spec.linkeddeque")
 require("./spec.optional")
 require("./spec.fut")
 

@@ -128,6 +128,7 @@ do
 		},
 		{ name = "Fut", instance = stl.Fut.Resolved(), is = stl.isFut },
 		{ name = "CircularDeque", instance = stl.CircularDeque.Of(1), is = stl.isCircularDeque },
+		{ name = "LinkedDeque", instance = stl.LinkedDeque.Of(1), is = stl.isLinkedDeque },
 	}
 	for _, sample in samples do
 		assert(getmetatable(sample.instance) == nil, `{sample.name} 에 메타테이블이 붙어 있습니다`)
@@ -343,6 +344,24 @@ do
 		assert(stl.isHeap(result), `Heap.{name} 결과에 태그가 없습니다`)
 	end
 
+	-- LinkedDeque(2026-10-13) — 모든 생성·반환 경로가 토큰을 붙이는지
+	const linked = stl.LinkedDeque.Of(1, 2)
+	const linkedResults: { [string]: any } = {
+		New = stl.LinkedDeque.New<<number>>(),
+		FromList = stl.LinkedDeque.FromList({ 1, 2 }),
+		Of = linked,
+		Clone = stl.LinkedDeque.Clone(linked),
+		Clear = stl.LinkedDeque.Clear(stl.LinkedDeque.Of(1)),
+		PushBack = stl.LinkedDeque.PushBack(stl.LinkedDeque.Of(1), 2),
+		PushFront = stl.LinkedDeque.PushFront(stl.LinkedDeque.Of(1), 2),
+		TraitPushBack = stl.Deque.PushBack(stl.LinkedDeque.Of(1), 2),
+	}
+	for name, result in linkedResults do
+		assert(stl.isLinkedDeque(result), `LinkedDeque.{name} 결과에 태그가 없습니다`)
+		assert(getmetatable(result) == nil, `LinkedDeque.{name} 결과에 메타테이블이 있습니다`)
+	end
+	assert(stl.isArr(stl.LinkedDeque.ToArr(linked)), "LinkedDeque.ToArr 는 Arr")
+
 	-- CircularDeque(M5, 2026-10-07)
 	const dq = stl.CircularDeque.Of(1, 2)
 	const dequeResults: { [string]: any } = {
@@ -415,9 +434,19 @@ do
 		{ name = "Heap", is = stl.isHeap, token = stl.Heap.Token },
 		{ name = "Fut", is = stl.isFut, token = stl.Fut.Token },
 		{ name = "CircularDeque", is = stl.isCircularDeque, token = stl.CircularDeque.Token },
+		{ name = "LinkedDeque", is = stl.isLinkedDeque, token = stl.LinkedDeque.Token },
 	}
-	const oldTags =
-		{ "__arr__", "__hashmap__", "__hashset__", "__treemap__", "__treeset__", "__heap__", "__fut__", "__deque__" }
+	const oldTags = {
+		"__arr__",
+		"__hashmap__",
+		"__hashset__",
+		"__treemap__",
+		"__treeset__",
+		"__heap__",
+		"__fut__",
+		"__deque__",
+		"__linkeddeque__",
+	}
 	for idx, case in predicates do
 		-- 테이블이 아닌 것·토큰 없는 것·옛 문자열 태그·이름만 같은 다른 토큰은 아님
 		for _, v in { nil, 1, "x", true, {}, { n = 0 }, { [oldTags[idx]] = true } } :: { any } do
@@ -501,6 +530,7 @@ do
 		},
 		{ name = "Fut", value = stl.Fut.Resolved(1), list = nil, map = nil, set = nil },
 		{ name = "CircularDeque", value = stl.CircularDeque.Of(1), list = stl.CircularDeque, map = nil, set = nil },
+		{ name = "LinkedDeque", value = stl.LinkedDeque.Of(1), list = stl.LinkedDeque, map = nil, set = nil },
 	}
 	for _, case in samples do
 		-- List 의 완성 표는 "모듈이 준 것 + 기본 구현" — 모듈의 프리미티브가 그대로 들어 있는지로 봅니다
@@ -1296,6 +1326,13 @@ do
 				return stl.CircularDeque.PushFront(stl.CircularDeque.Of(10, 20), 5)
 			end,
 			len = stl.CircularDeque.Len,
+		},
+		{
+			name = "LinkedDeque",
+			make = function()
+				return stl.LinkedDeque.PushFront(stl.LinkedDeque.Of(10, 20), 5)
+			end,
+			len = stl.LinkedDeque.Len,
 		},
 		{
 			name = "HashMap",
@@ -2607,6 +2644,7 @@ do
 			own = { Fold = true, Find = true, IndexOf = true, Contains = true, Count = true, Some = true, Every = true },
 		},
 		{ name = "CircularDeque", module = stl.CircularDeque, value = stl.CircularDeque.Of(1), own = {} },
+		{ name = "LinkedDeque", module = stl.LinkedDeque, value = stl.LinkedDeque.Of(1), own = {} },
 	}
 	for _, case in overrides do
 		const ops = T.ImplOf(stl.List, case.value) :: any

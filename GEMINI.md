@@ -16,7 +16,7 @@
 Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너·알고리즘 모음. `src/` 에
 `Arr`(배열, 연산 103 + 생성자 8), `HashMap`/`HashSet`, `TreeMap`/`TreeSet`(정렬 배열 + 이분 탐색),
 `Heap`, `CircularDeque`(링 버퍼), `Optional`, `Fut`(코루틴 프로미스), 트레이트 `List`/`Map`/`Set`/`Collection`(계약 + 기본 구현 + 종류를 모르는 코드의 진입점), `Common`.
-구조: `src/Trait.luau`(트레이트 시스템만), `src/Traits/`(트레이트별 파일), `src/Collections/`(컨테이너), `src/Algorithms/`(`BSearch`).
+구조: `src/Trait.luau`(트레이트 시스템만), `src/Traits/`(트레이트별 파일), `src/Collections/`(컨테이너 — 덱은 `CircularDeque`·`LinkedDeque` 둘, `Deque` 는 트레이트), `src/Node.luau`(컨테이너 밖의 노드 조각), `src/Algorithms/`(`BSearch`).
 1인 프로젝트, 아직 게시 전. **성능이 1급 관심사**이고 모든 성능 주장은 실측입니다
 (`.claude/base/perf-measurements.md`).
 

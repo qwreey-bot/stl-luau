@@ -2,6 +2,10 @@
 --[[
 	CircularDeque — 양끝에서 O(1) 로 넣고 빼는 리스트(링 버퍼). M5(2026-10-07).
 
+	2026-10-13 에 이름을 `Deque` 에서 바꿨습니다 — `Deque` 는 종류를 몰라도 쓰는 **트레이트**가 됐고
+	(`src/Traits/Deque.luau`), 구현은 이것(원형)과 노드로 이은 `LinkedDeque` 둘입니다. 양끝만 쓰면 이쪽이
+	빠르고, 가운데의 위치를 쥐고 O(1) 로 넣고 빼야 하면 `LinkedDeque` 입니다(perf 35절).
+
 	## 왜 따로 있는가
 
 	`Arr.PopFront`/`PushFront` 는 뒤 원소를 전부 미는 O(n) 입니다. 큐(BFS)·작업 목록·미끄럼 창처럼
@@ -40,6 +44,7 @@ local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
 local List = require("../Traits/List")
+local Deque = require("../Traits/Deque")
 local Collection = require("../Traits/Collection")
 local Arr = require("./Arr")
 
@@ -52,6 +57,9 @@ export type CircularDequeData<T> = {
 	read __listIndex: number,
 	-- 쓰는 제네릭용 불변 팬텀(`List.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __listMut: (T, number) -> (T, number),
+	-- 덱 트레이트 마커와 불변 팬텀(`Deque.MarkerMut`, 2026-10-13) — 타입에만 있습니다.
+	read __dequeItem: T,
+	read __dequeMut: (T) -> T,
 	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
 	read __collectionMut: true,
 	[number]: T,
@@ -71,6 +79,7 @@ export type CircularDequeRead<T> = {
 	read __type: Trait.Token<"CircularDeque">,
 	read __list: T,
 	read __listIndex: number,
+	read __dequeItem: T,
 	read [number]: T,
 }
 type Arr<T> = Arr.Arr<T>
@@ -371,10 +380,12 @@ const CircularDequeModule = {
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
 Trait.Impl(List, TOKEN, CircularDequeModule)
+Trait.Impl(Deque, TOKEN, CircularDequeModule)
 Trait.Impl(Collection, TOKEN, CircularDequeModule)
 
 -- `Types` 는 계약 타입만 — 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
 const _ops: List.Impl<CircularDeque<any>, any, number> = CircularDequeModule
+const _deque: Deque.Ops<CircularDeque<any>, any> = CircularDequeModule
 const _collection: Collection.Ops<CircularDeque<any>> = CircularDequeModule
 
 return CircularDequeModule
