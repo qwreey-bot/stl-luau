@@ -203,7 +203,10 @@ export type Heap<T> = HeapData<T>
 
 --#region ----------- 생성자 -----------
 
+-- 생성자는 비교자를 확인합니다(3라운드 리뷰 — 빈 힙에서는 비교가 일어나지 않아 엉뚱한 값이 통과하고 둘째 `Push` 에서
+-- 라이브러리 줄의 에러였습니다. 트리 계열의 생성자와 같은 모양).
 const function New<T>(less: LessThan<T>): Heap<T>
+	Common.expectComparator(less, "Heap: New")
 	return tagged({ items = {} :: { T }, size = 0, less = less })
 end
 
@@ -219,6 +222,7 @@ end
 -- (새 원소는 거의 항상 아래쪽에 자리잡습니다). **그래도 1.7배는 1.7배이니
 -- 한 번에 담을 수 있으면 이쪽을 쓰세요.**
 const function FromList<T>(list: { T }, less: LessThan<T>): Heap<T>
+	Common.expectComparator(less, "Heap: FromList")
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드). 조밀한
 	-- 사본이 곧 힙 저장소입니다.
 	const items, size = Common.denseList(list)

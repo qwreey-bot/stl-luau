@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 39 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 48 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -137,6 +137,19 @@ stl.CompleteNode.Append(cnRoot, 1, Node.Double.New(20))
 stl.CompleteNode.SiftDown(cnRoot, cnRoot, string.lower)
 stl.CompleteNode.Exchange(cnRoot, cnRoot, cnRead)
 
+--[[ 3라운드 리뷰가 짚은 빈 곳 — 순회자 넷 각각의 종류·옵셔널, 내리기·한 번에 짓기의 비교자 ]]
+-- NEG: 종류가 다른 노드(순회자마다) / 순회자가 내는 것은 옵셔널(끝나면 nil — 순회자마다)
+local negPreKind = stl.Traverse.PreOrder(Node.Double.New(1))
+local negInKind = stl.Traverse.InOrder(Node.Single.New(1))
+local negPostKind = stl.Traverse.PostOrder(Node.Double.New(1))
+local negPreEnd: RbNode = stl.Traverse.PreOrder(root)()
+local negInEnd: RbNode = stl.Traverse.InOrder(root)()
+local negPostEnd: RbNode = stl.Traverse.PostOrder(root)()
+local negLevelEnd: RbNode = stl.Traverse.LevelOrder(root)()
+-- NEG: 원소 타입과 비교자가 어긋남(내리기 / 한 번에 짓기)
+stl.CompleteArray.SiftDown({ "a", "b" }, 2, 1, lessNumber)
+stl.CompleteArray.Heapify({ "a", "b" }, 2, lessNumber)
+
 local canary: string = 42
 
 return {
@@ -186,5 +199,12 @@ return {
 	okSift,
 	okShape,
 	negAt,
+	negPreKind,
+	negInKind,
+	negPostKind,
+	negPreEnd,
+	negInEnd,
+	negPostEnd,
+	negLevelEnd,
 	canary,
 }

@@ -2552,6 +2552,11 @@ const function Adopt<T>(tbl: { T }): Arr<T>
 	-- 메타테이블이 남으면 범위 밖 조회가 `__index` 값을 주고 쓰기가 `__newindex`
 	-- 를 타며 1.59배 인덱싱 세금도 다시 붙습니다 — "인스턴스는 평범한 테이블"
 	-- 전제가 이 경로만 비켜 갔습니다(M0 리뷰). 입양 대신 복사를 안내합니다.
+	-- 테이블이 아닌 값은 맨 먼저(3라운드 리뷰 — 아래의 `rawget` 이 라이브러리 줄에서 죽었고, 문자열은 문자열
+	-- 메타테이블 때문에 "메타테이블이 있다" 는 엉뚱한 메시지였음). 다른 리스트 진입점과 같은 메시지.
+	if type(tbl) ~= "table" then
+		Common.raise(`stl: expected a list (plain table, table.pack result or Arr), got {typeof(tbl)}`)
+	end
 	if getmetatable(tbl :: any) ~= nil then
 		Common.raise("Arr: Adopt takes plain tables only (this one has a metatable) — use FromTable")
 	end

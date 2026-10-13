@@ -211,6 +211,70 @@ do
 end
 print("PASS")
 
+print("=== Replace·PushPop 이 실제로 내리는지 (2026-10-13 3라운드 리뷰) ===")
+do
+	local function less(a: number, b: number): boolean
+		return a < b
+	end
+	-- 꼭대기를 **더 뒤서는** 값으로 갈아 끼움 — 내려가야 함. 예전 검사는 더 앞서는 값(2)뿐이라 `Replace` 가
+	-- 내리기를 아예 안 해도 통과했습니다(돌연변이 생존).
+	const h = Heap.FromList({ 30, 50, 70 }, less)
+	assert(Heap.Replace(h, 60) == 30, "Replace 는 원래 꼭대기를")
+	assert(Heap.Peek(h) == 50 and Heap.Len(h) == 3, `Replace 뒤 꼭대기 {Heap.Peek(h)}`)
+	checkHeap(h, "Replace(더 뒤서는 값)")
+	assert(Heap.Replace(h, 90) == 50 and Heap.Peek(h) == 60, "Replace 끝까지 내려감")
+	checkHeap(h, "Replace(가장 뒤서는 값)")
+	-- 깊이 셋 이상에서(한 번 내리고 멈추는 실수를 가름): 1..15 를 담고 꼭대기를 100 으로
+	const deep = Heap.FromList({ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, less)
+	assert(Heap.Replace(deep, 100) == 1 and Heap.Peek(deep) == 2, "깊은 Replace")
+	checkHeap(deep, "깊은 Replace")
+	assert(Heap.PushPop(deep, 200) == 2 and Heap.Peek(deep) == 3, "깊은 PushPop")
+	checkHeap(deep, "깊은 PushPop")
+
+	-- 무작위: 정렬된 배열 모델과 대조 — `Push`·`Pop`·`PushPop`·`Replace` 를 섞어, 걸음마다 꼭대기·크기·힙 순서
+	local seed = 31337
+	local function rand(limit: number): number
+		seed = (seed * 48271) % 2147483647
+		return seed % limit
+	end
+	for round = 1, 40 do
+		const heap = Heap.New(less)
+		const model: { number } = {} -- 늘 오름차순
+		local function insert(value: number)
+			local at = #model + 1
+			for idx, item in model do
+				if value < item then
+					at = idx
+					break
+				end
+			end
+			table.insert(model, at, value)
+		end
+		for step = 1, 250 do
+			const roll, value = rand(4), rand(60) * 10
+			if roll == 0 or #model == 0 then
+				Heap.Push(heap, value)
+				insert(value)
+			elseif roll == 1 then
+				assert(Heap.Pop(heap) == table.remove(model, 1), `Pop {round}/{step}`)
+			elseif roll == 2 then
+				insert(value)
+				assert(Heap.PushPop(heap, value) == table.remove(model, 1), `PushPop {round}/{step}`)
+			else
+				const top = table.remove(model, 1)
+				insert(value)
+				assert(Heap.Replace(heap, value) == top, `Replace {round}/{step}`)
+			end
+			assert(
+				Heap.Len(heap) == #model and Heap.Peek(heap) == model[1],
+				`걸음 {round}/{step}: 꼭대기 {Heap.Peek(heap)}`
+			)
+			checkHeap(heap, `걸음 {round}/{step}`)
+		end
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (Heap) ===")
 

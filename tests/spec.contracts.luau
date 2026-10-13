@@ -1277,7 +1277,7 @@ do
 	Arr.SortInplaceUnchecked(adopted)
 	assert(adopted[1] == 40 and adopted[2] == 50, "n 뒤 값이 정렬에 섞이지 않음")
 	-- n = -0 은 +0 으로(Sized 와 같은 정규화)
-	assert(tostring(Arr.Adopt({ n = -0 } :: any).n) == "0", "FromTable n = -0 → 0")
+	assert(tostring(Arr.Adopt({ n = -0 } :: any).n) == "0", "Adopt n = -0 → 0")
 end
 print("PASS")
 
@@ -3178,6 +3178,116 @@ do
 	assert(
 		string.find(tostring(errSorted), `spec.contracts.luau:{where}:`, 1, true),
 		`FromSorted 균형 사용자 줄: {errSorted}`
+	)
+end
+print("PASS")
+
+print(
+	"=== 17. 3라운드 리뷰(2026-10-13) — 테이블이 아닌 값을 받는 나머지 진입점, Heap 의 비교자 ==="
+)
+do
+	local where = 0
+	const bads: { { value: any, kind: string } } = {
+		{ value = nil, kind = "nil" },
+		{ value = 5, kind = "number" },
+		{ value = "abc", kind = "string" },
+		{ value = false, kind = "boolean" },
+		{ value = print, kind = "function" },
+	}
+	-- (1) `Arr.Adopt` — 2라운드 수정(`listLength` 의 검사)이 닿지 않던 자리: 그 앞의 `rawget` 이 먼저 죽었습니다.
+	--     문자열은 "메타테이블이 있다" 는 엉뚱한 메시지였습니다(`getmetatable("abc")` 가 문자열 메타테이블).
+	for _, bad in bads do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.Arr.Adopt(bad.value)
+		end)
+		assert(
+			not ok
+				and string.find(
+					tostring(err),
+					`stl: expected a list (plain table, table.pack result or Arr), got {bad.kind}`,
+					1,
+					true
+				),
+			`Arr.Adopt({bad.kind}): {err}`
+		)
+		assert(
+			string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true),
+			`Arr.Adopt({bad.kind}) 사용자 줄: {err}`
+		)
+	end
+	-- (2) 사전 진입점 `HashMap.FromTable` 도 같은 모양(리스트 규약의 `{ T }` 는 아니지만 같은 `rawget`)
+	for _, bad in bads do
+		const ok, err = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.HashMap.FromTable(bad.value)
+		end)
+		assert(
+			not ok
+				and string.find(
+					tostring(err),
+					`HashMap: FromTable takes a plain table or an Arr, got {bad.kind}`,
+					1,
+					true
+				),
+			`HashMap.FromTable({bad.kind}): {err}`
+		)
+		assert(
+			string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true),
+			`HashMap.FromTable({bad.kind}) 사용자 줄: {err}`
+		)
+	end
+	-- (3) `Heap` 의 생성자도 비교자를 확인 — 빈 힙에서는 비교가 일어나지 않아 엉뚱한 값이 통과하고 둘째 `Push` 에서
+	--     라이브러리 줄(`Trees/CompleteArray`)의 `attempt to call a nil value` 였습니다(트리 계열의 생성자와 같은 모양).
+	for _, bad in { "less" :: any, 5 :: any, {} :: any } do
+		const okNew, errNew = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.Heap.New(bad)
+		end)
+		assert(
+			not okNew and string.find(tostring(errNew), "Heap: New needs a comparator function, got", 1, true),
+			`Heap.New: {errNew}`
+		)
+		assert(
+			string.find(tostring(errNew), `spec.contracts.luau:{where}:`, 1, true),
+			`Heap.New 사용자 줄: {errNew}`
+		)
+		const okList, errList = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.Heap.FromList({ 30, 10, 20 }, bad)
+		end)
+		assert(
+			not okList and string.find(tostring(errList), "Heap: FromList needs a comparator function, got", 1, true),
+			`Heap.FromList: {errList}`
+		)
+		assert(
+			string.find(tostring(errList), `spec.contracts.luau:{where}:`, 1, true),
+			`Heap.FromList 사용자 줄: {errList}`
+		)
+	end
+	const okNil, errNil = pcall(function()
+		where = debug.info(1, "l") + 1
+		stl.Heap.New(nil :: any)
+	end)
+	assert(
+		not okNil and string.find(tostring(errNil), "Heap: New needs a comparator function, got nil", 1, true),
+		`Heap.New(nil): {errNil}`
+	)
+	assert(
+		string.find(tostring(errNil), `spec.contracts.luau:{where}:`, 1, true),
+		`Heap.New(nil) 사용자 줄: {errNil}`
+	)
+	const okEmpty, errEmpty = pcall(function()
+		where = debug.info(1, "l") + 1
+		stl.Heap.FromList({}, nil :: any)
+	end)
+	assert(
+		not okEmpty and string.find(tostring(errEmpty), "Heap: FromList needs a comparator function, got nil", 1, true),
+		`빈 목록의 FromList: {errEmpty}`
+	)
+	assert(
+		string.find(tostring(errEmpty), `spec.contracts.luau:{where}:`, 1, true),
+		`빈 목록의 FromList 사용자 줄: {errEmpty}`
 	)
 end
 print("PASS")

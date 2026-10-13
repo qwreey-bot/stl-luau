@@ -6,7 +6,7 @@
 	경계 조회(`FloorKey` …)는 옵셔널 키 / `PopFirst` 는 옵셔널 레코드 / `Retain` 콜백의 타입 / 뿌리 노드는
 	읽기 전용 / 균형 방식 자리에 계약과 다른 것은 안 들어감 / 순회 변수의 타입.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 34 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 36 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local TreeMap = stl.TreeMap
@@ -111,6 +111,19 @@ local negNoRoot: stl.TreeBalance = noRoot
 local negPartial: stl.TreeBalance = partial
 local negSearch: stl.TreeBalance = stl.Search
 
+-- NEG(3라운드): `Insert` 의 셋째 반환이 불리언이 아님 / `Clone` 이 빠진 표
+local wrongThird = {
+	Insert = function(_root: any, _key: any, _value: any, _order: any): (number, number, string)
+		return 1, 2, "new"
+	end,
+	Remove = stl.Avl.Remove,
+	FromSorted = stl.Avl.FromSorted,
+	Clone = stl.Avl.Clone,
+}
+local noClone = { Insert = stl.Avl.Insert, Remove = stl.Avl.Remove, FromSorted = stl.Avl.FromSorted }
+local negWrongThird: stl.TreeBalance = wrongThird
+local negNoClone: stl.TreeBalance = noClone
+
 local canary: string = 42
 
 return {
@@ -150,5 +163,7 @@ return {
 	negNoRoot,
 	negPartial,
 	negSearch,
+	negWrongThird,
+	negNoClone,
 	canary,
 }

@@ -370,6 +370,10 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 	-- Gemini 트레이트 검토). ⚠️ 리스트 진입점(`Common.listLength`)과 **일부러 다릅니다** — 그쪽은
 	-- 유효한 `n` 이 있으면 다른 사본의 Arr 도 위치로 받지만, 사전으로 읽는 이쪽은 어떤 칸이
 	-- 데이터인지 모르니 거절합니다(리뷰 3라운드).
+	-- 테이블이 아닌 값(3라운드 리뷰 — 아래 `rawget` 이 라이브러리 줄에서 죽었음)
+	if type(tbl) ~= "table" then
+		Common.raise(`HashMap: FromTable takes a plain table or an Arr, got {typeof(tbl)}`)
+	end
 	const rawToken = rawget(tbl :: any, "__type")
 	-- `Arr` 는 **토큰의 정체성**으로 알아봅니다(`arrToken` — 아래 `BindArr`). 이름("Arr")으로 알아봤더니 사용자가
 	-- `Trait.NewToken("Arr")` 로 만든 자기 종류가 조용히 빈 맵이 되거나 필드를 잃었습니다(리뷰).
