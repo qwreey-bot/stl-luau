@@ -729,6 +729,37 @@ do
 		assert(count == size, `{label}: size {size} ~= 노드 수 {count}`)
 		assert(Binary.Height(root) <= 2 * math.log(count + 1, 2) + 1e-9, `{label}: 높이 {Binary.Height(root)}`)
 	end
+	-- 균형 방식의 불변식(3라운드 리뷰의 참고 — 맵 테스트가 "그 방식의 규칙이 지켜지는가" 를 안 봐서, 지우기가 균형
+	-- 방식을 무시하고 레드블랙의 것을 불러도 통과했음). 여섯째 칸: 레드블랙은 빨강 여부, AVL 은 높이.
+	local function soundRedBlack(root: any, label: string)
+		if root == nil then
+			return
+		end
+		assert(root[6] == false, `{label}: 뿌리가 검정이 아님({tostring(root[6])})`)
+		local function walk(node: any, parent: any): number
+			if node == nil then
+				return 1
+			end
+			assert(type(node[6]) == "boolean", `{label}: {node[5]} 의 색 칸이 불리언이 아님`)
+			assert(not (node[6] and parent ~= nil and parent[6]), `{label}: 빨강-빨강 at {node[5]}`)
+			const left, right = walk(node[2], node), walk(node[3], node)
+			assert(left == right, `{label}: {node[5]} 에서 검정 수 {left} ~= {right}`)
+			return left + (if node[6] then 0 else 1)
+		end
+		walk(root, nil)
+	end
+	local function soundAvl(root: any, label: string)
+		local function walk(node: any): number
+			if node == nil then
+				return 0
+			end
+			const left, right = walk(node[2]), walk(node[3])
+			assert(math.abs(left - right) <= 1, `{label}: {node[5]} 에서 높이 차 {left - right}`)
+			assert(node[6] == math.max(left, right) + 1, `{label}: {node[5]} 의 높이 칸 {tostring(node[6])}`)
+			return node[6]
+		end
+		walk(root)
+	end
 	-- 배열 판의 구조 검사: 순서, size 밖 칸이 비었는지
 	local function soundFlat(map: any, label: string)
 		for idx = 2, map.size do
@@ -772,6 +803,7 @@ do
 			join = TreeMap.Join,
 			sound = function(c, label)
 				soundTree(c.root, c.size, label)
+				soundRedBlack(c.root, label)
 			end,
 			other = function()
 				return FlatMap.New(cmp)
@@ -797,6 +829,7 @@ do
 			join = TreeMap.Join,
 			sound = function(c, label)
 				soundTree(c.root, c.size, label)
+				soundAvl(c.root, label)
 			end,
 			other = function()
 				return TreeSet.New(cmp)
@@ -845,6 +878,7 @@ do
 			join = TreeSet.Join,
 			sound = function(c, label)
 				soundTree(c.map.root, c.map.size, label)
+				soundRedBlack(c.map.root, label)
 			end,
 			other = function()
 				return FlatSet.New(cmp)
