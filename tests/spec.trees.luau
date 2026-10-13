@@ -1384,6 +1384,10 @@ do
 				right == nil or right[4] == nil,
 				`{name}: Join 에 넘긴 오른쪽 트리의 뿌리에 부모가 있음`
 			)
+			-- 두 쪽은 **홀로 선 유효한 트리**여야 함(7라운드 리뷰 — 부모 칸만 끊은 날 부분 트리가 넘어와, 레드블랙이면
+			-- 뿌리가 빨강일 수 있었음. 내장 `Join` 은 다시 칠해서 안 보이고, 계약을 믿는 바깥 방식에서 빨강-빨강이 났음)
+			check(left, `{name}: Join 에 넘긴 왼쪽 트리`)
+			check(right, `{name}: Join 에 넘긴 오른쪽 트리`)
 			return M.Join(left, mid, right)
 		end
 		for _, count in { 1, 2, 3, 15, 200, 1000 } do

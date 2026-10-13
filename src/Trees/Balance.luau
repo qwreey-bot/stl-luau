@@ -21,7 +21,9 @@ type Comparator<T> = Types.Comparator<T>
 -- "그 방식의 노드" 로만 다루면 됩니다(읽을 때는 `Search.KeyNodeRead`).
 -- - `Insert(root, key, value, compare)` → `(새 뿌리, 그 키의 노드, 새로 만들었나)`. 있던 키면 값만 바꿈.
 -- - `Remove(root, node)` → 새 뿌리(비면 `nil`). `node` 는 그 트리의 노드, 떼어 낸 뒤 연결이 끊김.
--- - `Join(left, mid, right)` → 두 트리(뿌리, 비었으면 `nil`)와 가운데 노드를 이은 새 뿌리. 키는 `left` < `mid` < `right`
+-- - `Join(left, mid, right)` → 두 트리(뿌리, 비었으면 `nil`)와 가운데 노드를 이은 새 뿌리. 두 쪽은 **홀로 선 유효한
+--   트리**이고(`Split` 은 떼어 낸 부분 트리를 `AsRoot` 로 만들어 넘김), `mid` 는 연결(왼쪽·오른쪽·부모)이 없는 노드 —
+--   다만 `mid` 의 **균형 칸에는 옛 값이 남아 있을 수 있으니** `Join` 이 정해야 합니다. 키는 `left` < `mid` < `right`
 --   여야 하고(검사 안 함), O(log n) 안에 끝나야 합니다(높이 차만큼이면 가장 좋음). 부분을 떼어 내는 `Split` 이 이것 위에 섭니다
 --   (2026-10-14 사용자: *"부분형으로 뭐보다 크거나 작은 영역을 때어 트리로"*, *"만들어보자"*).
 -- - `AsRoot(node)` → 부모에서 떼어 낸 **부분 트리의 뿌리**(없으면 `nil`)를 홀로 선 트리의 뿌리로 만들어 그대로 돌려줌.
@@ -123,7 +125,9 @@ const function Split<N, K>(
 			if right ~= nil then
 				right[PARENT] = nil
 			end
-			return small, found, join(large, node, right)
+			-- 떼어 낸 부분 트리는 홀로 선 트리로 만들어 넘깁니다(`Join` 의 계약은 "두 트리" — 레드블랙이면 떼어 낸 뿌리가
+			-- 빨강일 수 있음. 내장 `Join` 은 다시 칠하지만 바깥 방식은 계약만 믿음, 7라운드 리뷰)
+			return small, found, join(large, node, asRoot(right))
 		end
 		const small, found, large = split(node[RIGHT])
 		const left = node[LEFT]
@@ -133,7 +137,7 @@ const function Split<N, K>(
 		if left ~= nil then
 			left[PARENT] = nil
 		end
-		return join(left, node, small), found, large
+		return join(asRoot(left), node, small), found, large
 	end
 	return split(root)
 end

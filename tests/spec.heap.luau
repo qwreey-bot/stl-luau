@@ -213,6 +213,16 @@ print("PASS")
 
 print("=== Replace·PushPop 이 실제로 내리는지 (2026-10-13 3라운드 리뷰) ===")
 do
+	-- `Clear` 는 저장소도 비움(7라운드 리뷰의 참고 — 안 비워도 결과는 같지만 낡은 원소를 붙잡아 수거가 안 됨)
+	do
+		const kept = Heap.FromList({ 30, 10, 20 }, function(a: number, b: number): boolean
+			return a < b
+		end)
+		Heap.Clear(kept)
+		assert(Heap.Len(kept) == 0 and next(kept.items) == nil, "Clear 뒤 저장소가 비어 있음")
+		Heap.Push(kept, 5)
+		assert(Heap.Peek(kept) == 5 and Heap.Len(kept) == 1, "Clear 뒤 다시 씀")
+	end
 	local function less(a: number, b: number): boolean
 		return a < b
 	end
