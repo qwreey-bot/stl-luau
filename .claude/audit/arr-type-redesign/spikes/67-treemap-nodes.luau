@@ -1,12 +1,12 @@
 --!strict
 --[[
-	67 — 노드 기반 `TreeMap`(레드블랙 조립)의 음성 대조군 (2026-10-13).
+	67 — 노드 기반 `TreeMap`·`TreeSet`(레드블랙 조립)의 음성 대조군 (2026-10-13).
 
 	지키는 성질: 조회는 옵셔널 / 키·값 타입 / 토큰 없는 리터럴은 맵이 아님 / `FlatMap` 과 서로 다른 타입 /
 	경계 조회(`FloorKey` …)는 옵셔널 키 / `PopFirst` 는 옵셔널 레코드 / `Retain` 콜백의 타입 / 뿌리 노드는
 	읽기 전용 / 균형 방식 자리에 계약과 다른 것은 안 들어감 / 순회 변수의 타입.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 14 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 20 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local TreeMap = stl.TreeMap
@@ -59,6 +59,18 @@ for key in TreeMap.Iter(scores) do
 	print(negKey)
 end
 
+--[[ TreeSet — 같은 성질 ]]
+local ranks = stl.TreeSet.FromList({ 30, 10, 20 }, cmp)
+local okAdd: boolean = stl.TreeSet.Add(ranks, 40)
+local okItems: { number } = stl.TreeSet.Items(ranks)
+local okUnion: stl.TreeSet<number> = stl.TreeSet.Union(ranks, stl.TreeSet.New<<number>>(cmp, stl.Avl))
+local negFirst: number = stl.TreeSet.First(ranks)
+stl.TreeSet.Add(ranks, "forty")
+local negItems: { string } = stl.TreeSet.Items(ranks)
+local negFlatSet: stl.TreeSet<number> = stl.FlatSet.New<<number>>(cmp)
+local negUnion = stl.TreeSet.Union(ranks, stl.TreeSet.New<<string>>(stl.Common.compareString))
+local negSetLiteral: stl.TreeSet<number> = { map = scores }
+
 local canary: string = 42
 
 return {
@@ -77,5 +89,13 @@ return {
 	negLiteral,
 	negFlat,
 	negBalance,
+	okAdd,
+	okItems,
+	okUnion,
+	negFirst,
+	negItems,
+	negFlatSet,
+	negUnion,
+	negSetLiteral,
 	canary,
 }

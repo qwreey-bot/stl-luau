@@ -431,6 +431,20 @@ const function FromRecords<K, V>(source: { Record<K, V> }, compare: Comparator<K
 	return newMap(scheme.FromSorted(keys, values, kept), kept, compare, scheme)
 end
 
+-- ⚠️ **입양**: 이미 **키 순서로 정렬돼 있고 중복·NaN·`nil` 키가 없는** 목록(`keys[i]`·`values[i]`, `1..count`)에서
+-- O(n) 으로 짓습니다. **검사하지 않습니다** — 호출자 책임입니다(`FlatMap.Adopt`·`HashMap.Adopt` 와 같은 문).
+-- `TreeSet` 의 집합 연산처럼 병합 결과가 이미 정렬된 자리를 위한 문이고, 일반 사용자는 `FromRecords` 를 쓰세요.
+const function FromSorted<K, V>(
+	keys: { K },
+	values: { V },
+	count: number,
+	compare: Comparator<K>,
+	balance: Balance?
+): TreeMap<K, V>
+	const scheme = balance or RedBlack
+	return newMap(scheme.FromSorted(keys, values, count), count, compare, scheme)
+end
+
 const function isTreeMap(value: any): boolean
 	return type(value) == "table" and rawget(value, TYPE_KEY) == TOKEN
 end
@@ -441,6 +455,7 @@ end
 const TreeMapModule = {
 	New = New,
 	FromRecords = FromRecords,
+	FromSorted = FromSorted,
 	isTreeMap = isTreeMap,
 	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, TreeMap.Token, impl)`
 	Token = TOKEN,

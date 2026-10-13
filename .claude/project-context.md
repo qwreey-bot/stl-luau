@@ -72,7 +72,8 @@ src/
     HashSet.luau     HashMap 위에 단방향으로 얹음
     TreeMap.luau     ⭐ 키 순서 맵 — **노드 기반 균형 트리**(3층 조립: 기본 레드블랙, 둘째 인자로 균형 방식 선택)
     FlatMap.luau     정렬 레코드 배열 + 이분 탐색(예전 TreeMap — 2026-10-13 에 이름 바꿈). 작거나 읽기 위주일 때
-    FlatSet.luau     FlatMap 위에 단방향. 집합 연산은 병합(예전 TreeSet). ⚠️ 노드 기반 TreeSet 은 아직 없음(다음)
+    TreeSet.luau     노드 기반 TreeMap 위에 단방향. 집합 연산은 두 트리를 순서대로 나란히 훑는 병합
+    FlatSet.luau     FlatMap 위에 단방향. 집합 연산은 병합(예전 TreeSet)
     Heap.luau        이진 힙. Collection 만 구현(크기·비우기)
     CircularDeque.luau  링 버퍼 양끝 큐(M5 — 예전 이름 Deque). List·Deque·Collection 구현, 리스트 진입점은 안 받음(ToArr)
     LinkedDeque.luau    노드를 양방향으로 이은 양끝 큐. 위치가 노드 — 가운데도 O(1) 로 넣고 뺌
@@ -102,7 +103,7 @@ tests/
   spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
   spec.circulardeque.luau  spec.linkeddeque.luau  (Node·Deque 트레이트 포함)
   spec.trees.luau  (RedBlack·Avl 을 같은 시나리오로 + Node 도구)
-  spec.treemap.luau  (FlatMap 의 스펙을 옮긴 것 + 균형 방식 선택·구조 불변식·FlatMap 과 무작위 대조)
+  spec.treemap.luau  spec.treeset.luau  (Flat 판의 스펙을 옮긴 것 + 균형 방식 선택·구조 불변식·Flat 판과 무작위 대조)
   spec.optional.luau  spec.fut.luau
 scripts/
   check.sh               타입 + 음성 대조군 배터리 + require + 포맷 + 테스트
@@ -149,7 +150,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 | `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
 | `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |
-| `TreeMap`(노드 기반, 레드블랙 조립) | 2026-10-13 — `FlatMap` 과 같은 표면(같은 스펙을 옮겨 통과), 무작위 대조. 리뷰 대기. **`TreeSet` 은 아직** | `spikes/67` |
+| `TreeMap` / `TreeSet`(노드 기반, 레드블랙 조립) | 2026-10-13 — `FlatMap`/`FlatSet` 과 같은 표면(같은 스펙을 옮겨 통과), 서로 무작위 대조. 리뷰 대기 | `spikes/67` |
 | `FlatMap` / `FlatSet`(정렬 배열 — 예전 `TreeMap`/`TreeSet`) | 완성 — M4 Lower/Higher·Pop·Retain | `spikes/43`, `59` |
 | `Heap` | 완성 | `spikes/44` |
 | `CircularDeque` | 2026-10-07 (M5 — 2026-10-13 에 `Deque` 에서 이름 바꿈) | `spikes/60` |

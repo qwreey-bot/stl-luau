@@ -316,7 +316,7 @@
   추론 192곳이 깨져 쓰지 못합니다(실측). **위치는 그것을 준 컨테이너에만 돌려주세요** — 타입이 지켜 주지 않는
   규약입니다(`spikes/65` 의 "알려진 구멍" 줄이 솔버 수정 여부를 감시).
 - **의존 방향**: `LinkedDeque → Arr`(`ToArr`)·`Node`, `TreeMap → Trees/RedBlack → Node`, `Arr → HashMap`(묶기의 지름길이 `HashMap` 의 안쪽을 앎, 2026-10-07), `CircularDeque → Arr`
-  (`ToArr`), `HashSet → HashMap`, `TreeSet → TreeMap`. 반대 방향(`HashMap` 이 `Arr` 을 아는 것)은 만들지
+  (`ToArr`), `HashSet → HashMap`, `TreeSet → TreeMap`, `FlatSet → FlatMap`. 반대 방향(`HashMap` 이 `Arr` 을 아는 것)은 만들지
   않습니다 — 순환이 생깁니다.
 
 - **`*Unchecked` 는 늘리지 않습니다** (2026-10-02, 제가 정함 — 되돌리기 쉬움): 지금의 여섯

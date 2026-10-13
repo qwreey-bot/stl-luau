@@ -119,6 +119,8 @@ do
 		{ name = "HashSet", instance = stl.HashSet.New(), is = stl.isHashSet },
 		{ name = "FlatMap", instance = stl.FlatMap.New(Common.compareNumber), is = stl.isFlatMap },
 		{ name = "FlatSet", instance = stl.FlatSet.New(Common.compareNumber), is = stl.isFlatSet },
+		{ name = "TreeMap", instance = stl.TreeMap.New(Common.compareNumber), is = stl.isTreeMap },
+		{ name = "TreeSet", instance = stl.TreeSet.New(Common.compareNumber), is = stl.isTreeSet },
 		{
 			name = "Heap",
 			instance = stl.Heap.New(function(a: number, b: number)
@@ -435,6 +437,8 @@ do
 		{ name = "Fut", is = stl.isFut, token = stl.Fut.Token },
 		{ name = "CircularDeque", is = stl.isCircularDeque, token = stl.CircularDeque.Token },
 		{ name = "LinkedDeque", is = stl.isLinkedDeque, token = stl.LinkedDeque.Token },
+		{ name = "TreeMap", is = stl.isTreeMap, token = stl.TreeMap.Token },
+		{ name = "TreeSet", is = stl.isTreeSet, token = stl.TreeSet.Token },
 	}
 	const oldTags = {
 		"__arr__",
@@ -446,7 +450,12 @@ do
 		"__fut__",
 		"__deque__",
 		"__linkeddeque__",
+		"__nodetreemap__",
+		"__nodetreeset__",
 	}
+	for _, case in predicates do
+		assert(case.token.name == case.name, `{case.name} 의 토큰 이름이 {tostring(case.token.name)}`)
+	end
 	for idx, case in predicates do
 		-- 테이블이 아닌 것·토큰 없는 것·옛 문자열 태그·이름만 같은 다른 토큰은 아님
 		for _, v in { nil, 1, "x", true, {}, { n = 0 }, { [oldTags[idx]] = true } } :: { any } do
@@ -519,6 +528,8 @@ do
 		{ name = "FlatMap", value = stl.FlatMap.New(Common.compareNumber), list = nil, map = stl.FlatMap, set = nil },
 		{ name = "HashSet", value = stl.HashSet.New(), list = nil, map = nil, set = stl.HashSet },
 		{ name = "FlatSet", value = stl.FlatSet.New(Common.compareNumber), list = nil, map = nil, set = stl.FlatSet },
+		{ name = "TreeMap", value = stl.TreeMap.New(Common.compareNumber), list = nil, map = stl.TreeMap, set = nil },
+		{ name = "TreeSet", value = stl.TreeSet.New(Common.compareNumber), list = nil, map = nil, set = stl.TreeSet },
 		{
 			name = "Heap",
 			value = stl.Heap.New(function(a: number, b: number): boolean
@@ -1364,6 +1375,23 @@ do
 				return stl.FlatSet.FromList({ 30, 10, 20 }, Common.compareNumber)
 			end,
 			len = stl.FlatSet.Len,
+		},
+		{
+			name = "TreeMap",
+			make = function()
+				return stl.TreeMap.FromRecords(
+					{ { key = "a", value = 10 }, { key = "b", value = 20 }, { key = "c", value = 30 } },
+					Common.compareString
+				)
+			end,
+			len = stl.TreeMap.Len,
+		},
+		{
+			name = "TreeSet",
+			make = function()
+				return stl.TreeSet.FromList({ 30, 10, 20 }, Common.compareNumber)
+			end,
+			len = stl.TreeSet.Len,
 		},
 		{
 			name = "Heap",
