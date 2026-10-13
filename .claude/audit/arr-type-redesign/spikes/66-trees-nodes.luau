@@ -6,7 +6,7 @@
 	두 방식의 노드는 서로 다른 타입 / `Remove` 는 뿌리가 있어야 하고 비면 `nil` 을 돌려줌 / 비교자의 타입 /
 	노드 도구의 인자(노드여야 함, 읽기 노드는 고치는 도구에 못 들어감) / 균형 계약에 모양이 다른 것은 안 들어감.
 
-	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 31 + CANARY 1)
+	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 35 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local RedBlack, Avl, Node = stl.RedBlack, stl.Avl, stl.Node
@@ -111,6 +111,20 @@ local negTraverseScheme: stl.AvlNode<string, number>? = stl.Traverse.PostOrder(r
 local negTraverseKind = stl.Traverse.LevelOrder(Node.Double.New(1))
 local negTraverseRead: RbNode? = stl.Traverse.InOrder(found)()
 
+--[[ CompleteArray — 배열에 담은 완전 이진 트리(자리 계산과 힙 순서) ]]
+local numbers = { 30, 10, 20 }
+local function lessNumber(a: number, b: number): boolean
+	return a < b
+end
+stl.CompleteArray.Heapify(numbers, 3, lessNumber)
+local okParent: number? = stl.CompleteArray.Parent(3)
+local okIsHeap: boolean = stl.CompleteArray.IsHeap(numbers, 3, lessNumber)
+-- NEG: 자리는 옵셔널(뿌리의 부모, 없는 자식) / 원소 타입과 비교자가 어긋남 / `IsHeap` 은 불리언
+local negParent: number = stl.CompleteArray.Parent(1)
+local negLeft: number = stl.CompleteArray.Left(1, 3)
+stl.CompleteArray.SiftUp({ "a", "b" }, 2, lessNumber)
+local negIsHeap: number = stl.CompleteArray.IsHeap(numbers, 3, lessNumber)
+
 local canary: string = 42
 
 return {
@@ -151,5 +165,10 @@ return {
 	negTraverseScheme,
 	negTraverseKind,
 	negTraverseRead,
+	okParent,
+	okIsHeap,
+	negParent,
+	negLeft,
+	negIsHeap,
 	canary,
 }

@@ -34,6 +34,7 @@ local RedBlack = require("@self/Trees/RedBlack")
 local Avl = require("@self/Trees/Avl")
 local Search = require("@self/Trees/Search")
 local Traverse = require("@self/Trees/Traverse")
+local CompleteArray = require("@self/Trees/CompleteArray")
 local Balance = require("@self/Trees/Balance")
 local BSearch = require("@self/Algorithms/BSearch")
 local Arr = require("@self/Collections/Arr")
@@ -134,6 +135,8 @@ return {
 	Search = Search,
 	-- 이진 트리의 순회자(전위·중위·후위·층별) — 받은 부분 트리 안에서만 돎
 	Traverse = Traverse,
+	-- 배열에 담은 완전 이진 트리 — 자리 계산과 힙 순서를 지키는 도구(`Heap` 이 조립해 씀)
+	CompleteArray = CompleteArray,
 	-- 자가 균형의 계약(`Balance.Scheme`)과 조립하는 쪽의 인자 확인(`Balance.Expect`)
 	Balance = Balance,
 

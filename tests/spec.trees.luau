@@ -590,7 +590,8 @@ do
 		assert(never == 0, `{order.name}(nil)`)
 		-- 끝난 순회자를 더 불러도 계속 `nil`
 		const walk = (order.walk :: any)(n10)
-		assert(walk() == n10 and walk() == nil and walk() == nil, `{order.name}: 끝난 뒤에도 nil`)
+		const first, second, third = walk(), walk(), walk()
+		assert(first == n10 and second == nil and third == nil, `{order.name}: 끝난 뒤에도 nil`)
 	end
 	same(nil, "빈 트리")
 	same(Binary.New(5), "노드 하나")
@@ -651,6 +652,203 @@ do
 		table.insert(seen, `{stl.Search.Key(node)}={stl.Search.Value(node)}`)
 	end
 	assert(table.concat(seen, ",") == "10=v10,20=v20,30=v30,50=v50,70=v70,80=v80,90=v90", table.concat(seen, ","))
+end
+print("PASS")
+
+print("=== 7. CompleteArray — 배열에 담은 완전 이진 트리 (2026-10-13) ===")
+do
+	const Complete = stl.CompleteArray
+	local function less(a: number, b: number): boolean
+		return a < b
+	end
+
+	-- (1) 자리 계산 — 값이 아니라 위치. 7개짜리 트리:      1
+	--                                                 2     3
+	--                                                4 5   6 7
+	assert(
+		Complete.Parent(1) == nil and Complete.Parent(2) == 1 and Complete.Parent(3) == 1,
+		"Parent 뿌리·둘째 층"
+	)
+	assert(Complete.Parent(6) == 3 and Complete.Parent(7) == 3 and Complete.Parent(5) == 2, "Parent 셋째 층")
+	assert(Complete.Left(1, 7) == 2 and Complete.Right(1, 7) == 3, "뿌리의 자식")
+	assert(Complete.Left(3, 7) == 6 and Complete.Right(3, 7) == 7, "3 의 자식")
+	-- 경계: 왼쪽만 있는 노드(count = 6 → 3 의 왼쪽 6 은 있고 오른쪽 7 은 없음), 잎, 빈 트리, 하나
+	assert(Complete.Left(3, 6) == 6 and Complete.Right(3, 6) == nil, "왼쪽 자식만")
+	assert(Complete.Left(4, 7) == nil and Complete.Right(4, 7) == nil, "잎")
+	assert(Complete.Left(1, 0) == nil and Complete.Right(1, 1) == nil and Complete.Left(1, 1) == nil, "빈 것·하나")
+	assert(Complete.Right(2, 5) == 5 and Complete.Right(2, 4) == nil, "오른쪽 자식의 경계")
+	-- 높이: 층의 수. 2의 거듭제곱 앞뒤에서 바뀜
+	for count, want in { [0] = 0, [1] = 1, [2] = 2, [3] = 2, [4] = 3, [7] = 3, [8] = 4, [1023] = 10, [1024] = 11 } do
+		assert(Complete.Height(count) == want, `Height({count}) = {Complete.Height(count)}, 기대 {want}`)
+	end
+	-- 자리 계산끼리 맞물림: 자식의 부모는 자기
+	for idx = 1, 200 do
+		const left, right = Complete.Left(idx, 401), Complete.Right(idx, 401)
+		assert(left ~= nil and Complete.Parent(left) == idx, `Left·Parent {idx}`)
+		assert(right ~= nil and Complete.Parent(right) == idx and right == left + 1, `Right·Parent {idx}`)
+	end
+
+	-- (2) IsHeap — 빈 것·하나는 참, 어긋난 자리가 맨 끝·오른쪽 자식에 있어도 잡음
+	assert(Complete.IsHeap({}, 0, less) and Complete.IsHeap({ 50 }, 1, less), "IsHeap 빈 것·하나")
+	assert(Complete.IsHeap({ 10, 30, 20, 40, 50 }, 5, less), "IsHeap 참")
+	assert(not Complete.IsHeap({ 10, 30, 20, 40, 25 }, 5, less), "IsHeap: 맨 끝이 부모보다 앞섬")
+	assert(not Complete.IsHeap({ 10, 30, 20, 40, 50, 60, 15 }, 7, less), "IsHeap: 오른쪽 자식")
+	assert(not Complete.IsHeap({ 20, 10 }, 2, less), "IsHeap: 뿌리의 왼쪽")
+	-- count 밖은 보지 않음
+	assert(Complete.IsHeap({ 10, 30, 20, 5 }, 3, less), "IsHeap 은 count 까지만")
+	-- 같은 값은 힙 순서를 어기지 않음
+	assert(Complete.IsHeap({ 10, 10, 10 }, 3, less), "IsHeap 같은 값")
+
+	-- (3) SiftUp — 맨 뒤에 놓은 원소가 올라갈 만큼만. 다른 원소의 상대 순서(경로 밖)는 그대로
+	do
+		const list = { 10, 30, 20, 40, 50, 60, 70, 5 }
+		Complete.SiftUp(list, 8, less)
+		-- 8 → 4 → 2 → 1 로 올라감: 경로의 40·30·10 이 한 칸씩 내려옴
+		assert(table.concat(list, ",") == "5,10,20,30,50,60,70,40", `SiftUp 끝까지: {table.concat(list, ",")}`)
+		const mid = { 10, 30, 20, 40, 50, 60, 70, 35 }
+		Complete.SiftUp(mid, 8, less)
+		assert(table.concat(mid, ",") == "10,30,20,35,50,60,70,40", `SiftUp 한 칸: {table.concat(mid, ",")}`)
+		const stay = { 10, 30, 20, 40, 50, 60, 70, 45 }
+		Complete.SiftUp(stay, 8, less)
+		assert(table.concat(stay, ",") == "10,30,20,40,50,60,70,45", "SiftUp 제자리")
+		-- 같은 값은 넘지 않음(부모와 같으면 멈춤), 뿌리에서 부르면 아무 일 없음
+		const equal = { 10, 30, 20, 30 }
+		Complete.SiftUp(equal, 4, less)
+		assert(table.concat(equal, ",") == "10,30,20,30", "SiftUp 같은 값")
+		const one = { 99 }
+		Complete.SiftUp(one, 1, less)
+		assert(one[1] == 99, "SiftUp 뿌리")
+	end
+
+	-- (4) SiftDown — 더 앞서는 자식 쪽으로. 자식이 하나뿐인 자리, count 밖은 안 봄
+	do
+		const list = { 90, 10, 20, 30, 40, 50, 60 }
+		Complete.SiftDown(list, 7, 1, less)
+		assert(table.concat(list, ",") == "10,30,20,90,40,50,60", `SiftDown 왼쪽으로: {table.concat(list, ",")}`)
+		const right = { 90, 20, 10, 30, 40, 50, 60 }
+		Complete.SiftDown(right, 7, 1, less)
+		assert(
+			table.concat(right, ",") == "10,20,50,30,40,90,60",
+			`SiftDown 오른쪽으로: {table.concat(right, ",")}`
+		)
+		-- 왼쪽 자식만 있는 자리(count = 6 → 3 의 자식은 6 뿐)
+		const single = { 10, 20, 90, 30, 40, 50 }
+		Complete.SiftDown(single, 6, 3, less)
+		assert(table.concat(single, ",") == "10,20,50,30,40,90", `SiftDown 자식 하나: {table.concat(single, ",")}`)
+		-- count 밖의 더 앞서는 값은 자식이 아님
+		const bounded = { 90, 95, 99, 1, 2 }
+		Complete.SiftDown(bounded, 3, 1, less)
+		assert(table.concat(bounded, ",") == "90,95,99,1,2", "SiftDown 은 count 안에서만")
+		const stay = { 10, 20, 30 }
+		Complete.SiftDown(stay, 3, 1, less)
+		assert(table.concat(stay, ",") == "10,20,30", "SiftDown 제자리")
+		-- 같은 값의 자식 아래로는 안 내려감
+		const equal = { 20, 20, 30 }
+		Complete.SiftDown(equal, 3, 1, less)
+		assert(table.concat(equal, ",") == "20,20,30", "SiftDown 같은 값")
+	end
+
+	-- (4b) 같은 키는 **넘지 않습니다** — 숫자로는 안 보여(자리를 바꿔도 같은 값) 이름표를 단 레코드로.
+	--      넘어도 힙 순서는 맞지만, 전부 같은 키인 입력에서 걸음마다 끝까지 옮기게 됩니다.
+	do
+		type Tagged = { key: number, tag: string }
+		local function lessKey(a: Tagged, b: Tagged): boolean
+			return a.key < b.key
+		end
+		local function tags(list: { Tagged }): string
+			const out: { string } = {}
+			for idx, item in list do
+				out[idx] = item.tag
+			end
+			return table.concat(out, ",")
+		end
+		const up: { Tagged } =
+			{ { key = 10, tag = "a" }, { key = 30, tag = "b" }, { key = 20, tag = "c" }, { key = 30, tag = "d" } }
+		Complete.SiftUp(up, 4, lessKey)
+		assert(tags(up) == "a,b,c,d", `SiftUp 은 같은 키의 부모를 넘지 않음: {tags(up)}`)
+		const down: { Tagged } = { { key = 20, tag = "a" }, { key = 20, tag = "b" }, { key = 30, tag = "c" } }
+		Complete.SiftDown(down, 3, 1, lessKey)
+		assert(tags(down) == "a,b,c", `SiftDown 은 같은 키의 자식 아래로 안 내려감: {tags(down)}`)
+	end
+
+	-- (5) Heapify — 빈 것·하나·둘, 그리고 무작위를 정렬 결과와 대조(힙에서 하나씩 꺼내면 정렬 순서)
+	do
+		const empty: { number } = {}
+		Complete.Heapify(empty, 0, less)
+		const one = { 7 }
+		Complete.Heapify(one, 1, less)
+		const two = { 20, 10 }
+		Complete.Heapify(two, 2, less)
+		assert(#empty == 0 and one[1] == 7 and two[1] == 10 and two[2] == 20, "Heapify 빈 것·하나·둘")
+		local seed = 4242
+		local function rand(limit: number): number
+			seed = (seed * 48271) % 2147483647
+			return seed % limit
+		end
+		for round = 1, 300 do
+			const count = rand(60)
+			const list = table.create(count) :: { number }
+			for idx = 1, count do
+				list[idx] = rand(40) * 10 -- 중복이 섞이게
+			end
+			const want = table.clone(list)
+			table.sort(want)
+			-- count 밖에 값을 하나 둬서 "count 까지만" 을 같이 봄
+			list[count + 1] = -1
+			Complete.Heapify(list, count, less)
+			assert(Complete.IsHeap(list, count, less), `Heapify {round}: 힙 순서가 아님`)
+			assert(list[count + 1] == -1, `Heapify {round}: count 밖을 건드림`)
+			-- 꺼내기(뿌리를 맨 뒤 것으로 갈아 끼우고 내림)를 손으로 — 힙 정렬의 한 걸음
+			local remaining = count
+			for idx = 1, count do
+				assert(list[1] == want[idx], `Heapify {round}: {idx}번째 꺼낸 값 {list[1]}, 기대 {want[idx]}`)
+				list[1] = list[remaining]
+				remaining -= 1
+				if remaining > 1 then
+					Complete.SiftDown(list, remaining, 1, less)
+				end
+				assert(Complete.IsHeap(list, remaining, less), `꺼낸 뒤 {round}/{idx}: 힙 순서가 아님`)
+			end
+		end
+		-- 하나씩 넣기(맨 뒤에 놓고 올림)도 같은 결과로 — 최대 힙(비교자를 뒤집음)으로
+		local function greater(a: number, b: number): boolean
+			return a > b
+		end
+		for round = 1, 100 do
+			const count = 1 + rand(50)
+			const list: { number } = {}
+			local top = -math.huge
+			for idx = 1, count do
+				const item = rand(1000)
+				top = math.max(top, item)
+				list[idx] = item
+				Complete.SiftUp(list, idx, greater)
+				assert(Complete.IsHeap(list, idx, greater) and list[1] == top, `넣기 {round}/{idx}`)
+			end
+		end
+	end
+
+	-- (6) 힙은 이것의 조립 — 같은 입력이면 저장소가 같은 배치(`Heap.Items` 는 저장 순서 그대로)
+	do
+		const source = { 50, 30, 80, 10, 90, 20, 70 }
+		const direct = table.clone(source)
+		Complete.Heapify(direct, #direct, less)
+		assert(
+			table.concat(stl.Heap.Items(stl.Heap.FromList(source, less)), ",") == table.concat(direct, ","),
+			"Heap.FromList = Heapify"
+		)
+		const pushed: { number } = {}
+		const heap = stl.Heap.New(less)
+		for idx, item in source do
+			pushed[idx] = item
+			Complete.SiftUp(pushed, idx, less)
+			stl.Heap.Push(heap, item)
+		end
+		assert(
+			table.concat(stl.Heap.Items(heap), ",") == table.concat(pushed, ","),
+			"Heap.Push = 맨 뒤에 놓고 SiftUp"
+		)
+	end
 end
 print("PASS")
 

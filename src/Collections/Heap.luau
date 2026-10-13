@@ -10,6 +10,8 @@
 
 	평범한 배열에 완전이진트리를 담습니다 — 자식은 `2i`, `2i + 1`, 부모는
 	`i // 2`. 노드 테이블이 없어 메모리가 촘촘하고 캐시에 친합니다.
+	그 배치와 순서를 지키는 도구(올리기·내리기·한 번에 짓기)는 `Trees/CompleteArray` 의 것이고,
+	이 모듈은 그것을 조립합니다(3층).
 
 	## 비교자는 **불리언** `LessThan` 입니다
 
@@ -36,6 +38,7 @@ local Types = require("../Types")
 local Common = require("../Common")
 local Trait = require("../Trait")
 local Collection = require("../Traits/Collection")
+local CompleteArray = require("../Trees/CompleteArray")
 Common.registerSource(debug.info(1, "s"))
 
 type LessThan<T> = Types.LessThan<T>
@@ -63,44 +66,10 @@ end
 
 --#region ----------- 내부: 위아래로 밀어넣기 -----------
 
--- `start` 자리의 원소를 부모와 비교하며 위로 올립니다.
-const function siftUp<T>(items: { T }, less: LessThan<T>, start: number)
-	local idx = start
-	const moving = items[idx]
-	while idx > 1 do
-		const parent = idx // 2
-		if not less(moving, items[parent]) then
-			break
-		end
-		items[idx] = items[parent]
-		idx = parent
-	end
-	items[idx] = moving
-end
-
--- `start` 자리의 원소를 자식과 비교하며 아래로 내립니다.
-const function siftDown<T>(items: { T }, size: number, less: LessThan<T>, start: number)
-	local idx = start
-	const moving = items[idx]
-	while true do
-		const left = idx * 2
-		if left > size then
-			break
-		end
-		-- 두 자식 중 더 앞서는 쪽을 고릅니다.
-		local child = left
-		const right = left + 1
-		if right <= size and less(items[right], items[left]) then
-			child = right
-		end
-		if not less(items[child], moving) then
-			break
-		end
-		items[idx] = items[child]
-		idx = child
-	end
-	items[idx] = moving
-end
+-- 올리기·내리기는 **배열에 담은 완전 이진 트리**의 것입니다(`Trees/CompleteArray` — 2층 트리부). 힙은 그 위에
+-- 크기·비교자·타입 토큰을 얹은 조립입니다(2026-10-13 사용자: *"완전이진의 노드형/배열형 만들고 heap 에서 그거 사용"*).
+-- 지역으로 받아 두어 호출은 예전의 지역 함수와 같은 값입니다(perf 41절).
+const siftUp, siftDown, heapify = CompleteArray.SiftUp, CompleteArray.SiftDown, CompleteArray.Heapify
 
 --#endregion
 
@@ -143,7 +112,7 @@ const function Sorted<T>(self: HeapData<T>): { T }
 		work[remaining] = nil :: any
 		remaining -= 1
 		if remaining > 1 then
-			siftDown(work, remaining, less, 1)
+			siftDown(work, remaining, 1, less)
 		end
 	end
 	return out
@@ -160,7 +129,7 @@ const function Push<T>(self: HeapData<T>, item: T): Heap<T>
 	const size = self.size + 1
 	self.items[size] = item
 	self.size = size
-	siftUp(self.items, self.less, size)
+	siftUp(self.items, size, self.less)
 	return self :: any
 end
 
@@ -176,7 +145,7 @@ const function Pop<T>(self: HeapData<T>): T?
 	items[size] = nil :: any
 	self.size = size - 1
 	if self.size > 1 then
-		siftDown(items, self.size, self.less, 1)
+		siftDown(items, self.size, 1, self.less)
 	end
 	return top
 end
@@ -192,7 +161,7 @@ const function PushPop<T>(self: HeapData<T>, item: T): T
 	const items = self.items
 	const top = items[1]
 	items[1] = item
-	siftDown(items, size, self.less, 1)
+	siftDown(items, size, 1, self.less)
 	return top
 end
 
@@ -207,7 +176,7 @@ const function Replace<T>(self: HeapData<T>, item: T): T?
 	const items = self.items
 	const top = items[1]
 	items[1] = item
-	siftDown(items, size, self.less, 1)
+	siftDown(items, size, 1, self.less)
 	return top
 end
 
@@ -253,9 +222,7 @@ const function FromList<T>(list: { T }, less: LessThan<T>): Heap<T>
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드). 조밀한
 	-- 사본이 곧 힙 저장소입니다.
 	const items, size = Common.denseList(list)
-	for idx = size // 2, 1, -1 do
-		siftDown(items, size, less, idx)
-	end
+	heapify(items, size, less)
 	return tagged({ items = items, size = size, less = less })
 end
 
