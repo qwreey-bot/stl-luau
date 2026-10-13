@@ -32,6 +32,9 @@ Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너�
   공용 알고리즘은 구현을 손으로 받지 않음(`Algorithm.Keys(m)`). 트레이트는 `List`/`Map`(`Get`·`Set`·`Has`·`Remove`·
   `Iter` — 레코드 목록은 `Algorithm.Records`)/`Set`/`Collection`(`Len`·`Clear` — 일곱 컨테이너 전부, 2026-10-12). 컨테이너를 **바꾸는** 제네릭은
   원소 타입이 안 흘러들어도 `CollectionMarkerMut` — 읽기로 빌린 `ArrRead`·`DequeRead` 가 `Clear` 를 얻으면 안 됨.
+  ⭐ 트레이트는 **필수 함수 + 기본 구현 + 의존**(2026-10-13, `papers/07`): `Trait.New(name, { required, defaults, requires })`.
+  필수 함수가 없는 트레이트는 의존만 갖추면 등록 없이 저절로 구현됨 — 컨테이너는 자기가 아는 트레이트만 등록.
+  이 방향(프리미티브만 구현하면 알고리즘이 따라옴, 노드를 바깥 조각으로)으로 전체를 옮기는 중 — `todos.md`.
   `HashMap.Iter(m)` 은 안쪽 테이블을 그대로 돌려줌(읽기 전용 타입 — Luau 가 직접 돌아 9배, 사용자 결정).
   `HashSet` 도 같음 — 안쪽이 `원소 → 원소`(더미 `true` 가 아님)라 순회가 `(item, item)`. 셋은 `for item in X.Iter(s)`.
 - **구멍은 타입에 `T?` 로 드러냄**(질문 T): `Arr` 은 `{ n, [number]: T }` 이고 1..n 사이에

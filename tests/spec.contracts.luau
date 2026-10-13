@@ -1084,7 +1084,7 @@ do
 	const Loose = stl.Trait.New<<{ read Show: (any) -> string }>>("Loose")
 	stl.Trait.Impl(Loose, stl.Trait.NewType("LooseKind"), {} :: any)
 	const names = { "Show" }
-	const Strict = stl.Trait.New<<{ read Show: (any) -> string }>>("Strict", names)
+	const Strict = stl.Trait.New<<{ read Show: (any) -> string }>>("Strict", { required = names })
 	names[1] = "Other" -- 넘긴 목록을 나중에 바꿔도 트레이트는 그대로(사본)
 	const StrictKind = stl.Trait.NewType("StrictKind")
 	assert(not pcall(function()
@@ -1105,7 +1105,7 @@ do
 	do
 		const okNew, errNew = pcall(function()
 			newLine = debug.info(1, "l") + 1
-			stl.Trait.New("BadRequired", badRequired.list)
+			stl.Trait.New("BadRequired", { required = badRequired.list } :: any)
 		end)
 		assert(not okNew and string.find(tostring(errNew), badRequired.needle, 1, true), `New 의 목록: {errNew}`)
 		assert(string.find(tostring(errNew), `spec.contracts.luau:{newLine}:`, 1, true), `사용자 줄: {errNew}`)
@@ -1559,8 +1559,238 @@ do
 	end
 	-- 보호된 메타테이블을 단 필수 목록도 사본으로 읽음
 	const guarded = setmetatable({ "Show" }, { __metatable = "locked" })
-	const Guarded = T.New<<{ read Show: (any) -> string }>>("Guarded", guarded :: any)
+	const Guarded = T.New<<{ read Show: (any) -> string }>>("Guarded", { required = guarded :: any })
 	assert(Guarded.required ~= nil and Guarded.required[1] == "Show", "보호된 목록")
+end
+print("PASS")
+
+print("=== 12. ⭐ 기본 구현·의존·저절로 따라오는 구현 (2026-10-13, papers/07 1단계) ===")
+do
+	const T = stl.Trait
+	-- 작은 계층: Counter(필수 Get·Inc) → 기본 구현 IncBy·Double / Show(필수 없음, Counter 를 요구)
+	type Counter = { read __type: stl.TraitToken<string>, n: number }
+	type CounterOps = {
+		read Get: (c: Counter) -> number,
+		read Inc: (c: Counter) -> (),
+		read IncBy: (c: Counter, by: number) -> (),
+		read Double: (c: Counter) -> (),
+	}
+	const CounterTrait = T.New<<CounterOps>>("Counter", {
+		required = { "Get", "Inc" },
+		defaults = function(ops: any)
+			return {
+				-- 필수 함수는 부를 때 `ops` 에서 꺼냄
+				IncBy = function(c: Counter, by: number)
+					const inc = ops.Inc
+					for _ = 1, by do
+						inc(c)
+					end
+				end,
+				-- 다른 기본 구현을 부르는 기본 구현 — 재정의된 판을 써야 함
+				Double = function(c: Counter)
+					ops.IncBy(c, ops.Get(c))
+				end,
+			}
+		end,
+	}) :: stl.Trait<CounterOps, any>
+	const Plain = T.NewType("PlainCounter")
+	const Fast = T.NewType("FastCounter")
+	local plainIncCalls = 0
+	T.Impl(CounterTrait, Plain, {
+		Get = function(c: Counter): number
+			return c.n
+		end,
+		Inc = function(c: Counter)
+			plainIncCalls += 1
+			c.n += 1
+		end,
+	})
+	local fastIncByCalls = 0
+	T.Impl(CounterTrait, Fast, {
+		Get = function(c: Counter): number
+			return c.n
+		end,
+		Inc = function(c: Counter)
+			c.n += 1
+		end,
+		-- 재정의: 한 번에 더함
+		IncBy = function(c: Counter, by: number)
+			fastIncByCalls += 1
+			c.n += by
+		end,
+	})
+	const plain: Counter = { __type = Plain, n = 3 } :: any
+	const fast: Counter = { __type = Fast, n = 3 } :: any
+	const plainOps = T.ImplOf(CounterTrait, plain)
+	const fastOps = T.ImplOf(CounterTrait, fast)
+	assert(plainOps ~= nil and fastOps ~= nil, "둘 다 구현")
+	-- 기본 구현이 채워짐
+	plainOps.IncBy(plain, 4)
+	assert(plain.n == 7 and plainIncCalls == 4, `기본 IncBy 는 Inc 를 네 번: {plain.n}, {plainIncCalls}`)
+	plainOps.Double(plain)
+	assert(plain.n == 14, `기본 Double: {plain.n}`)
+	-- 재정의가 이기고, **기본 구현이 부르는 다른 기본 구현도 재정의된 판**
+	fastOps.IncBy(fast, 4)
+	assert(fast.n == 7 and fastIncByCalls == 1, "재정의된 IncBy")
+	fastOps.Double(fast)
+	assert(fast.n == 14 and fastIncByCalls == 2, `Double 이 재정의된 IncBy 를 부름: {fastIncByCalls}`)
+	-- 완성 표는 넘긴 표와 다른 표(합친 것)이고 넘긴 함수는 그대로 들어 있음
+	assert(type(plainOps.IncBy) == "function" and plainOps ~= (fastOps :: any), "종류마다 자기 완성 표")
+	-- 필수 함수가 빠지면 등록이 거절됨(기본 구현이 있어도)
+	local where = 0
+	const okMissing, errMissing = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(CounterTrait, T.NewType("NoInc"), {
+			Get = function(c: Counter): number
+				return c.n
+			end,
+		})
+	end)
+	assert(
+		not okMissing and string.find(tostring(errMissing), "NoInc is missing Inc for Counter", 1, true),
+		`{errMissing}`
+	)
+	assert(string.find(tostring(errMissing), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errMissing}`)
+
+	-- ⭐ 저절로 따라오는 구현: Show 는 필수 함수가 없고 Counter 를 요구 — **아무도 등록하지 않음**
+	type ShowOps = { read Show: (c: Counter) -> string, read Shout: (c: Counter) -> string }
+	const ShowTrait = T.New<<ShowOps>>("ShowCounter", {
+		requires = { CounterTrait },
+		defaults = function(ops: any, deps: { [any]: any })
+			const counter = deps[CounterTrait]
+			return {
+				Show = function(c: Counter): string
+					return `<{counter.Get(c)}>`
+				end,
+				Shout = function(c: Counter): string
+					return string.upper(ops.Show(c)) .. "!"
+				end,
+			}
+		end,
+	})
+	assert(T.Implements(ShowTrait, plain) and T.Implements(ShowTrait, fast), "의존을 갖춘 종류는 저절로")
+	const shown = T.ImplOf(ShowTrait, plain)
+	assert(shown ~= nil and shown.Show(plain) == "<14>" and shown.Shout(plain) == "<14>!", "저절로 따라온 Show")
+	assert(rawequal(T.ImplOf(ShowTrait, plain), shown), "만들어 둔 표를 다시 돌려줌")
+	-- 의존을 안 갖춘 종류에는 안 따라옴(토큰만 있는 값, 내장 컨테이너, 테이블 아님)
+	const Other = T.NewType("Other")
+	for _, value in { { __type = Other }, stl.Arr.Of(1), 5, "x", {} } :: { any } do
+		assert(T.ImplOf(ShowTrait, value) == nil and not T.Implements(ShowTrait, value), "의존이 없으면 없음")
+	end
+	-- 의존을 **나중에** 갖추면 그때부터 따라옴(없다는 답은 붙잡아 두지 않음)
+	const late: Counter = { __type = Other, n = 1 } :: any
+	T.Impl(CounterTrait, Other, { Get = plainOps.Get, Inc = plainOps.Inc })
+	assert(T.ImplOf(ShowTrait, late) ~= nil, "의존을 나중에 갖춤")
+
+	-- ⭐ 저절로 따라온 것 위에 재정의를 등록(사용자 결정) — 이미 쓴 뒤여도, **같은 표가 제자리에서** 바뀜
+	const before = T.ImplOf(ShowTrait, fast)
+	assert(before ~= nil and before.Show(fast) == "<14>", "재정의 전")
+	T.Impl(
+		ShowTrait,
+		Fast,
+		{
+			Show = function(c: Counter): string
+				return `fast:{c.n}`
+			end,
+		} :: any
+	)
+	assert(rawequal(T.ImplOf(ShowTrait, fast), before), "같은 표")
+	assert(before.Show(fast) == "fast:14", "들고 있던 표도 새 함수를 봄")
+	assert(before.Shout(fast) == "FAST:14!", "기본 구현(Shout)도 재정의된 Show 를 부름")
+	assert((T.ImplOf(ShowTrait, plain) :: any).Show(plain) == "<14>", "다른 종류는 그대로")
+	-- 재정의는 한 번 — 명시적으로 등록한 것을 또 등록하면 에러(내장 구현이 조용히 바뀌지 않게)
+	const okTwice, errTwice = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(ShowTrait, Fast, {} :: any)
+	end)
+	assert(
+		not okTwice and string.find(tostring(errTwice), "FastCounter already implements ShowCounter", 1, true),
+		`{errTwice}`
+	)
+	assert(string.find(tostring(errTwice), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errTwice}`)
+	-- 의존을 안 갖춘 종류를 명시적으로 등록하면 사용자 줄 에러
+	const Lonely = T.NewType("Lonely")
+	const okDep, errDep = pcall(function()
+		where = debug.info(1, "l") + 1
+		T.Impl(ShowTrait, Lonely, {} :: any)
+	end)
+	assert(
+		not okDep and string.find(tostring(errDep), "Lonely must implement Counter to implement ShowCounter", 1, true),
+		`{errDep}`
+	)
+	assert(string.find(tostring(errDep), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errDep}`)
+	assert(ShowTrait.impls[Lonely] == nil, "거절된 등록은 남지 않음")
+
+	-- 의존의 의존: Loud 는 Show 를 요구하고 Show 는 Counter 를 요구 — 한 번에 풀림
+	const LoudTrait = T.New<<{ read Loud: (c: Counter) -> string }>>("Loud", {
+		requires = { ShowTrait },
+		defaults = function(_ops: any, deps: { [any]: any })
+			const show = deps[ShowTrait]
+			return {
+				Loud = function(c: Counter): string
+					return show.Shout(c) .. "!!"
+				end,
+			}
+		end,
+	})
+	const fresh: Counter = { __type = T.NewType("FreshCounter"), n = 2 } :: any
+	T.Impl(CounterTrait, rawget(fresh :: any, "__type"), { Get = plainOps.Get, Inc = plainOps.Inc })
+	assert((T.ImplOf(LoudTrait, fresh) :: any).Loud(fresh) == "<2>!!!", "의존의 의존")
+	-- Show 가 나중에 재정의되면 Loud 도 따라감(의존 표를 부를 때 꺼내므로)
+	T.Impl(
+		ShowTrait,
+		rawget(fresh :: any, "__type"),
+		{
+			Shout = function(_c: Counter): string
+				return "quiet"
+			end,
+		} :: any
+	)
+	assert((T.ImplOf(LoudTrait, fresh) :: any).Loud(fresh) == "quiet!!", "의존의 재정의가 위로 전해짐")
+
+	-- 기본 구현도 의존도 없는 트레이트는 예전 그대로: 넘긴 표가 곧 구현, 저절로 따라오지 않음
+	assert(T.ImplOf(T.List, stl.Arr.Of(1)) == stl.Arr, "내장 List 는 모듈 테이블 그대로")
+	const Bare = T.New<<{ read X: () -> number }>>("Bare")
+	assert(
+		T.ImplOf(Bare, plain) == nil and not T.Implements(Bare, plain),
+		"아무것도 없는 트레이트는 등록해야"
+	)
+	-- 필수 함수가 있는 트레이트는 기본 구현이 있어도 저절로 따라오지 않음
+	assert(
+		T.ImplOf(CounterTrait, { __type = T.NewType("Unregistered") }) == nil,
+		"필수 함수가 있으면 등록해야"
+	)
+
+	-- spec 의 모양 검사(사용자 줄)
+	for _, bad in
+		{
+			{ spec = 5, needle = "needs a spec table" },
+			{ spec = { requires = 5 }, needle = "list of traits in requires, got number" },
+			{ spec = { requires = { {} } }, needle = "list of traits in requires, got a table in it" },
+			{ spec = { defaults = {} }, needle = "needs a function for defaults, got table" },
+		} :: { { spec: any, needle: string } }
+	do
+		const okSpec, errSpec = pcall(function()
+			where = debug.info(1, "l") + 1
+			T.New("BadSpec", bad.spec)
+		end)
+		assert(not okSpec and string.find(tostring(errSpec), bad.needle, 1, true), `spec: {errSpec}`)
+		assert(string.find(tostring(errSpec), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errSpec}`)
+	end
+	-- 넘긴 requires 목록을 나중에 바꿔도 트레이트는 그대로(사본)
+	const deps = { CounterTrait }
+	const Snap = T.New<<{ read Id: (c: Counter) -> number }>>("Snap", {
+		requires = deps,
+		defaults = function(_ops: any, got: { [any]: any })
+			return {
+				Id = function(c: Counter): number
+					return got[CounterTrait].Get(c)
+				end,
+			}
+		end,
+	})
+	deps[1] = nil :: any
+	assert((T.ImplOf(Snap, plain) :: any).Id(plain) == 14, "requires 는 넘긴 때의 것")
 end
 print("PASS")
 

@@ -7,7 +7,7 @@
 	추론하는지. 예전엔 `Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
 	사용자 컨테이너·사용자 트레이트도 같은 모양으로 들어오는지.
 
-	기대 진단: 14건 (NEG 열둘이 13건 — neg6 은 두 자리 + CANARY 1)
+	기대 진단: 17건 (NEG 열다섯이 16건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
 local Arr, HashMap, TreeMap, Algorithm, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Algorithm, stl.Trait
@@ -110,6 +110,35 @@ end
 local neg11 = keyOf((nil :: any) :: { read __mapKey: string, read __mapValue: number })
 local neg12 = itemOf((nil :: any) :: { read __setItem: number })
 
+--[[ 기본 구현을 가진 트레이트(2026-10-13, papers/07 1단계) — 완성 표의 타입과 구현이 넘기는 표의 타입 ]]
+type Shape = { read __type: stl.TraitToken<string>, side: number }
+type ShapeCore = { read Area: (s: Shape) -> number }
+type ShapeFull = { read Area: (s: Shape) -> number, read Describe: (s: Shape) -> string }
+local ShapeTrait = Trait.New<<ShapeFull>>("Shape", {
+	required = { "Area" },
+	defaults = function(ops: any)
+		return {
+			Describe = function(s: Shape): string
+				return `area {ops.Area(s)}`
+			end,
+		}
+	end,
+}) :: stl.Trait<ShapeFull, ShapeCore>
+local SquareType = Trait.NewType("Square")
+-- 구현은 필수 함수만(ShapeCore) — 완성 표(ShapeFull)의 Describe 는 기본 구현이 채움
+Trait.Impl(ShapeTrait, SquareType, {
+	Area = function(s: Shape): number
+		return s.side * s.side
+	end,
+})
+local square: Shape = { __type = SquareType, side = 3 } :: any
+local shapeOps = Trait.ImplOf(ShapeTrait, square)
+local described: string? = if shapeOps then shapeOps.Describe(square) else nil
+-- NEG: 넘기는 표의 타입이 어긋남 / 완성 표의 함수 타입 / 없는 함수
+Trait.Impl(ShapeTrait, Trait.NewType("Bad"), { Area = "not a function" })
+local negDescribed: number? = if shapeOps then shapeOps.Describe(square) else nil
+local negNoSuch = if shapeOps then shapeOps.Perimeter(square) else nil
+
 local canary: string = 42
 
 return {
@@ -130,5 +159,8 @@ return {
 	neg8,
 	neg9,
 	neg10,
+	described,
+	negDescribed,
+	negNoSuch,
 	canary,
 }

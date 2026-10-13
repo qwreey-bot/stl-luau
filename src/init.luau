@@ -51,7 +51,8 @@ export type CollectionOps<C> = Types.CollectionOps<C>
 export type CollectionMarker = Types.CollectionMarker
 export type CollectionMarkerMut = Types.CollectionMarkerMut
 export type TraitToken<N> = Trait.Token<N>
-export type Trait<I> = Trait.Trait<I>
+export type Trait<I, C = I> = Trait.Trait<I, C>
+export type TraitSpec = Trait.TraitSpec
 
 -- 컨테이너 타입
 export type Arr<T> = Arr.Arr<T>
