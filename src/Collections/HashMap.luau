@@ -10,7 +10,7 @@
 
 	**Luau 테이블 자체가 이미 해시맵입니다.** 그래서 버킷·체인·해시 함수 주입·
 	리해싱 같은 계층이 통째로 필요 없습니다. 이 모듈이 실제로 더하는 것은
-	**크기 추적**과 **계약(`Types.MapOps`) 만족** 둘뿐입니다.
+	**크기 추적**과 **계약(`Map.Ops`) 만족** 둘뿐입니다.
 
 	⭐ **키와 값을 `self` 에 바로 넣지 않고 `data` 안에 넣습니다.** 인스턴스에
 	길이 필드를 두면 `HashMap<string, …>` 에서 `Set("size", v)` 가 길이를
@@ -38,6 +38,8 @@
 local Types = require("../Types")
 local Common = require("../Common")
 local Trait = require("../Trait")
+local Map = require("../Traits/Map")
+local Collection = require("../Traits/Collection")
 Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
@@ -50,9 +52,9 @@ export type HashMapData<K, V> = {
 	read __type: Trait.Token<"HashMap">,
 	read __mapKey: K,
 	read __mapValue: V,
-	-- 쓰는 제네릭용 불변 팬텀(`Types.MapMarkerMut`, 질문 AM) — 타입에만 있습니다.
+	-- 쓰는 제네릭용 불변 팬텀(`Map.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __mapMut: (K, V) -> (K, V),
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
 	read __collectionMut: true,
 }
 
@@ -68,15 +70,15 @@ const function tagged(raw: any): any
 	return raw
 end
 
---#region ----------- 계약 구현 (Types.MapOps) -----------
--- 이 모듈 테이블이 그대로 `Types.MapOps` 구현체입니다(질문 AB).
+--#region ----------- 계약 구현 (Map.Ops) -----------
+-- 이 모듈 테이블이 그대로 `Map.Ops` 구현체입니다(질문 AB).
 
 const function Get<K, V>(self: HashMapData<K, V>, key: K): V?
 	return self.data[key]
 end
 
 -- 값을 넣습니다. 이미 있으면 덮어씁니다.
--- 반환이 없는 것은 계약(`Types.MapOps`)이 그렇게 정해서입니다.
+-- 반환이 없는 것은 계약(`Map.Ops`)이 그렇게 정해서입니다.
 --
 -- ⭐ **값이 `nil` 이면 삭제입니다** — Lua 의 `t[k] = nil` 과 같습니다. 예전엔
 -- 크기만 올리고 실제로는 아무것도 안 들어가 `size` 가 틀어졌습니다
@@ -444,7 +446,7 @@ const HashMapModule = {
 }
 
 -- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.
-Trait.Impl(Trait.Map, TOKEN, HashMapModule)
-Trait.Impl(Trait.Collection, TOKEN, HashMapModule)
+Trait.Impl(Map, TOKEN, HashMapModule)
+Trait.Impl(Collection, TOKEN, HashMapModule)
 
 return HashMapModule

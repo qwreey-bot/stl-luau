@@ -38,6 +38,8 @@ local Types = require("../Types")
 local BSearch = require("../Algorithms/BSearch")
 local Common = require("../Common")
 local Trait = require("../Trait")
+local Map = require("../Traits/Map")
+local Collection = require("../Traits/Collection")
 Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
@@ -56,9 +58,9 @@ export type TreeMapData<K, V> = {
 	read __type: Trait.Token<"TreeMap">,
 	read __mapKey: K,
 	read __mapValue: V,
-	-- 쓰는 제네릭용 불변 팬텀(`Types.MapMarkerMut`, 질문 AM) — 타입에만 있습니다.
+	-- 쓰는 제네릭용 불변 팬텀(`Map.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __mapMut: (K, V) -> (K, V),
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
 	read __collectionMut: true,
 }
 
@@ -74,8 +76,8 @@ const function tagged(raw: any): any
 	return raw
 end
 
---#region ----------- 계약 구현 (Types.MapOps) -----------
--- 이 모듈 테이블이 그대로 `Types.MapOps` 구현체입니다(질문 AB).
+--#region ----------- 계약 구현 (Map.Ops) -----------
+-- 이 모듈 테이블이 그대로 `Map.Ops` 구현체입니다(질문 AB).
 
 -- ⭐ **NaN·`nil` 키는 받지 않습니다.** NaN 은 자기 자신과도 같지 않아 어떤 3방향
 -- 비교자로도 순서가 서지 않고, 조용히 넣으면 **다른 키까지** 못 찾게 되고
@@ -535,7 +537,7 @@ const TreeMapModule = {
 }
 
 -- 모듈 테이블이 그대로 map 트레이트의 구현체입니다.
-Trait.Impl(Trait.Map, TOKEN, TreeMapModule)
-Trait.Impl(Trait.Collection, TOKEN, TreeMapModule)
+Trait.Impl(Map, TOKEN, TreeMapModule)
+Trait.Impl(Collection, TOKEN, TreeMapModule)
 
 return TreeMapModule

@@ -349,9 +349,9 @@ do
 	assert(HashSet.Has(ft, false) and not HashSet.Has(cloned, false) and HashSet.Len(cloned) == 1, "Clone 은 독립")
 	const listed = HashSet.Items(f)
 	assert(#listed == 1 and listed[1] == false, "Items 에 false")
-	const setOps = stl.Trait.ImplOf(stl.Trait.Set, f)
+	const setOps = stl.Trait.ImplOf(stl.Set, f)
 	assert(setOps ~= nil and setOps.Has(f, false) and not setOps.Add(f, false), "트레이트 경유 Has·Add(false)")
-	assert(stl.Algorithm.Len(ft) == 2 and HashSet.Len(HashSet.Clear(HashSet.Of(false))) == 0, "Len·Clear")
+	assert(stl.Collection.Len(ft) == 2 and HashSet.Len(HashSet.Clear(HashSet.Of(false))) == 0, "Len·Clear")
 	-- 입력은 그대로
 	assert(itemsOf(f) == "false" and itemsOf(ft) == "false,true" and itemsOf(t) == "true", "입력 셋은 안 바뀜")
 end

@@ -1,15 +1,20 @@
 --!strict
 --[[
-	Trait — 타입 토큰과 트레이트(인터페이스) 레지스트리.
+	Trait — 타입 토큰과 트레이트 **시스템**.
+
+	여기에는 장치만 있습니다: 토큰(`NewType`·`TokenOf`·`Stamp`), 트레이트 만들기(`New`), 구현 등록·조회
+	(`Impl`·`ImplOf`·`Implements`), 트레이트 모듈을 짜는 도구(`Dispatch`·`Module`). **트레이트 하나하나**
+	(`List`·`Map`·`Set`·`Collection` — 계약 타입, 마커, 기본 구현, 종류를 모르는 코드의 진입점)는
+	`src/Traits/` 에 파일 하나씩 있습니다(2026-10-13 사용자: *"trait 은 trait 시스템만 담고 … 인터페이스
+	파일처럼"*).
 
 	⭐ **값에는 타입 토큰 하나**(`__type` 필드), **구현은 트레이트가 듭니다**(2026-10-06,
 	사용자와 설계 — quad 의 Brand 를 "값 단위" 가 아니라 "타입 단위" 로).
-	- **타입 토큰**: 컨테이너 종류마다 하나인 공유 테이블(`Trait.Types.Arr`). 값은
-	  `__type = Trait.Types.Arr` 로 자기 종류를 가리킵니다 — 생성 비용은 예전 문자열
-	  태그(`__arr__ = true`)와 같은 필드 하나.
+	- **타입 토큰**: 컨테이너 종류마다 하나인 공유 테이블. 값은 `__type = 토큰` 으로 자기 종류를
+	  가리킵니다 — 생성 비용은 예전 문자열 태그(`__arr__ = true`)와 같은 필드 하나.
 	- **트레이트**: 공유 테이블 하나가 `[타입 토큰] = 구현 테이블` 을 듭니다(quad Brand 의
-	  `[값] = true` 자리에 구현이 들어간 모양). 모듈 테이블이 그대로 구현체입니다 —
-	  함수가 바깥(서비스)에 있으니 값(엔티티)이 아니라 타입이 구현을 찾는 열쇠입니다.
+	  `[값] = true` 자리에 구현이 들어간 모양). 함수가 바깥(서비스)에 있으니 값(엔티티)이 아니라
+	  타입이 구현을 찾는 열쇠입니다.
 	- 한 타입이 **여러 트레이트**를 구현할 수 있고(문자열 태그 하나로는 하드코딩이 필요했음),
 	  **바깥에서** 자기 트레이트를 만들어 우리 타입에 붙이거나, 자기 타입을 우리 트레이트에
 	  넣을 수 있습니다 — 이름(문자열)이 아니라 정체성(테이블)으로 구분하니 충돌이 없습니다.
@@ -23,22 +28,21 @@
 	## 타입 쪽 — 팬텀 마커
 
 	런타임 조회는 토큰으로 하지만 정적 타입은 그걸 따라가지 못하니, 트레이트마다
-	**타입에만 있는 필드**를 둡니다(`Types.ListMarker<E, I>` = `{ read __type: Token<any>, read __list: E,
-	read __listIndex: I }` — 마커는 토큰도 요구합니다). 런타임엔
-	없습니다(quad 의 `StateMarker` 와 같은 결). 덕분에 `Algorithm.Keys(m)` 가 타입 인자
-	없이 `{ K }` 를 추론합니다 — 예전 `Algorithm.Keys<<HashMap<…>, K, V>>(HashMap, m)`.
+	**타입에만 있는 필드**를 둡니다(`List.Marker<E, I>` = `{ read __type: Token<any>, read __list: E,
+	read __listIndex: I }` — 마커는 토큰도 요구합니다). 런타임엔 없습니다(quad 의 `StateMarker` 와
+	같은 결). 덕분에 `Map.Keys(m)` 가 타입 인자 없이 `{ K }` 를 추론합니다.
 ]]
 local Common = require("./Common")
 Common.registerSource(debug.info(1, "s"))
-local Types = require("./Types")
 
--- 타입 토큰. `N` 은 이름의 리터럴 타입 — 종류마다 구조가 달라 정적으로도 갈립니다(정의는
--- `Types` — 마커가 토큰을 요구하려고 말단에 둠).
-export type Token<N> = Types.Token<N>
+-- 타입 토큰(`NewType` 이 만듦). `N` 은 이름의 리터럴 타입 — 종류마다 구조가 달라 정적으로도 갈립니다.
+-- 트레이트 마커가 이것을 요구합니다 — 토큰 없는 평범한 테이블이 마커만 흉내 내면 타입은 통과하고
+-- 런타임에 터졌습니다(2026-10-06 Gemini 트레이트 검토).
+export type Token<N> = { read name: N }
 -- 트레이트. `I` 는 **완성 표**(구현이 준 것 + 기본 구현)의 타입 — `ImplOf` 가 돌려주는 것. `C` 는
 -- 구현이 `Impl` 에 넘기는 표의 타입이고, 기본 구현이 없는 트레이트는 `I` 와 같습니다. 둘이 다른 트레이트는
 -- 만든 자리에서 캐스트합니다: `Trait.New<<Full>>(name, spec) :: Trait<Full, Core>`.
--- ⚠️ **`Core` 는 "필수 함수 + 재정의할 수 있는 함수는 선택 필드(`?`)"** 로 적으세요(`Types.ListImpl` 이 그 모양).
+-- ⚠️ **`Core` 는 "필수 함수 + 재정의할 수 있는 함수는 선택 필드(`?`)"** 로 적으세요(`Traits/List` 의 `Impl` 이 그 모양).
 -- 필수만 적으면 재정의 자리는 검사되지 않습니다(폭 서브타이핑 — `Describe = "문자열"` 이 0건이고 런타임에
 -- `attempt to call a string value`, 리뷰). ⚠️ 그 캐스트 자체는 검사되지 않습니다(새 솔버는 테이블 → 테이블
 -- 캐스트를 안 봄): `Full` 이 "필수 + 기본 구현이 채우는 것" 과 맞는지는 테스트로 지키세요.
@@ -250,7 +254,7 @@ end
 
 -- `token` 종류가 `trait` 를 구현한다고 등록합니다. 보통 모듈을 불러올 때 한 번.
 -- **같은 (트레이트, 토큰) 을 두 번 등록하면 에러**입니다(2026-10-06, 제가 정함 — 되돌리기
--- 쉬움): 덮어쓰기를 허용하면 내장 구현도 조용히 바뀌어 다른 모듈의 `Algorithm` 이 전역으로
+-- 쉬움): 덮어쓰기를 허용하면 내장 구현도 조용히 바뀌어 다른 모듈의 `List.IndexOf(…)` 가 전역으로
 -- 달라집니다. 바꾸고 싶으면 자기 트레이트를 만드세요.
 -- ⭐ 단 **저절로 따라온 구현 위에는 등록할 수 있습니다**(2026-10-13 사용자 결정 — 빠른 판을 나중에
 -- 얹는 길). 그때는 완성 표를 새로 만들지 않고 **같은 표를 제자리에서** 고칩니다 — 그 표를 이미 들고
@@ -378,103 +382,60 @@ const function Stamp<T>(value: T, token: Token<any>): T
 	return value
 end
 
---[[ 라이브러리의 트레이트와 타입 토큰 ]]
+--[[ 트레이트 모듈을 짜는 도구 — `src/Traits/*` 와 사용자 트레이트가 씁니다 ]]
 
--- ⭐ 리스트의 기본 구현(2026-10-13, `papers/07` 2단계): 위치 프리미티브 다섯만 구현하면 읽기 알고리즘이
--- 따라옵니다 — `Deque` 와 사용자 리스트(위치가 노드여도)가 이것을 받습니다. 원소마다 프리미티브를
--- 간접 호출하므로 직접 구현의 1.1~3.8배입니다(`papers/07` 4절) — 빨라야 하는 종류는 같은 이름의 함수로
--- 재정의합니다(`Arr` 는 모듈을 그대로 등록해 전부 재정의).
--- 프리미티브는 **부를 때** `ops` 에서 꺼냅니다(나중에 재정의가 등록돼도 그것을 씀).
-const function listDefaults(ops: any): { [string]: any }
-	return {
-		Fold = function(self: any, init: any, fn: (any, any, any) -> any): any
-			const get, nextIndex = ops.Get, ops.NextIndex
-			local acc, idx = init, ops.FirstIndex(self)
-			while idx ~= nil do
-				acc = fn(acc, get(self, idx), idx)
-				idx = nextIndex(self, idx)
-			end
-			return acc
-		end,
-		Find = function(self: any, pred: (any, any) -> boolean): (any, any)
-			const get, nextIndex = ops.Get, ops.NextIndex
-			local idx = ops.FirstIndex(self)
-			while idx ~= nil do
-				const item = get(self, idx)
-				if pred(item, idx) then
-					return item, idx
-				end
-				idx = nextIndex(self, idx)
-			end
-			return nil, nil
-		end,
-		IndexOf = function(self: any, item: any): any
-			const get, nextIndex = ops.Get, ops.NextIndex
-			local idx = ops.FirstIndex(self)
-			while idx ~= nil do
-				if get(self, idx) == item then
-					return idx
-				end
-				idx = nextIndex(self, idx)
-			end
-			return nil
-		end,
-		-- 다른 기본 구현을 부르는 것도 `ops` 로 — 구현이 `IndexOf` 를 재정의했으면 그 판을 씁니다.
-		Contains = function(self: any, item: any): boolean
-			return ops.IndexOf(self, item) ~= nil
-		end,
-		Count = function(self: any, pred: ((any, any) -> boolean)?): number
-			const get, nextIndex = ops.Get, ops.NextIndex
-			local total, idx = 0, ops.FirstIndex(self)
-			if pred == nil then
-				while idx ~= nil do
-					total += 1
-					idx = nextIndex(self, idx)
-				end
-			else
-				while idx ~= nil do
-					if pred(get(self, idx), idx) then
-						total += 1
-					end
-					idx = nextIndex(self, idx)
-				end
-			end
-			return total
-		end,
-		Some = function(self: any, pred: (any, any) -> boolean): boolean
-			const get, nextIndex = ops.Get, ops.NextIndex
-			local idx = ops.FirstIndex(self)
-			while idx ~= nil do
-				if pred(get(self, idx), idx) then
-					return true
-				end
-				idx = nextIndex(self, idx)
-			end
-			return false
-		end,
-		Every = function(self: any, pred: (any, any) -> boolean): boolean
-			const get, nextIndex = ops.Get, ops.NextIndex
-			local idx = ops.FirstIndex(self)
-			while idx ~= nil do
-				if not pred(get(self, idx), idx) then
-					return false
-				end
-				idx = nextIndex(self, idx)
-			end
-			return true
-		end,
-	}
+-- 구현을 못 찾았을 때. 저절로 따라오는 트레이트면 여기서 만들어지고, 아니면 사용자 줄 에러.
+const function dispatchMiss(trait: any, value: any, who: string): any
+	const derived = if trait.derivable then resolve(trait, TokenOf(value)) else nil
+	if derived ~= nil then
+		return derived
+	end
+	-- 셋으로 가릅니다(리뷰 2라운드 — 반대로 안내했음): 이 사본의 토큰인데 구현이 없음 /
+	-- 이름 있는 토큰 모양이지만 이 사본이 모름(다른 사본의 라이브러리, 되읽은 테이블) / 토큰 없음.
+	const token = TokenOf(value)
+	const raw = if type(value) == "table" then rawget(value, TYPE_KEY) else nil
+	const rawName = if type(raw) == "table" then rawget(raw :: any, "name") else nil
+	const traitName: string = trait.name
+	if token then
+		return Common.raise(`{traitName}: {who} needs a {traitName} — {token.name} does not implement {traitName}`)
+	elseif type(rawName) == "string" then
+		return Common.raise(
+			`{traitName}: {who} needs a {traitName} — got a {rawName} this library does not know (from another copy of the library, or a deserialized table?)`
+		)
+	end
+	return Common.raise(`{traitName}: {who} needs a {traitName} (got {typeof(value)} without a type token)`)
 end
 
-const List = New<<Types.ListFull<any, any, any>>>("List", {
-	required = { "Get", "FirstIndex", "LastIndex", "NextIndex", "PrevIndex" },
-	defaults = listDefaults,
-}) :: Trait<Types.ListFull<any, any, any>, Types.ListImpl<any, any, any>>
-const Map = New<<Types.MapOps<any, any, any>>>("Map", { required = { "Get", "Set", "Has", "Remove", "Iter" } })
-const Set = New<<Types.SetOps<any, any>>>("Set", { required = { "Add", "Has", "Remove", "Items" } })
--- 원소를 담는 것 전부(리스트·맵·셋·힙) — 크기와 비우기(2026-10-12). 한 종류가 `List` 와 `Collection` 처럼
--- 여러 트레이트를 구현합니다.
-const Collection = New<<Types.CollectionOps<any>>>("Collection", { required = { "Len", "Clear" } })
+-- 값의 종류가 구현한 `trait` 의 완성 표. 없으면 **사용자 줄 에러**(`"List: IndexOf needs a List — …"`) —
+-- 종류를 모르는 코드의 진입점이 씁니다: `Dispatch(List, list, "IndexOf").IndexOf(list, item)`.
+-- `who` 는 에러 메시지에 적을 진입점 이름. `ImplOf` 와 달리 트레이트 인자를 검사하지 않습니다(진입점이
+-- 자기 트레이트를 넘기는 자리 — 원소 수와 무관하게 호출당 조회 하나, perf 21절).
+const function Dispatch<I, C>(trait: Trait<I, C>, value: any, who: string): I
+	const impl = if type(value) == "table" then (trait.impls :: any)[rawget(value, TYPE_KEY)] else nil
+	if impl == nil then
+		return dispatchMiss(trait, value, who)
+	end
+	return impl
+end
+
+-- 트레이트 객체에 **진입점 함수들**을 얹어 돌려줍니다 — 트레이트 파일이 내보내는 모듈이 곧 트레이트라
+-- `Trait.Impl(List, 토큰, 구현)` 과 `List.IndexOf(값, x)` 가 같은 이름으로 됩니다(Rust 의 `List::index_of`).
+-- 트레이트의 자기 필드(`name`·`impls` …)와 겹치는 이름은 에러.
+const function Module<T, E>(trait: T, entries: E): T & E
+	if not traits[trait] then
+		Common.raise(`Trait: Module needs a trait (from Trait.New), got {typeof(trait)}`)
+	end
+	if type(entries) ~= "table" then
+		Common.raise(`Trait: Module needs a table of entry functions, got {typeof(entries)}`)
+	end
+	for entryName, fn in entries :: any do
+		if rawget(trait :: any, entryName) ~= nil then
+			Common.raise(`Trait: Module got an entry named {tostring(entryName)}, which the trait already has`)
+		end
+		(trait :: any)[entryName] = fn
+	end
+	return trait :: any
+end
 
 const BuiltinTypes = table.freeze({
 	Arr = NewType("Arr") :: Token<"Arr">,
@@ -492,6 +453,6 @@ return {
 	TYPE_KEY = TYPE_KEY,
 	NewType = NewType, New = New, Impl = Impl,
 	TokenOf = TokenOf, ImplOf = ImplOf, Implements = Implements, Stamp = Stamp,
-	List = List, Map = Map, Set = Set, Collection = Collection,
+	Dispatch = Dispatch, Module = Module,
 	Types = BuiltinTypes,
 }

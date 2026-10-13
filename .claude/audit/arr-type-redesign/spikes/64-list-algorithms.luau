@@ -2,7 +2,7 @@
 --[[
 	리스트 알고리즘의 공용 진입점 (2026-10-13, papers/07 2단계).
 
-	`Algorithm.Fold`·`Find`·`IndexOf`·`Contains`·`Count`·`Some`·`Every` 는 그 종류의 `Trait.List` 완성 표
+	`List.Fold`·`Find`·`IndexOf`·`Contains`·`Count`·`Some`·`Every` 는 그 종류의 `stl.List` 완성 표
 	(구현이 준 것 + 기본 구현)를 부릅니다. 타입은 진입점 한 곳에 — 트레이트 마커에서 원소·위치를 추론합니다.
 
 	지키는 성질:
@@ -14,76 +14,76 @@
 	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 13 + CANARY 1)
 ]]
 local stl = require("../../../../src")
-local Algorithm, Arr, Deque, HashMap, HashSet = stl.Algorithm, stl.Arr, stl.Deque, stl.HashMap, stl.HashSet
+local Arr, Deque, HashMap, HashSet = stl.Arr, stl.Deque, stl.HashMap, stl.HashSet
 
 local nums = Arr.Of(10, 20, 30)
 local queue = Deque.Of("a", "b")
 local holed = Arr.Of<<number?>>(10, nil)
 
 --[[ POS ]]
-local sum: number = Algorithm.Fold(nums, 0, function(acc: number, v: number): number
+local sum: number = stl.List.Fold(nums, 0, function(acc: number, v: number): number
 	return acc + v
 end)
-local joined: string = Algorithm.Fold(queue, "", function(acc: string, v: string, at: number): string
+local joined: string = stl.List.Fold(queue, "", function(acc: string, v: string, at: number): string
 	return acc .. v .. tostring(at)
 end)
-local item: number?, at: number? = Algorithm.Find(nums, function(v: number): boolean
+local item: number?, at: number? = stl.List.Find(nums, function(v: number): boolean
 	return v > 15
 end)
-local word: string?, wordAt: number? = Algorithm.Find(queue, function(v: string, idx: number): boolean
+local word: string?, wordAt: number? = stl.List.Find(queue, function(v: string, idx: number): boolean
 	return idx > 1 and v ~= ""
 end)
-local where: number? = Algorithm.IndexOf(queue, "b")
-local has: boolean = Algorithm.Contains(nums, 20)
-local firstHole: number? = Algorithm.IndexOf(holed, nil)
-local total: number = Algorithm.Count(queue)
-local big: number = Algorithm.Count(nums, function(v: number): boolean
+local where: number? = stl.List.IndexOf(queue, "b")
+local has: boolean = stl.List.Contains(nums, 20)
+local firstHole: number? = stl.List.IndexOf(holed, nil)
+local total: number = stl.List.Count(queue)
+local big: number = stl.List.Count(nums, function(v: number): boolean
 	return v > 15
 end)
-local some: boolean = Algorithm.Some(nums, function(v: number): boolean
+local some: boolean = stl.List.Some(nums, function(v: number): boolean
 	return v > 25
 end)
-local every: boolean = Algorithm.Every(queue, function(v: string): boolean
+local every: boolean = stl.List.Every(queue, function(v: string): boolean
 	return #v == 1
 end)
 -- 읽기 전용으로 빌린 참조도(넓은 원소 타입으로)
 local function borrowed(list: stl.ArrRead<number?>, dq: stl.DequeRead<string>): number
-	return Algorithm.Count(list)
-		+ Algorithm.Fold(dq, 0, function(acc: number, v: string): number
+	return stl.List.Count(list)
+		+ stl.List.Fold(dq, 0, function(acc: number, v: string): number
 			return acc + #v
 		end)
 end
 local viaBorrow: number = borrowed(nums, queue)
 
 --[[ NEG — 반환 타입 ]]
-local negSum: string = Algorithm.Fold(nums, 0, function(acc: number, v: number): number
+local negSum: string = stl.List.Fold(nums, 0, function(acc: number, v: number): number
 	return acc + v
 end)
-local negItem: number = Algorithm.Find(nums, function(v: number): boolean
+local negItem: number = stl.List.Find(nums, function(v: number): boolean
 	return true
 end)
-local negWord: number? = Algorithm.Find(queue, function(v: string): boolean
+local negWord: number? = stl.List.Find(queue, function(v: string): boolean
 	return true
 end)
-local negWhere: number = Algorithm.IndexOf(queue, "b")
-local negHas: number = Algorithm.Contains(nums, 20)
-local negEvery: string = Algorithm.Every(queue, function(v: string): boolean
+local negWhere: number = stl.List.IndexOf(queue, "b")
+local negHas: number = stl.List.Contains(nums, 20)
+local negEvery: string = stl.List.Every(queue, function(v: string): boolean
 	return true
 end)
 
 --[[ NEG — 콜백의 원소 타입 ]]
-local negCallback = Algorithm.Some(nums, function(v: string): boolean
+local negCallback = stl.List.Some(nums, function(v: string): boolean
 	return v == ""
 end)
-local negHoled = Algorithm.Fold(holed, 0, function(acc: number, v: number): number
+local negHoled = stl.List.Fold(holed, 0, function(acc: number, v: number): number
 	return acc + v
 end)
 
 --[[ NEG — 리스트가 아닌 것 ]]
-local negMap = Algorithm.Fold(HashMap.New<<string, number>>(), 0, function(acc: number, v: number): number
+local negMap = stl.List.Fold(HashMap.New<<string, number>>(), 0, function(acc: number, v: number): number
 	return acc
 end)
-local negSet = Algorithm.Contains(HashSet.Of(1), 1)
+local negSet = stl.List.Contains(HashSet.Of(1), 1)
 
 --[[ 구현이 넘기는 표(`ListImpl`) — 필수 다섯 + 재정의는 선택 필드라 서명이 검사됨 ]]
 -- POS: 모듈이 그대로 들어감(Arr 는 일곱을 재정의, Deque 는 필수만)

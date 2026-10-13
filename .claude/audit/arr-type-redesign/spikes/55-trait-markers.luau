@@ -2,15 +2,15 @@
 --[[
 	트레이트와 팬텀 마커의 타입 (2026-10-06, 시제품).
 
-	`Algorithm` 이 구현을 손으로 받지 않고(값의 타입 토큰으로 트레이트에서 찾음) 원소·키·
+	트레이트의 진입점(`stl.List.IndexOf` 등)이 구현을 손으로 받지 않고(값의 타입 토큰으로 트레이트에서 찾음) 원소·키·
 	값 타입을 **트레이트 마커**(타입에만 있는 필드 `__list`/`__mapKey`/`__mapValue`)에서
-	추론하는지. 예전엔 `Algorithm.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
+	추론하는지. 예전엔 `Map.Keys<<HashMap<string, number>, string, number>>(HashMap, m)`.
 	사용자 컨테이너·사용자 트레이트도 같은 모양으로 들어오는지.
 
 	기대 진단: 21건 (NEG 열아홉이 20건 — neg6 은 두 자리 + CANARY 1)
 ]]
 local stl = require("../../../../src")
-local Arr, HashMap, TreeMap, Algorithm, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Algorithm, stl.Trait
+local Arr, HashMap, TreeMap, Trait = stl.Arr, stl.HashMap, stl.TreeMap, stl.Trait
 type Arr<T> = stl.Arr<T>
 
 local nums = Arr.Of(10, 20, 30)
@@ -19,13 +19,13 @@ local ages = HashMap.New<<string, number>>()
 local ranks = TreeMap.New<<number, string>>(stl.Common.compareNumber)
 
 --[[ POS — 타입 인자 없이 ]]
-local pos: number? = Algorithm.IndexOf(nums, 20)
-local cnt: number = Algorithm.Count(words, function(w)
+local pos: number? = stl.List.IndexOf(nums, 20)
+local cnt: number = stl.List.Count(words, function(w)
 	return w == "a"
 end)
-local keys: { string } = Algorithm.Keys(ages)
-local values: { number } = Algorithm.Values(ages)
-local rankKeys: { number } = Algorithm.Keys(ranks)
+local keys: { string } = stl.Map.Keys(ages)
+local values: { number } = stl.Map.Values(ages)
+local rankKeys: { number } = stl.Map.Keys(ranks)
 -- 사용자 리스트: 토큰 + 마커를 타입에 적고 구현을 등록
 type Pair<T> = { read __type: stl.TraitToken<string>, read __list: T, read __listIndex: number, a: T, b: T }
 local PairType = Trait.NewType("Pair")
@@ -46,9 +46,9 @@ local pairOps: stl.ListOps<Pair<any>, any, number> = {
 		return if i > 1 then i - 1 else nil
 	end,
 }
-Trait.Impl(Trait.List, PairType, pairOps)
+Trait.Impl(stl.List, PairType, pairOps)
 local pair: Pair<string> = { __type = PairType, a = "x", b = "y" } :: any
-local inPair: number? = Algorithm.IndexOf(pair, "y")
+local inPair: number? = stl.List.IndexOf(pair, "y")
 -- 사용자 트레이트를 우리 Arr 에 붙이기 — 구현 타입이 ImplOf 로 돌아옴
 type Show = { read Show: (any) -> string }
 local ShowTrait = Trait.New<<Show>>("Show")
@@ -61,10 +61,10 @@ local shown = Trait.ImplOf(ShowTrait, nums)
 local text: string? = if shown then shown.Show(nums) else nil
 
 --[[ NEG — 트레이트가 갈리는가 ]]
-local neg1 = Algorithm.IndexOf(ages, 1) -- 맵은 리스트가 아님
-local neg2 = Algorithm.Keys(nums) -- 리스트는 맵이 아님
-local neg3: { number } = Algorithm.Keys(ages) -- 키 타입
-local neg4: { string } = Algorithm.Values(ages) -- 값 타입
+local neg1 = stl.List.IndexOf(ages, 1) -- 맵은 리스트가 아님
+local neg2 = stl.Map.Keys(nums) -- 리스트는 맵이 아님
+local neg3: { number } = stl.Map.Keys(ages) -- 키 타입
+local neg4: { string } = stl.Map.Values(ages) -- 값 타입
 local neg5: Arr<number> = { n = 3 } -- 생성자를 거치지 않은 리터럴은 Arr 이 아님(토큰 없음)
 local neg6: number = if shown then shown.Show(nums) else "" -- ImplOf 가 구현 타입을 돌려줌
 -- 토큰**만** 빠진 꼴 — 마커는 다 있어서 토큰 필드가 정말 막는지(리뷰 1라운드: 리터럴 NEG 는
@@ -99,7 +99,7 @@ local neg9: stl.HashSet<number> = (nil :: any) :: SetLike
 -- 마커만 흉내 내고 토큰이 없는 평범한 테이블은 공용 알고리즘에 못 들어감(Gemini 트레이트 검토
 -- Case 1 — 마커가 토큰을 요구하기 전엔 타입은 통과하고 런타임에 터졌음)
 type MarkerOnly = { read __list: number, read __listIndex: number }
-local neg10 = Algorithm.IndexOf((nil :: any) :: MarkerOnly, 1)
+local neg10 = stl.List.IndexOf((nil :: any) :: MarkerOnly, 1)
 -- 맵·셋 마커도 토큰을 요구(2라운드 — ListMarker 만 대조돼 Map/SetMarker 의 `__type` 을 빼도 통과)
 local function keyOf<K, V>(map: stl.MapMarker<K, V>): K?
 	return nil
@@ -165,6 +165,25 @@ local negOneParam: stl.Trait<ShapeFull> = ShapeTrait
 local negDescribed: number? = if shapeOps then shapeOps.Describe(square) else nil
 local negNoSuch = if shapeOps then shapeOps.Perimeter(square) else nil
 
+--[[ 트레이트 모듈 — 트레이트 객체에 진입점을 얹은 것(`Trait.Module`), `Trait.Dispatch` ]]
+local function describe(s: Shape): string
+	return Trait.Dispatch(ShapeTrait, s, "Describe").Describe(s)
+end
+local ShapeModule = Trait.Module(ShapeTrait, { Describe = describe })
+-- POS: 진입점 호출, 그리고 모듈이 그대로 트레이트로 쓰임(Impl·ImplOf)
+local viaModule: string = ShapeModule.Describe(square)
+Trait.Impl(ShapeModule, Trait.NewType("ViaModule"), { Area = area })
+local moduleOps = Trait.ImplOf(ShapeModule, square)
+local moduleArea: number? = if moduleOps then moduleOps.Area(square) else nil
+-- NEG: 진입점의 반환 타입 / 인자 타입 / 없는 진입점 / 모듈을 거친 Impl 도 표를 검사 / Dispatch 의 완성 표 타입
+local negEntryReturn: number = ShapeModule.Describe(square)
+local negEntryArg = ShapeModule.Describe(12345)
+local negEntryMissing = ShapeModule.Perimeter(square)
+Trait.Impl(ShapeModule, Trait.NewType("BadViaModule"), { Area = "not a function" })
+local negDispatch: number = Trait.Dispatch(ShapeTrait, square, "Describe").Describe(square)
+-- 내장 트레이트 모듈: 없는 진입점
+local negListEntry = stl.List.NoSuchEntry(Arr.Of(1))
+
 local canary: string = 42
 
 return {
@@ -189,5 +208,12 @@ return {
 	negDescribed,
 	negNoSuch,
 	negOneParam,
+	viaModule,
+	moduleArea,
+	negEntryReturn,
+	negEntryArg,
+	negEntryMissing,
+	negDispatch,
+	negListEntry,
 	canary,
 }

@@ -48,7 +48,7 @@ for _, _item in TreeSet.Iter(ranks) do
 	okCount += 1
 end
 -- 계약만 아는 공용 알고리즘
-local okAlgoKeys: { number } = stl.Algorithm.Keys(scores)
+local okAlgoKeys: { number } = stl.Map.Keys(scores)
 
 --[[ NEG ]]
 local neg1 = TreeMap.Get(scores, "문자열") -- 키 타입이 다름

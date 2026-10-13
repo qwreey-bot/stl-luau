@@ -55,7 +55,7 @@ for _, item in HashSet.Iter(names) do
 	local _okItem: string = item
 end
 -- 계약만 아는 공용 알고리즘이 맵 위에서 동작해야 합니다
-local okAlgoKeys: { string } = stl.Algorithm.Keys(ages)
+local okAlgoKeys: { string } = stl.Map.Keys(ages)
 
 --[[ NEG: 전부 에러여야 합니다 ]]
 local neg1 = HashMap.Get(ages, 42) -- 키 타입이 다름

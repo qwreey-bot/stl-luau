@@ -50,19 +50,21 @@ local Types = require("../Types")
 local TreeMap = require("./TreeMap")
 local Common = require("../Common")
 local Trait = require("../Trait")
+local Set = require("../Traits/Set")
+local Collection = require("../Traits/Collection")
 Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>
 type Comparator<T> = Types.Comparator<T>
 type TreeMapType<K, V> = TreeMap.TreeMap<K, V>
 
--- `__setMut` 는 쓰는 제네릭용 불변 팬텀(`Types.SetMarkerMut`, 질문 AM) — 타입에만 있습니다.
+-- `__setMut` 는 쓰는 제네릭용 불변 팬텀(`Set.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 export type TreeSetData<T> = {
 	map: TreeMapType<T, true>,
 	read __type: Trait.Token<"TreeSet">,
 	read __setItem: T,
 	read __setMut: (T) -> T,
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
 	read __collectionMut: true,
 }
 
@@ -83,8 +85,8 @@ const function adopt<T>(records: { Record<T, true> }, size: number, compare: Com
 	return tagged({ map = map })
 end
 
---#region ----------- 계약 구현 (Types.SetOps) -----------
--- 이 모듈 테이블이 그대로 `Types.SetOps` 구현체입니다(질문 AB).
+--#region ----------- 계약 구현 (Set.Ops) -----------
+-- 이 모듈 테이블이 그대로 `Set.Ops` 구현체입니다(질문 AB).
 
 -- 원소를 넣습니다. **새로 들어갔으면 `true`**, 이미 있었으면 `false`.
 --
@@ -514,7 +516,7 @@ const TreeSetModule = {
 }
 
 -- 모듈 테이블이 그대로 set 트레이트의 구현체입니다.
-Trait.Impl(Trait.Set, TOKEN, TreeSetModule)
-Trait.Impl(Trait.Collection, TOKEN, TreeSetModule)
+Trait.Impl(Set, TOKEN, TreeSetModule)
+Trait.Impl(Collection, TOKEN, TreeSetModule)
 
 return TreeSetModule

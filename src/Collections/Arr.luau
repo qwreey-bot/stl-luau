@@ -76,6 +76,8 @@ local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Optional = require("../Optional")
 local Trait = require("../Trait")
+local List = require("../Traits/List")
+local Collection = require("../Traits/Collection")
 -- `GroupBy`/`CountBy`/`KeyBy` 가 돌려줄 맵. 의존은 **Arr → HashMap 한 방향**입니다(HashMap 은
 -- Arr 을 모름 — `HashMap.Keys` 주석).
 local HashMap = require("./HashMap")
@@ -87,8 +89,8 @@ type Optional<T> = Optional.Optional<T>
 -- `read __type: Token<"Arr">` 는 생성자가 붙이는 실제 필드(타입 토큰, `Trait.luau`)이고,
 -- 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr` 자리에 들어가는 것을
 -- 막습니다(M0 리뷰). `__list`/`__listIndex` 는 **타입에만 있는** 리스트 트레이트 마커입니다
--- — `Algorithm.IndexOf(a, x)` 가 원소 타입을 여기서 추론합니다(런타임엔 없음).
--- `__listMut` 는 쓰는 제네릭용 불변 팬텀(`Types.ListMarkerMut`, 질문 AM) — **`ArrData` 에만** 있어
+-- — `List.IndexOf(a, x)` 가 원소 타입을 여기서 추론합니다(런타임엔 없음).
+-- `__listMut` 는 쓰는 제네릭용 불변 팬텀(`List.MarkerMut`, 질문 AM) — **`ArrData` 에만** 있어
 -- 읽기 전용으로 빌린 `ArrRead` 는 쓰는 제네릭에 못 들어갑니다.
 export type ArrData<T> = {
 	n: number,
@@ -96,7 +98,7 @@ export type ArrData<T> = {
 	read __list: T,
 	read __listIndex: number,
 	read __listMut: (T, number) -> (T, number),
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
 	read __collectionMut: true,
 	[number]: T,
 }
@@ -257,9 +259,9 @@ end
 
 --#endregion
 
---#region ----------- 계약 구현 (Types.ListOps) -----------
--- 이 모듈 테이블이 그대로 `Types.ListOps` 구현체이고 `Trait.List` 에 등록됩니다(파일 끝) —
--- `Algorithm.IndexOf(a, x)`.
+--#region ----------- 계약 구현 (List.Ops) -----------
+-- 이 모듈 테이블이 그대로 `List.Ops` 구현체이고 `List` 트레이트 에 등록됩니다(파일 끝) —
+-- `List.IndexOf(a, x)`.
 
 const function Get<T>(self: ArrRead<T>, idx: number): T?
 	return self[idx]
@@ -291,7 +293,7 @@ end
 -- 구간은 "가능한 만큼" 이 자연스럽지만 단일 조회에서 가장 가까운 칸을 주면
 -- 거짓말이 됩니다.
 --
--- `Get` 은 계약(`Types.ListOps`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
+-- `Get` 은 계약(`List.Ops`) 멤버라 **원시 조회**로 둡니다 — 알고리즘이
 -- `FirstIndex`/`NextIndex` 로 얻은 위치를 그대로 넣는 자리이고, 거기에 음수
 -- 변환을 끼우면 매 조회에 분기가 붙습니다.
 const function At<T>(self: ArrRead<T>, idx: number): T?
@@ -2805,7 +2807,7 @@ const ArrModule = {
 }
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
-Trait.Impl(Trait.List, TOKEN, ArrModule)
-Trait.Impl(Trait.Collection, TOKEN, ArrModule)
+Trait.Impl(List, TOKEN, ArrModule)
+Trait.Impl(Collection, TOKEN, ArrModule)
 
 return ArrModule

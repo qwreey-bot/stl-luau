@@ -122,9 +122,9 @@ do
 	assert(emptyCount == 0, "빈 것의 Iter 는 한 번도 안 돌아야 합니다")
 
 	-- 공용 알고리즘이 구현을 모른 채 계약만으로 동작하는지
-	assert(stl.Algorithm.IndexOf(a, 20) == 2, "Algorithm.IndexOf")
-	assert(stl.Algorithm.IndexOf(a, 99) == nil, "Algorithm.IndexOf 없음")
-	assert(stl.Algorithm.Count(a) == 3, "Algorithm.Count")
+	assert(stl.List.IndexOf(a, 20) == 2, "List.IndexOf")
+	assert(stl.List.IndexOf(a, 99) == nil, "List.IndexOf 없음")
+	assert(stl.List.Count(a) == 3, "List.Count")
 end
 print("PASS")
 

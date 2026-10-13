@@ -25,7 +25,7 @@ Roblox 엔진 언어 **Luau**용 표준 라이브러리 스타일 유틸리티 �
 | `Fut<T...>` | 코루틴 래퍼(프로미스). 스케줄러 주입, 다중 반환 |
 | `BSearch` | 정렬된 일반 배열 위의 이분 탐색 (컨테이너를 모름) |
 | `Common` | 비교자 어댑터 (`LessThan` ↔ `Comparator` 변환) |
-| `Algorithm` | 계약(`Types.ListOps` 등 함수 묶음)만 아는 공용 알고리즘 |
+| `List` / `Map` / `Set` / `Collection` | 트레이트 — 계약(함수 묶음), 기본 구현, 종류를 모르는 코드의 진입점(`stl.List.IndexOf(x, v)`) |
 
 ## 사용 예시
 

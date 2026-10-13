@@ -150,7 +150,7 @@ luau-analyze src tests      # 타입 검사 + 린트
   같은 저장소 안이라 괜찮지만, 그게 아니면 공개 메소드를 쓰세요.
 
 런타임 판별은 **타입 토큰 비교 하나**입니다(`rawget(v, "__type") == Trait.Types.Arr`). 구현은
-트레이트(`Trait.List`/`Map`/`Set`/`Collection`)가 `[토큰] = 구현 표` 로 들고, 공용 알고리즘은 그걸로
+트레이트(`src/Traits/` 의 `List`/`Map`/`Set`/`Collection`)가 `[토큰] = 구현 표` 로 들고, 공용 알고리즘은 그걸로
 구현을 찾습니다. 트레이트는 필수 함수 + 기본 구현 + 의존을 가질 수 있고(2026-10-13, `papers/07`), 기본 구현이
 있는 트레이트(`List`)의 구현 표는 "모듈이 준 것 + 기본 구현" 을 합친 완성 표입니다. (예전: `Arr` 만 문자열 태그, 나머지는 메타테이블 동일성 — M0 에서 메타테이블을
 없애며 내림.)
@@ -179,7 +179,7 @@ const function Foo<T>(self: XxxData<T>, …) … end   -- 이름 붙은 top-leve
 
 -- stylua: ignore
 const XxxModule = { New = New, Foo = Foo, … }      -- 순수 테이블 네임스페이스
-Trait.Impl(Trait.List, TOKEN, XxxModule)           -- 모듈이 그대로 트레이트 구현
+Trait.Impl(List, TOKEN, XxxModule)           -- 모듈이 그대로 트레이트 구현
 return XxxModule
 ```
 

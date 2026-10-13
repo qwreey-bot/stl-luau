@@ -191,17 +191,17 @@ do
 end
 print("PASS")
 
-print("=== 4. 리스트 트레이트 — Algorithm ===")
+print("=== 4. 리스트 트레이트 — List 의 진입점 ===")
 do
 	const d = Deque.Of(20, 30)
 	Deque.PushFront(d, 10)
 	Deque.PushFront(d, 30) -- 감긴 상태에서 찾기
-	assert(stl.Algorithm.IndexOf(d, 30) == 1 and stl.Algorithm.IndexOf(d, 20) == 3, "IndexOf")
-	assert(stl.Algorithm.IndexOf(d, 99) == nil, "없음")
-	assert(stl.Algorithm.Count(d) == 4, "Count")
+	assert(stl.List.IndexOf(d, 30) == 1 and stl.List.IndexOf(d, 20) == 3, "IndexOf")
+	assert(stl.List.IndexOf(d, 99) == nil, "없음")
+	assert(stl.List.Count(d) == 4, "Count")
 	-- (2026-10-13: List 의 완성 표는 "모듈이 준 것 + 기본 구현" 이라 모듈과 다른 표 — 함수로 견줍니다)
-	const listOps = stl.Trait.ImplOf(stl.Trait.List, d)
-	assert(stl.Trait.Implements(stl.Trait.List, d) and listOps ~= nil and listOps.Get == Deque.Get, "구현 등록")
+	const listOps = stl.Trait.ImplOf(stl.List, d)
+	assert(stl.Trait.Implements(stl.List, d) and listOps ~= nil and listOps.Get == Deque.Get, "구현 등록")
 	assert(Deque.Get(d, 0) == nil and Deque.Get(d, 5) == nil and Deque.Get(d, 4) == 30, "Get 범위")
 	assert(Deque.FirstIndex(Deque.New<<number>>()) == nil and Deque.LastIndex(d) == 4, "First/LastIndex")
 	assert(Deque.NextIndex(d, 4) == nil and Deque.PrevIndex(d, 1) == nil and Deque.NextIndex(d, 1) == 2, "Next/Prev")

@@ -26,7 +26,7 @@ local popped: number? = Deque.PopFront(d)
 local front: number? = Deque.Front(d)
 local at: number? = Deque.At(d, -1)
 local asArr: stl.Arr<number> = Deque.ToArr(d)
-local found: number? = stl.Algorithm.IndexOf(d, 20)
+local found: number? = stl.List.IndexOf(d, 20)
 local fromList: Deque<string> = Deque.FromList({ "a", "b" })
 local sum = 0
 for _, v in Deque.Iter(d) do
@@ -79,7 +79,7 @@ local holeCount: number = countHoles(d)
 local wideAt: (number | string)? = Deque.At<<number | string>>(d, 1)
 local wideArr: stl.Arr<number?> = Deque.ToArr<<number?>>(d)
 local wideClone: Deque<number?> = Deque.Clone<<number?>>(d)
-local wideIndex: number? = stl.Algorithm.IndexOf<<number?, number>>(d, nil)
+local wideIndex: number? = stl.List.IndexOf<<number?, number>>(d, nil)
 for _, v in Deque.Iter<<number?>>(d) do
 	local _wide: number? = v
 end
@@ -125,7 +125,7 @@ end
 local function touch<E>(_list: stl.ListMarkerMut<E, number>, _item: E) end
 local function borrowedGeneric(list: stl.DequeRead<number>): number?
 	touch(list, 3)
-	return stl.Algorithm.IndexOf(list, 3)
+	return stl.List.IndexOf(list, 3)
 end
 touch(d, 3)
 -- 쓰는 함수 자체는 넓어지지 않음(불변)

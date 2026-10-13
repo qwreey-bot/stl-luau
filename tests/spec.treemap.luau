@@ -161,8 +161,8 @@ do
 	}, Common.compareString)
 	assert(table.concat(TreeMap.Keys(m), ",") == "a,b", "문자열 비교자")
 	-- 구현을 모르는 공용 알고리즘이 계약만으로 동작해야 합니다
-	assert(#stl.Algorithm.Keys(m) == 2, "Algorithm.Keys")
-	assert(#stl.Algorithm.Values(m) == 2, "Algorithm.Values")
+	assert(#stl.Map.Keys(m) == 2, "Map.Keys")
+	assert(#stl.Map.Values(m) == 2, "Map.Values")
 end
 print("PASS")
 

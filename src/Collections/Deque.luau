@@ -34,12 +34,13 @@
 	## 데이터는 엔티티, 함수는 서비스
 
 	메타테이블 없는 평범한 테이블이고 연산은 이 모듈의 네임스페이스 함수입니다(질문 AB). 리스트
-	트레이트(`Trait.List`)를 구현해 `Algorithm.IndexOf(d, x)` 가 됩니다.
+	트레이트(`List` 트레이트)를 구현해 `List.IndexOf(d, x)` 가 됩니다.
 ]]
-local Types = require("../Types")
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
+local List = require("../Traits/List")
+local Collection = require("../Traits/Collection")
 local Arr = require("./Arr")
 
 export type DequeData<T> = {
@@ -49,9 +50,9 @@ export type DequeData<T> = {
 	read __type: Trait.Token<"Deque">,
 	read __list: T,
 	read __listIndex: number,
-	-- 쓰는 제네릭용 불변 팬텀(`Types.ListMarkerMut`, 질문 AM) — 타입에만 있습니다.
+	-- 쓰는 제네릭용 불변 팬텀(`List.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __listMut: (T, number) -> (T, number),
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Types.CollectionMarkerMut`, 2026-10-12) — 타입에만 있습니다.
+	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
 	read __collectionMut: true,
 	[number]: T,
 }
@@ -62,7 +63,7 @@ export type Deque<T> = DequeData<T>
 -- 덱을 상위 레코드 자리에 넘길 수 있습니다(읽기·쓰기 인덱서인 `DequeData` 는 불변이라 안 됐음). 쓰는
 -- 함수(`Push*`·`Pop*`·`Clear`)는 `DequeData` 를 받습니다 — 넓어진 원소로 쓰면 건전하지 않으니까요.
 -- `head`·`size`·`cap` 도 `read` 라 빌린 참조로는 길이를 못 바꾸고, 불변 팬텀(`__listMut`)이 없어 쓰는
--- 제네릭(`Types.ListMarkerMut`)에도 못 들어갑니다. 사용자 함수도 같은 규칙으로 쓰라고 공개합니다.
+-- 제네릭(`List.MarkerMut`)에도 못 들어갑니다. 사용자 함수도 같은 규칙으로 쓰라고 공개합니다.
 export type DequeRead<T> = {
 	read head: number,
 	read size: number,
@@ -136,7 +137,7 @@ end
 
 --#endregion
 
---#region ----------- 계약 구현 (Types.ListOps) -----------
+--#region ----------- 계약 구현 (List.Ops) -----------
 -- 위치는 논리 위치(1..size). 알고리즘이 준 위치만 받는 자리라 검사하지 않습니다(`Arr` 과 같음).
 -- 읽기만 하니 `DequeRead`(공변) — 조회 절의 함수들과 `ToArr`·`Clone`(새 컨테이너를 만듦)도 같습니다.
 
@@ -367,11 +368,11 @@ const DequeModule = {
 }
 
 -- 모듈 테이블이 그대로 리스트 트레이트의 구현체입니다.
-Trait.Impl(Trait.List, TOKEN, DequeModule)
-Trait.Impl(Trait.Collection, TOKEN, DequeModule)
+Trait.Impl(List, TOKEN, DequeModule)
+Trait.Impl(Collection, TOKEN, DequeModule)
 
 -- `Types` 는 계약 타입만 — 구현이 계약을 만족하는지 여기서 정적으로 확인합니다.
-const _ops: Types.ListOps<Deque<any>, any, number> = DequeModule
-const _collection: Types.CollectionOps<Deque<any>> = DequeModule
+const _ops: List.Ops<Deque<any>, any, number> = DequeModule
+const _collection: Collection.Ops<Deque<any>> = DequeModule
 
 return DequeModule

@@ -44,7 +44,7 @@
 
 ⭐ **모든 컨테이너는 메타테이블 없는 평범한 테이블이고, 연산은 전부 모듈의
 네임스페이스 함수입니다**(`Arr.Map(a, fn)` — 콜론 메소드 없음, 질문 AB).
-판별은 타입 토큰(`__type`), 구현은 트레이트(`Trait.List` 등 — `src/Trait.luau`, 질문 AG).
+판별은 타입 토큰(`__type`), 구현은 트레이트(`List` 등 — `src/Traits/`, 시스템은 `src/Trait.luau`, 질문 AG).
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
@@ -56,18 +56,25 @@ README.md, LICENSE      간단한 소개(API 가 굳으면 다시 씀), MIT
 default.project.json    Rojo 매핑 (src -> ReplicatedStorage.StlLuau)
 src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
-  Types.luau       ⭐ 공유 계약·트레이트 마커만. **말단 모듈** — 아무것도 require 안 함
-  Trait.luau       타입 토큰과 트레이트(필수 함수 + 기본 구현 + 의존). List/Map/Set/Collection, 리스트 알고리즘의 기본 구현
-  Common.luau      비교자 어댑터와 기본 3방향 비교자
-  Algorithm.luau   종류를 모르는 코드의 진입점 — 그 종류의 트레이트 완성 표(자기 구현 또는 기본 구현)를 부름
-  BSearch.luau     컨테이너를 모르는 이분 탐색. Tree 계열의 백엔드
-  Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 HashMap 을 돌려줌) + 생성자 8
-  HashMap.luau     해시 맵. { data, size } 래퍼
-  HashSet.luau     HashMap 위에 단방향으로 얹음
-  TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색
-  TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
-  Heap.luau        이진 힙. 리스트·맵·셋 계약은 만족하지 않음(Collection 만 — 크기·비우기)
-  Deque.luau       링 버퍼 양끝 큐(M5). Trait.List 구현, 리스트 진입점은 안 받음(ToArr)
+  Types.luau       작은 공용 타입(비교자, 레코드). **말단 모듈** — 아무것도 require 안 함
+  Common.luau      에러 규약(raise), 비교자 어댑터와 기본 3방향 비교자, 리스트 길이 규약
+  Trait.luau       ⭐ 트레이트 **시스템만** — 토큰, New·Impl·ImplOf, Dispatch·Module
+  Traits/          ⭐ 트레이트 하나하나 — 계약 타입·마커·기본 구현·종류를 모르는 코드의 진입점이 한 파일에.
+                   모듈이 곧 트레이트 객체(`Trait.Impl(List, …)` 와 `List.IndexOf(v, x)` 가 같은 이름)
+    List.luau        위치 프리미티브 다섯 + 읽기 알고리즘의 기본 구현 일곱
+    Map.luau         Get·Set·Has·Remove·Iter + Keys·Values·Records
+    Set.luau         Add·Has·Remove·Items
+    Collection.luau  Len·Clear (일곱 컨테이너 전부)
+  Collections/     컨테이너
+    Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 HashMap 을 돌려줌) + 생성자 8
+    HashMap.luau     해시 맵. { data, size } 래퍼
+    HashSet.luau     HashMap 위에 단방향으로 얹음
+    TreeMap.luau     정렬 유지 맵. 정렬 레코드 배열 + 이분 탐색(노드 트리로 바꿀 예정 — papers/07)
+    TreeSet.luau     TreeMap 위에 단방향. 집합 연산은 병합
+    Heap.luau        이진 힙. Collection 만 구현(크기·비우기)
+    Deque.luau       링 버퍼 양끝 큐(M5). List 구현, 리스트 진입점은 안 받음(ToArr)
+  Algorithms/      컨테이너를 모르는 알고리즘
+    BSearch.luau     이분 탐색. Tree 계열의 백엔드
   Optional.luau    nil 구멍을 값으로 만드는 태그 테이블(Present/Absent). 메소드 없음
   Fut.luau         코루틴 래퍼(프로미스). provider, 다중 반환, All → Arr
 
@@ -123,7 +130,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
-| `Types` / `Common` / `Algorithm` / `Trait` | 트레이트 2026-10-06, 불변 마커·`Collection`·넓힌 `MapOps` 10-12, **기본 구현·의존·저절로 따라오기 + 리스트 알고리즘의 기본 구현** 10-13(`papers/07` — 들이는 중) | `spikes/55`, `61`, `63`, `64` |
+| `Types` / `Common` / `Trait` / `Traits/*` | 트레이트 2026-10-06, 불변 마커·`Collection`·넓힌 `MapOps` 10-12, **기본 구현·의존·저절로 따라오기 + 리스트 알고리즘의 기본 구현** 10-13(`papers/07` — 들이는 중), 같은 날 **구조 재배치**(`Traits/`·`Collections/`·`Algorithms/`, `Algorithm.luau` 는 트레이트 파일로 분화) | `spikes/55`, `61`, `63`, `64` |
 | `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
 | `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |

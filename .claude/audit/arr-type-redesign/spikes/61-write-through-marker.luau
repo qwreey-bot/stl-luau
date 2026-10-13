@@ -2,7 +2,7 @@
 --[[
 	키·위치·값을 **입력으로 받는** 제네릭은 불변 마커로 (2026-10-12, 질문 AM).
 
-	읽기 마커(`MapMarker` 등)는 `read` 라 공변입니다 — 읽는 알고리즘엔 맞지만(`Algorithm.Keys`), 마커를
+	읽기 마커(`MapMarker` 등)는 `read` 라 공변입니다 — 읽는 알고리즘엔 맞지만(`Map.Keys`), 마커를
 	받아 `Set`/`Add` 하는 사용자 제네릭 함수에서는 값 타입이 조용히 넓어져 `HashMap<string, number>` 에
 	문자열이 들어갔습니다(진단 0건, 10-06 트레이트 설계부터). AC 에서 본 "공변으로 빌린 참조가 쓰기를
 	얻음" 과 같은 메커니즘입니다. **그런 제네릭은 `MapMarkerMut`/`SetMarkerMut`/`ListMarkerMut`** 을
@@ -15,8 +15,8 @@
 	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 11 + CANARY 1)
 ]]
 local stl = require("../../../../src")
-local Algorithm, Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Trait, Common =
-	stl.Algorithm, stl.Arr, stl.Deque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Trait, stl.Common
+local Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Trait, Common =
+	stl.Arr, stl.Deque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Trait, stl.Common
 
 local hm = HashMap.New<<string, number>>()
 local tm = TreeMap.New<<string, number>>(Common.compareString)
@@ -27,13 +27,13 @@ local dq = Deque.Of(1, 2)
 
 -- 쓰는 사용자 제네릭 — 불변 마커
 local function put<K, V>(m: stl.MapMarkerMut<K, V>, k: K, v: V)
-	const ops = Trait.ImplOf(Trait.Map, m)
+	const ops = Trait.ImplOf(stl.Map, m)
 	if ops then
 		ops.Set(m, k, v)
 	end
 end
 local function add<T>(s: stl.SetMarkerMut<T>, item: T)
-	const ops = Trait.ImplOf(Trait.Set, s)
+	const ops = Trait.ImplOf(stl.Set, s)
 	if ops then
 		ops.Add(s, item)
 	end
@@ -44,7 +44,7 @@ local function setAt<E, I>(_list: stl.ListMarkerMut<E, I>, _idx: I, _item: E) en
 -- 키를 **입력으로 받는 조회**도 불변 마커로(읽기 마커면 `TreeMap<string, …>` 에 숫자 키가 0건으로
 -- 들어가 비교자가 라이브러리 줄에서 터짐 — 아래 "알려진 구멍")
 local function lookup<K, V>(m: stl.MapMarkerMut<K, V>, k: K): V?
-	const ops = Trait.ImplOf(Trait.Map, m)
+	const ops = Trait.ImplOf(stl.Map, m)
 	return if ops then ops.Get(m, k) else nil
 end
 
@@ -61,12 +61,12 @@ local looked: number? = lookup(tm, "x")
 -- 불변 마커로 받은 값은 읽는 알고리즘에도 그대로 들어감(읽기 마커의 서브타입)
 local function keysThenPut<K, V>(m: stl.MapMarkerMut<K, V>, k: K, v: V): { K }
 	put(m, k, v)
-	return Algorithm.Keys(m)
+	return stl.Map.Keys(m)
 end
 local keys: { string } = keysThenPut(hm, "y", 2)
 -- 읽는 쪽 공변은 그대로(좁은 맵을 넓은 읽기 자리에)
-local wideKeys: { string | number } = Algorithm.Keys<<string | number, number>>(hm)
-local wideIndex: number? = Algorithm.IndexOf<<number?, number>>(arr, nil)
+local wideKeys: { string | number } = stl.Map.Keys<<string | number, number>>(hm)
+local wideIndex: number? = stl.List.IndexOf<<number?, number>>(arr, nil)
 
 --[[ NEG — 쓰기는 넓어지지 않음 ]]
 put(hm, "x", "bad")
@@ -89,7 +89,7 @@ local canary: string = 42
 
 --[[ 알려진 구멍 — 읽기 마커로 쓰면 지금도 0건(타입이 못 막음, 규약으로 지킴) ]]
 local function unsoundPut<K, V>(m: stl.MapMarker<K, V>, k: K, v: V)
-	const ops = Trait.ImplOf(Trait.Map, m)
+	const ops = Trait.ImplOf(stl.Map, m)
 	if ops then
 		ops.Set(m, k, v)
 	end
@@ -97,7 +97,7 @@ end
 unsoundPut(HashMap.New<<string, number>>(), "x", "bad")
 -- 키를 넘기는 조회도(런타임: 비교자가 `attempt to compare string < number`)
 local function unsoundLookup<K, V>(m: stl.MapMarker<K, V>, k: K): V?
-	const ops = Trait.ImplOf(Trait.Map, m)
+	const ops = Trait.ImplOf(stl.Map, m)
 	return if ops then ops.Get(m, k) else nil
 end
 local unsoundGot = unsoundLookup(tm, 1)

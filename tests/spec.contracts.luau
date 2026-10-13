@@ -13,12 +13,11 @@
 	선 게 아닙니다.
 ]]
 local stl = require("../src")
-local Types = require("../src/Types")
 local Common = stl.Common
 
-type ListOps<C, E, I> = Types.ListOps<C, E, I>
-type MapOps<C, K, V> = Types.MapOps<C, K, V>
-type SetOps<C, T> = Types.SetOps<C, T>
+type ListOps<C, E, I> = stl.ListOps<C, E, I>
+type MapOps<C, K, V> = stl.MapOps<C, K, V>
+type SetOps<C, T> = stl.SetOps<C, T>
 
 --[[ 계약만 아는 함수들. 어떤 구현이 오는지 전혀 모릅니다. ]]
 
@@ -64,8 +63,8 @@ do
 	assert(sumThroughContract(stl.Arr, a) == 60, "계약을 통한 합")
 	assert(sumThroughContract(stl.Arr, stl.Arr.Of<<number>>()) == 0, "빈 것")
 	-- 공용 알고리즘도 계약만 압니다
-	assert(stl.Algorithm.IndexOf(a, 20) == 2, "Algorithm.IndexOf")
-	assert(stl.Algorithm.Count(a) == 3, "Algorithm.Count")
+	assert(stl.List.IndexOf(a, 20) == 2, "List.IndexOf")
+	assert(stl.List.Count(a) == 3, "List.Count")
 end
 print("PASS")
 
@@ -84,8 +83,8 @@ do
 	assert(stl.HashMap.Len(hash) == stl.TreeMap.Len(tree), "둘의 크기가 같아야 합니다")
 
 	-- 공용 알고리즘도 양쪽에서 같아야 합니다
-	assert(#stl.Algorithm.Keys(hash) == #stl.Algorithm.Keys(tree), "Algorithm.Keys")
-	assert(#stl.Algorithm.Values(hash) == #stl.Algorithm.Values(tree), "Algorithm.Values")
+	assert(#stl.Map.Keys(hash) == #stl.Map.Keys(tree), "Map.Keys")
+	assert(#stl.Map.Values(hash) == #stl.Map.Values(tree), "Map.Values")
 
 	-- 계약 자리에 모듈을 담아 두고 나중에 쓰는 것도 돼야 합니다
 	const hashOps: MapOps<H, string, number> = stl.HashMap
@@ -453,38 +452,35 @@ do
 	const showArr = stl.Trait.ImplOf(ShowTrait, stl.Arr.Of(1, 2))
 	assert(showArr ~= nil and showArr.Show(stl.Arr.Of(1, 2)) == "Arr(2)", "사용자 트레이트를 Arr 에")
 	-- (2026-10-13: List 는 기본 구현을 가진 트레이트가 돼 완성 표가 모듈과 다른 표 — 함수로 견줍니다)
-	const arrList = stl.Trait.ImplOf(stl.Trait.List, stl.Arr.Of(1))
+	const arrList = stl.Trait.ImplOf(stl.List, stl.Arr.Of(1))
 	assert(arrList ~= nil and arrList.Get == stl.Arr.Get and arrList.Fold == stl.Arr.Fold, "Arr 은 List 도 그대로")
 	assert(stl.Trait.ImplOf(ShowTrait, stl.HashMap.New()) == nil, "등록 안 한 종류는 nil")
 	for _, v in { nil, 1, "x", {} } :: { any } do
 		assert(stl.Trait.ImplOf(ShowTrait, v) == nil, `{typeof(v)} 는 안전하게 nil`)
 		assert(stl.Trait.Implements(ShowTrait, v) == false, `{typeof(v)} 는 안전하게 false(Implements)`)
 	end
-	-- Count: 술어 없으면 전체, 있으면 참인 것만(AE) — Arr 와 Algorithm 이 같은 뜻
+	-- Count: 술어 없으면 전체, 있으면 참인 것만(AE) — Arr 와 List 진입점이 같은 뜻
 	const counted = stl.Arr.Of(1, 2, 3, 4)
 	const isEven = function(v: number): boolean
 		return v % 2 == 0
 	end
-	assert(stl.Arr.Count(counted) == 4 and stl.Algorithm.Count(counted) == 4, "Count 전체")
-	assert(stl.Arr.Count(counted, isEven) == 2 and stl.Algorithm.Count(counted, isEven) == 2, "Count 술어")
+	assert(stl.Arr.Count(counted) == 4 and stl.List.Count(counted) == 4, "Count 전체")
+	assert(stl.Arr.Count(counted, isEven) == 2 and stl.List.Count(counted, isEven) == 2, "Count 술어")
 	-- (8라운드) 값과 위치가 다르고 참·거짓이 반반이 아닌 데이터 — 조건을 뒤집거나 위치를 넘기는
 	-- 실수가 위 데이터로는 같은 답이었음
 	const tens = stl.Arr.Of(10, 20, 30)
 	const over15 = function(v: number): boolean
 		return v > 15
 	end
-	assert(stl.Algorithm.Count(tens, over15) == 2 and stl.Arr.Count(tens, over15) == 2, "Count 술어(값 ≠ 위치)")
+	assert(stl.List.Count(tens, over15) == 2 and stl.Arr.Count(tens, over15) == 2, "Count 술어(값 ≠ 위치)")
 	-- IndexOf 는 **처음** 위치 — 중복과 구멍(8라운드: 마지막 위치를 돌려줘도 통과했음)
-	assert(stl.Algorithm.IndexOf(stl.Arr.Of(10, 20, 20), 20) == 2, "IndexOf 중복은 처음")
-	assert(stl.Algorithm.IndexOf(stl.Arr.Of<<number?>>(10, nil, 30, nil), nil) == 2, "IndexOf 첫 구멍")
+	assert(stl.List.IndexOf(stl.Arr.Of(10, 20, 20), 20) == 2, "IndexOf 중복은 처음")
+	assert(stl.List.IndexOf(stl.Arr.Of<<number?>>(10, nil, 30, nil), nil) == 2, "IndexOf 첫 구멍")
 	-- Fut.All 에 Fut 이 아닌 원소 → 던지지 않고 Rejected(8라운드 참고: 라이브러리 줄에서 던질 수 있었음)
 	assert(stl.Fut.Status(stl.Fut.All({ stl.Fut.Resolved(1), 2 :: any })) == "Rejected", "All 의 Fut 아닌 원소")
 	-- 술어 없는 Count 는 **구멍도 자리로** 셉니다(7라운드 — "nil 아닌 것만" 으로 잘못 세도 통과했음)
 	for _, holed in { stl.Arr.Of<<number?>>(1, nil, 3), stl.Arr.Sized<<number?>>(3, nil) } :: { any } do
-		assert(
-			stl.Arr.Count(holed) == holed.n and stl.Algorithm.Count(holed) == holed.n,
-			`구멍 든 Count: n={holed.n}`
-		)
+		assert(stl.Arr.Count(holed) == holed.n and stl.List.Count(holed) == holed.n, `구멍 든 Count: n={holed.n}`)
 	end
 	-- ⭐ 내장 종류 × 내장 트레이트 전수(리뷰 1라운드 — Set 등록을 빼도 아무것도 안 잡혔음)
 	const T = stl.Trait
@@ -508,7 +504,7 @@ do
 	}
 	for _, case in samples do
 		-- List 의 완성 표는 "모듈이 준 것 + 기본 구현" — 모듈의 프리미티브가 그대로 들어 있는지로 봅니다
-		const listImpl = T.ImplOf(T.List, case.value)
+		const listImpl = T.ImplOf(stl.List, case.value)
 		assert((listImpl ~= nil) == (case.list ~= nil), `{case.name} 의 List 구현 유무`)
 		if listImpl ~= nil then
 			assert(
@@ -520,9 +516,9 @@ do
 				`{case.name} 의 기본 구현`
 			)
 		end
-		assert(T.ImplOf(T.Map, case.value) == case.map, `{case.name} 의 Map 구현`)
-		assert(T.ImplOf(T.Set, case.value) == case.set, `{case.name} 의 Set 구현`)
-		assert(T.Implements(T.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
+		assert(T.ImplOf(stl.Map, case.value) == case.map, `{case.name} 의 Map 구현`)
+		assert(T.ImplOf(stl.Set, case.value) == case.set, `{case.name} 의 Set 구현`)
+		assert(T.Implements(stl.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
 		assert(T.TokenOf(case.value) == (T.Types :: any)[case.name], `{case.name} 의 TokenOf`)
 	end
 	-- TokenOf 는 토큰이 아닌 `__type`(숫자·문자열·아무 테이블)을 토큰으로 돌려주지 않음
@@ -537,7 +533,7 @@ do
 	-- `attempt to index number with 'name'` 이었음)
 	for _, bogus in { 5, true, "Player", 0 / 0 } :: { any } do
 		const ok, err = pcall(function()
-			stl.Algorithm.IndexOf({ __type = bogus } :: any, 1)
+			stl.List.IndexOf({ __type = bogus } :: any, 1)
 		end)
 		assert(not ok and string.find(tostring(err), "needs a List", 1, true) ~= nil, `에러 메시지: {err}`)
 		assert(string.find(tostring(err), "spec.contracts", 1, true) ~= nil, `사용자 줄이 아님: {err}`)
@@ -548,13 +544,13 @@ do
 		{
 			name = "얼린 아무 테이블",
 			run = function()
-				T.Impl(T.List, table.freeze({}) :: any, stl.Arr)
+				T.Impl(stl.List, table.freeze({}) :: any, stl.Arr)
 			end,
 		},
 		{
 			name = "토큰 모음 테이블",
 			run = function()
-				T.Impl(T.List, T.Types :: any, stl.Arr)
+				T.Impl(stl.List, T.Types :: any, stl.Arr)
 			end,
 		},
 		{
@@ -584,7 +580,7 @@ do
 		{
 			name = "같은 토큰을 두 번(내장 덮어쓰기)",
 			run = function()
-				T.Impl(T.List, T.Types.Arr, {} :: any)
+				T.Impl(stl.List, T.Types.Arr, {} :: any)
 			end,
 		},
 		{
@@ -593,13 +589,13 @@ do
 			name = "같은 토큰을 두 번(다 갖춘 구현)",
 			needle = "Arr already implements List",
 			run = function()
-				T.Impl(T.List, T.Types.Arr, table.clone(stl.Arr) :: any)
+				T.Impl(stl.List, T.Types.Arr, table.clone(stl.Arr) :: any)
 			end,
 		},
 		{
 			name = "구현이 nil",
 			run = function()
-				T.Impl(T.List, MyKind, nil :: any)
+				T.Impl(stl.List, MyKind, nil :: any)
 			end,
 		},
 	}
@@ -615,7 +611,7 @@ do
 		)
 	end
 	assert(
-		(T.ImplOf(T.List, stl.Arr.Of(1)) :: any).Get == stl.Arr.Get,
+		(T.ImplOf(stl.List, stl.Arr.Of(1)) :: any).Get == stl.Arr.Get,
 		"덮어쓰기 시도 뒤에도 내장 그대로"
 	)
 	-- 리스트·사전을 받는 진입점에 **다른 종류의 컨테이너**를 넘기면 조용히 비거나(`n` 이 없어
@@ -675,10 +671,10 @@ do
 		end,
 		-- (3라운드) 컨테이너 자리에 nil·숫자 — 라이브러리 줄의 rawget 에러가 되면 안 됨
 		function()
-			stl.Algorithm.IndexOf(nil :: any, 1)
+			stl.List.IndexOf(nil :: any, 1)
 		end,
 		function()
-			stl.Algorithm.Keys(5 :: any)
+			stl.Map.Keys(5 :: any)
 		end,
 	}
 	for _, run in foreignRuns do
@@ -693,16 +689,16 @@ do
 		return tostring(err)
 	end
 	const sameCopy = errOf(function()
-		stl.Algorithm.IndexOf(stl.HashMap.New() :: any, 1)
+		stl.List.IndexOf(stl.HashMap.New() :: any, 1)
 	end)
 	assert(string.find(sameCopy, "HashMap does not implement List", 1, true) ~= nil, sameCopy)
 	assert(string.find(sameCopy, "another copy", 1, true) == nil, `같은 사본인데 사본 안내: {sameCopy}`)
 	const otherCopy = errOf(function()
-		stl.Algorithm.IndexOf({ __type = table.freeze({ name = "Arr" }) } :: any, 1)
+		stl.List.IndexOf({ __type = table.freeze({ name = "Arr" }) } :: any, 1)
 	end)
 	assert(string.find(otherCopy, "another copy", 1, true) ~= nil, `다른 사본 안내가 없음: {otherCopy}`)
 	const noToken = errOf(function()
-		stl.Algorithm.IndexOf({} :: any, 1)
+		stl.List.IndexOf({} :: any, 1)
 	end)
 	assert(string.find(noToken, "without a type token", 1, true) ~= nil, noToken)
 	const brokenN = stl.Arr.Of(1, 2) :: any
@@ -862,14 +858,14 @@ do
 	fullGc("collect")
 	fullGc("collect")
 	local before = 0
-	for _ in T.List.impls do
+	for _ in stl.List.impls do
 		before += 1
 	end
 	-- 구현 테이블은 **인라인으로**(따로 쥐는 지역 변수 없이) — 쥐고 있으면 `"kv"` 로 잘못 써도
 	-- 남아 돌연변이가 살아남았음.
 	const keptToken = T.NewType("Kept")
 	T.Impl(
-		T.List,
+		stl.List,
 		keptToken,
 		{
 			Get = stl.Arr.Get,
@@ -888,13 +884,13 @@ do
 	local registered = 0
 	for _ = 1, 50 do
 		const tok = T.NewType("Temp")
-		T.Impl(T.List, tok, stl.Arr)
+		T.Impl(stl.List, tok, stl.Arr)
 		registered += 1
 	end
 	fullGc("collect")
 	fullGc("collect")
 	local remaining = 0
-	for _ in T.List.impls do
+	for _ in stl.List.impls do
 		remaining += 1
 	end
 	assert(
@@ -903,13 +899,13 @@ do
 			then `버린 사용자 토큰이 남음: List 구현 {remaining}개(기준 {before} + 쥔 것 1)`
 			else `쥔 등록까지 사라짐: List 구현 {remaining}개(기준 {before} + 쥔 것 1)`
 	)
-	const kept = T.List.impls[keptToken] :: any
+	const kept = stl.List.impls[keptToken] :: any
 	assert(kept ~= nil and kept.Get == stl.Arr.Get, "쥔 토큰의 인라인 구현은 남음")
 	const shown = T.ImplOf(ShowKept, stl.Arr.Of(1))
 	assert(shown ~= nil and shown.Show(stl.Arr.Of(1)) == "kept", "내장 토큰에 붙인 인라인 구현은 남음")
 	-- 토큰이 아닌 것(얼지 않은 테이블)으로 Impl 하면 사용자 줄 에러
 	assert(not pcall(function()
-		stl.Trait.Impl(stl.Trait.List, {} :: any, stl.Arr)
+		stl.Trait.Impl(stl.List, {} :: any, stl.Arr)
 	end), "토큰이 아닌 것으로 Impl")
 end
 print("PASS")
@@ -918,7 +914,7 @@ print("=== 7. 계약 보강 — 원소 타입 ≠ 위치 타입, Keys/Values 내
 do
 	-- ListOps 의 반환 타입(I? 대 E?)은 원소와 위치가 둘 다 number 면 우연히 맞아떨어집니다
 	const s = stl.Arr.Of("x", "y", "z")
-	const pos: number? = stl.Algorithm.IndexOf(s, "y")
+	const pos: number? = stl.List.IndexOf(s, "y")
 	assert(pos == 2, "문자열 배열의 IndexOf")
 	const ops: ListOps<stl.Arr<string>, string, number> = stl.Arr
 	assert(ops.Get(s, 3) == "z" and ops.FirstIndex(s) == 1 and ops.NextIndex(s, 1) == 2, "문자열 배열의 ListOps")
@@ -926,10 +922,10 @@ do
 	-- Keys/Values 는 개수가 아니라 **내용**을 봅니다(키와 값을 바꿔 돌려줘도 통과했음)
 	const m = stl.TreeMap.FromRecords({ { key = "b", value = 20 }, { key = "a", value = 10 } }, Common.compareString)
 	type T = stl.TreeMap<string, number>
-	const keys = stl.Algorithm.Keys(m)
-	const values = stl.Algorithm.Values(m)
-	assert(table.concat(keys, ",") == "a,b", "Algorithm.Keys 내용")
-	assert(values[1] == 10 and values[2] == 20, "Algorithm.Values 내용")
+	const keys = stl.Map.Keys(m)
+	const values = stl.Map.Values(m)
+	assert(table.concat(keys, ",") == "a,b", "Map.Keys 내용")
+	assert(values[1] == 10 and values[2] == 20, "Map.Values 내용")
 
 	-- ⭐ 사용자 컨테이너가 맵 트레이트에 들어오기(2026-10-06): 자기 타입 토큰을 만들고
 	-- `Trait.Impl` 한 줄. 타입에는 토큰과 트레이트 마커(타입에만 있는 필드)를 적고, 값은
@@ -981,17 +977,17 @@ do
 			end
 		end,
 	}
-	stl.Trait.Impl(stl.Trait.Map, MyMapType, myOps)
+	stl.Trait.Impl(stl.Map, MyMapType, myOps)
 	const mine: MyMap = { __type = MyMapType, keys = {}, values = {} } :: any
 	myOps.Set(mine, "x", 1)
 	myOps.Set(mine, "y", 2)
 	myOps.Set(mine, "w", 3)
-	const myKeys = stl.Algorithm.Keys(mine)
-	const myValues = stl.Algorithm.Values(mine)
+	const myKeys = stl.Map.Keys(mine)
+	const myValues = stl.Map.Values(mine)
 	assert(table.concat(myKeys, ",") == "x,y,w", "Keys(사용자 맵) 은 순회 순서")
 	-- ⭐ Records 는 계약이 아니라 알고리즘(2026-10-13 — `Iter` 위에 한 번만 구현). 사용자 맵은 다섯
 	-- 함수만으로 레코드 목록을 얻습니다.
-	const myRecords = stl.Algorithm.Records(mine)
+	const myRecords = stl.Map.Records(mine)
 	assert(#myRecords == 3, `Records(사용자 맵): {#myRecords}`)
 	assert(myRecords[1].key == "x" and myRecords[1].value == 1 and myRecords[3].key == "w", "Records 는 순회 순서")
 	myRecords[1].value = 99 -- 받은 레코드를 고쳐도 맵은 그대로(새로 만든 레코드)
@@ -1006,14 +1002,14 @@ do
 		assert(type(key) == "number", "Values 결과에 숫자 아닌 키")
 	end
 	assert(#myKeys == 3 and #myValues == 3 and (myValues :: any).n == nil, "개수")
-	-- 이 맵은 `Trait.Collection` 을 구현하지 않음 — 크기를 몰라도 됨(미리 잡지 못할 뿐)
-	assert(stl.Trait.ImplOf(stl.Trait.Collection, mine) == nil, "MyMap 은 Collection 아님")
+	-- 이 맵은 `stl.Collection` 을 구현하지 않음 — 크기를 몰라도 됨(미리 잡지 못할 뿐)
+	assert(stl.Trait.ImplOf(stl.Collection, mine) == nil, "MyMap 은 Collection 아님")
 	myOps.Remove(mine, "y")
-	assert(table.concat(stl.Algorithm.Keys(mine), ",") == "x,w", "지운 뒤 Keys")
+	assert(table.concat(stl.Map.Keys(mine), ",") == "x,w", "지운 뒤 Keys")
 	const emptyMine: MyMap = { __type = MyMapType, keys = {}, values = {} } :: any
-	assert(#stl.Algorithm.Keys(emptyMine) == 0 and #stl.Algorithm.Values(emptyMine) == 0, "빈 사용자 맵")
+	assert(#stl.Map.Keys(emptyMine) == 0 and #stl.Map.Values(emptyMine) == 0, "빈 사용자 맵")
 	const emptyHash = stl.HashMap.New<<string, number>>()
-	assert(#stl.Algorithm.Keys(emptyHash) == 0 and #stl.Algorithm.Values(emptyHash) == 0, "빈 맵")
+	assert(#stl.Map.Keys(emptyHash) == 0 and #stl.Map.Values(emptyHash) == 0, "빈 맵")
 	-- 내장 두 맵: Keys 와 Values 가 같은 순서로 짝이 맞고, 자기 모듈의 Keys/Values 와 같은 내용
 	const big = stl.HashMap.New<<string, number>>()
 	const bigTree = stl.TreeMap.New<<string, number>>(Common.compareString)
@@ -1021,20 +1017,20 @@ do
 		stl.HashMap.Set(big, `k{i * 7}`, i * 100)
 		stl.TreeMap.Set(bigTree, `k{i * 7}`, i * 100)
 	end
-	const bigKeys, bigValues = stl.Algorithm.Keys(big), stl.Algorithm.Values(big)
+	const bigKeys, bigValues = stl.Map.Keys(big), stl.Map.Values(big)
 	assert(#bigKeys == 40 and #bigValues == 40, "HashMap 40개")
 	for at, key in bigKeys do
 		assert(stl.HashMap.Get(big, key) == bigValues[at], `Keys[{at}] 와 Values[{at}] 가 짝`)
 	end
-	-- 내장 두 맵의 Algorithm.Records: 자기 모듈의 Records 와 같은 내용, 받은 것을 고쳐도 맵은 그대로
-	const hashRecords = stl.Algorithm.Records(big)
-	assert(#hashRecords == 40, "Algorithm.Records(HashMap) 개수")
+	-- 내장 두 맵의 stl.Map.Records: 자기 모듈의 Records 와 같은 내용, 받은 것을 고쳐도 맵은 그대로
+	const hashRecords = stl.Map.Records(big)
+	assert(#hashRecords == 40, "Map.Records(HashMap) 개수")
 	for _, rec in hashRecords do
-		assert(stl.HashMap.Get(big, rec.key) == rec.value, "Algorithm.Records(HashMap) 의 키-값")
+		assert(stl.HashMap.Get(big, rec.key) == rec.value, "Map.Records(HashMap) 의 키-값")
 	end
-	const treeRecords = stl.Algorithm.Records(bigTree)
+	const treeRecords = stl.Map.Records(bigTree)
 	const ownRecords = stl.TreeMap.Records(bigTree)
-	assert(#treeRecords == #ownRecords and #treeRecords == 40, "Algorithm.Records(TreeMap) 개수")
+	assert(#treeRecords == #ownRecords and #treeRecords == 40, "Map.Records(TreeMap) 개수")
 	for at, rec in treeRecords do
 		assert(
 			rec.key == ownRecords[at].key and rec.value == ownRecords[at].value,
@@ -1047,11 +1043,11 @@ do
 		stl.TreeMap.Records(bigTree)[1].key == ownRecords[1].key,
 		"받은 레코드를 고쳐도 TreeMap 은 그대로"
 	)
-	assert(#stl.Algorithm.Records(emptyHash) == 0, "빈 맵의 Records")
+	assert(#stl.Map.Records(emptyHash) == 0, "빈 맵의 Records")
 	assert(not pcall(function()
-		stl.Algorithm.Records(stl.Arr.Of(1) :: any)
+		stl.Map.Records(stl.Arr.Of(1) :: any)
 	end), "맵이 아닌 것의 Records 는 에러")
-	const treeKeys, treeValues = stl.Algorithm.Keys(bigTree), stl.Algorithm.Values(bigTree)
+	const treeKeys, treeValues = stl.Map.Keys(bigTree), stl.Map.Values(bigTree)
 	assert(
 		table.concat(treeKeys, ",") == table.concat(stl.TreeMap.Keys(bigTree), ","),
 		"TreeMap Keys 는 정렬 순서"
@@ -1069,7 +1065,7 @@ do
 	local partialLine = 0
 	const okPartial, errPartial = pcall(function()
 		partialLine = debug.info(1, "l") + 1
-		stl.Trait.Impl(stl.Trait.Map, PartialType, partial :: any)
+		stl.Trait.Impl(stl.Map, PartialType, partial :: any)
 	end)
 	assert(
 		not okPartial
@@ -1077,7 +1073,7 @@ do
 			and string.find(tostring(errPartial), `spec.contracts.luau:{partialLine}:`, 1, true),
 		`빠진 함수: {errPartial}`
 	)
-	assert(stl.Trait.Map.impls[PartialType] == nil, "거절된 등록은 남지 않음")
+	assert(stl.Map.impls[PartialType] == nil, "거절된 등록은 남지 않음")
 	-- 함수가 아닌 값·테이블이 아닌 구현도
 	local badLine = 0
 	for _, bad in
@@ -1091,11 +1087,11 @@ do
 		const BadType = stl.Trait.NewType("BadCollection")
 		const okBad, errBad = pcall(function()
 			badLine = debug.info(1, "l") + 1
-			stl.Trait.Impl(stl.Trait.Collection, BadType, bad.impl)
+			stl.Trait.Impl(stl.Collection, BadType, bad.impl)
 		end)
 		assert(not okBad and string.find(tostring(errBad), bad.needle, 1, true), `잘못된 구현: {errBad}`)
 		assert(string.find(tostring(errBad), `spec.contracts.luau:{badLine}:`, 1, true), `사용자 줄: {errBad}`)
-		assert(stl.Trait.Collection.impls[BadType] == nil, "거절된 등록은 남지 않음")
+		assert(stl.Collection.impls[BadType] == nil, "거절된 등록은 남지 않음")
 	end
 	-- 필수 목록이 없는 사용자 트레이트는 예전처럼 아무 구현이나 받고, 목록의 모양은 `New` 가 봄
 	const Loose = stl.Trait.New<<{ read Show: (any) -> string }>>("Loose")
@@ -1247,12 +1243,12 @@ do
 	-- 타입 쪽(값 타입이 넓어지지 않음)은 spikes/61 이 지킵니다. 여기는 불변 마커를 받는 제네릭이
 	-- 런타임에 HashMap·TreeMap, HashSet·TreeSet 양쪽에서 같은 답을 내는지.
 	local function put<K, V>(m: stl.MapMarkerMut<K, V>, k: K, v: V)
-		const ops = stl.Trait.ImplOf(stl.Trait.Map, m)
+		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
 		ops.Set(m, k, v)
 	end
 	local function add<T>(s: stl.SetMarkerMut<T>, item: T): boolean
-		const ops = stl.Trait.ImplOf(stl.Trait.Set, s)
+		const ops = stl.Trait.ImplOf(stl.Set, s)
 		assert(ops ~= nil, "Set 구현")
 		return ops.Add(s, item)
 	end
@@ -1266,7 +1262,7 @@ do
 	assert(stl.HashMap.Get(hm, "a") == 10 and stl.TreeMap.Get(tm, "a") == 10, "같은 값")
 	-- 불변 마커로 받은 값은 읽는 알고리즘에도 그대로 들어감
 	local function keysOf<K, V>(m: stl.MapMarkerMut<K, V>): { K }
-		return stl.Algorithm.Keys(m)
+		return stl.Map.Keys(m)
 	end
 	assert(table.concat(keysOf(tm), ",") == "a,b" and #keysOf(hm) == 2, "Mut 마커 → Keys")
 	const hs = stl.HashSet.New<<number>>()
@@ -1285,7 +1281,6 @@ print(
 	"=== 10. 컬렉션 트레이트 — 종류를 모르고 크기·비우기, 넓힌 MapOps (2026-10-12, 질문 AO) ==="
 )
 do
-	const A = stl.Algorithm
 	-- 일곱 컨테이너 전부: Len 은 자기 모듈의 Len 과 같고, Clear 는 **같은 객체**를 비워 돌려줌
 	const cases: { { name: string, make: () -> any, len: (any) -> number } } = {
 		{
@@ -1345,18 +1340,21 @@ do
 	}
 	for _, case in cases do
 		const value = case.make()
-		assert(stl.Trait.Implements(stl.Trait.Collection, value), `{case.name} 은 Collection`)
-		assert(A.Len(value) == 3 and case.len(value) == 3, `{case.name} Len: {A.Len(value)}`)
-		const cleared = A.Clear(value)
+		assert(stl.Trait.Implements(stl.Collection, value), `{case.name} 은 Collection`)
+		assert(stl.Collection.Len(value) == 3 and case.len(value) == 3, `{case.name} Len: {stl.Collection.Len(value)}`)
+		const cleared = stl.Collection.Clear(value)
 		assert(rawequal(cleared, value), `{case.name} Clear 는 같은 객체`)
-		assert(A.Len(value) == 0 and case.len(value) == 0, `{case.name} Clear 뒤 Len`)
-		assert(A.Clear(value) == value and A.Len(value) == 0, `{case.name} 빈 것을 또 Clear`)
+		assert(stl.Collection.Len(value) == 0 and case.len(value) == 0, `{case.name} Clear 뒤 Len`)
+		assert(
+			stl.Collection.Clear(value) == value and stl.Collection.Len(value) == 0,
+			`{case.name} 빈 것을 또 Clear`
+		)
 	end
 	-- Clear 뒤에도 쓸 수 있음(비우고 다시 채우기) — 맵 종류를 모르는 제네릭으로
 	local function refill<K, V>(m: stl.MapMarkerMut<K, V> & stl.CollectionMarkerMut, records: { stl.Record<K, V> })
-		const ops = stl.Trait.ImplOf(stl.Trait.Map, m)
+		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
-		A.Clear(m)
+		stl.Collection.Clear(m)
 		for _, rec in records do
 			ops.Set(m, rec.key, rec.value)
 		end
@@ -1366,13 +1364,13 @@ do
 	const fresh = { { key = "q", value = 70 }, { key = "p", value = 80 } }
 	refill(hm, fresh)
 	refill(tm, fresh)
-	assert(A.Len(hm) == 2 and A.Len(tm) == 2, "다시 채운 크기")
+	assert(stl.Collection.Len(hm) == 2 and stl.Collection.Len(tm) == 2, "다시 채운 크기")
 	assert(stl.HashMap.Get(hm, "old") == nil and stl.TreeMap.Get(tm, "old") == nil, "옛 키는 없음")
-	assert(table.concat(A.Keys(tm), ",") == "p,q" and stl.HashMap.Get(hm, "q") == 70, "다시 채운 내용")
+	assert(table.concat(stl.Map.Keys(tm), ",") == "p,q" and stl.HashMap.Get(hm, "q") == 70, "다시 채운 내용")
 
 	-- 읽기 전용으로 빌린 참조도 Len 은 됨(타입 쪽 — Clear 는 못 함 — 은 spikes/63)
 	local function lenOfBorrowed(list: stl.ArrRead<number>, dq: stl.DequeRead<number>): number
-		return A.Len(list) + A.Len(dq)
+		return stl.Collection.Len(list) + stl.Collection.Len(dq)
 	end
 	assert(lenOfBorrowed(stl.Arr.Of(1, 2), stl.Deque.Of(1, 2, 3)) == 5, "빌린 참조의 Len")
 
@@ -1385,7 +1383,7 @@ do
 			{ value = 5, needle = "needs a Collection" },
 		} :: { { value: any, needle: string } }
 	do
-		for _, call in { A.Len, A.Clear } :: { (any) -> any } do
+		for _, call in { stl.Collection.Len, stl.Collection.Clear } :: { (any) -> any } do
 			const ok, err = pcall(function()
 				where = debug.info(1, "l") + 1
 				call(bad.value)
@@ -1397,7 +1395,7 @@ do
 
 	-- ⭐ 넓힌 MapOps — 종류를 모르는 코드가 Has·Remove·Iter 까지. 두 맵이 같은 답
 	local function exercise<K, V>(m: stl.MapMarkerMut<K, V>, present: K, absent: K): (boolean, boolean, V?, V?, number)
-		const ops = stl.Trait.ImplOf(stl.Trait.Map, m)
+		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
 		const hadPresent, hadAbsent = ops.Has(m, present), ops.Has(m, absent)
 		local seen = 0
@@ -1419,7 +1417,10 @@ do
 		const hadPresent, hadAbsent, removed, removedAgain, seen = exercise(m, "b", "zz")
 		assert(hadPresent and not hadAbsent, `{name} Has`)
 		assert(removed == 20 and removedAgain == nil, `{name} Remove 는 지운 값: {removed}`)
-		assert(seen == 3 and A.Len(m) == 2, `{name} Iter 개수 {seen}, 지운 뒤 크기 {A.Len(m)}`)
+		assert(
+			seen == 3 and stl.Collection.Len(m) == 2,
+			`{name} Iter 개수 {seen}, 지운 뒤 크기 {stl.Collection.Len(m)}`
+		)
 	end
 	-- 모듈 테이블이 넓힌 계약과 컬렉션 계약을 정적으로 만족
 	const _hmOps: MapOps<stl.HashMap<string, number>, string, number> = stl.HashMap
@@ -1439,13 +1440,12 @@ print(
 )
 do
 	const T = stl.Trait
-	const A = stl.Algorithm
 	-- ⭐ 내장 트레이트의 필수 목록을 **전수로**: 함수를 하나씩 뺀 구현은 등록할 때 그 이름으로 거절.
 	-- (리뷰: 목록에서 항목을 빼도 대부분 통과했음 — `Iter` 를 뺀 사본에서는 `Iter` 없는 맵이 등록되고
-	-- `Algorithm.Keys` 가 라이브러리 줄에서 `attempt to call a nil value`)
+	-- `Map.Keys` 가 라이브러리 줄에서 `attempt to call a nil value`)
 	const builtins: { { trait: any, name: string, full: { [string]: any } } } = {
 		{
-			trait = T.List,
+			trait = stl.List,
 			name = "List",
 			full = {
 				Get = stl.Arr.Get,
@@ -1456,7 +1456,7 @@ do
 			},
 		},
 		{
-			trait = T.Map,
+			trait = stl.Map,
 			name = "Map",
 			full = {
 				Get = stl.HashMap.Get,
@@ -1467,7 +1467,7 @@ do
 			},
 		},
 		{
-			trait = T.Set,
+			trait = stl.Set,
 			name = "Set",
 			full = {
 				Add = stl.HashSet.Add,
@@ -1476,7 +1476,7 @@ do
 				Items = stl.HashSet.Items,
 			},
 		},
-		{ trait = T.Collection, name = "Collection", full = { Len = stl.Arr.Len, Clear = stl.Arr.Clear } },
+		{ trait = stl.Collection, name = "Collection", full = { Len = stl.Arr.Len, Clear = stl.Arr.Clear } },
 	}
 	local where = 0
 	for _, builtin in builtins do
@@ -1508,13 +1508,13 @@ do
 	type Bag = { read __type: stl.TraitToken<string>, read __collectionMut: true, items: { number } }
 	const BagType = T.NewType("Bag")
 	T.Impl(
-		T.Collection,
+		stl.Collection,
 		BagType,
 		{
 			Len = function(bag: Bag): number
 				return #bag.items
 			end,
-			-- **아무것도 돌려주지 않는** Clear — `Algorithm.Clear` 는 그래도 넣은 것을 돌려줘야 함
+			-- **아무것도 돌려주지 않는** Clear — `Collection.Clear` 는 그래도 넣은 것을 돌려줘야 함
 			-- (리뷰: 구현의 반환을 그대로 돌려주게 바꿔도 통과했음)
 			Clear = function(bag: Bag)
 				table.clear(bag.items)
@@ -1522,10 +1522,10 @@ do
 		} :: any
 	)
 	const bag: Bag = { __type = BagType, items = { 10, 20, 30 } } :: any
-	assert(A.Len(bag) == 3, "사용자 컬렉션의 Len")
-	const clearedBag = A.Clear(bag)
+	assert(stl.Collection.Len(bag) == 3, "사용자 컬렉션의 Len")
+	const clearedBag = stl.Collection.Clear(bag)
 	assert(
-		rawequal(clearedBag, bag) and A.Len(bag) == 0,
+		rawequal(clearedBag, bag) and stl.Collection.Len(bag) == 0,
 		"구현이 안 돌려줘도 Clear 는 넣은 것을 돌려줌"
 	)
 
@@ -1535,7 +1535,7 @@ do
 	const SizedType = T.NewType("SizedMap")
 	const pairsOf = { a = 10, b = 20, c = 30 }
 	T.Impl(
-		T.Map,
+		stl.Map,
 		SizedType,
 		{
 			Get = function(_m: Sized, k: string): number?
@@ -1554,7 +1554,7 @@ do
 		} :: any
 	)
 	T.Impl(
-		T.Collection,
+		stl.Collection,
 		SizedType,
 		{
 			Len = function(m: Sized): any
@@ -1567,8 +1567,8 @@ do
 	)
 	for _, len in { 3, 0, 1, 1000, -1, 0 / 0, math.huge, 2 ^ 26 + 1, 2 ^ 40, "three", false } :: { any } do
 		const sized: Sized = { __type = SizedType, len = len } :: any
-		const keys = A.Keys(sized)
-		const values = A.Values(sized)
+		const keys = stl.Map.Keys(sized)
+		const values = stl.Map.Values(sized)
 		table.sort(keys)
 		table.sort(values)
 		assert(table.concat(keys, ",") == "a,b,c", `Len 이 {tostring(len)} 일 때 Keys: {table.concat(keys, ",")}`)
@@ -1766,8 +1766,8 @@ do
 	assert((T.ImplOf(LoudTrait, fresh) :: any).Loud(fresh) == "quiet!!", "의존의 재정의가 위로 전해짐")
 
 	-- 기본 구현도 의존도 없는 트레이트는 예전 그대로: 넘긴 표가 곧 구현, 저절로 따라오지 않음
-	assert(T.ImplOf(T.Collection, stl.Arr.Of(1)) == stl.Arr, "내장 Collection 은 모듈 테이블 그대로")
-	assert(T.ImplOf(T.Map, stl.HashMap.New()) == stl.HashMap, "내장 Map 도")
+	assert(T.ImplOf(stl.Collection, stl.Arr.Of(1)) == stl.Arr, "내장 Collection 은 모듈 테이블 그대로")
+	assert(T.ImplOf(stl.Map, stl.HashMap.New()) == stl.HashMap, "내장 Map 도")
 	const Bare = T.New<<{ read X: () -> number }>>("Bare")
 	assert(
 		T.ImplOf(Bare, plain) == nil and not T.Implements(Bare, plain),
@@ -2094,15 +2094,12 @@ do
 		table.isfrozen(Both.dependencies :: any) and table.isfrozen(BaseTrait.required :: any),
 		"사본은 얼어 있음"
 	)
-	-- `Algorithm.Records` 의 에러 메시지(예전엔 에러가 나는지만 봤음 — 함수 이름이 틀려도 통과)
+	-- `Map.Records` 의 에러 메시지(예전엔 에러가 나는지만 봤음 — 함수 이름이 틀려도 통과)
 	const okRecords, errRecords = pcall(function()
 		where = debug.info(1, "l") + 1
-		stl.Algorithm.Records(stl.Arr.Of(1) :: any)
+		stl.Map.Records(stl.Arr.Of(1) :: any)
 	end)
-	assert(
-		not okRecords and string.find(tostring(errRecords), "Algorithm: Records needs a Map", 1, true),
-		`{errRecords}`
-	)
+	assert(not okRecords and string.find(tostring(errRecords), "Map: Records needs a Map", 1, true), `{errRecords}`)
 	assert(string.find(tostring(errRecords), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errRecords}`)
 end
 print("PASS")
@@ -2112,7 +2109,6 @@ print(
 )
 do
 	const T = stl.Trait
-	const A = stl.Algorithm
 	-- 사용자 리스트: 양방향으로 이은 노드. **위치가 노드**이고, 구현은 프리미티브 다섯뿐입니다.
 	type ChainNode = { value: number?, prev: ChainNode?, next: ChainNode? }
 	type Chain = {
@@ -2123,7 +2119,7 @@ do
 		read __listIndex: ChainNode,
 	}
 	const ChainType = T.NewType("Chain")
-	T.Impl(T.List, ChainType, {
+	T.Impl(stl.List, ChainType, {
 		Get = function(_c: Chain, node: ChainNode): number?
 			return node.value
 		end,
@@ -2167,12 +2163,12 @@ do
 	end
 
 	-- 기본 구현을 받았는지 / 재정의가 이겼는지
-	const chainOps = T.ImplOf(T.List, chainOf({ 10 }, 1))
+	const chainOps = T.ImplOf(stl.List, chainOf({ 10 }, 1))
 	assert(
 		chainOps ~= nil and type(chainOps.Fold) == "function" and type(chainOps.Every) == "function",
 		"Chain 이 받음"
 	)
-	const arrOps = T.ImplOf(T.List, stl.Arr.Of(1))
+	const arrOps = T.ImplOf(stl.List, stl.Arr.Of(1))
 	assert(
 		arrOps ~= nil and arrOps.Fold == stl.Arr.Fold and arrOps.IndexOf == stl.Arr.IndexOf,
 		"Arr 은 자기 구현으로"
@@ -2181,7 +2177,7 @@ do
 		arrOps.Find == stl.Arr.Find and arrOps.Some == stl.Arr.Some and arrOps.Count == stl.Arr.Count,
 		"Arr 재정의"
 	)
-	const dequeOps = T.ImplOf(T.List, stl.Deque.Of(1))
+	const dequeOps = T.ImplOf(stl.List, stl.Deque.Of(1))
 	assert(
 		(stl.Deque :: any).Fold == nil and dequeOps ~= nil and type(dequeOps.Fold) == "function",
 		"Deque 는 기본 구현"
@@ -2219,46 +2215,59 @@ do
 		const target = rand(7) * 100
 		const label = `라운드 {round}(길이 {count}, 찾는 값 {target})`
 
-		const wantSum = A.Fold(arr, 0, function(acc: number, v: number?): number
+		const wantSum = stl.List.Fold(arr, 0, function(acc: number, v: number?): number
 			return acc * 3 + (v or 7)
 		end)
-		assert(A.Fold(dq, 0, function(acc: number, v: number?): number
+		assert(stl.List.Fold(dq, 0, function(acc: number, v: number?): number
 			return acc * 3 + (v or 7)
 		end) == wantSum, `{label} Deque Fold`)
-		assert(A.Fold(chain, 0, function(acc: number, v: number?): number
+		assert(stl.List.Fold(chain, 0, function(acc: number, v: number?): number
 			return acc * 3 + (v or 7)
 		end) == wantSum, `{label} Chain Fold`)
 
-		const wantIndex = A.IndexOf(arr, target)
-		assert(A.IndexOf(dq, target) == wantIndex, `{label} Deque IndexOf`)
-		assert(ordinal(chain, A.IndexOf(chain, target)) == wantIndex, `{label} Chain IndexOf`)
-		assert(A.IndexOf(dq, nil) == A.IndexOf(arr, nil), `{label} Deque IndexOf(nil) — 첫 구멍`)
-		assert(ordinal(chain, A.IndexOf(chain, nil)) == A.IndexOf(arr, nil), `{label} Chain IndexOf(nil)`)
+		const wantIndex = stl.List.IndexOf(arr, target)
+		assert(stl.List.IndexOf(dq, target) == wantIndex, `{label} Deque IndexOf`)
+		assert(ordinal(chain, stl.List.IndexOf(chain, target)) == wantIndex, `{label} Chain IndexOf`)
+		assert(stl.List.IndexOf(dq, nil) == stl.List.IndexOf(arr, nil), `{label} Deque IndexOf(nil) — 첫 구멍`)
+		assert(ordinal(chain, stl.List.IndexOf(chain, nil)) == stl.List.IndexOf(arr, nil), `{label} Chain IndexOf(nil)`)
 
-		const wantHas = A.Contains(arr, target)
+		const wantHas = stl.List.Contains(arr, target)
 		assert(wantHas == (wantIndex ~= nil), `{label} Arr Contains 는 IndexOf 와 맞음`)
-		assert(A.Contains(dq, target) == wantHas and A.Contains(chain, target) == wantHas, `{label} Contains`)
+		assert(
+			stl.List.Contains(dq, target) == wantHas and stl.List.Contains(chain, target) == wantHas,
+			`{label} Contains`
+		)
 
 		const big = function(v: number?): boolean
 			return v ~= nil and v >= 400
 		end
-		const wantCount = A.Count(arr, big)
-		assert(A.Count(dq, big) == wantCount and A.Count(chain, big) == wantCount, `{label} Count(술어)`)
+		const wantCount = stl.List.Count(arr, big)
 		assert(
-			A.Count(arr) == count and A.Count(dq) == count and A.Count(chain) == count,
+			stl.List.Count(dq, big) == wantCount and stl.List.Count(chain, big) == wantCount,
+			`{label} Count(술어)`
+		)
+		assert(
+			stl.List.Count(arr) == count and stl.List.Count(dq) == count and stl.List.Count(chain) == count,
 			`{label} Count() 는 구멍도 자리`
 		)
 
-		const wantItem, wantAt = A.Find(arr, big)
-		const dqItem, dqAt = A.Find(dq, big)
-		const chainItem, chainAt = A.Find(chain, big)
+		const wantItem, wantAt = stl.List.Find(arr, big)
+		const dqItem, dqAt = stl.List.Find(dq, big)
+		const chainItem, chainAt = stl.List.Find(chain, big)
 		assert(dqItem == wantItem and dqAt == wantAt, `{label} Deque Find`)
 		assert(chainItem == wantItem and ordinal(chain, chainAt) == wantAt, `{label} Chain Find`)
 
-		assert(A.Some(dq, big) == A.Some(arr, big) and A.Some(chain, big) == A.Some(arr, big), `{label} Some`)
-		assert(A.Every(dq, big) == A.Every(arr, big) and A.Every(chain, big) == A.Every(arr, big), `{label} Every`)
 		assert(
-			A.Some(arr, big) == (wantCount > 0) and A.Every(arr, big) == (wantCount == count),
+			stl.List.Some(dq, big) == stl.List.Some(arr, big) and stl.List.Some(chain, big) == stl.List.Some(arr, big),
+			`{label} Some`
+		)
+		assert(
+			stl.List.Every(dq, big) == stl.List.Every(arr, big)
+				and stl.List.Every(chain, big) == stl.List.Every(arr, big),
+			`{label} Every`
+		)
+		assert(
+			stl.List.Some(arr, big) == (wantCount > 0) and stl.List.Every(arr, big) == (wantCount == count),
 			`{label} Some/Every 의 뜻`
 		)
 	end
@@ -2266,18 +2275,18 @@ do
 	-- 콜백은 원소와 **위치**를 받음 — Chain 에서는 노드
 	const three = chainOf({ 10, 20, 30 }, 3)
 	const seen: { string } = {}
-	A.Fold(three, 0, function(acc: number, v: number?, node: ChainNode): number
+	stl.List.Fold(three, 0, function(acc: number, v: number?, node: ChainNode): number
 		table.insert(seen, `{v}@{ordinal(three, node)}:{node.value}`)
 		return acc
 	end)
 	assert(table.concat(seen, " ") == "10@1:10 20@2:20 30@3:30", `위치는 노드: {table.concat(seen, " ")}`)
-	const _, foundNode = A.Find(three, function(_v: number?, node: ChainNode): boolean
+	const _, foundNode = stl.List.Find(three, function(_v: number?, node: ChainNode): boolean
 		return node.prev ~= nil and node.prev.value == 10
 	end)
 	assert(foundNode ~= nil and foundNode.value == 20, "술어가 노드를 받음")
 	-- Deque·Arr 에서는 숫자 위치(앞에서부터 1)
 	const positions: { number } = {}
-	A.Some(stl.Deque.PushFront(stl.Deque.Of(20, 30), 10), function(_v: number, at: number): boolean
+	stl.List.Some(stl.Deque.PushFront(stl.Deque.Of(20, 30), 10), function(_v: number, at: number): boolean
 		table.insert(positions, at)
 		return false
 	end)
@@ -2290,23 +2299,23 @@ do
 		const never = function(_v: any): boolean
 			return true
 		end
-		assert(A.Fold(empty, "init", function(acc: string, _v: any): string
+		assert(stl.List.Fold(empty, "init", function(acc: string, _v: any): string
 			return acc .. "!"
 		end) == "init", `빈 {name} Fold`)
-		const item, at = A.Find(empty, never)
+		const item, at = stl.List.Find(empty, never)
 		assert(item == nil and at == nil, `빈 {name} Find`)
 		assert(
-			A.IndexOf(empty, 10) == nil and not A.Contains(empty, 10) and A.Count(empty) == 0,
+			stl.List.IndexOf(empty, 10) == nil and not stl.List.Contains(empty, 10) and stl.List.Count(empty) == 0,
 			`빈 {name} 찾기·세기`
 		)
-		assert(not A.Some(empty, never) and A.Every(empty, never), `빈 {name} Some 거짓·Every 참`)
+		assert(not stl.List.Some(empty, never) and stl.List.Every(empty, never), `빈 {name} Some 거짓·Every 참`)
 	end
 
 	-- 기본 구현이 부르는 다른 기본 구현은 재정의된 판(Contains → IndexOf)
 	const OddType = T.NewType("OddChain")
 	local indexOfCalls = 0
 	T.Impl(
-		T.List,
+		stl.List,
 		OddType,
 		{
 			Get = chainOps.Get,
@@ -2323,14 +2332,14 @@ do
 	const odd: Chain = chainOf({ 10, 20 }, 2)
 	rawset(odd :: any, "__type", OddType)
 	assert(
-		A.Contains(odd, 777) and not A.Contains(odd, 10) and indexOfCalls == 2,
+		stl.List.Contains(odd, 777) and not stl.List.Contains(odd, 10) and indexOfCalls == 2,
 		"Contains 가 재정의된 IndexOf 를 부름"
 	)
-	assert(A.Count(odd) == 2, "나머지는 기본 구현")
+	assert(stl.List.Count(odd) == 2, "나머지는 기본 구현")
 
 	-- 리스트가 아닌 것: 사용자 줄 에러
 	-- (콜백은 밖에서 선언 — 테이블 리터럴 안에 콜백 리터럴을 겹쳐 쓰면 새 솔버가 다른 필드의 반환 타입을
-	-- 끌어와 엉뚱한 에러를 냈습니다. `Algorithm.Fold` 의 서명 문제가 아님은 최소 재현으로 확인.)
+	-- 끌어와 엉뚱한 에러를 냈습니다. `List.Fold` 의 서명 문제가 아님은 최소 재현으로 확인.)
 	local where = 0
 	const keepAcc = function(acc: number): number
 		return acc
@@ -2342,25 +2351,25 @@ do
 		{
 			name = "Fold",
 			call = function(v: any): any
-				return A.Fold(v, 0, keepAcc)
+				return stl.List.Fold(v, 0, keepAcc)
 			end,
 		},
 		{
 			name = "Find",
 			call = function(v: any): any
-				return (A.Find(v, alwaysTrue))
+				return (stl.List.Find(v, alwaysTrue))
 			end,
 		},
 		{
 			name = "Contains",
 			call = function(v: any): any
-				return A.Contains(v, 1)
+				return stl.List.Contains(v, 1)
 			end,
 		},
 		{
 			name = "Every",
 			call = function(v: any): any
-				return A.Every(v, alwaysTrue)
+				return stl.List.Every(v, alwaysTrue)
 			end,
 		},
 	}
@@ -2379,14 +2388,14 @@ do
 				entry.call(bad)
 			end)
 			assert(
-				not ok and string.find(tostring(err), `Algorithm: {entry.name} needs a List`, 1, true),
+				not ok and string.find(tostring(err), `List: {entry.name} needs a List`, 1, true),
 				`{entry.name}: {err}`
 			)
 		end
 	end
 	const okLine, errLine = pcall(function()
 		where = debug.info(1, "l") + 1
-		A.Some(stl.HashSet.Of(1) :: any, function(): boolean
+		stl.List.Some(stl.HashSet.Of(1) :: any, function(): boolean
 			return true
 		end)
 	end)
@@ -2394,6 +2403,175 @@ do
 		not okLine and string.find(tostring(errLine), `spec.contracts.luau:{where}:`, 1, true),
 		`사용자 줄: {errLine}`
 	)
+end
+print("PASS")
+
+print(
+	"=== 14. 트레이트 모듈 — 트레이트 객체에 진입점을 얹음, Dispatch (2026-10-13, 구조 재배치) ==="
+)
+do
+	const T = stl.Trait
+	-- 사용자 트레이트도 라이브러리의 트레이트 파일과 같은 모양으로 짭니다: 계약 + 기본 구현 + 진입점.
+	type Gauge = { read __type: stl.TraitToken<any>, level: number }
+	type GaugeFull = { read Read: (g: Gauge) -> number, read Label: (g: Gauge) -> string }
+	type GaugeImpl = { read Read: (g: Gauge) -> number, read Label: ((g: Gauge) -> string)? }
+	const GaugeBase = T.New<<GaugeFull>>("Gauge", {
+		required = { "Read" },
+		defaults = function(ops: any)
+			return {
+				Label = function(g: Gauge): string
+					return `level {ops.Read(g)}`
+				end,
+			}
+		end,
+	}) :: stl.Trait<GaugeFull, GaugeImpl>
+	const function Label(g: Gauge): string
+		return T.Dispatch(GaugeBase, g, "Label").Label(g)
+	end
+	const Gauge = T.Module(GaugeBase, { Label = Label })
+	assert(Gauge == GaugeBase :: any, "Module 은 같은 트레이트 객체를 돌려줌(정체성 유지)")
+	assert(Gauge.name == "Gauge" and Gauge.Label == Label, "트레이트의 필드와 진입점이 한 표에")
+
+	const PlainKind, LoudKind, OtherKind = T.NewType("PlainGauge"), T.NewType("LoudGauge"), T.NewType("NotGauge")
+	T.Impl(Gauge, PlainKind, {
+		Read = function(g: Gauge): number
+			return g.level
+		end,
+	})
+	T.Impl(Gauge, LoudKind, {
+		Read = function(g: Gauge): number
+			return g.level * 2
+		end,
+		Label = function(g: Gauge): string
+			return `LEVEL {g.level}`
+		end,
+	})
+	const plain: Gauge = { __type = PlainKind, level = 7 }
+	const loud: Gauge = { __type = LoudKind, level = 7 }
+	assert(Gauge.Label(plain) == "level 7", "기본 구현")
+	assert(Gauge.Label(loud) == "LEVEL 7", "재정의")
+	assert(T.ImplOf(Gauge, plain) ~= nil and T.Implements(Gauge, loud), "Module 을 거친 트레이트도 조회됨")
+
+	-- Dispatch 의 빗나감: 메시지 머리는 **트레이트 이름**. 세 갈래(구현 없음 / 모르는 토큰 / 토큰 없음).
+	-- 줄은 "라이브러리 파일이 아닌 첫 프레임" — 사용자 트레이트의 진입점은 사용자 파일이라 그 진입점 안의
+	-- Dispatch 줄을 가리키고, 내장 트레이트의 진입점은 부른 줄을 가리킵니다(아래에서 정확한 줄로).
+	local where = 0
+	const misses: { { value: any, gauge: string, map: string } } = {
+		{
+			value = { __type = OtherKind, level = 1 },
+			gauge = "Gauge: Label needs a Gauge — NotGauge does not implement Gauge",
+			map = "Map: Keys needs a Map — NotGauge does not implement Map",
+		},
+		{
+			value = { __type = table.freeze({ name = "Ghost" }), level = 1 },
+			gauge = "Gauge: Label needs a Gauge — got a Ghost this library does not know",
+			map = "Map: Keys needs a Map — got a Ghost this library does not know",
+		},
+		{
+			value = { level = 1 },
+			gauge = "Gauge: Label needs a Gauge (got table without a type token)",
+			map = "Map: Keys needs a Map (got table without a type token)",
+		},
+		{
+			value = 5,
+			gauge = "Gauge: Label needs a Gauge (got number without a type token)",
+			map = "Map: Keys needs a Map (got number without a type token)",
+		},
+	}
+	for _, miss in misses do
+		const okGauge, errGauge = pcall(function()
+			Gauge.Label(miss.value)
+		end)
+		assert(not okGauge and string.find(tostring(errGauge), miss.gauge, 1, true), `Dispatch 메시지: {errGauge}`)
+		assert(string.find(tostring(errGauge), "spec.contracts.luau:", 1, true), `사용자 파일의 줄: {errGauge}`)
+		const okMap, errMap = pcall(function()
+			where = debug.info(1, "l") + 1
+			stl.Map.Keys(miss.value)
+		end)
+		assert(not okMap and string.find(tostring(errMap), miss.map, 1, true), `내장 진입점 메시지: {errMap}`)
+		assert(
+			string.find(tostring(errMap), `spec.contracts.luau:{where}:`, 1, true),
+			`내장 진입점 사용자 줄: {errMap}`
+		)
+	end
+	-- 내장 트레이트의 진입점도 같은 머리
+	const okList, errList = pcall(function()
+		where = debug.info(1, "l") + 1
+		stl.List.Fold(stl.HashMap.New() :: any, 0, function(acc: number)
+			return acc
+		end)
+	end)
+	assert(
+		not okList
+			and string.find(tostring(errList), "List: Fold needs a List — HashMap does not implement List", 1, true)
+			and string.find(tostring(errList), `spec.contracts.luau:{where}:`, 1, true),
+		`List 진입점: {errList}`
+	)
+	const okLen, errLen = pcall(function()
+		where = debug.info(1, "l") + 1
+		stl.Collection.Len(stl.Fut.Resolved(1) :: any)
+	end)
+	assert(
+		not okLen
+			and string.find(
+				tostring(errLen),
+				"Collection: Len needs a Collection — Fut does not implement Collection",
+				1,
+				true
+			)
+			and string.find(tostring(errLen), `spec.contracts.luau:{where}:`, 1, true),
+		`Collection 진입점: {errLen}`
+	)
+
+	-- Module 의 에러 셋 — 사용자 줄
+	const SpareTrait = T.New<<{ read Ping: (v: any) -> number }>>("Spare", { required = { "Ping" } })
+	const moduleErrors: { { call: () -> (), want: string } } = {
+		{
+			call = function()
+				where = debug.info(1, "l") + 1
+				T.Module({} :: any, {})
+			end,
+			want = "Trait: Module needs a trait (from Trait.New), got table",
+		},
+		{
+			call = function()
+				where = debug.info(1, "l") + 1
+				T.Module(SpareTrait, 5 :: any)
+			end,
+			want = "Trait: Module needs a table of entry functions, got number",
+		},
+		{
+			call = function()
+				where = debug.info(1, "l") + 1
+				T.Module(SpareTrait, { Fine = print, impls = print })
+			end,
+			want = "Trait: Module got an entry named impls, which the trait already has",
+		},
+		{
+			-- 같은 이름을 두 번 얹는 것도(이미 얹은 진입점과 겹침)
+			call = function()
+				where = debug.info(1, "l") + 1
+				T.Module(Gauge, { Label = print })
+			end,
+			want = "Trait: Module got an entry named Label, which the trait already has",
+		},
+	}
+	for _, case in moduleErrors do
+		const ok, err = pcall(case.call)
+		assert(not ok and string.find(tostring(err), case.want, 1, true), `Module 메시지: {err}`)
+		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `Module 사용자 줄: {err}`)
+	end
+	assert(Gauge.Label == Label, "거절된 Module 은 진입점을 덮어쓰지 않음")
+	-- 내장 트레이트 넷이 배럴에 있고, 진입점과 트레이트가 같은 표
+	assert(T.Implements(stl.List, stl.Arr.Of(1)) and type(stl.List.IndexOf) == "function", "stl.List")
+	assert(T.Implements(stl.Map, stl.HashMap.New()) and type(stl.Map.Keys) == "function", "stl.Map")
+	assert(T.Implements(stl.Set, stl.HashSet.New()), "stl.Set")
+	assert(T.Implements(
+		stl.Collection,
+		stl.Heap.New(function(a: number, b: number): boolean
+			return a < b
+		end)
+	) and type(stl.Collection.Len) == "function", "stl.Collection")
 end
 print("PASS")
 
