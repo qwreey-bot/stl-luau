@@ -18,6 +18,18 @@
 
 (2026-10-13 에 확인 끝: AJ·AK·AN·AO — 바뀐 것은 `MapOps` 에서 `Records` 를 뺀 것과 AR.)
 
+## 🌙 돌아오시면 볼 것 (2026-10-13 밤, 11시까지의 작업)
+
+| 순서 | 무엇 | 커밋 |
+|---|---|---|
+| 1 | **이름을 바꿨습니다**(AU — "확인. 그렇게 바꾸자"): `Trait.NewToken`·`ExpectImpl`·`Expose`·`Spec`, 타입 `Core`/`Full`/`Provided`, `Trees/Balance`, ⚠️ `Arr.Adopt`(입양)·`Arr.FromTable`(이제 **복사** — 뜻이 뒤집힘). `Expose`·`Core`/`Provided`·`Balance.Scheme` 은 제 후보였으니 마음에 안 드시면 다시 | `8bc01bf` `c7edcd7` `98c0b14` `bb9195e` |
+| 2 | **정해 주실 것**: AU 의 남은 이름(`FlatMap`, `Collections/`, `Node.Double`, `GroupBy` 에 `Into`, `to`/`into`, `LowerBound` 대 `LowerKey`, `Is` 접두), **AV**(`Stack`·`Queue` 를 트레이트로? 컨테이너로?), AS(통째 등록의 같은 이름 재정의 — 그대로 열림), `Split`/`Join` 의 크기(세기 대 부분 크기 칸) | `question.md` |
+| 3 | 새로 넣은 것: `Trees/Traverse`(순회자 넷), `Trees/CompleteArray`(+ `Heap` 이 그것을 씀 — 성능 같음), `Trees/CompleteNode`(노드식 — **노드를 다시 잇는 쪽으로 제가 정함**, 힙으로 쓰면 배열식의 6배 느림) | `aadf760` `a3f1a4f` `9940ded` |
+| 4 | 리뷰 2·3라운드(opus 하나씩 순차): 오늘의 변경이 만든 런타임 회귀 0. 예전부터 있던 결함 다섯을 고침 — 균형 계약 타입이 틀린 서명을 통과시킴, 집합 연산이 둘째 인자만 확인, 리스트 자리의 `nil`(두 번에 걸쳐 — `Arr.Adopt`·`HashMap.FromTable` 은 3라운드에), `Heap` 생성자의 비교자 | `11d7ce5` `d934468` |
+| 5 | 검증 장치 둘: 모듈 끝의 계약 확인 줄을 **구체 타입으로**(`any` 로는 인자 수·인자 타입이 0건 — 서명을 틀리게 한 일곱 중 1 → 7), `check.sh` 가 테스트의 **중복된 테이블 키**를 실패로(이름 바꾸기가 `Arr.Adopt` 를 토큰 전수 검사에서 조용히 빼먹었던 것) | `1eaae84` `6a3c61b` |
+| 6 | 접은 것: `LinkedDeque` 의 위치 연산을 `Node.Double` 도구로(넣기 1.13~1.24배 느려짐 — perf 42절) | `435d403` |
+| 7 | **안 한 것**: 4라운드 리뷰(`CompleteNode` 는 한 번도 리뷰를 안 받았습니다 — 11시 안에 끝나지 않을 것 같아 띄우지 않음), `Split`/`Join`, `Stack`/`Queue`, Gemini 교차 검토 | — |
+
 ## ⭐ 지금 하는 일 — 페이퍼 07 을 들이는 중 (2026-10-13 사용자 결정)
 
 사용자: *"이 방향으로 들이는게 맞아보임. 어정쩡하게 되는게 아니라 전반 방향을 이렇게 밀고싶고."* 정본은
