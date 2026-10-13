@@ -27,7 +27,7 @@ require("./spec.bsearch")
 require("./spec.treemap")
 require("./spec.treeset")
 require("./spec.heap")
-require("./spec.deque")
+require("./spec.circulardeque")
 require("./spec.optional")
 require("./spec.fut")
 

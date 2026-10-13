@@ -15,15 +15,15 @@
 	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 11 + CANARY 1)
 ]]
 local stl = require("../../../../src")
-local Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Trait, Common =
-	stl.Arr, stl.Deque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Trait, stl.Common
+local Arr, CircularDeque, HashMap, HashSet, TreeMap, TreeSet, Trait, Common =
+	stl.Arr, stl.CircularDeque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Trait, stl.Common
 
 local hm = HashMap.New<<string, number>>()
 local tm = TreeMap.New<<string, number>>(Common.compareString)
 local hs = HashSet.Of(1, 2)
 local ts = TreeSet.New<<number>>(Common.compareNumber)
 local arr = Arr.Of(1, 2)
-local dq = Deque.Of(1, 2)
+local dq = CircularDeque.Of(1, 2)
 
 -- 쓰는 사용자 제네릭 — 불변 마커
 local function put<K, V>(m: stl.MapMarkerMut<K, V>, k: K, v: V)

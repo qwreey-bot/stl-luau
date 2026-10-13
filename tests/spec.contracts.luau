@@ -127,7 +127,7 @@ do
 			is = stl.isHeap,
 		},
 		{ name = "Fut", instance = stl.Fut.Resolved(), is = stl.isFut },
-		{ name = "Deque", instance = stl.Deque.Of(1), is = stl.isDeque },
+		{ name = "CircularDeque", instance = stl.CircularDeque.Of(1), is = stl.isCircularDeque },
 	}
 	for _, sample in samples do
 		assert(getmetatable(sample.instance) == nil, `{sample.name} 에 메타테이블이 붙어 있습니다`)
@@ -343,23 +343,23 @@ do
 		assert(stl.isHeap(result), `Heap.{name} 결과에 태그가 없습니다`)
 	end
 
-	-- Deque(M5, 2026-10-07)
-	const dq = stl.Deque.Of(1, 2)
+	-- CircularDeque(M5, 2026-10-07)
+	const dq = stl.CircularDeque.Of(1, 2)
 	const dequeResults: { [string]: any } = {
-		New = stl.Deque.New<<number>>(),
-		NewCapacity = stl.Deque.New<<number>>(10),
-		FromList = stl.Deque.FromList({ 1, 2 }),
+		New = stl.CircularDeque.New<<number>>(),
+		NewCapacity = stl.CircularDeque.New<<number>>(10),
+		FromList = stl.CircularDeque.FromList({ 1, 2 }),
 		Of = dq,
-		Clone = stl.Deque.Clone(dq),
-		Clear = stl.Deque.Clear(stl.Deque.Of(1)),
-		PushBack = stl.Deque.PushBack(stl.Deque.Of(1), 2),
-		PushFront = stl.Deque.PushFront(stl.Deque.Of(1), 2),
+		Clone = stl.CircularDeque.Clone(dq),
+		Clear = stl.CircularDeque.Clear(stl.CircularDeque.Of(1)),
+		PushBack = stl.CircularDeque.PushBack(stl.CircularDeque.Of(1), 2),
+		PushFront = stl.CircularDeque.PushFront(stl.CircularDeque.Of(1), 2),
 	}
 	for name, result in dequeResults do
-		assert(stl.isDeque(result), `Deque.{name} 결과에 태그가 없습니다`)
-		assert(getmetatable(result) == nil, `Deque.{name} 결과에 메타테이블이 있습니다`)
+		assert(stl.isCircularDeque(result), `CircularDeque.{name} 결과에 태그가 없습니다`)
+		assert(getmetatable(result) == nil, `CircularDeque.{name} 결과에 메타테이블이 있습니다`)
 	end
-	assert(stl.isArr(stl.Deque.ToArr(dq)), "Deque.ToArr 는 Arr")
+	assert(stl.isArr(stl.CircularDeque.ToArr(dq)), "CircularDeque.ToArr 는 Arr")
 
 	const one = Fut.Resolved(1)
 	const futResults: { [string]: any } = {
@@ -414,7 +414,7 @@ do
 		{ name = "TreeSet", is = stl.isTreeSet, token = stl.TreeSet.Token },
 		{ name = "Heap", is = stl.isHeap, token = stl.Heap.Token },
 		{ name = "Fut", is = stl.isFut, token = stl.Fut.Token },
-		{ name = "Deque", is = stl.isDeque, token = stl.Deque.Token },
+		{ name = "CircularDeque", is = stl.isCircularDeque, token = stl.CircularDeque.Token },
 	}
 	const oldTags =
 		{ "__arr__", "__hashmap__", "__hashset__", "__treemap__", "__treeset__", "__heap__", "__fut__", "__deque__" }
@@ -500,7 +500,7 @@ do
 			set = nil,
 		},
 		{ name = "Fut", value = stl.Fut.Resolved(1), list = nil, map = nil, set = nil },
-		{ name = "Deque", value = stl.Deque.Of(1), list = stl.Deque, map = nil, set = nil },
+		{ name = "CircularDeque", value = stl.CircularDeque.Of(1), list = stl.CircularDeque, map = nil, set = nil },
 	}
 	for _, case in samples do
 		-- List 의 완성 표는 "모듈이 준 것 + 기본 구현" — 모듈의 프리미티브가 그대로 들어 있는지로 봅니다
@@ -615,7 +615,7 @@ do
 		"덮어쓰기 시도 뒤에도 내장 그대로"
 	)
 	-- 리스트·사전을 받는 진입점에 **다른 종류의 컨테이너**를 넘기면 조용히 비거나(`n` 이 없어
-	-- `#` 가 0) 내부 필드가 키로 쏟아졌음(Gemini 트레이트 검토 — Deque 가 들어오면 바로 남) →
+	-- `#` 가 0) 내부 필드가 키로 쏟아졌음(Gemini 트레이트 검토 — CircularDeque 가 들어오면 바로 남) →
 	-- 사용자 줄 에러. `Arr` 은 그대로 리스트로 받습니다.
 	const wrongInputs: { { name: string, run: () -> () } } = {
 		{
@@ -851,7 +851,7 @@ do
 	end
 	-- 내장 트레이트에 등록한 사용자 토큰도 버리면 수거됨(2라운드 — impls 가 강한 키라 남았음).
 	-- 그리고 **쥐고 있으면 남음**(3라운드 — `__mode = "kv"` 로 잘못 쓰면 인라인 구현이 증발했음).
-	-- 개수는 루프 전 기준선과 비교 — 다른 스펙·M5 의 Deque 가 List 를 구현해도 거짓 실패 없게.
+	-- 개수는 루프 전 기준선과 비교 — 다른 스펙·M5 의 CircularDeque 가 List 를 구현해도 거짓 실패 없게.
 	-- 기준선 전에 수거 — 앞에서 버린 등록이 남아 있으면 기준선이 부풀어 거짓 실패했음(4라운드).
 	-- `collectgarbage("collect")` 는 Roblox 타입 정의에 없어 분석기가 모름 — 실행기(luau)에는 있음.
 	const fullGc = (_G :: any).collectgarbage
@@ -1269,7 +1269,7 @@ do
 	const ts = stl.TreeSet.New<<number>>(Common.compareNumber)
 	assert(add(hs, 10) and add(ts, 10) and not add(hs, 10) and not add(ts, 10), "두 셋 모두 Add")
 	-- 팬텀은 타입에만 — 런타임 필드는 없음
-	for _, value in { hm, tm, hs, ts, stl.Arr.Of(1), stl.Deque.Of(1) } :: { any } do
+	for _, value in { hm, tm, hs, ts, stl.Arr.Of(1), stl.CircularDeque.Of(1) } :: { any } do
 		for _, phantom in { "__mapMut", "__setMut", "__listMut", "__mapKey", "__setItem", "__list" } do
 			assert(rawget(value, phantom) == nil, `팬텀 {phantom} 이 런타임에 있음`)
 		end
@@ -1291,11 +1291,11 @@ do
 			len = stl.Arr.Len,
 		},
 		{
-			name = "Deque",
+			name = "CircularDeque",
 			make = function()
-				return stl.Deque.PushFront(stl.Deque.Of(10, 20), 5)
+				return stl.CircularDeque.PushFront(stl.CircularDeque.Of(10, 20), 5)
 			end,
-			len = stl.Deque.Len,
+			len = stl.CircularDeque.Len,
 		},
 		{
 			name = "HashMap",
@@ -1369,10 +1369,10 @@ do
 	assert(table.concat(stl.Map.Keys(tm), ",") == "p,q" and stl.HashMap.Get(hm, "q") == 70, "다시 채운 내용")
 
 	-- 읽기 전용으로 빌린 참조도 Len 은 됨(타입 쪽 — Clear 는 못 함 — 은 spikes/63)
-	local function lenOfBorrowed(list: stl.ArrRead<number>, dq: stl.DequeRead<number>): number
+	local function lenOfBorrowed(list: stl.ArrRead<number>, dq: stl.CircularDequeRead<number>): number
 		return stl.Collection.Len(list) + stl.Collection.Len(dq)
 	end
-	assert(lenOfBorrowed(stl.Arr.Of(1, 2), stl.Deque.Of(1, 2, 3)) == 5, "빌린 참조의 Len")
+	assert(lenOfBorrowed(stl.Arr.Of(1, 2), stl.CircularDeque.Of(1, 2, 3)) == 5, "빌린 참조의 Len")
 
 	-- 컬렉션이 아닌 것: 사용자 줄 에러(토큰은 있지만 구현 없음 / 토큰 없음 / 테이블 아님)
 	local where = 0
@@ -1426,7 +1426,7 @@ do
 	const _hmOps: MapOps<stl.HashMap<string, number>, string, number> = stl.HashMap
 	const _tmOps: MapOps<stl.TreeMap<string, number>, string, number> = stl.TreeMap
 	const _c1: stl.CollectionOps<stl.Arr<number>> = stl.Arr
-	const _c2: stl.CollectionOps<stl.Deque<number>> = stl.Deque
+	const _c2: stl.CollectionOps<stl.CircularDeque<number>> = stl.CircularDeque
 	const _c3: stl.CollectionOps<stl.HashMap<string, number>> = stl.HashMap
 	const _c4: stl.CollectionOps<stl.TreeMap<string, number>> = stl.TreeMap
 	const _c5: stl.CollectionOps<stl.HashSet<number>> = stl.HashSet
@@ -2296,14 +2296,14 @@ do
 		arrOps.Find == stl.Arr.Find and arrOps.Some == stl.Arr.Some and arrOps.Count == stl.Arr.Count,
 		"Arr 재정의"
 	)
-	const dequeOps = T.ImplOf(stl.List, stl.Deque.Of(1))
+	const dequeOps = T.ImplOf(stl.List, stl.CircularDeque.Of(1))
 	assert(
-		(stl.Deque :: any).Fold == nil and dequeOps ~= nil and type(dequeOps.Fold) == "function",
-		"Deque 는 기본 구현"
+		(stl.CircularDeque :: any).Fold == nil and dequeOps ~= nil and type(dequeOps.Fold) == "function",
+		"CircularDeque 는 기본 구현"
 	)
 	assert(dequeOps.Fold ~= chainOps.Fold, "기본 구현은 종류마다 따로(자기 프리미티브를 부름)")
 
-	-- ⭐ 무작위 대조: 같은 값 열을 Arr·Deque(감기게)·Chain 에 — 일곱 알고리즘이 같은 답.
+	-- ⭐ 무작위 대조: 같은 값 열을 Arr·CircularDeque(감기게)·Chain 에 — 일곱 알고리즘이 같은 답.
 	-- 기준은 `Arr` 의 직접 구현입니다(값은 위치와 겹치지 않게 100 단위, 중복·구멍 포함).
 	local seed = 20261013
 	local function rand(limit: number): number
@@ -2322,13 +2322,13 @@ do
 			arr[at] = values[at]
 		end
 		-- 덱은 뒤 절반을 먼저 넣고 앞 절반을 PushFront 로 — 감긴 상태가 되게
-		const dq = stl.Deque.New<<number?>>()
+		const dq = stl.CircularDeque.New<<number?>>()
 		const half = count // 2
 		for at = half + 1, count do
-			stl.Deque.PushBack(dq, values[at])
+			stl.CircularDeque.PushBack(dq, values[at])
 		end
 		for at = half, 1, -1 do
-			stl.Deque.PushFront(dq, values[at])
+			stl.CircularDeque.PushFront(dq, values[at])
 		end
 		const chain = chainOf(values, count)
 		const target = rand(7) * 100
@@ -2339,15 +2339,18 @@ do
 		end)
 		assert(stl.List.Fold(dq, 0, function(acc: number, v: number?): number
 			return acc * 3 + (v or 7)
-		end) == wantSum, `{label} Deque Fold`)
+		end) == wantSum, `{label} CircularDeque Fold`)
 		assert(stl.List.Fold(chain, 0, function(acc: number, v: number?): number
 			return acc * 3 + (v or 7)
 		end) == wantSum, `{label} Chain Fold`)
 
 		const wantIndex = stl.List.IndexOf(arr, target)
-		assert(stl.List.IndexOf(dq, target) == wantIndex, `{label} Deque IndexOf`)
+		assert(stl.List.IndexOf(dq, target) == wantIndex, `{label} CircularDeque IndexOf`)
 		assert(ordinal(chain, stl.List.IndexOf(chain, target)) == wantIndex, `{label} Chain IndexOf`)
-		assert(stl.List.IndexOf(dq, nil) == stl.List.IndexOf(arr, nil), `{label} Deque IndexOf(nil) — 첫 구멍`)
+		assert(
+			stl.List.IndexOf(dq, nil) == stl.List.IndexOf(arr, nil),
+			`{label} CircularDeque IndexOf(nil) — 첫 구멍`
+		)
 		assert(ordinal(chain, stl.List.IndexOf(chain, nil)) == stl.List.IndexOf(arr, nil), `{label} Chain IndexOf(nil)`)
 
 		const wantHas = stl.List.Contains(arr, target)
@@ -2373,7 +2376,7 @@ do
 		const wantItem, wantAt = stl.List.Find(arr, big)
 		const dqItem, dqAt = stl.List.Find(dq, big)
 		const chainItem, chainAt = stl.List.Find(chain, big)
-		assert(dqItem == wantItem and dqAt == wantAt, `{label} Deque Find`)
+		assert(dqItem == wantItem and dqAt == wantAt, `{label} CircularDeque Find`)
 		assert(chainItem == wantItem and ordinal(chain, chainAt) == wantAt, `{label} Chain Find`)
 
 		assert(
@@ -2403,17 +2406,20 @@ do
 		return node.prev ~= nil and node.prev.value == 10
 	end)
 	assert(foundNode ~= nil and foundNode.value == 20, "술어가 노드를 받음")
-	-- Deque·Arr 에서는 숫자 위치(앞에서부터 1)
+	-- CircularDeque·Arr 에서는 숫자 위치(앞에서부터 1)
 	const positions: { number } = {}
-	stl.List.Some(stl.Deque.PushFront(stl.Deque.Of(20, 30), 10), function(_v: number, at: number): boolean
-		table.insert(positions, at)
-		return false
-	end)
-	assert(table.concat(positions, ",") == "1,2,3", "Deque 의 위치")
+	stl.List.Some(
+		stl.CircularDeque.PushFront(stl.CircularDeque.Of(20, 30), 10),
+		function(_v: number, at: number): boolean
+			table.insert(positions, at)
+			return false
+		end
+	)
+	assert(table.concat(positions, ",") == "1,2,3", "CircularDeque 의 위치")
 
 	-- 빈 리스트
 	for name, empty in
-		{ Arr = stl.Arr.Of<<number>>(), Deque = stl.Deque.New<<number>>(), Chain = chainOf({}, 0) } :: { [string]: any }
+		{ Arr = stl.Arr.Of<<number>>(), CircularDeque = stl.CircularDeque.New<<number>>(), Chain = chainOf({}, 0) } :: { [string]: any }
 	do
 		const never = function(_v: any): boolean
 			return true
@@ -2530,7 +2536,7 @@ do
 	const tens: { number? } = { 10, 20, 30, 40 }
 	const kinds: { { name: string, list: any } } = {
 		{ name = "Arr", list = stl.Arr.Of(10, 20, 30, 40) },
-		{ name = "Deque", list = stl.Deque.Of(10, 20, 30, 40) },
+		{ name = "CircularDeque", list = stl.CircularDeque.Of(10, 20, 30, 40) },
 		{ name = "Chain", list = chainOf(tens, 4) },
 	}
 	for _, kind in kinds do
@@ -2569,13 +2575,13 @@ do
 	end
 	assert(stl.Arr.Fold(stl.Arr.Of(10, 20, 30, 40), 0, add) == 100, "Arr.Fold 직접 호출과 같은 값")
 
-	-- 구멍: 술어는 구멍에도 불림(nil 을 받음) — 기본 구현(Deque·Chain)과 Arr 이 같은 답
+	-- 구멍: 술어는 구멍에도 불림(nil 을 받음) — 기본 구현(CircularDeque·Chain)과 Arr 이 같은 답
 	const isHole = function(v: any): boolean
 		return v == nil
 	end
 	const holedKinds: { { name: string, list: any } } = {
 		{ name = "Arr", list = stl.Arr.Of<<number?>>(10, nil, 30, nil) },
-		{ name = "Deque", list = stl.Deque.Of<<number?>>(10, nil, 30, nil) },
+		{ name = "CircularDeque", list = stl.CircularDeque.Of<<number?>>(10, nil, 30, nil) },
 		{ name = "Chain", list = chainOf({ 10, nil, 30, nil }, 4) },
 	}
 	for _, kind in holedKinds do
@@ -2600,7 +2606,7 @@ do
 			value = stl.Arr.Of(1),
 			own = { Fold = true, Find = true, IndexOf = true, Contains = true, Count = true, Some = true, Every = true },
 		},
-		{ name = "Deque", module = stl.Deque, value = stl.Deque.Of(1), own = {} },
+		{ name = "CircularDeque", module = stl.CircularDeque, value = stl.CircularDeque.Of(1), own = {} },
 	}
 	for _, case in overrides do
 		const ops = T.ImplOf(stl.List, case.value) :: any

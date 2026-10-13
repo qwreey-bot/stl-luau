@@ -15,7 +15,7 @@
 
 Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너·알고리즘 모음. `src/` 에
 `Arr`(배열, 연산 103 + 생성자 8), `HashMap`/`HashSet`, `TreeMap`/`TreeSet`(정렬 배열 + 이분 탐색),
-`Heap`, `Deque`(링 버퍼), `Optional`, `Fut`(코루틴 프로미스), 트레이트 `List`/`Map`/`Set`/`Collection`(계약 + 기본 구현 + 종류를 모르는 코드의 진입점), `Common`.
+`Heap`, `CircularDeque`(링 버퍼), `Optional`, `Fut`(코루틴 프로미스), 트레이트 `List`/`Map`/`Set`/`Collection`(계약 + 기본 구현 + 종류를 모르는 코드의 진입점), `Common`.
 구조: `src/Trait.luau`(트레이트 시스템만), `src/Traits/`(트레이트별 파일), `src/Collections/`(컨테이너), `src/Algorithms/`(`BSearch`).
 1인 프로젝트, 아직 게시 전. **성능이 1급 관심사**이고 모든 성능 주장은 실측입니다
 (`.claude/base/perf-measurements.md`).
@@ -32,7 +32,7 @@ Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너�
   2026-10-12 — 읽기 마커는 공변이라 그 타입이 조용히 넓어짐. `==` 비교만 하는 값은 읽기 마커로 충분). 콜백이 순회 중인 컨테이너를 바꾸는 것은 **UB**(검사 없음, 사용자 결정).
   공용 알고리즘은 구현을 손으로 받지 않음(`Map.Keys(m)`). 트레이트는 `List`/`Map`(`Get`·`Set`·`Has`·`Remove`·
   `Iter` — 레코드 목록은 `Map.Records`)/`Set`/`Collection`(`Len`·`Clear` — 일곱 컨테이너 전부, 2026-10-12). 컨테이너를 **바꾸는** 제네릭은
-  원소 타입이 안 흘러들어도 `CollectionMarkerMut` — 읽기로 빌린 `ArrRead`·`DequeRead` 가 `Clear` 를 얻으면 안 됨.
+  원소 타입이 안 흘러들어도 `CollectionMarkerMut` — 읽기로 빌린 `ArrRead`·`CircularDequeRead` 가 `Clear` 를 얻으면 안 됨.
   ⭐ 트레이트는 **필수 함수 + 기본 구현 + 의존**(2026-10-13, `papers/07`): `Trait.New(name, { required, defaults, dependencies })`.
   필수 함수가 없는 트레이트는 의존만 갖추면 등록 없이 저절로 구현됨 — 컨테이너는 자기가 아는 트레이트만 등록.
   이 방향(프리미티브만 구현하면 알고리즘이 따라옴, 노드를 바깥 조각으로)으로 전체를 옮기는 중 — `todos.md`.
@@ -44,7 +44,7 @@ Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너�
 - **숫자 인자 정책**: NaN 은 에러(사용자 줄), 소수는 0 쪽, 구간은 clamp, 길이는 `[0, 2^26]`.
 - **맵·셋의 `nil`·NaN 키**: 넣기는 에러, 조회·삭제는 "없음". 트리 계열은 `Common.raise`(사용자 줄), 해시 계열은
   Lua 원시 에러 그대로(라이브러리 줄 — 알려진 예외, 질문 AN 사용자 결정).
-- **`Deque` 의 읽기 함수도 공변**(`DequeRead<T>`, 질문 AK) — `Arr` 의 `ArrRead` 와 같은 규칙. 쓰기는 `DequeData`.
+- **`CircularDeque` 의 읽기 함수도 공변**(`CircularDequeRead<T>`, 질문 AK) — `Arr` 의 `ArrRead` 와 같은 규칙. 쓰기는 `CircularDequeData`.
 - **에러 규약**: 새 에러는 `Common.raise(msg)`(스택을 걸어 라이브러리가 아닌 첫 프레임을
   가리킴 — `-O2` 인라인 때문), 되던지기는 `Common.rethrow`(Fut 에서만).
 - **타입을 바꾸는 `*Inplace` 는 입력을 소비**(질문 Y). `type function` 은 쓰지 않음.
@@ -55,7 +55,7 @@ Roblox 엔진 언어 **Luau** 용 표준 라이브러리 스타일 컨테이너�
 | 무엇 | 어디 |
 |---|---|
 | 관례 전부(코드 스타일, 에러, 숫자, 구멍, 테스트, 리뷰 방식) | `.claude/conventions.md` |
-| 지금 할 일·마일스톤(M3 Arr 빈 조각 → M4 맵·셋 → M5 Deque → M6 Multiset/OrderedMap → M7 Fut) | `.claude/todos.md` |
+| 지금 할 일·마일스톤(M3 Arr 빈 조각 → M4 맵·셋 → M5 CircularDeque → M6 Multiset/OrderedMap → M7 Fut) | `.claude/todos.md` |
 | **열린 질문**(사용자 답을 기다림)과 결정 이력 | `.claude/question.md` |
 | 설계 페이퍼(빠진 표면 04, quad 탐사 05 등) | `.claude/papers/` |
 | Luau 타입 한계와 우회 | `.claude/base/typing-limits.md` |

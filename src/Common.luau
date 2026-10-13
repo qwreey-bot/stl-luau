@@ -53,9 +53,9 @@ function exports.listLength(list: any): number
 	if token ~= nil then
 		const name = if type(token) == "table" then rawget(token, "name") else nil
 		if name ~= "Arr" then
-			-- 바꾸는 길을 안내합니다(2026-10-07 가로지른 리뷰 — Deque 를 넣으면 무엇을 하라는지 몰랐음)
+			-- 바꾸는 길을 안내합니다(2026-10-07 가로지른 리뷰 — CircularDeque 를 넣으면 무엇을 하라는지 몰랐음)
 			exports.raise(
-				`stl: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)} — convert it first (e.g. Deque.ToArr, HashSet.Items)`
+				`stl: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)} — convert it first (e.g. CircularDeque.ToArr, HashSet.Items)`
 			)
 		end
 		if not validN then

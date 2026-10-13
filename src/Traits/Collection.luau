@@ -26,9 +26,9 @@ export type Ops<C> = {
 -- 두는 값을 못 해서).
 export type Marker = { read __type: Trait.Token<any> }
 -- **바꾸는 쪽**(`Clear`)은 이 팬텀을 요구합니다 — 원소 타입이 흘러들지 않아 불변일 필요는 없지만,
--- **읽기 전용으로 빌린 참조**(`ArrRead`·`DequeRead`)가 `Clear` 를 얻으면 안 됩니다(토큰만 요구하니
+-- **읽기 전용으로 빌린 참조**(`ArrRead`·`CircularDequeRead`)가 `Clear` 를 얻으면 안 됩니다(토큰만 요구하니
 -- 진단 0건으로 지워졌습니다 — 시제품에서 재현, AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결). 팬텀은
--- 데이터 타입(`ArrData`·`DequeData`·맵·셋·`HeapData`)에만 있습니다. 새 컨테이너에도 같이 넣으세요.
+-- 데이터 타입(`ArrData`·`CircularDequeData`·맵·셋·`HeapData`)에만 있습니다. 새 컨테이너에도 같이 넣으세요.
 export type MarkerMut = { read __type: Trait.Token<any>, read __collectionMut: true }
 
 const Collection = Trait.New<<Ops<any>>>("Collection", { required = { "Len", "Clear" } })
@@ -36,7 +36,7 @@ const dispatch = Trait.Dispatch
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 
--- 알고 있는 크기(O(1)). 리스트·맵·셋·힙 어느 것이든. 읽기라 빌린 참조(`ArrRead`·`DequeRead`)도 받습니다.
+-- 알고 있는 크기(O(1)). 리스트·맵·셋·힙 어느 것이든. 읽기라 빌린 참조(`ArrRead`·`CircularDequeRead`)도 받습니다.
 const function Len(collection: Marker): number
 	return dispatch(Collection, collection, "Len").Len(collection)
 end

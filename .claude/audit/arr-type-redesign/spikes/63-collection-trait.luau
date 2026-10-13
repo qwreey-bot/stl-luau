@@ -4,7 +4,7 @@
 
 	지키는 성질:
 	- `Collection.Clear` 는 **넣은 타입 그대로** 돌려주고(`<C>(c: C & CollectionMarkerMut): C`),
-	  **읽기 전용으로 빌린 참조**(`ArrRead`·`DequeRead`)는 못 받습니다 — 마커가 토큰만 요구하던 시제품에선
+	  **읽기 전용으로 빌린 참조**(`ArrRead`·`CircularDequeRead`)는 못 받습니다 — 마커가 토큰만 요구하던 시제품에선
 	  빌린 참조가 진단 0건으로 지워졌습니다(AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결).
 	- `Collection.Len` 은 읽기라 빌린 참조도 받고, 토큰 없는 것(리터럴·숫자·`Optional`)은 막습니다.
 	- 모듈 테이블이 `CollectionOps`·넓힌 `MapOps`(`Has`·`Remove`·`Iter`)를 만족하고, 함수가 빠진 구현·다른
@@ -21,7 +21,7 @@
 	  이름이 맞는 제네릭 함수 필드가 하나만 있어도 통과합니다(`Trait.Impl(stl.Map, K, TreeSet)` 0건, 2라운드
 	  리뷰 — 넓히기 전에도 같았음). 그물은 런타임의 필수 함수 검사(`Trait.New` 의 `required`)뿐입니다.
 	- **`Iter` 가 돌려주는 테이블은 "키-값만 든" 테이블이어야 하지만 타입이 그걸 못 봅니다** — `{ read [K]: V }`
-	  는 폭 서브타이핑이라 `Arr<V>`·`Deque<V>`·`table.pack` 결과도 받고, 그러면 `Map.Keys` 가 `"n"`·
+	  는 폭 서브타이핑이라 `Arr<V>`·`CircularDeque<V>`·`table.pack` 결과도 받고, 그러면 `Map.Keys` 가 `"n"`·
 	  `"__type"` 까지 키로 냅니다(2라운드 리뷰). 규약으로 지킵니다(`Types.MapOps` 주석).
 	- `HashMap.Iter(m)` 의 읽기 전용 타입은 **인덱싱 쓰기**만 막습니다 — `table.clear`·`table.freeze`·
 	  `setmetatable` 같은 내장은 읽기 전용 테이블을 받아 0건입니다(Luau 내장 타입의 한계).
@@ -29,12 +29,12 @@
 	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 24 줄 · 25건 + CANARY 1 — `Optional` 은 유니온이라 두 건)
 ]]
 local stl = require("../../../../src")
-local Arr, Deque, HashMap, HashSet, TreeMap, TreeSet, Heap, Common =
-	stl.Arr, stl.Deque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap, stl.Common
+local Arr, CircularDeque, HashMap, HashSet, TreeMap, TreeSet, Heap, Common =
+	stl.Arr, stl.CircularDeque, stl.HashMap, stl.HashSet, stl.TreeMap, stl.TreeSet, stl.Heap, stl.Common
 type Record<K, V> = stl.Record<K, V>
 
 local arr = Arr.Of(1, 2)
-local dq = Deque.Of(1, 2)
+local dq = CircularDeque.Of(1, 2)
 local hm = HashMap.New<<string, number>>()
 local tm = TreeMap.New<<string, number>>(Common.compareString)
 local hs = HashSet.Of(1, 2)
@@ -52,7 +52,7 @@ local total: number = stl.Collection.Len(arr)
 	+ stl.Collection.Len(ts)
 	+ stl.Collection.Len(heap)
 local clearedArr: stl.Arr<number> = stl.Collection.Clear(arr)
-local clearedDq: stl.Deque<number> = stl.Collection.Clear(dq)
+local clearedDq: stl.CircularDeque<number> = stl.Collection.Clear(dq)
 local clearedHm: stl.HashMap<string, number> = stl.Collection.Clear(hm)
 local clearedTm: stl.TreeMap<string, number> = stl.Collection.Clear(tm)
 local clearedHs: stl.HashSet<number> = stl.Collection.Clear(hs)
@@ -61,7 +61,7 @@ local clearedHeap: stl.Heap<number> = stl.Collection.Clear(heap)
 -- 돌려받은 것을 그 종류의 함수에 바로
 HashMap.Set(stl.Collection.Clear(hm), "x", 1)
 -- 읽기로 빌린 참조도 크기는 읽음
-local function borrowedLen(list: stl.ArrRead<number?>, queue: stl.DequeRead<number?>): number
+local function borrowedLen(list: stl.ArrRead<number?>, queue: stl.CircularDequeRead<number?>): number
 	return stl.Collection.Len(list) + stl.Collection.Len(queue)
 end
 -- 모듈 테이블이 계약을 만족
@@ -100,10 +100,10 @@ refill(tm, { { key = "a", value = 1 } })
 
 --[[ NEG — Clear 는 넣은 타입 그대로 ]]
 local negClearedHm: stl.HashMap<string, string> = stl.Collection.Clear(hm)
-local negClearedArr: stl.Deque<number> = stl.Collection.Clear(arr)
+local negClearedArr: stl.CircularDeque<number> = stl.Collection.Clear(arr)
 
 --[[ NEG — 읽기 전용으로 빌린 참조는 못 비움 ]]
-local function borrowedClear(list: stl.ArrRead<number>, queue: stl.DequeRead<number>)
+local function borrowedClear(list: stl.ArrRead<number>, queue: stl.CircularDequeRead<number>)
 	stl.Collection.Clear(list)
 	stl.Collection.Clear(queue)
 end

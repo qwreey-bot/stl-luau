@@ -1521,7 +1521,7 @@ do
 		{
 			Arr.Of(1, 2),
 			stl.HashMap.New(),
-			stl.Deque.Of(1),
+			stl.CircularDeque.Of(1),
 			stl.Heap.New(function(a: number, b: number): boolean
 				return a < b
 			end),

@@ -32,7 +32,7 @@ local HashSet = require("@self/Collections/HashSet")
 local TreeMap = require("@self/Collections/TreeMap")
 local TreeSet = require("@self/Collections/TreeSet")
 local Heap = require("@self/Collections/Heap")
-local Deque = require("@self/Collections/Deque")
+local CircularDeque = require("@self/Collections/CircularDeque")
 local Optional = require("@self/Optional")
 local Fut = require("@self/Fut")
 
@@ -71,8 +71,8 @@ export type HashSet<T> = HashSet.HashSet<T>
 export type TreeMap<K, V> = TreeMap.TreeMap<K, V>
 export type TreeSet<T> = TreeSet.TreeSet<T>
 export type Heap<T> = Heap.Heap<T>
-export type Deque<T> = Deque.Deque<T>
-export type DequeRead<T> = Deque.DequeRead<T>
+export type CircularDeque<T> = CircularDeque.CircularDeque<T>
+export type CircularDequeRead<T> = CircularDeque.CircularDequeRead<T>
 export type Optional<T> = Optional.Optional<T>
 export type Fut<T...> = Fut.Fut<T...>
 export type FutStatus = Fut.Status
@@ -99,7 +99,7 @@ return {
 	TreeMap = TreeMap,
 	TreeSet = TreeSet,
 	Heap = Heap,
-	Deque = Deque,
+	CircularDeque = CircularDeque,
 	Optional = Optional,
 	Fut = Fut,
 
@@ -110,7 +110,7 @@ return {
 	isTreeMap = TreeMap.isTreeMap,
 	isTreeSet = TreeSet.isTreeSet,
 	isHeap = Heap.isHeap,
-	isDeque = Deque.isDeque,
+	isCircularDeque = CircularDeque.isCircularDeque,
 	isOptional = Optional.isOptional,
 	isFut = Fut.isFut,
 }
