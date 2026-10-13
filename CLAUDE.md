@@ -33,7 +33,7 @@ agent-memory 같은 무거운 장치는 아직 없습니다 — 필요해지면 
 | **성능 실측 전량 (메타테이블 세금, `table.move`, 순회, 비교자)** | `.claude/base/perf-measurements.md` |
 | 문서화 계획과 백로그 (quad `docs/` 구조를 따름) | `.claude/base/docs-plan.md` |
 | **다른 모델 계열(Gemini, `agy`)에게 검토를 맡길 때** — 격리 worktree·별도 uid | `.claude/skills/delegate-agy/SKILL.md`, 진입점 `GEMINI.md` |
-| **아직 안 정한 것의 설계 페이퍼** (`Fut` / `Optional` / `Tuple` / **빠진 표면 04** / **quad 탐사 05**) | `.claude/papers/` |
+| **아직 안 정한 것의 설계 페이퍼** (`Fut` / `Optional` / `Tuple` / **빠진 표면 04** / **quad 탐사 05** / 트레이트 06 / **기본 구현·의존·노드 07**) | `.claude/papers/` |
 
 **참고 자료** (전부 `.gitignore` 의 `*-ignoreme*` 로 무시됨 — 거기서 얻은 건
 원문을 옮기지 않고 **자기설명적으로 다시 써서** `.claude/` 에 남깁니다):
