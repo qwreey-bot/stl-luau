@@ -46,10 +46,10 @@
 	⚠️ **두 셋의 비교자가 같아야 합니다.** 다르면 병합이 뜻을 잃습니다 —
 	검사하지 않으니 호출자가 맞춰 주세요.
 ]]
-local Types = require("./Types")
+local Types = require("../Types")
 local TreeMap = require("./TreeMap")
-local Common = require("./Common")
-local Trait = require("./Trait")
+local Common = require("../Common")
+local Trait = require("../Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>

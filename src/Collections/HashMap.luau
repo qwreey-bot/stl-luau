@@ -35,9 +35,9 @@
 	**맵은 `Set`/`Get`, 셋은 `Add`/`Has`/`Remove`.** `HashSet` 이 이 모듈 위에
 	얹혀 있어도 바깥 어휘는 완전히 분리합니다.
 ]]
-local Types = require("./Types")
-local Common = require("./Common")
-local Trait = require("./Trait")
+local Types = require("../Types")
+local Common = require("../Common")
+local Trait = require("../Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>

@@ -36,10 +36,10 @@
 	메타테이블 없는 평범한 테이블이고 연산은 이 모듈의 네임스페이스 함수입니다(질문 AB). 리스트
 	트레이트(`Trait.List`)를 구현해 `Algorithm.IndexOf(d, x)` 가 됩니다.
 ]]
-local Types = require("./Types")
-local Common = require("./Common")
+local Types = require("../Types")
+local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
-local Trait = require("./Trait")
+local Trait = require("../Trait")
 local Arr = require("./Arr")
 
 export type DequeData<T> = {

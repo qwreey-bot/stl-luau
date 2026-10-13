@@ -60,7 +60,7 @@
 	있다고 보고 쓰세요.
 ]]
 
-const ArrModule = require("./Arr")
+const ArrModule = require("./Collections/Arr")
 const Common = require("./Common")
 const Trait = require("./Trait")
 Common.registerSource(debug.info(1, "s"))

@@ -32,9 +32,9 @@
 	정렬된 것이 필요하면 `Sorted()` 를 쓰세요 — 복사해서 전부 꺼내므로
 	O(n log n) 입니다. 순회가 자주 필요하면 애초에 `TreeSet` 이 맞습니다.
 ]]
-local Types = require("./Types")
-local Common = require("./Common")
-local Trait = require("./Trait")
+local Types = require("../Types")
+local Common = require("../Common")
+local Trait = require("../Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type LessThan<T> = Types.LessThan<T>

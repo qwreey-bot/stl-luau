@@ -34,10 +34,10 @@
 	불리언이면 같은지 알려고 두 번 물어야 합니다(`src/Common.luau` 상단).
 	`Common.compareNumber` / `Common.compareString` 이 기본 제공됩니다.
 ]]
-local Types = require("./Types")
-local BSearch = require("./BSearch")
-local Common = require("./Common")
-local Trait = require("./Trait")
+local Types = require("../Types")
+local BSearch = require("../Algorithms/BSearch")
+local Common = require("../Common")
+local Trait = require("../Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type Record<K, V> = Types.Record<K, V>

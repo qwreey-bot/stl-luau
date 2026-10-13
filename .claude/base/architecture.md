@@ -157,7 +157,7 @@ luau-analyze src tests      # 타입 검사 + 린트
 
 ## 모듈 패턴
 
-**[2026-10-06 갱신 — M0 + 트레이트]** `src/Arr.luau` 가 정석이고 `src/HashMap.luau` 가 가장
+**[2026-10-06 갱신 — M0 + 트레이트]** `src/Collections/Arr.luau` 가 정석이고 `src/Collections/HashMap.luau` 가 가장
 작은 예입니다. 정본은 `conventions.md` "모듈 패턴".
 
 ```lua
@@ -208,7 +208,7 @@ M0(질문 AB)에서 메타테이블과 콜론 메소드를 없애며 전부 필�
 
 ## 구간 정규화
 
-`src/Arr.luau` 안의 비공개 헬퍼 **둘**입니다. 새 구간 함수를 만들 때 직접
+`src/Collections/Arr.luau` 안의 비공개 헬퍼 **둘**입니다. 새 구간 함수를 만들 때 직접
 정규화하지 말고 이걸 쓰세요.
 
 | 헬퍼 | 유효 범위 | 쓰는 곳 |

@@ -45,8 +45,8 @@
 	수치는 `.claude/base/perf-measurements.md`.
 ]]
 local HashMap = require("./HashMap")
-local Common = require("./Common")
-local Trait = require("./Trait")
+local Common = require("../Common")
+local Trait = require("../Trait")
 Common.registerSource(debug.info(1, "s"))
 
 type HashMapType<K, V> = HashMap.HashMap<K, V>

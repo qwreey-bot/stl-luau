@@ -71,11 +71,11 @@
 	조회용 clamp 로 삽입 위치까지 처리하면 "맨 뒤에 삽입" 이 표현 불가능해집니다
 	— 실제로 그 버그를 낸 선례가 있습니다. 그래서 정규화 함수를 둘로 나눴습니다.
 ]]
-local Types = require("./Types")
-local Common = require("./Common")
+local Types = require("../Types")
+local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
-local Optional = require("./Optional")
-local Trait = require("./Trait")
+local Optional = require("../Optional")
+local Trait = require("../Trait")
 -- `GroupBy`/`CountBy`/`KeyBy` 가 돌려줄 맵. 의존은 **Arr → HashMap 한 방향**입니다(HashMap 은
 -- Arr 을 모름 — `HashMap.Keys` 주석).
 local HashMap = require("./HashMap")

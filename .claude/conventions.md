@@ -7,7 +7,7 @@
 
 - 사용자는 한국 유저입니다. 사용자가 보는 것(대화, plan, `.claude/` 문서,
   커밋 메시지 요약 등)은 한국어로. 코드 안 주석은 기존 파일들처럼 한국어로
-  쓰는 게 이 저장소의 지배적인 스타일입니다(`src/Arr.luau` 참고) — 다만
+  쓰는 게 이 저장소의 지배적인 스타일입니다(`src/Collections/Arr.luau` 참고) — 다만
   강제는 아니고, 기존 파일을 고칠 땐 그 파일의 기존 언어를 따르세요.
 - 에러 메시지 문자열, 함수/변수 식별자는 영어.
 
@@ -27,7 +27,7 @@
   | 술어 | camelCase, 최상위 | `stl.isArr(v)`, `stl.isHeap(v)` |
   | 지역 변수 | camelCase | `arrLen`, `moveLen`, `outLen` |
   | `require` 받은 모듈 | PascalCase | `local Common = require("./Common")` |
-  | 소스 파일 | PascalCase | `src/Arr.luau`, `src/HashSet.luau` |
+  | 소스 파일 | PascalCase | `src/Collections/Arr.luau`, `src/Collections/HashSet.luau` |
   | 테스트 파일 | 소문자 + dot | `tests/spec.arr.luau` |
 
 - ⭐ **데이터는 엔티티, 함수는 서비스** (2026-10-01 사용자 결정, 질문 AB —
@@ -113,7 +113,7 @@
   - (예전 M0 의 "태그 세 겹 + 위조의 경계" 는 이 결정으로 내렸습니다 — git 히스토리와
     `question.md` AF/AG.) 콜러블 네임스페이스(`Arr(...)`)는
   **쓰지 않습니다** — 제네릭 생성자가 `__call` 경유에서 타입 인자를 잃고 모듈
-  오타도 못 잡습니다(실측). `src/Arr.luau` 가 정석입니다.
+  오타도 못 잡습니다(실측). `src/Collections/Arr.luau` 가 정석입니다.
 
 - **타입**: 데이터부(`XxxData`) = 전체형(`Xxx`). 콜백이 셋째 인자로 받는
   `ArrView<T>` 는 읽기 전용 평범한 테이블입니다. 자세한 것은
