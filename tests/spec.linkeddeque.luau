@@ -574,6 +574,177 @@ do
 end
 print("PASS")
 
+print("=== 8. Stack·Queue — 덱이면 저절로 따라오는 트레이트 (2026-10-14, 질문 AV) ===")
+do
+	const T = stl.Trait
+	const Stack, Queue = stl.Stack, stl.Queue
+	const kinds: { { name: string, make: () -> any, token: any } } = {
+		{
+			name = "CircularDeque",
+			make = function(): any
+				return CircularDeque.New()
+			end,
+			token = CircularDeque.Token,
+		},
+		{
+			name = "LinkedDeque",
+			make = function(): any
+				return LinkedDeque.New()
+			end,
+			token = LinkedDeque.Token,
+		},
+	}
+	for _, kind in kinds do
+		-- 스택: 나중에 넣은 것이 먼저(값은 10 단위 — 위치와 다르게)
+		const stack = kind.make()
+		assert(Stack.Pop(stack) == nil and Stack.Peek(stack) == nil, `{kind.name} 빈 스택`)
+		assert(Stack.Push(stack, 10) == stack, `{kind.name} Push 는 넣은 것을 그대로 돌려줌`)
+		Stack.Push(stack, 20)
+		Stack.Push(stack, 30)
+		assert(Stack.Peek(stack) == 30 and stl.Collection.Len(stack) == 3, `{kind.name} Peek 은 꺼내지 않음`)
+		assert(Stack.Pop(stack) == 30 and Stack.Pop(stack) == 20, `{kind.name} LIFO`)
+		assert(Stack.Peek(stack) == 10 and Stack.Pop(stack) == 10 and Stack.Pop(stack) == nil, `{kind.name} 끝까지`)
+		-- 큐: 먼저 넣은 것이 먼저
+		const queue = kind.make()
+		assert(Queue.Pop(queue) == nil and Queue.Peek(queue) == nil, `{kind.name} 빈 큐`)
+		assert(Queue.Push(queue, 10) == queue, `{kind.name} 큐 Push`)
+		Queue.Push(queue, 20)
+		Queue.Push(queue, 30)
+		assert(Queue.Peek(queue) == 10 and stl.Collection.Len(queue) == 3, `{kind.name} 큐 Peek`)
+		assert(Queue.Pop(queue) == 10 and Queue.Pop(queue) == 20, `{kind.name} FIFO`)
+		assert(
+			Queue.Peek(queue) == 30 and Queue.Pop(queue) == 30 and Queue.Pop(queue) == nil,
+			`{kind.name} 큐 끝까지`
+		)
+		-- 같은 값을 스택으로도 큐로도(덱이니까): 스택으로 넣은 것을 큐로 꺼내면 넣은 순서
+		const both = kind.make()
+		Stack.Push(both, 1)
+		Stack.Push(both, 2)
+		assert(Queue.Pop(both) == 1 and Stack.Pop(both) == 2, `{kind.name} 같은 값을 두 트레이트로`)
+		-- 등록한 적이 없는데 구현함(저절로 따라옴)
+		assert(T.Implements(Stack, stack) and T.Implements(Queue, queue), `{kind.name} Implements`)
+		assert(
+			(Stack :: any).derived[kind.token] and (Queue :: any).derived[kind.token],
+			`{kind.name}: 저절로 만든 것`
+		)
+	end
+
+	-- 덱이 아닌 것은 스택이 아님 — 에러는 사용자 줄, 머리는 트레이트 이름
+	local where = 0
+	const notDeque: any = stl.Arr.Of(1, 2)
+	assert(
+		T.ImplOf(Stack, notDeque) == nil and not T.Implements(Queue, notDeque),
+		"Arr 은 덱이 아니라 안 따라옴"
+	)
+	const okStack, errStack = pcall(function()
+		where = debug.info(1, "l") + 1
+		Stack.Push(notDeque, 3)
+	end)
+	assert(
+		not okStack
+			and string.find(tostring(errStack), "Stack: Push needs a Stack — Arr does not implement Stack", 1, true),
+		`덱이 아닌 것: {errStack}`
+	)
+	assert(string.find(tostring(errStack), `spec.linkeddeque.luau:{where}:`, 1, true), `사용자 줄: {errStack}`)
+	const okQueue, errQueue = pcall(function()
+		where = debug.info(1, "l") + 1
+		Queue.Peek(5 :: any)
+	end)
+	assert(
+		not okQueue and string.find(tostring(errQueue), "Queue: Peek needs a Queue", 1, true),
+		`값이 아닌 것: {errQueue}`
+	)
+	assert(string.find(tostring(errQueue), `spec.linkeddeque.luau:{where}:`, 1, true), `사용자 줄: {errQueue}`)
+
+	-- ⭐ 바깥에서 만든 덱도 따라옴: `Deque` 만 등록하면 `Stack`·`Queue` 는 등록 없이
+	const PileToken = T.NewToken("Pile")
+	T.Impl(Deque, PileToken, {
+		PushFront = function(pile: any, item: any): any
+			table.insert(pile.items, 1, item)
+			return pile
+		end,
+		PushBack = function(pile: any, item: any): any
+			table.insert(pile.items, item)
+			return pile
+		end,
+		PopFront = function(pile: any): any
+			return table.remove(pile.items, 1)
+		end,
+		PopBack = function(pile: any): any
+			return table.remove(pile.items)
+		end,
+		Front = function(pile: any): any
+			return pile.items[1]
+		end,
+		Back = function(pile: any): any
+			return pile.items[#pile.items]
+		end,
+	})
+	const pile: any = { __type = PileToken, items = {} }
+	Stack.Push(pile, "a")
+	Queue.Push(pile, "b")
+	Stack.Push(pile, "c")
+	assert(Stack.Peek(pile) == "c" and Queue.Peek(pile) == "a", "바깥 덱: Peek")
+	assert(Stack.Pop(pile) == "c" and Queue.Pop(pile) == "a" and Stack.Pop(pile) == "b", "바깥 덱: 스택·큐")
+
+	-- 재정의: 저절로 따라온 것 위에 빠른 판을 얹음(일부만 — 나머지는 기본 구현 그대로)
+	local fastPushes = 0
+	T.Impl(Stack, PileToken, {
+		Push = function(target: any, item: any): any
+			fastPushes += 1
+			table.insert(target.items, item)
+			return target
+		end,
+	})
+	Stack.Push(pile, "x")
+	assert(fastPushes == 1 and Stack.Pop(pile) == "x", "재정의한 Push, 기본 구현의 Pop")
+	assert(not (Stack :: any).derived[PileToken], "명시 등록이 됨")
+	-- 스택이 모르는 이름은 넘길 수 없음(질문 AS) — 덱의 이름 `PushBack` 은 스택의 이름이 아님
+	const okName, errName = pcall(function()
+		T.Impl(Queue, PileToken, { PushBack = print } :: any)
+	end)
+	assert(
+		not okName
+			and string.find(tostring(errName), "Trait: Pile gave PushBack to Queue, which Queue does not have", 1, true),
+		`모르는 이름: {errName}`
+	)
+
+	-- 무작위: 두 종류를 스택·큐로 섞어 써 배열 모델과 대조
+	local seed = 2026
+	local function rand(limit: number): number
+		seed = (seed * 48271) % 2147483647
+		return seed % limit
+	end
+	for _, kind in kinds do
+		for round = 1, 30 do
+			const value = kind.make()
+			const model: { number } = {}
+			for step = 1, 200 do
+				const roll = rand(6)
+				if roll < 2 then
+					const item = rand(900) + 100
+					if roll == 0 then
+						Stack.Push(value, item)
+					else
+						Queue.Push(value, item)
+					end
+					table.insert(model, item)
+				elseif roll == 2 then
+					assert(Stack.Pop(value) == table.remove(model), `{kind.name} Stack.Pop {round}/{step}`)
+				elseif roll == 3 then
+					assert(Queue.Pop(value) == table.remove(model, 1), `{kind.name} Queue.Pop {round}/{step}`)
+				elseif roll == 4 then
+					assert(Stack.Peek(value) == model[#model], `{kind.name} Stack.Peek {round}/{step}`)
+				else
+					assert(Queue.Peek(value) == model[1], `{kind.name} Queue.Peek {round}/{step}`)
+				end
+				assert(stl.Collection.Len(value) == #model, `{kind.name} 크기 {round}/{step}`)
+			end
+		end
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (LinkedDeque) ===")
 

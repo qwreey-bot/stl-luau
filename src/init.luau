@@ -26,6 +26,8 @@ local Map = require("@self/Traits/Map")
 local Set = require("@self/Traits/Set")
 local Collection = require("@self/Traits/Collection")
 local Deque = require("@self/Traits/Deque")
+local Stack = require("@self/Traits/Stack")
+local Queue = require("@self/Traits/Queue")
 local Node = require("@self/Node")
 local NodeSingle = require("@self/Node/Single")
 local NodeDouble = require("@self/Node/Double")
@@ -73,6 +75,10 @@ export type CollectionMarker = Collection.Marker
 export type CollectionMarkerMut = Collection.MarkerMut
 export type DequeCore<C, T> = Deque.Core<C, T>
 export type DequeMarker<T> = Deque.Marker<T>
+export type StackFull<C, T> = Stack.Full<C, T>
+export type StackProvided<C, T> = Stack.Provided<C, T>
+export type QueueFull<C, T> = Queue.Full<C, T>
+export type QueueProvided<C, T> = Queue.Provided<C, T>
 export type DequeMarkerMut<T> = Deque.MarkerMut<T>
 -- 노드(종류별 불투명 핸들 — `src/Node/` 머리). 읽기 타입은 컨테이너가 밖으로 내주는 위치.
 export type SingleNode<T> = NodeSingle.Node<T>
@@ -127,6 +133,9 @@ return {
 	Set = Set,
 	Collection = Collection,
 	Deque = Deque,
+	-- 덱이면 저절로 따라오는 트레이트(필수 함수 없음, 의존 `Deque`) — 스택(LIFO)·큐(FIFO)
+	Stack = Stack,
+	Queue = Queue,
 
 	-- 컨테이너 밖의 노드 조각(연결 리스트·트리가 조립해 씀)
 	Node = Node,

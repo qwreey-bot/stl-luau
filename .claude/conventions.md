@@ -301,6 +301,11 @@
   (`src/Traits/Deque.luau`). 양끝만 쓰면 원형이 1.13~1.41배 빠르고(perf 38-3절), 가운데의 위치(노드)를 쥐고 O(1) 로 넣고 빼야 하면
   연결입니다. 새 덱 구현은 데이터 타입에 `read __dequeItem: T` 와 팬텀 `read __dequeMut: (T) -> T` 를
   넣고(읽기 타입에는 앞의 것만) `Trait.Impl(Deque, TOKEN, { PushFront = …, … 여섯 })`.
+  ⭐ **`Stack`·`Queue` 는 덱이면 저절로 따라오는 트레이트입니다**(2026-10-14 사용자 결정, 질문 AV: *"트레이트로 두는거 동의.
+  stack 으로 무엇을 쓸지, queue 로 무엇을 쓸 지는 유저가 선택 가능"*) — 필수 함수 없음, 의존 `Deque`: `Stack.Push`·`Pop`·`Peek`
+  (= `PushBack`·`PopBack`·`Back`), `Queue.Push`·`Pop`·`Peek`(= `PushBack`·`PopFront`·`Front`). 새 컨테이너도, 바깥의 덱도
+  등록 없이 됩니다. 타입 마커는 `Deque` 의 것 그대로(새 팬텀 없음). 큐의 동사는 `Push`/`Pop`(제가 정함 — 검토가 2:2,
+  `Dequeue` 는 `Deque` 와 한 글자 차이). 진입점을 거치면 덱 진입점보다 호출 하나가 더 붙습니다(perf 48절).
 - ⭐ **층은 셋입니다**(2026-10-13 사용자 결정 — `papers/07` 9-4): **1층 노드단 도구**(`src/Node/` — 연결 방식별 노드와
   도구 `Node.Single`·`Node.Double`·`Node.Binary`) → **2층 트리부**(`src/Trees/` — 노드 도구로 짠 균형
   방식 `RedBlack`·`Avl`, 찾기 조각 `Search`, 균형 계약 `Balance`. 컨테이너가 아니라 **뿌리 노드와 비교자를 받아 새 뿌리를 돌려주는

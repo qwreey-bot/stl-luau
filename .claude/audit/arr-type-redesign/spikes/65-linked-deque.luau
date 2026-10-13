@@ -110,6 +110,16 @@ end
 local holes = LinkedDeque.New<<number?>>()
 local knownCovariant = LinkedDeque.InsertAfter(holes, head :: NodeRead<number>, nil)
 
+--[[ Stack·Queue — 덱이면 타입으로도 스택·큐(마커가 `Deque` 의 것 그대로) ]]
+local okStackPush: stl.LinkedDeque<number> = stl.Stack.Push(d, 5)
+local okQueuePop: number? = stl.Queue.Pop(d)
+local okPeekBorrowed: number? = stl.Stack.Peek(borrowed)
+-- NEG: 원소 타입 / 꺼낸 것은 옵셔널 / 읽기로 빌린 참조는 꺼낼 수 없음 / 덱이 아닌 것(`Arr`)은 큐가 아님
+stl.Stack.Push(d, "five")
+local negStackPop: number = stl.Stack.Pop(d)
+stl.Queue.Pop(borrowed)
+stl.Queue.Push(stl.Arr.Of(1), 2)
+
 local canary: string = 42
 
 return {
@@ -148,5 +158,9 @@ return {
 	negBorrowedPopBack,
 	negBack,
 	knownCovariant,
+	okStackPush,
+	okQueuePop,
+	okPeekBorrowed,
+	negStackPop,
 	canary,
 }

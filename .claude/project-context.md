@@ -66,6 +66,8 @@ src/
     Set.luau         Add·Has·Remove·Items
     Collection.luau  Len·Clear (컨테이너 전부)
     Deque.luau       양끝 큐 — PushFront·PushBack·PopFront·PopBack·Front·Back (원형·연결 둘이 구현)
+    Stack.luau       스택(LIFO) — Push·Pop·Peek. 필수 함수 없음, Deque 에 의존: 덱이면 저절로 따라옴
+    Queue.luau       큐(FIFO) — Push·Pop·Peek. 같은 모양
   Collections/     컨테이너
     Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 목적지 맵을 인자로 받음) + 생성자 8
     HashMap.luau     해시 맵. { data, size } 래퍼
