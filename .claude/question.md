@@ -1206,6 +1206,75 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 
 ---
 
+### AU. 이름 검토 — 네 시선(sonnet 외부자·내부자, Gemini 외부자·내부자)의 결과 — **[열림, 2026-10-13]**
+
+> 사용자(2026-10-13): *"이름은 지금 혹시 agy 테스트해볼래? 나 말고 sonnet/gemini 내부/외부자 시선으로 보는게 나아."*
+> 같은 이름 목록(이름 + 그것이 무엇인가, 지은 이유는 뺌)을 넷에게 줬습니다. 외부자는 설계 문서를 읽지 않고, 내부자는
+> 규약을 읽고. 넷 다 읽기 전용. Gemini 원문과 제 검증은 `audit/agy/2026-10-13-names-out.md`·`names-in.md`.
+> **아래는 발견이지 결정이 아닙니다** — 바꾸는 것은 고르신 뒤에 한꺼번에(배포 전이라 breaking 무관).
+
+표의 칸: **변** = 바꾸기를 권함, **약** = 약하게 권함(스스로 확신 낮음), **유** = 유지, **–** = 언급 없음.
+
+**가. 넷(또는 셋)이 같은 쪽 — 모델 계열과 시선을 가리지 않고 걸림**
+
+| 이름 | S외 | S내 | G외 | G내 | 나온 대안 | 제 확인·의견 |
+|---|---|---|---|---|---|---|
+| `Trait.NewType` | 변 | 변 | 변 | 변 | **`NewToken`**(넷 전부) | 만드는 것도 돌려주는 타입도 `Token`, 조회는 `TokenOf`, 모듈 필드는 `Token` — 이것만 "타입". 값의 필드 `__type` 은 공개 이름이 아니라 그대로. **권장: 바꿈** |
+| `Trees/Search`(모듈) | 변 | 변 | 변 | 변 | 가르기: 찾기만 `Search` 에 남기고 균형 계약을 `Trees/Balance` 로(S내·G내) / 이름만: `TreeBase`·`OrderedTree`(S외·G외) | 담은 것이 다섯(칸 배치 상수, 키·값 읽기, 찾기, 베끼기, 균형 계약 + 인자 검사)이고 "찾기" 는 그중 하나. 배럴이 이미 `TreeBalance = Search.Balance` 로 다시 이름 붙이고 있음. **권장: 균형 계약만 `Trees/Balance` 로 뺌**(`Balance.Expect`) — 셋으로 더 쪼개는 안(G내의 `KeyNode`)은 여섯 줄짜리 파일이 생겨 과함 |
+| `Trait.Dispatch` | 약 | 약 | 변 | 변 | `ExpectImpl`(G외·G내), `Expect`·`Require`(S외·S내), `Resolve`(G외) | 넷 다 "부르는 것처럼 읽히는데 찾기만 한다, `ImplOf` 와의 차이(없으면 에러)가 안 보인다". 인자 검사 가족이 이미 `Expect…`(`ExpectBalance`, `expectComparator`). **권장: `Trait.ExpectImpl`** |
+| `Trait.Impl`(함수) 대 `List.Impl`(타입) | 변 | 변 | 변 | 변 | 함수를 `Register`(S외·G외) / 타입을 `Provided`·`Input`(S외·S내·G내) | 겹친다는 것은 넷 전부, 어느 쪽을 바꿀지는 갈림. 함수 `Impl` 은 Rust 의 `impl Trait for Type` 과 같은 자리라 살리고 싶음. **권장: 타입 쪽을 바꿈** — 이름은 아래 `Ops` 와 같이 |
+| `Trait.Module` | 변 | 변 | 변 | – | `Expose`·`Extend`·`WithEntries`·`BuildModule` | "모듈" 이 파일 단위의 모듈과 겹치고 동작을 말하지 않음. 대안은 넷이 다 달라 모인 이름이 없음. 제 후보: `Trait.Expose`(트레이트에 진입점을 내놓음) |
+| `List.Ops`(필수 함수만) | 약 | 유 | 변 | 변 | `Core`·`Primitives`·`Required` | "연산 전부" 로 읽힘. 규약과 주석이 이미 "프리미티브 다섯" 이라 부름. 위 `Impl` 타입과 묶어 **`Ops`/`Full`/`Impl` → `Core`/`Full`/`Provided`** 가 한 후보. ⚠️ 연쇄가 큼 — 배럴의 `ListOps`·`MapOps`·`SetOps`·`CollectionOps`·`DequeOps` 가 전부 `…Core` 로 |
+
+**나. 넷 중 하나만 짚었고, 확인해 보니 사실인 것** — 이번 재배치 이전부터 있던 것도 있음
+
+| 이름 | 누가 | 무엇 | 제 확인·의견 |
+|---|---|---|---|
+| `Arr.FromTable` 대 `HashMap.FromTable` | G내(1순위) | 같은 이름인데 `Arr` 쪽은 **입양**(복사 안 함, 넘긴 테이블이 바뀜), `HashMap` 쪽은 **복사**. 복사판은 `Arr.CloneFromTable`, 입양판은 `HashMap.Adopt` | 사실. 두 모듈의 짝이 엇갈림(`FromTable`/`CloneFromTable` 대 `Adopt`/`FromTable`). 후보: **`Arr.FromTable` → `Arr.Adopt`**, `Arr.CloneFromTable` → `Arr.FromTable`(= 맵과 같은 뜻). ⚠️ 뒤쪽은 같은 이름의 뜻이 뒤집히는 변경이라 배포 전인 지금만 가능 |
+| `to` 대 `into` | G내 | 목적지 인자가 `Slice`·`Map`·`Filter`·`Flat`·`Flatmap` 은 `to`, `GroupBy`·`CountBy`·`KeyBy` 는 `into` | 사실. 다만 뜻이 조금 다름 — `to` 는 **있으면** 거기에(선택), `into` 는 **반드시** 거기에(필수, 종류도 고름). 하나로 맞출지, 그 차이를 이름으로 두는 것인지 |
+| `Arr.GroupBy`(목적지 필수) | G외(2순위) | 다른 언어의 `groupBy` 는 전부 새 맵을 돌려줌. 여기는 맵을 만들어 넘겨야 함 → `GroupByInto` | 호출 모양은 AR 에서 정하신 것. 이름에 `Into` 를 붙일지만의 문제. 타입이 셋째 인자를 요구해 조용히 틀리지는 않음(빠뜨리면 에러) |
+| `Search.LowerBound` 대 `TreeMap.LowerKey` | G내 | `LowerBound` 는 "이상"(`>=`, C++), `LowerKey` 는 "미만"(`<`, Java). 한 라이브러리에서 `Lower` 가 반대 뜻 | 사실. 2층(트리부)은 C++ 어휘, 3층(`TreeMap`)은 Java `NavigableMap` 어휘(`Ceiling`/`Higher`/`Floor`/`Lower`). ⚠️ `Algorithms/BSearch` 도 `LowerBound`/`UpperBound`(삽입 위치)를 씀(확인) — 트리부만 `Ceiling`/`Higher` 로 바꾸면 이번엔 2층 안에서 갈림. 길은 둘: 찾기 조각은 C++ 어휘로 두고 주석에 "`TreeMap.LowerKey` 와 반대" 를 적기 / `TreeMap` 쪽을 바꾸기 |
+| `Node.Double.InsertNext`/`InsertPrev` 대 `LinkedDeque.InsertAfter`/`InsertBefore` | G외(변), G내(유) | 같은 동작, 층마다 다른 낱말 | 사실. G내는 "노드는 칸 이름(`NEXT`·`PREV`)을 따르고 컨테이너는 흔한 이름" 이라 유지. `LinkedDeque` 가 `Node.Double` 도구를 쓰게 바꿀 때(todos) 같이 정하면 됨 |
+| 네임스페이스 안의 불리언 | S내·G내 | 규약은 "술어는 camelCase, 최상위" 인데 `Arr.IsSorted`·`HashSet.IsSubsetOf`·`Trait.Implements` 는 PascalCase. `Empty`·`Equal` 은 `Is` 가 없고 `IsSorted`·`IsSubsetOf` 는 있음 | 사실. 코드보다 **규약 문장**이 모자람("최상위의 종류 술어만 camelCase" 라고 안 적음) — 문장은 제가 고치겠습니다. `Is` 를 붙이는 기준(`Empty` 대 `IsSorted`)은 정하실 것 |
+| `Common` 의 camelCase | S외·G외·G내(변), S내(유) | `Common.expectComparator` 와 `Search.ExpectBalance` 가 한 자리에서 케이싱이 다름 | `Common` 은 열 함수 전부 camelCase 인 내부 모듈(G외의 "유일하게" 는 틀림). 하나만 올리면 `Common` 안이 깨짐. 위 `Balance.Expect` 로 가르면 짝이 `Common.expectComparator`/`Balance.Expect` 가 되어 덜 눈에 띔. 규약에 "`Common` 은 내부용이라 camelCase" 를 적는 것은 제가 하겠습니다 |
+| `Trait.TraitSpec` | S내 | 부르는 쪽에서 `Trait.TraitSpec` — 접두가 겹침 → `Trait.Spec` | 사실. 작은 것 — 다른 것 바꿀 때 같이 |
+
+**다. 외부자만 걸리고 내부자는 유지 — "처음 보는 사람" 과 "계보를 아는 사람" 이 갈림**
+
+| 이름 | S외 | S내 | G외 | G내 | 내용 |
+|---|---|---|---|---|---|
+| `FlatMap`/`FlatSet` | 약 | 유 | 변(1순위) | – | 외부자 둘이 모델과 무관하게 **함수형 `flatMap`(map + flatten)** 으로 읽음. 내부자는 C++23 `std::flat_map` 과 정확히 같은 뜻이라 좋은 이름이라 함. 대안: `SortedArrayMap`·`ArrayMap`. (우리 `Arr` 에 `Flatmap` 함수도 있어 한 라이브러리 안에서도 겹침) |
+| `Collections/` 폴더 대 트레이트 `Collection` | 변(1순위) | 유 | 짚되 유지 | 유 | 폴더(구현체 모음)와 트레이트(`Len`·`Clear`)가 낱말 하나 차이 — Java 의 `Collection`/`Collections` 와 같은 혼란. 대안: 폴더를 `Containers/`(우리 문서가 이미 "컨테이너" 라 부름) |
+| 트레이트 `Deque` | 약 | 유 | 변 | – | 구체 컨테이너(`Deque.New()`)로 읽음. `List`·`Map`·`Set` 도 같은 처지라 이것만 바꿀 이유는 약함(S외 스스로). "트레이트 이름으로 부르기" 는 정하신 것 |
+| `Node.Double` | 변 | 유 | 짚되 유지 | – | 숫자 타입 double 로 읽힘 → `Doubly`·`Singly`. 내부자: `Single`/`Double`/`Binary` 로 짝이 섬 |
+| `Search.Balance`(타입) | 변 | 이동 | 변 | 이동 | 외부자 둘: "균형 수치·상태" 로 읽힘 → `BalanceStrategy`. 위 "가" 의 `Trees/Balance` 로 가르면 모듈 이름이 되어 대부분 풀림 |
+
+**라. 유지 쪽으로 모인 것 / 틀린 지적**
+
+- **`spec` 의 세 필드**(`required`/`dependencies`/`defaults`): sonnet 둘 다 **유지**(트레이트 객체의 필드 이름과 같아 조회·문서·
+  에러가 한 이름으로 감, 후보들은 한 필드에서만 낫고 다른 필드를 해침). Gemini 내부자만 `primitives`·`deps` 를 제안.
+  예전에 걸리신 `required`/`requires` 는 `dependencies` 로 이미 풀렸습니다.
+- **읽기/쓰기 쌍의 접미사가 반대**(`ArrRead`/`ArrData`, `NodeRead`/`Node`, `Marker`/`MarkerMut`): 내부자 둘이 짚음.
+  Gemini: 까닭이 있으니(실체는 쓰기가 기본, 마커는 읽기가 기본) 유지하고 규약에 적기. sonnet: 통일하려면 파급이 가장 큼.
+- **`Node/` 단수**: sonnet 내부자는 `Nodes/` 로, Gemini 내부자는 유지(`init.luau` 가 있어 그 자체가 네임스페이스 —
+  확인: `init` 이 있는 폴더는 `Node` 뿐).
+- **`TreeMap.FromSorted` → `Adopt` 로 통일**(Gemini 외부자 4순위): **받지 않음** — 같지 않습니다. `Adopt` 는 넘긴 테이블을
+  그대로 가지고, `FromSorted` 는 목록을 읽어 노드를 새로 만듭니다(sonnet 내부자·Gemini 내부자가 정확히 짚음). 오해를
+  부른 것은 우리 주석("`Adopt` 와 같은 문")이라 **주석을 고쳤습니다**.
+- 약한 지적들(대개 한 명, 스스로 확신 낮음): `Trait.Stamp` → `Tag`, `RbNode` → `RedBlackNode`, `Heap` → `BinaryHeap`,
+  `Fut` → `Future`, `Arr` → `Array`, `Trait.derived` → `implied`.
+
+**제 권장 묶음**(전부 고르셔도, 일부만 고르셔도 됩니다):
+
+1. **바로 바꿈**(넷이 모였고 연쇄가 작음): `NewType` → `NewToken`, `Dispatch` → `ExpectImpl`, `TraitSpec` → `Spec`,
+   균형 계약을 `Trees/Balance` 로(`Balance.Expect`).
+2. **이름을 골라 주시면 바꿈**: `Trait.Module`(→ `Expose`?), 트레이트의 타입 셋(`Ops`/`Full`/`Impl` → `Core`/`Full`/`Provided`?),
+   `Arr.FromTable`(→ `Adopt`, 그리고 `CloneFromTable` → `FromTable`?), `LowerBound` 대 `LowerKey`(주석으로만 가를지).
+3. **방향을 정해 주실 것**(외부자와 내부자가 갈림): `FlatMap`/`FlatSet`, `Collections/` 폴더, `Node.Double`, `GroupBy` 에 `Into`,
+   `to`/`into`, `Is` 접두의 기준.
+
+---
+
 ### G. mlua 바인딩 — **보류 확정**
 
 사용자: *"얹혀지는 구조여도 좋아 … 여기에 얽메일 필요는 없어."*

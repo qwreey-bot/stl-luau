@@ -10,10 +10,10 @@
 | **AA. Luau 새 솔버 결함 보고** — 초안 정리 끝(이슈 **다섯** + 재현 파일 — 2026-10-13 에 5번 "재귀 별칭이 유니온의 갈래이면 타입 인자를 안 봄" 추가: 옵셔널 노드 자리가 원소 타입을 못 지킴). **올리는 것은 사용자가**(또는 지시하실 때) | `.claude/audit/luau-solver-issues/DRAFTS.md` |
 | 페이퍼 07 의 6번 — 일반 트리(자식 여럿)·연결 리스트의 표면을 어디까지(사용자: *"좀만 더 보자"*) | `papers/07` 8절 |
 | ~~AT. 노드의 계약~~ → **2026-10-13 결정·반영**: 종류별 불투명 핸들 + 전부 번호 칸, 칸 배치는 계약으로(값은 1번 칸). perf 38-3 | `question.md` AT |
-| **이름 검토** — 2026-10-13 사용자: *"나 말고 sonnet/gemini 내부/외부자 시선으로 보는게 나아"*. sonnet 둘 + Gemini(agy) 둘(외부자·내부자)에게 같은 목록으로 맡김. 결과는 `audit/agy/` 와 여기에 | (진행 중) |
+| **AU. 이름 검토 결과** — sonnet 둘 + Gemini(agy) 둘(외부자·내부자)이 같은 목록을 봄. 넷이 모인 것: `Trait.NewType` → `NewToken`, `Trees/Search` 에서 균형 계약을 가르기, `Trait.Dispatch` → `ExpectImpl`, `Trait.Impl`(함수) 대 `List.Impl`(타입) 겹침, `Trait.Module`. 하나만 짚었지만 사실인 것: `Arr.FromTable`(입양) 대 `HashMap.FromTable`(복사), `LowerBound`(이상) 대 `LowerKey`(미만), `to`/`into`. 외부자만 걸린 것: `FlatMap`, `Collections/`, `Node.Double`. **고르신 뒤 한꺼번에 바꿈** | `question.md` AU, 원문 `audit/agy/2026-10-13-names-*.md` |
 | **AS. 모듈을 통째로 등록하면 같은 이름이 전부 재정의** — 진입점에 위임하는 같은 이름 함수는 무한 재귀, 뜻이 다른 같은 이름은 조용히 틀린 결과(리뷰가 재현, 진단 0건). 지금은 문서·테스트로만 막음 | `question.md` AS |
 | ~~`papers/07` 9절의 설계 초안~~ → **2026-10-13 답 받음**(9-4): 층은 노드단 도구(읽기/쓰기, 단방향·양방향·이진) → 트리부(AVL·레드블랙, 완전 이진은 배열식·노드식 둘) → 조립. **제품의 `TreeMap` 은 레드블랙**. Deque 를 둘로 나눈 것은 들어감 | `papers/07` 9-4 |
-| **제가 고른 이름들**(폴더 셋, `dependencies`, `Ops`/`Full`/`Impl`/`Marker`, `Trait.Dispatch`/`Module`, `Token`) — 나중에 한꺼번에 | 아래 "디렉터리 구조" 절 |
+| ~~제가 고른 이름들~~ → 위 AU 로 합침 | `question.md` AU |
 
 (2026-10-13 에 확인 끝: AJ·AK·AN·AO — 바뀐 것은 `MapOps` 에서 `Records` 를 뺀 것과 AR.)
 

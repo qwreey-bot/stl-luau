@@ -24,11 +24,18 @@
   | 타입 | PascalCase | `Arr<T>`, `ArrView<T>`, `HashMapData<K, V>` |
   | 생성자 | PascalCase | `Arr.Of`, `TreeMap.New`, `Heap.FromList` |
   | 연산(네임스페이스 함수) | PascalCase | `Arr.PushBack(a, v)`, `Arr.SortInplace(a)` |
-  | 술어 | camelCase, 최상위 | `stl.isArr(v)`, `stl.isHeap(v)` |
+  | **종류** 술어(이 값이 그 컨테이너인가) | camelCase, 최상위 | `stl.isArr(v)`, `stl.isHeap(v)` |
+  | 불리언을 돌려주는 연산 | PascalCase(네임스페이스 함수라서) | `Arr.IsSorted(a)`, `HashSet.IsSubsetOf(s, t)`, `Arr.Empty(a)`, `Trait.Implements(t, v)` |
+  | 상수 | 대문자 | `VALUE`, `NEXT`, `KEY` |
   | 지역 변수 | camelCase | `arrLen`, `moveLen`, `outLen` |
   | `require` 받은 모듈 | PascalCase | `local Common = require("./Common")` |
   | 소스 파일 | PascalCase | `src/Collections/Arr.luau`, `src/Collections/HashSet.luau` |
   | 테스트 파일 | 소문자 + dot | `tests/spec.arr.luau` |
+
+  camelCase 인 종류 술어는 **배럴 최상위의 `is…` 뿐**입니다 — 모듈 안에서 불리언을 돌려주는 함수는 다른 연산과 같이
+  PascalCase 입니다(2026-10-13 이름 검토에서 규약 문장이 이걸 말하지 않는다고 둘이 짚음). `Is` 접두를 붙이는 기준
+  (`Empty`·`Equal` 대 `IsSorted`·`IsSubsetOf`)은 아직 안 정했습니다(질문 AU). **`Common` 은 예외로 전부 camelCase**
+  (`Common.raise`, `Common.listLength`, `Common.expectComparator`) — 라이브러리 안에서만 쓰는 모듈이고 공개 표면이 아닙니다.
 
 - ⭐ **데이터는 엔티티, 함수는 서비스** (2026-10-01 사용자 결정, 질문 AB —
   예외 없음, `Fut` 포함). 컨테이너는 **메타테이블 없는 평범한 테이블**이고,
