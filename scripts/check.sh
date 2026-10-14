@@ -17,8 +17,17 @@ TEST_TIMEOUT=300
 
 # tests 를 넣으면 require 로 src 도 같이 끌려와 같은 파일이 "src/arr.luau" 와
 # "./src/arr.luau" 두 경로로 중복 보고됩니다. 정규화 후 중복을 지웁니다.
-out=$(luau-analyze src tests 2>&1 | sed "s|^$PWD/||; s|^\./||" | sort -u)
+# ⚠️ 검사기의 **종료 코드**를 봅니다(0 = 진단 없음, 1 = 진단 있음, 그 밖 = 비정상). 검사기가 도중에 죽으면 진단이 비어
+# "TypeError 0건" 으로 통과할 수 있었습니다 — 2026-10-14 에 luau-analyze 가 몇 번에 한 번 메모리 오류로 죽는 모양을
+# 만났습니다(`corrupted size vs. prev_size`, 타입 함수와 무관 — 작은 모듈과 배럴을 같이 require 하는 파일).
+raw=$(luau-analyze src tests 2>&1)
+analyze_rc=$?
+out=$(printf '%s\n' "$raw" | sed "s|^$PWD/||; s|^\./||" | sort -u)
 [ -n "$out" ] && printf '%s\n' "$out"
+if [ "$analyze_rc" -gt 1 ]; then
+	echo "  → luau-analyze 가 비정상 종료했습니다(종료 코드 $analyze_rc) — 진단 0건을 믿을 수 없습니다. 다시 돌려 보세요."
+	fail=1
+fi
 
 echo
 echo "=== 타입 진단 요약 (파일별 TypeError)"
@@ -88,7 +97,15 @@ while IFS=$'\t' read -r want path lines || [ -n "$want" ]; do
 		continue
 	fi
 	base=$(basename "$path")
-	got_lines=$(luau-analyze "$path" 2>&1 |
+	spike_raw=$(luau-analyze "$path" 2>&1)
+	spike_rc=$?
+	if [ "$spike_rc" -gt 1 ]; then
+		echo "  FAIL  $path"
+		echo "        luau-analyze 가 비정상 종료했습니다(종료 코드 $spike_rc) — 다시 돌려 보세요"
+		spike_fail=1
+		continue
+	fi
+	got_lines=$(printf '%s\n' "$spike_raw" |
 		grep -oE "(^|/)${base//./\\.}\([0-9]+,[0-9]+\): TypeError: " |
 		sed -E 's/.*\(([0-9]+),.*/\1/' | sort -n | paste -sd, -)
 	got=$(if [ -z "$got_lines" ]; then echo 0; else echo "$got_lines" | tr ',' '\n' | wc -l | tr -d ' '; fi)
