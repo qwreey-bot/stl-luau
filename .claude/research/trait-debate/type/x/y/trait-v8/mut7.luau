@@ -1,0 +1,188 @@
+--!strict
+local Trait = require("./Trait")
+type A = Trait.A
+type B = Trait.B
+const T1 = Trait.Trait("T1", function<M>(mode: M) return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+ return {
+  R1 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R2 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R3 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R4 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R5 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R6 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  D1 = Trait.Default(mode, function(ops: T1F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D2 = Trait.Default(mode, function(ops: T1F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D3 = Trait.Default(mode, function(ops: T1F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D4 = Trait.Default(mode, function(ops: T1F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D5 = Trait.Default(mode, function(ops: T1F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D6 = Trait.Default(mode, function(ops: T1F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+ }
+end end)
+export type T1F<Self, E, I> = typeof(T1.Of<<Self, E, I>>(nil :: any))
+export type T1I<Self, E, I> = typeof(T1.ImplOf<<Self, E, I>>(nil :: any))
+const impl1_1: T1I<A, B, number> = { D2 = function(s: A, x: number): number return 1 end, R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl1_2: T1I<A, B, number> = { Dx = 1, R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl1_3: T1I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end,  i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl1_4: T1I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl1_5: T1I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl1_6: T1I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl1_7: T1I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl1_8: T1I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const T2 = Trait.Trait("T2", function<M>(mode: M) return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+ return {
+  R1 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R2 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R3 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R4 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R5 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R6 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  D1 = Trait.Default(mode, function(ops: T2F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D2 = Trait.Default(mode, function(ops: T2F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D3 = Trait.Default(mode, function(ops: T2F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D4 = Trait.Default(mode, function(ops: T2F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D5 = Trait.Default(mode, function(ops: T2F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D6 = Trait.Default(mode, function(ops: T2F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+ }
+end end)
+export type T2F<Self, E, I> = typeof(T2.Of<<Self, E, I>>(nil :: any))
+export type T2I<Self, E, I> = typeof(T2.ImplOf<<Self, E, I>>(nil :: any))
+const impl2_1: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl2_2: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl2_3: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl2_4: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl2_5: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl2_6: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl2_7: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl2_8: T2I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const T3 = Trait.Trait("T3", function<M>(mode: M) return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+ return {
+  R1 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R2 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R3 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R4 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R5 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R6 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  D1 = Trait.Default(mode, function(ops: T3F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D2 = Trait.Default(mode, function(ops: T3F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D3 = Trait.Default(mode, function(ops: T3F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D4 = Trait.Default(mode, function(ops: T3F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D5 = Trait.Default(mode, function(ops: T3F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D6 = Trait.Default(mode, function(ops: T3F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+ }
+end end)
+export type T3F<Self, E, I> = typeof(T3.Of<<Self, E, I>>(nil :: any))
+export type T3I<Self, E, I> = typeof(T3.ImplOf<<Self, E, I>>(nil :: any))
+const impl3_1: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl3_2: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl3_3: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl3_4: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl3_5: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl3_6: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl3_7: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl3_8: T3I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const T4 = Trait.Trait("T4", function<M>(mode: M) return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+ return {
+  R1 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R2 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R3 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R4 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R5 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R6 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  D1 = Trait.Default(mode, function(ops: T4F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D2 = Trait.Default(mode, function(ops: T4F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D3 = Trait.Default(mode, function(ops: T4F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D4 = Trait.Default(mode, function(ops: T4F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D5 = Trait.Default(mode, function(ops: T4F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D6 = Trait.Default(mode, function(ops: T4F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+ }
+end end)
+export type T4F<Self, E, I> = typeof(T4.Of<<Self, E, I>>(nil :: any))
+export type T4I<Self, E, I> = typeof(T4.ImplOf<<Self, E, I>>(nil :: any))
+const impl4_1: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl4_2: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl4_3: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl4_4: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl4_5: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl4_6: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl4_7: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl4_8: T4I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const T5 = Trait.Trait("T5", function<M>(mode: M) return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+ return {
+  R1 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R2 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R3 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R4 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R5 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R6 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  D1 = Trait.Default(mode, function(ops: T5F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D2 = Trait.Default(mode, function(ops: T5F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D3 = Trait.Default(mode, function(ops: T5F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D4 = Trait.Default(mode, function(ops: T5F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D5 = Trait.Default(mode, function(ops: T5F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D6 = Trait.Default(mode, function(ops: T5F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+ }
+end end)
+export type T5F<Self, E, I> = typeof(T5.Of<<Self, E, I>>(nil :: any))
+export type T5I<Self, E, I> = typeof(T5.ImplOf<<Self, E, I>>(nil :: any))
+const impl5_1: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl5_2: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl5_3: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl5_4: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl5_5: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl5_6: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl5_7: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl5_8: T5I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const T6 = Trait.Trait("T6", function<M>(mode: M) return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+ return {
+  R1 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R2 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R3 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R4 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R5 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R6 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  D1 = Trait.Default(mode, function(ops: T6F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D2 = Trait.Default(mode, function(ops: T6F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D3 = Trait.Default(mode, function(ops: T6F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D4 = Trait.Default(mode, function(ops: T6F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D5 = Trait.Default(mode, function(ops: T6F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D6 = Trait.Default(mode, function(ops: T6F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+ }
+end end)
+export type T6F<Self, E, I> = typeof(T6.Of<<Self, E, I>>(nil :: any))
+export type T6I<Self, E, I> = typeof(T6.ImplOf<<Self, E, I>>(nil :: any))
+const impl6_1: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl6_2: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl6_3: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl6_4: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl6_5: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl6_6: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl6_7: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl6_8: T6I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const T7 = Trait.Trait("T7", function<M>(mode: M) return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+ return {
+  R1 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R2 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R3 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R4 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R5 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  R6 = Trait.Fn<<(s: Self, i: I) -> E?>>(),
+  D1 = Trait.Default(mode, function(ops: T7F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D2 = Trait.Default(mode, function(ops: T7F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D3 = Trait.Default(mode, function(ops: T7F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D4 = Trait.Default(mode, function(ops: T7F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D5 = Trait.Default(mode, function(ops: T7F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+  D6 = Trait.Default(mode, function(ops: T7F<Self, E, I>) const g = ops.R1; const r2 = ops.R2; return function(s: Self, x: E): I? local k = r2(s, 1 :: any) :: any; if g(s, k) == x then return k end; return nil end end),
+ }
+end end)
+export type T7F<Self, E, I> = typeof(T7.Of<<Self, E, I>>(nil :: any))
+export type T7I<Self, E, I> = typeof(T7.ImplOf<<Self, E, I>>(nil :: any))
+const impl7_1: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl7_2: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl7_3: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl7_4: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl7_5: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl7_6: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl7_7: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+const impl7_8: T7I<A, B, number> = { R1 = function(s: A, i: number): B? return nil end, R2 = function(s: A, i: number): B? return nil end, R3 = function(s: A, i: number): B? return nil end, R4 = function(s: A, i: number): B? return nil end, R5 = function(s: A, i: number): B? return nil end, R6 = function(s: A, i: number): B? return nil end,}
+local canary: string = 1
+return canary
