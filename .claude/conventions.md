@@ -137,6 +137,9 @@
     (와 `Arr` 의 읽기 뷰)까지 값으로 삼아 틀린 값·라이브러리 줄 에러가 됩니다. 타입은 못 막습니다: 콜백 타입에
     `...unknown` 꼬리를 두면 잡히지만 **타입을 적은 콜백 변수·파라미터**(`pred: (E, I) -> boolean`)가 전부 거절돼
     걷었습니다(구조 재배치 리뷰 — `spikes/64` 가 두 쪽을 다 고정). 람다로 감싸세요.
+    ⭐ **진입점은 구현 찾기를 안에 펼쳐 씁니다**(2026-10-14, perf 51절): `const impl: any = (if type(v) == "table" then impls[rawget(v :: any, "__type")] else nil)
+    or expectImpl(T, v, "이름")` 뒤 `impl.이름(…)`(`impls = T.impls :: any`). `expectImpl(…).이름(…)` 한 줄로 쓰면 `Trait` 모듈의 함수 호출이
+    하나 붙어 호출당 9~15ns 였습니다. 못 찾았을 때만 `expectImpl` 로 가니 에러 메시지·줄은 같습니다. 새 진입점도 이 모양으로.
     `Trait.Expose` 는 트레이트의 자기 필드 이름(`defaults`·`required` … — 값이 `nil` 이어도)을 진입점 이름으로
     받지 않고, 하나라도 걸리면 아무것도 얹지 않습니다.
     알고리즘은 **작게 시작해 점점 늘립니다**(사용자 결정) — 새로 올릴 땐

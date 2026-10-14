@@ -33,18 +33,25 @@ export type MarkerMut = { read __type: Trait.Token<any>, read __collectionMut: t
 
 const Collection = Trait.New<<Core<any>>>("Collection", { required = { "Len", "Clear" } })
 const expectImpl = Trait.ExpectImpl
+const impls = Collection.impls :: any
+-- 진입점은 구현 찾기를 **안에 펼쳐** 둡니다 — `expectImpl(…)` 을 부르는 것만으로 호출당 9~10ns 였습니다(perf 51절).
+-- 못 찾았을 때만 `expectImpl` 로 갑니다(에러 메시지).
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 
 -- 알고 있는 크기(O(1)). 리스트·맵·셋·힙 어느 것이든. 읽기라 빌린 참조(`ArrRead`·`CircularDequeRead`)도 받습니다.
 const function Len(collection: Marker): number
-	return expectImpl(Collection, collection, "Len").Len(collection)
+	const impl: any = (if type(collection) == "table" then impls[rawget(collection :: any, "__type")] else nil)
+		or expectImpl(Collection, collection, "Len")
+	return impl.Len(collection)
 end
 
 -- 비우고 **같은 컨테이너를 그 타입 그대로** 돌려줍니다(`HashMap<string, number>` 를 넣으면 그 타입).
 -- 맵 종류를 모르고 "비우고 다시 채우기" 를 쓸 때. 읽기 전용으로 빌린 참조는 못 넣습니다(`MarkerMut`).
 const function Clear<C>(collection: C & MarkerMut): C
-	expectImpl(Collection, collection, "Clear").Clear(collection)
+	const impl: any = (if type(collection) == "table" then impls[rawget(collection :: any, "__type")] else nil)
+		or expectImpl(Collection, collection, "Clear")
+	impl.Clear(collection)
 	return collection
 end
 

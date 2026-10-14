@@ -64,23 +64,32 @@ const Stack = Trait.New<<Full<any, any>>>("Stack", {
 	end,
 }) :: Trait.Trait<Full<any, any>, Provided<any, any>>
 const expectImpl = Trait.ExpectImpl
+const impls = Stack.impls :: any
+-- 진입점은 구현 찾기를 **안에 펼쳐** 둡니다 — `expectImpl(…)` 을 부르는 것만으로 호출당 9~10ns 였습니다(perf 51절).
+-- 못 찾았을 때만 `expectImpl` 로 갑니다(에러 메시지).
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 
 -- 맨 위에 넣고 넣은 타입 그대로 돌려줍니다.
 const function Push<C, T>(stack: C & MarkerMut<T>, item: T): C
-	expectImpl(Stack, stack, "Push").Push(stack, item)
+	const impl: any = (if type(stack) == "table" then impls[rawget(stack :: any, "__type")] else nil)
+		or expectImpl(Stack, stack, "Push")
+	impl.Push(stack, item)
 	return stack
 end
 
 -- 맨 위(마지막에 넣은 것)를 꺼냅니다. 비었으면 `nil`.
 const function Pop<T>(stack: MarkerMut<T>): T?
-	return expectImpl(Stack, stack, "Pop").Pop(stack)
+	const impl: any = (if type(stack) == "table" then impls[rawget(stack :: any, "__type")] else nil)
+		or expectImpl(Stack, stack, "Pop")
+	return impl.Pop(stack)
 end
 
 -- 맨 위를 봅니다(꺼내지 않음). 비었으면 `nil`. 읽기라 빌린 참조도 받습니다.
 const function Peek<T>(stack: Marker<T>): T?
-	return expectImpl(Stack, stack, "Peek").Peek(stack)
+	const impl: any = (if type(stack) == "table" then impls[rawget(stack :: any, "__type")] else nil)
+		or expectImpl(Stack, stack, "Peek")
+	return impl.Peek(stack)
 end
 
 -- stylua: ignore

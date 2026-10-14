@@ -40,40 +40,55 @@ const Deque = Trait.New<<Core<any, any>>>("Deque", {
 	required = { "PushFront", "PushBack", "PopFront", "PopBack", "Front", "Back" },
 })
 const expectImpl = Trait.ExpectImpl
+const impls = Deque.impls :: any
+-- 진입점은 구현 찾기를 **안에 펼쳐** 둡니다 — `expectImpl(…)` 을 부르는 것만으로 호출당 9~10ns 였습니다(perf 51절).
+-- 못 찾았을 때만 `expectImpl` 로 갑니다(에러 메시지).
 
 --[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
 -- 종류를 아는 코드는 그 모듈의 함수를 직접 쓰세요(`CircularDeque.PushBack`) — 구현 찾기가 호출마다 붙습니다.
 
 -- 맨 앞에 넣고 **넣은 타입 그대로** 돌려줍니다.
 const function PushFront<C, T>(deque: C & MarkerMut<T>, item: T): C
-	expectImpl(Deque, deque, "PushFront").PushFront(deque, item)
+	const impl: any = (if type(deque) == "table" then impls[rawget(deque :: any, "__type")] else nil)
+		or expectImpl(Deque, deque, "PushFront")
+	impl.PushFront(deque, item)
 	return deque
 end
 
 -- 맨 뒤에 넣고 넣은 타입 그대로 돌려줍니다.
 const function PushBack<C, T>(deque: C & MarkerMut<T>, item: T): C
-	expectImpl(Deque, deque, "PushBack").PushBack(deque, item)
+	const impl: any = (if type(deque) == "table" then impls[rawget(deque :: any, "__type")] else nil)
+		or expectImpl(Deque, deque, "PushBack")
+	impl.PushBack(deque, item)
 	return deque
 end
 
 -- 맨 앞을 꺼냅니다. 비었으면 `nil`.
 const function PopFront<T>(deque: MarkerMut<T>): T?
-	return expectImpl(Deque, deque, "PopFront").PopFront(deque)
+	const impl: any = (if type(deque) == "table" then impls[rawget(deque :: any, "__type")] else nil)
+		or expectImpl(Deque, deque, "PopFront")
+	return impl.PopFront(deque)
 end
 
 -- 맨 뒤를 꺼냅니다. 비었으면 `nil`.
 const function PopBack<T>(deque: MarkerMut<T>): T?
-	return expectImpl(Deque, deque, "PopBack").PopBack(deque)
+	const impl: any = (if type(deque) == "table" then impls[rawget(deque :: any, "__type")] else nil)
+		or expectImpl(Deque, deque, "PopBack")
+	return impl.PopBack(deque)
 end
 
 -- 맨 앞을 봅니다(꺼내지 않음). 비었으면 `nil`.
 const function Front<T>(deque: Marker<T>): T?
-	return expectImpl(Deque, deque, "Front").Front(deque)
+	const impl: any = (if type(deque) == "table" then impls[rawget(deque :: any, "__type")] else nil)
+		or expectImpl(Deque, deque, "Front")
+	return impl.Front(deque)
 end
 
 -- 맨 뒤를 봅니다. 비었으면 `nil`.
 const function Back<T>(deque: Marker<T>): T?
-	return expectImpl(Deque, deque, "Back").Back(deque)
+	const impl: any = (if type(deque) == "table" then impls[rawget(deque :: any, "__type")] else nil)
+		or expectImpl(Deque, deque, "Back")
+	return impl.Back(deque)
 end
 
 -- stylua: ignore
