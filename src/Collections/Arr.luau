@@ -101,6 +101,8 @@ export type ArrData<T> = {
 	read __listMut: (T, number) -> (T, number),
 	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
 	read __collectionMut: true,
+	-- 연관 타입(새 트레이트 시제품 `research/trait-v2` — 2026-10-14): 이 종류의 원소·위치. 불변 팬텀, 타입에만 있습니다.
+	read __generics: { read Item: (T) -> T, read Index: (number) -> number },
 	[number]: T,
 }
 
