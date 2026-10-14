@@ -468,10 +468,10 @@ end) == 7, "빈 것의 Fold 는 초기값")
 assert(Arr.FoldRight(Arr.Of("a", "b", "c"), "", function(acc, v)
 	return acc .. v
 end) == "cba", "FoldRight 는 오른쪽부터")
-assert(Arr.Reduce(Arr.Of(1, 2, 3), function(a, b)
+assert(Arr.Reduce(Arr.Of(1, 2, 3), function(a: number, b: number)
 	return a + b
 end) == 6, "Reduce")
-assert(Arr.Reduce(Arr.Of(5), function(a, b)
+assert(Arr.Reduce(Arr.Of(5), function(a: number, b: number)
 	return a + b
 end) == 5, "Reduce 한 개는 그 원소")
 assert(Arr.Reduce(emptyNum(), function(a: number, b: number)
@@ -595,8 +595,12 @@ do
 	-- 정렬은 터지지 않습니다. (M0 6라운드부터) `#` 와 `n` 이 어긋나면 checked 판으로
 	-- 넘어가 결과도 맞습니다 — `#` 검사는 O(log n), 정렬 대비 0.3%(perf 17절). 구멍 검사
 	-- O(n) 을 건너뛰는 unchecked 의 존재 이유는 그대로입니다.
+	-- **꼬리** 구멍(`[3]` 만 비움) — 경계가 2 하나뿐이라 `#` 가 어느 버전에서든 2(≠ n). 예전엔 가운데 구멍
+	-- (`[1], [3]` 만 참)으로 적었는데, 그건 경계가 1·3 둘이라 `#` 가 아무거나 돌려줘도 되고(Lua 규격) luau 0.742 는 3 을
+	-- 돌려줘 `# == n` — 그물에 안 걸려 정렬이 구멍에서 터졌습니다(2026-10-14 버전 올리기). 가운데 구멍에서 터지는 것은
+	-- unchecked 의 계약 안(위의 SumUnchecked 와 같음).
 	const holedSorted = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
-	holedSorted[1], holedSorted[3] = 1, 3
+	holedSorted[1], holedSorted[2] = 2, 1
 	assert(
 		pcall(function()
 			return Arr.SortInplaceUnchecked(holedSorted)

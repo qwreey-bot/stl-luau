@@ -181,7 +181,11 @@ end
 
 const function GetOr<K, V>(self: TreeMapData<K, V>, key: K, fallback: V): V
 	const value = Get(self, key)
-	return if value == nil then fallback else value
+	-- (`if … then fallback else value` 는 0.742 의 솔버가 `(V & ~nil) | V` 를 V 로 줄이지 못했음)
+	if value ~= nil then
+		return value
+	end
+	return fallback
 end
 
 const function Len<K, V>(self: TreeMapData<K, V>): number

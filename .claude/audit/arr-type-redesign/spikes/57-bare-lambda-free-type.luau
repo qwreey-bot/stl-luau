@@ -11,8 +11,8 @@
 
 	**처방**: 콜백을 넘길 땐 `f<<T>>` 나 파라미터 주석 중 하나를 **항상** 붙입니다(CTRL).
 
-	HOLE 은 지금 0건이 기대치입니다 — 잡히기 시작하면(솔버가 나아지면) 기대치를 올리고
-	`typing-limits.md` 를 고치세요. 기대 진단: 4건 (CTRL 3 + CANARY 1)
+	⭐ **luau 0.742 에서 고쳐졌습니다**(2026-10-14 버전 올리기 — HOLE 셋이 잡히기 시작함). 기대 진단: 7건
+	(HOLE 3 + CTRL 3 + CANARY 1). 처방(콜백엔 `f<<T>>` 나 주석)은 그대로 권합니다 — 맨 람다는 몸통이 산술이면 여전히 에러.
 ]]
 local stl = require("../../../../src")
 local Arr = stl.Arr
@@ -23,7 +23,7 @@ local function Map2<T, G>(_xs: { T }, _f: (T) -> G): { G }
 	return {}
 end
 
---[[ HOLE — 잡혀야 하는데 지금 0건 ]]
+--[[ HOLE — 0.734 까지 0건이었음, 0.742 부터 잡힘 ]]
 local names = Arr.Map(people, function(p)
 	return p.name
 end)

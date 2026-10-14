@@ -68,7 +68,9 @@ local neg5: Arr<string> = Arr.Map(nums, function(v: number)
 end)
 local neg6 = Arr.Sum(strs) -- Sum 은 숫자 배열 전용
 local neg7 = Arr.PushBack(nums, "문자열") -- 원소 타입이 다름
-local neg8 = Arr.Equal(nums, strs) -- 원소 타입이 다른 배열과 비교
+-- ⚠️ 알려진 경계(지금 0건): 원소 타입이 다른 배열과 비교. luau 0.742 부터 `T` 를 `number | string` 으로 넓혀 받습니다 —
+-- `Equal` 은 읽기만 하고 `==` 로 견주니 넓어져도 건전합니다(그냥 거짓 — `List.IndexOf` 와 같은 경우). 0.734 는 잡았음.
+local neg8 = Arr.Equal(nums, strs)
 local neg9: string = Arr.Fold(nums, 0, function(acc: number, v: number)
 	return acc + v
 end)

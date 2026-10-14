@@ -79,7 +79,7 @@ const function fixRedRed(root: any, start: any): any
 	local top: any = root
 	local node: any = start
 	while true do
-		local above = node[PARENT]
+		local above: any = node[PARENT]
 		if above == nil or not above[RED] then
 			break
 		end
@@ -92,11 +92,13 @@ const function fixRedRed(root: any, start: any): any
 				grand[RED] = true
 				node = grand
 			else
-				if above[RIGHT] == node then
+				-- 회전했으면 `node` 가 그 자리로 올라옴 — 재대입 대신 고름(0.742 의 솔버가 재대입한 `above` 를 unknown 으로 봤음)
+				const turned = above[RIGHT] == node
+				if turned then
 					rotateLeft(above)
-					above = node
 				end
-				above[RED] = false
+				const pivot: any = if turned then node else above
+				pivot[RED] = false
 				grand[RED] = true
 				const raised = rotateRight(grand)
 				if raised[PARENT] == nil then
@@ -112,11 +114,13 @@ const function fixRedRed(root: any, start: any): any
 				grand[RED] = true
 				node = grand
 			else
-				if above[LEFT] == node then
+				-- 회전했으면 `node` 가 그 자리로 올라옴 — 재대입 대신 고름(0.742 의 솔버가 재대입한 `above` 를 unknown 으로 봤음)
+				const turned = above[LEFT] == node
+				if turned then
 					rotateRight(above)
-					above = node
 				end
-				above[RED] = false
+				const pivot: any = if turned then node else above
+				pivot[RED] = false
 				grand[RED] = true
 				const raised = rotateLeft(grand)
 				if raised[PARENT] == nil then
@@ -164,7 +168,7 @@ const function Insert<K, V>(
 	local top: any = root
 	local node: any = fresh
 	while true do
-		local above = node[PARENT]
+		local above: any = node[PARENT]
 		if above == nil or not above[RED] then
 			break
 		end
@@ -177,11 +181,13 @@ const function Insert<K, V>(
 				grand[RED] = true
 				node = grand
 			else
-				if above[RIGHT] == node then
+				-- 회전했으면 `node` 가 그 자리로 올라옴 — 재대입 대신 고름(0.742 의 솔버가 재대입한 `above` 를 unknown 으로 봤음)
+				const turned = above[RIGHT] == node
+				if turned then
 					rotateLeft(above)
-					above = node
 				end
-				above[RED] = false
+				const pivot: any = if turned then node else above
+				pivot[RED] = false
 				grand[RED] = true
 				const raised = rotateRight(grand)
 				if raised[PARENT] == nil then
@@ -197,11 +203,13 @@ const function Insert<K, V>(
 				grand[RED] = true
 				node = grand
 			else
-				if above[LEFT] == node then
+				-- 회전했으면 `node` 가 그 자리로 올라옴 — 재대입 대신 고름(0.742 의 솔버가 재대입한 `above` 를 unknown 으로 봤음)
+				const turned = above[LEFT] == node
+				if turned then
 					rotateRight(above)
-					above = node
 				end
-				above[RED] = false
+				const pivot: any = if turned then node else above
+				pivot[RED] = false
 				grand[RED] = true
 				const raised = rotateLeft(grand)
 				if raised[PARENT] == nil then
@@ -345,7 +353,7 @@ const function Remove<K, V>(root: RbNode<K, V>, target: RbNodeRead<K, V>): RbNod
 	gone[LEFT] = nil
 	gone[RIGHT] = nil
 	gone[PARENT] = nil
-	return top
+	return top :: any -- (0.742 의 솔버가 재대입한 `top` 을 unknown 으로 봄 — 안쪽은 any)
 end
 
 --#endregion

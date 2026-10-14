@@ -158,13 +158,15 @@ end
 -- 구간 `[from, to]` 의 원소들. **양끝 포함**, 정렬 순서. 뒤집히면 빈 목록. O(log n + 결과 수).
 const function RangeItems<T>(self: TreeSetData<T>, from: T, to: T): { T }
 	const out: { T } = {}
+	-- 비교에는 걸러 내기 전의 이름으로(0.742 의 솔버가 `~= nil`·`~= to` 로 좁힌 `to` 를 T 로 안 받았음)
+	const upper: T = to
 	if from == nil or from ~= from or to == nil or to ~= to then
 		return out
 	end
 	const map = self.map
 	const compare = map.compare
 	local at, node: any = 0, lowerBound(map.root, from, compare)
-	while node ~= nil and compare(node[KEY], to) <= 0 do
+	while node ~= nil and compare(node[KEY], upper) <= 0 do
 		at += 1
 		out[at] = node[KEY]
 		node = nextOf(node)

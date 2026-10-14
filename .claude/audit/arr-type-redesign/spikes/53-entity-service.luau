@@ -59,8 +59,8 @@ local neg21 = Arr.Count(nums, function(_v: number, _i: number, view)
 end)
 local neg22: stl.Fut<number> = { status = "Resolved", listeners = {}, _pack = function(_x: number) end }
 
---[[ 캐비엇(체커 한계 — 지금 0건, M0 4라운드): 가변 인자 자리의 **꼬리 호출 결과**는
-	검사되지 않습니다. 평범한 배열·문자열을 돌려주는 함수를 마지막 인자로 넘기면
+--[[ 캐비엇(체커 한계 — 0.734 까지 0건, M0 4라운드. **luau 0.742 부터 잡힘** — 2026-10-14): 가변 인자 자리의 **꼬리 호출 결과**는
+	검사되지 않았습니다. 평범한 배열·문자열을 돌려주는 함수를 마지막 인자로 넘기면
 	`Arr.Concat` 이 진단 0건으로 받고 런타임에 터집니다. 괄호로 감싸면(`(mk())`)
 	값 하나가 되어 잡힙니다. 잡히기 시작하면 건수가 늘어 배터리가 알려줍니다. ]]
 local function plainList(): { number }

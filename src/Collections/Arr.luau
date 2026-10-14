@@ -1328,6 +1328,8 @@ const function SortInplaceUnchecked<T>(self: ArrData<T>, less: LessThan<T>?): Ar
 	-- `n` 밖 raw 칸에 남은 값 — 대입으로 만든 테이블을 입양한 경우) 바깥 값이 섞이거나
 	-- 크래시했습니다(M0 6라운드). 그때만 checked 판으로 — `#` 는 O(log n), 정렬 대비
 	-- 0.3%(perf 17절). 구멍 검사 O(n) 을 건너뛰는 이 판의 존재 이유는 그대로입니다.
+	-- ⚠️ **가운데** 구멍은 이 그물에 걸린다는 보장이 없습니다 — 경계가 여럿이면 `#` 는 아무거나 돌려줘도 되고(Lua
+	-- 규격) luau 0.742 는 `n` 을 돌려주기도 합니다. 그때는 구멍이 정렬로 들어가 터집니다(unchecked 의 계약 안).
 	if #(self :: any) ~= self.n then
 		return SortInplace(self, less)
 	end
@@ -1576,7 +1578,7 @@ end
 -- 않고 꼬리로 보냅니다.
 const function sortByInto<T, K>(self: ArrRead<T>, key: (element: T) -> K, less: LessThan<K>?): ({ T }, number)
 	const len = self.n
-	const values = table.create(len)
+	const values: { T } = table.create(len)
 	const count = gatherValues(self, values)
 	const keys = table.create(count) :: { K }
 	const order = table.create(count) :: { number }

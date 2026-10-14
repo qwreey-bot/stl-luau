@@ -81,7 +81,7 @@ const function rebalance(top: any, node: any): any
 	while node ~= nil do
 		const before: number = node[HEIGHT]
 		const left, right = heightOf(node[LEFT]), heightOf(node[RIGHT])
-		local raised = node
+		local raised: any = node
 		if left > right + 1 then
 			const heavy = node[LEFT]
 			if heightOf(heavy[RIGHT]) > heightOf(heavy[LEFT]) then
