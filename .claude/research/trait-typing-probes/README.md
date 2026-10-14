@@ -20,6 +20,11 @@
 | `rewrite.luau`·`rewrite4/5/6.luau` | 시그니처엔 표식, `Fn` 출력을 타입 함수로 바꿔 끼움 / 자료 쪽 타입 함수·글자 그대로·`Inv` 별칭·공변 | 자료 타입이 타입 함수면 깨짐, 글자 그대로·`Inv` 는 됨, 공변은 넣는 쪽 검사가 빠짐 |
 | `tags.luau` | `CreateGeneric`·`UseGeneric`·필드 단위 `ApplyGeneric` | 등록 검사가 깨짐 |
 | `generictrait.luau` | 트레이트를 제네릭 타입으로(`typeof(stackDef<<Self, T>>())`) | 됨 — v3 |
+| `intotyped.luau` | 중개자가 찾기 함수(`Stack.Of`)에 정확한 제네릭 타입만 다시 붙임(`<T>(Arr<T>) -> Stack<Arr<T>, T>`) | 됨 — 런타임 비용 0, 주장은 구현자 한 번 |
+| `dictionary.luau` | 구현 표 자체를 사전 값으로 넘김 | 안 됨 — 변수에 담은 제네릭 함수 표는 구체 타입에 안 맞춰짐 |
+| `probetype.luau` | 등록 검사를 탐침 타입(`Stack<Arr<A>, A>`)으로 | 됨 — 구체 타입(`string`)으론 원소를 못박은 함수가 샘(지금 `src` 에도 있는 구멍) |
+| `factoryof.luau` | `Trait<F>(name, factory: F): { read Of: F }` — 팩토리가 곧 `Of` 의 타입 | 됨 — 값에서 Self·T, 밝힌 T 가 값과 어긋나면 잡힘(Opus 종합) |
+| `bidir-table-arg.luau` | 제네릭 함수를 구체 함수 타입 자리에: 주석 단 지역 / 인자 자리 표 리터럴 / 함수 하나를 인자로 | 지역만 됨 — 상류 보고 후보 |
 | `anyre.luau` | 재대입한 `any` 지역의 최소 재현(0.742 의 레드블랙 진단) | 재현 안 됨 |
 
 검사기 결함(별도): luau 0.734 의 `luau-analyze` 병렬 검사 힙 깨짐 — 상류 #3020, 0.742 에서 고쳐짐.
