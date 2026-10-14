@@ -28,6 +28,7 @@ local Registry = require("@self/Registry")
 local Build = require("@self/Build")
 local Entry = require("@self/Entry")
 local Errors = require("@self/Errors")
+local Fill = require("@self/Fill")
 
 export type Token<N> = { read name: N }
 -- 트레이트 객체의 타입: 진입점(시그니처 그대로) + 종류별 완성 표 + 함수 번호
@@ -57,10 +58,11 @@ end
 -- 함수 목록의 한 칸: 런타임엔 표식, 타입은 그 시그니처. `Fn` 은 **필수**, `Default` 는 **기본 구현이 채움**(등록 표에
 -- 없어도 됨 — `For<…>` 별칭에서 선택 필드가 됨). 필수 여부를 시그니처에 적는 것은 타입이 따라오게 하려고입니다(기본 구현을
 -- 불러 봐서 아는 것은 런타임뿐이라 등록 표의 타입이 모든 함수를 요구했음).
-const function Fn<T>(): T
+-- 출력 타입은 `RewriteSig` 를 거친 모양 — 시그니처의 표식(`UseGeneric<Item>`)이 역추론되는 제네릭으로 바뀜(`Fill`).
+const function Fn<T>(): Fill.RewriteSig<T>
 	return FN_MARK :: any
 end
-const function Default<T>(): T & DefaultTag
+const function Default<T>(): Fill.RewriteSig<T> & DefaultTag
 	return DEFAULT_MARK :: any
 end
 

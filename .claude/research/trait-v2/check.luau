@@ -44,7 +44,7 @@ end
 -- 2. 함수 번호는 정렬한 이름 순, 완성 표는 번호와 이름을 둘 다
 do
 	assert(P.Stack.FnTok.Peek == 1 and P.Stack.FnTok.Pop == 2 and P.Stack.FnTok.Push == 3)
-	const full = P.Stack[Kinds.CD]
+	const full = (P.Stack :: any)[Kinds.CD]
 	assert(full.Push == stl.CircularDeque.PushBack and full[3] == full.Push, "덱 함수 그대로, 번호로도")
 end
 
@@ -103,7 +103,7 @@ do
 			return table.find(s, x)
 		end,
 	})
-	const v = { __type = tok2, n = 3, "a", "b", "c" }
+	const v: any = { __type = tok2, n = 3, "a", "b", "c" }
 	assert(P.List.Contains(v, "b") and not P.List.Contains(v, "z") and calls == 2)
 	assert(P.List.Fold(v, "", function(acc: string, x: string, i: number): string
 		return acc .. x .. i

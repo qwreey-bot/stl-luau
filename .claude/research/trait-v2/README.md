@@ -27,17 +27,36 @@
 ## 모양
 
 ```lua
+-- 연관 타입의 이름(정의 자리 하나)과 시그니처의 표식
+type Item = Fill.CreateGeneric<"Item">            -- 라이브러리 어휘는 Fill 이 줌(Item, Index)
 const stackFns = {
-	Push = Fn<<<Self, T>(stack: Self & DequeMarkerMut<T>, item: T) -> Self>>(),   -- 필수
-	Fold = Default<<<Self, E, I, U>(…) -> U>>(),                                   -- 기본 구현이 채움
+	Push = Fn<<<Self>(stack: Self, item: UseGeneric<Item>) -> Self>>(),     -- 필수
+	Fold = Default<<<Self, U>(list: Self, init: U, fn: (U, UseGeneric<Item>, UseGeneric<Index>, ...any) -> U) -> U>>(),
 }
-export type StackFor<Self, T> = Fill.FillGenerics<typeof(stackFns), { Self: Self, T: T }>
+-- Fn 의 출력은 RewriteSig 를 거친 모양: <Self, Item>(Self & { read __generics: { read Item: (Item) -> Item } }, Item) -> Self
+export type StackFor<S> = Fill.ImplFor<typeof(stackFns), S>
 const Stack = Trait.Trait("Stack", stackFns, defaults?)
 
-const arrStack: StackFor<Arr<string>, string> = { Push = Arr.PushBack, … }    -- 주석이 등록 검사
+-- 종류(자료 타입)는 연관 타입을 **글자 그대로** 적음(타입 함수 금지)
+type Arr<T> = { …, read __generics: { read Item: Fill.Inv<T>, read Index: Fill.Inv<number> } }
+
+const arrStack: StackFor<Arr<string>> = { Push = Arr.PushBack, … }      -- 주석이 등록 검사
 Trait.Impl(Stack):For(ARR)(arrStack)
 Trait.Impl(Stack):Where({ Deque })(function(deps) return { Push = deps[Deque].PushBack, … } end)
 ```
+
+### 타입 쪽이 이 모양이 된 이유(2026-10-14 사용자와의 실험 — `bench-ignoreme/probe/`)
+
+| 시도 | 결과 |
+|---|---|
+| 트레이트마다 마커(스택 시그니처가 덱 마커를 요구) | 덱이 아닌 `Arr` 스택이 타입에서 거절 — 바깥 확장도 막음 |
+| 두 마커의 합(`Self & (A<T> \| B<T>)`) | 원소 추론이 `unknown` |
+| 이름을 매개변수로(`{ [Name]: T }`) | 인덱서가 됨 |
+| 받는 쪽에서 타입 함수로 꺼냄(`index<Self, …>`) | 진입점은 되지만 등록 검사(`FillGenerics`)가 그 안을 못 봄 |
+| 연관 타입을 공변 필드로 | 넣는 쪽 검사가 빠짐(원소가 넓혀져 받아짐) |
+| 연관 타입을 별칭 교집합으로 붙임 | `Self` 반환이 합(`\|`)으로 깨짐 |
+| 자료 타입(또는 그 `__generics` 필드)을 타입 함수로 | 그 종류의 제네릭 함수가 `T` 를 못 풂 / 등록 검사가 깨짐 |
+| **시그니처는 표식 → `Fn` 출력을 타입 함수로 바꿔 끼움, 자료는 글자 그대로 `Inv<T>`** | **진입점·뭉텅이 기능·바깥 계약·등록 검사가 다 섬** |
 
 ## 실험에서 정해진 것
 
@@ -50,9 +69,10 @@ Trait.Impl(Stack):Where({ Deque })(function(deps) return { Push = deps[Deque].Pu
 
 ## 열린 것
 
-- ⚠️ **타입 마커가 뭉텅이 구현을 모릅니다**: 스택 시그니처가 덱 마커를 요구하니, `For` 로 스택이 된 `Arr` 를 진입점이 타입에서
-  거절합니다(런타임은 됨 — `check.luau` 5). 두 마커의 합(`Self & (DequeMarkerMut<T> | StackMarkerMut<T>)`)으로 받으면 원소
-  추론이 `unknown` 으로 무너졌습니다(`bench-ignoreme/probe/union.luau`).
+- ~~타입 마커가 뭉텅이 구현을 모름~~ → 연관 타입(`__generics`) + 표식(`UseGeneric`)으로 풀림: `Arr` 스택이 타입에서도 통과(`types.luau`).
+- 읽기 전용으로 빌린 타입(`ArrRead`·`CircularDequeRead`)에는 `__generics` 를 안 넣었습니다(원소에 공변이어야 한다는 결정 —
+  질문 AC·AK. 불변 팬텀을 넣으면 깨짐). 새 진입점이 빌린 참조를 어떻게 받을지는 정할 거리.
+- 쓰는 진입점과 읽는 진입점의 구분(예전 `MarkerMut` — 빌린 참조는 꺼내기 못 함)도 이 모양에는 아직 없습니다.
 - 다시 짓다 겹침이 생기면 그 연쇄 도중의 에러(앞선 표는 이미 바뀜) — `onWhere` 는 먼저 다 보고 바꾸지만 `onFor` 가 위로 번지는
   길은 아님.
 - `__index` 로 물려받은 구현(지금 `src` 가 보는 것)은 아직 안 넣음.
