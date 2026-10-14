@@ -65,6 +65,8 @@ export type LinkedDequeData<T> = {
 	read __collectionMut: true,
 	-- 연관 타입(새 트레이트 시제품 `research/trait-v2` — 2026-10-14): 이 종류의 원소·위치. 불변 팬텀, 타입에만 있습니다.
 	read __generics: { read Item: (T) -> T, read Index: (NodeRead<T>) -> NodeRead<T> },
+	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
+	read __readGenerics: { read Item: () -> T, read Index: () -> NodeRead<T> },
 }
 export type LinkedDeque<T> = LinkedDequeData<T>
 
@@ -78,6 +80,8 @@ export type LinkedDequeRead<T> = {
 	read __list: T,
 	read __listIndex: NodeRead<T>,
 	read __dequeItem: T,
+	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
+	read __readGenerics: { read Item: () -> T, read Index: () -> NodeRead<T> },
 }
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).

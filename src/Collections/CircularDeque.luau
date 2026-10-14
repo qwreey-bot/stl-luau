@@ -64,6 +64,8 @@ export type CircularDequeData<T> = {
 	read __collectionMut: true,
 	-- 연관 타입(새 트레이트 시제품 `research/trait-v2` — 2026-10-14): 이 종류의 원소·위치. 불변 팬텀, 타입에만 있습니다.
 	read __generics: { read Item: (T) -> T, read Index: (number) -> number },
+	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
+	read __readGenerics: { read Item: () -> T, read Index: () -> number },
 	[number]: T,
 }
 export type CircularDeque<T> = CircularDequeData<T>
@@ -82,6 +84,8 @@ export type CircularDequeRead<T> = {
 	read __list: T,
 	read __listIndex: number,
 	read __dequeItem: T,
+	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
+	read __readGenerics: { read Item: () -> T, read Index: () -> number },
 	read [number]: T,
 }
 type Arr<T> = Arr.Arr<T>
