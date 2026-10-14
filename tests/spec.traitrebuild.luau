@@ -263,6 +263,110 @@ do
 end
 print("PASS")
 
+print(
+	"=== 2. 리뷰 1라운드 (2026-10-14) — 함수 값 구현, 넘긴 표는 등록 때의 것, 진입점의 테이블 아닌 값 ==="
+)
+do
+	const T = stl.Trait
+	local where = 0
+	-- (1) 필수·의존·기본 구현이 없는 트레이트는 무엇이든 그대로 구현 — 함수 값도(`Impl` 은 만드는 함수로 부르지 않음)
+	const Hash = T.New<<(any) -> number>>("Hash21")
+	const Thing = T.NewToken("Thing21")
+	const function hashFn(_v: any): number
+		return 1
+	end
+	T.Impl(Hash, Thing, hashFn)
+	assert(T.ImplOf(Hash, { __type = Thing }) == hashFn, "함수 값이 그대로")
+
+	-- (2) 넘긴 표는 **등록 때의 것**: 같은 틀 표를 고쳐 가며 여러 종류에 등록해도, 나중에 다시 지을 때 앞 종류가 뒤
+	-- 종류의 함수를 얻지 않음(예전처럼 등록 때 한 번 읽음)
+	const H =
+		T.New<<{ read Undo: () -> string }>>("H21", { required = { "Undo" }, dependencies = { stl.Stack :: any } })
+	local function dequeKind(name: string): any
+		const tok = T.NewToken(name)
+		const d = {}
+		for _, fnName in { "PushFront", "PushBack", "PopFront", "PopBack", "Front", "Back" } do
+			d[fnName] = function() end
+		end
+		T.Impl(stl.Deque, tok, d :: any)
+		return tok
+	end
+	const A, B = dequeKind("A21"), dequeKind("B21")
+	const function undoA(): string
+		return "A"
+	end
+	const function undoB(): string
+		return "B"
+	end
+	const template = { Undo = undoA }
+	T.Impl(H, A, template)
+	template.Undo = undoB
+	T.Impl(H, B, template)
+	T.Impl(stl.Stack, A, { Push = function() end } :: any) -- A 의 H 가 다시 지어짐
+	assert((T.ImplOf(H, { __type = A }) :: any).Undo == undoA, "A 는 등록 때의 Undo")
+	assert((T.ImplOf(H, { __type = B }) :: any).Undo == undoB)
+	-- 물려받은(`__index`) 재정의도 등록 때의 것
+	const Base = T.New<<{ read Get: () -> number, read Twice: () -> number }>>("Base21", {
+		required = { "Get" },
+		dependencies = { stl.Stack :: any },
+		defaults = function(ops: any)
+			const get = ops.Get
+			return {
+				Twice = function(): number
+					return get() * 2
+				end,
+			}
+		end,
+	})
+	const parent = {
+		Get = function(): number
+			return 5
+		end,
+		Twice = function(): number
+			return 100
+		end,
+	}
+	const C = dequeKind("C21")
+	T.Impl(Base, C, setmetatable({}, { __index = parent }) :: any)
+	parent.Twice = function(): number
+		return -1
+	end
+	T.Impl(stl.Stack, C, { Pop = function() end } :: any)
+	assert((T.ImplOf(Base, { __type = C }) :: any).Twice() == 100, "물려받은 재정의도 등록 때의 것")
+
+	-- (3) 덱·스택·큐의 진입점 전부: 테이블이 아닌 값은 사용자 줄의 에러(진입점마다 펼친 가드)
+	for _, case in
+		{
+			{
+				trait = "Deque",
+				module = stl.Deque :: any,
+				names = { "PushFront", "PushBack", "PopFront", "PopBack", "Front", "Back" },
+			},
+			{ trait = "Stack", module = stl.Stack :: any, names = { "Push", "Pop", "Peek" } },
+			{ trait = "Queue", module = stl.Queue :: any, names = { "Push", "Pop", "Peek" } },
+		} :: { { trait: string, module: any, names: { string } } }
+	do
+		for _, fnName in case.names do
+			for _, bad in { nil, 5, "x", true } :: { any } do
+				const ok, err = pcall(function()
+					where = debug.info(1, "l") + 1
+					case.module[fnName](bad, 1)
+				end)
+				const needle = `{case.trait}: {fnName} needs a {case.trait} (got {typeof(bad)} without a type token)`
+				assert(
+					not ok and string.find(tostring(err), needle, 1, true),
+					`{case.trait}.{fnName}({tostring(bad)}): {err}`
+				)
+				assert(
+					string.find(tostring(err), `spec.traitrebuild.luau:{where}:`, 1, true),
+					`{case.trait}.{fnName} 사용자 줄: {err}`
+				)
+			end
+		end
+	end
+end
+print("PASS")
+
 print()
 print("=== ALL PASS (트레이트 다시 만들기) ===")
 

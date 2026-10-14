@@ -57,7 +57,9 @@ export type Trait<I, C = I> = {
 	read defaults: Defaults?,
 	read derived: { [any]: true },
 	read derivable: boolean, -- 등록 없이 저절로 따라올 수 있는 트레이트인가(`New` 가 한 번 계산)
-	-- [토큰] = 그 구현의 출처(넘긴 표 / 만드는 함수 / `false` = 저절로 따라옴) — 다시 만들 때 씁니다.
+	-- [토큰] = 다시 지을 때 쓸 출처(넘긴 표에서 등록 때 읽은 것의 사본 / 만드는 함수 / `false` = 저절로 따라옴).
+	-- ⚠️ 약한 키지만 ephemeron 이 아니라, **토큰을 붙잡은 만드는 함수**는 그 토큰을 수거되지 않게 합니다(리뷰 1라운드 실측:
+	-- 동적 종류 5만 개에 +50MB) — 만드는 함수 안에서 토큰을 쓰지 마세요.
 	read sources: { [any]: any },
 	-- ⭐ 표식: 이 트레이트를 의존으로 적은 트레이트들. 어떤 종류의 이 트레이트 표가 (다시) 만들어지면 그 종류의 그것들을
 	-- 다시 만들거나(이미 있으면) 새로 만듭니다(이제 의존을 다 갖췄으면).
@@ -74,7 +76,7 @@ export type Trait<I, C = I> = {
 -- ⚠️ **계약**: 던지지 않고, 부작용 없이 표만 돌려줍니다 — 여러 번 불릴 수 있습니다. 다시 짓다 던지면 앞서 바뀐 표와
 -- 낡은 표가 섞인 채 남습니다(정의되지 않은 동작).
 export type Defaults = (ops: any, deps: { [any]: any }) -> { [string]: any }
--- 구현을 만드는 함수 — `Trait.Impl(트레이트, 토큰, function(deps) return { … } end)`. 의존의 함수를 붙잡아 쓰는 구현이
+-- 구현을 만드는 함수 — `Trait.ImplWith(트레이트, 토큰, function(deps) return { … } end)`. 의존의 함수를 붙잡아 쓰는 구현이
 -- 표 대신 넘깁니다. 의존이 바뀌면 다시 불립니다(같은 계약: 던지지 않고 표만 돌려줌).
 export type Builder<C> = (deps: { [any]: any }) -> C
 -- `Trait.New` 의 둘째 인자.
@@ -293,14 +295,20 @@ const function unknownName(trait: any, token: any, fnName: any): never
 end
 
 -- 출처에서 그 종류의 완성 표를 **새로 짓습니다**. 아무것도 고치지 않습니다 — 검사에 걸리면 에러이고 그때까지 바뀐 것이
--- 없습니다(실패한 등록은 아무것도 남기지 않음). `source` 는 넘긴 표 / 만드는 함수(`Builder`) / nil(저절로 따라옴).
+-- 없습니다(실패한 등록은 아무것도 남기지 않음). `source` 는 넘긴 표 / 만드는 함수(`building` 이 참 — `ImplWith`) /
+-- nil(저절로 따라옴). 만드는 함수인지는 **플래그로** 가립니다 — 값의 모양으로 가렸더니 아무것도 요구하지 않는 트레이트에
+-- `Impl` 로 넘긴 함수 값(그 자체가 구현)이 불려 버렸습니다(리뷰 1라운드).
+--
+-- 둘째 반환값은 **다시 지을 때 쓸 출처**입니다: 넘긴 표에서 읽은 것들(자기 키, 물려받은 필수·재정의)의 사본. 다시 지을 때
+-- 넘긴 표를 다시 읽으면, 같은 틀 표를 고쳐 가며 여러 종류에 등록한 쓰임에서 앞 종류가 뒤 종류의 함수를 얻었습니다
+-- (리뷰 1라운드 — 예전엔 등록 때 한 번 읽었음). 사본이라 넘긴 표를 붙잡지도 않습니다.
 --
 -- 지은 표: 기본 구현도 의존도 없는 트레이트는 **넘긴 표 그대로**, 그 밖에는 새 표입니다: 넘긴 표의 자기 키(전부 그
 -- 트레이트의 이름) + 필수·기본 구현 이름 중 물려받은 것(`__index` 가 테이블인 사슬) + 기본 구현.
 -- (그 밖의 이름으로 물려받은 함수는 옮기지 않습니다 — 완성 표는 트레이트의 함수를 부르는 곳.)
-const function assemble(trait: any, token: any, source: any, deps: { [any]: any }): any
+const function assemble(trait: any, token: any, source: any, deps: { [any]: any }, building: boolean): (any, any)
 	local impl: any = source
-	if type(source) == "function" then
+	if building then
 		const build = source :: Builder<any>
 		impl = build(deps)
 		if type(impl) ~= "table" then
@@ -327,20 +335,24 @@ const function assemble(trait: any, token: any, source: any, deps: { [any]: any 
 				end
 			end
 		end
-		return impl
+		return impl, impl
 	end
 	-- 넘긴 표는 고치지 않습니다(얼린 표도 됨)
 	const full: { [string]: any } = {}
+	const taken: { [string]: any } = {}
 	if impl ~= nil then
 		for fnName, fn in impl :: any do
 			full[fnName] = fn
+			taken[fnName] = fn
 		end
 		if required then
 			-- 필수 함수는 `lookup` 으로 — 위의 검사가 물려받은 것도 인정했으니 완성 표에도 그렇게 넣습니다
 			-- (자기 키만 옮겼더니 물려받은 필수 함수가 완성 표에 없었습니다, 리뷰).
 			for _, fnName in required do
 				if full[fnName] == nil then
-					full[fnName] = lookup(impl, fnName)
+					const inherited = lookup(impl, fnName)
+					full[fnName] = inherited
+					taken[fnName] = inherited
 				end
 			end
 		end
@@ -361,6 +373,9 @@ const function assemble(trait: any, token: any, source: any, deps: { [any]: any 
 					notFunction(trait, token, fnName, inherited)
 				end
 				full[fnName] = if inherited ~= nil then inherited else fn
+				if inherited ~= nil then
+					taken[fnName] = inherited
+				end
 			end
 		end
 	end
@@ -374,7 +389,10 @@ const function assemble(trait: any, token: any, source: any, deps: { [any]: any 
 			end
 		end
 	end
-	return full
+	if building then
+		return full, source
+	end
+	return full, if impl ~= nil then taken else nil
 end
 
 -- 지은 표를 자리에 놓습니다. 처음이면 그 표가 곧 완성 표이고, 이미 있었으면 **같은 테이블을 비우고 다시 채웁니다**
@@ -411,7 +429,9 @@ function refresh(trait: any, token: any)
 	end
 	const source = if existing ~= nil then trait.sources[token] else nil
 	const given = if source == false then nil else source
-	commit(trait, token, assemble(trait, token, given, deps), given)
+	-- 다시 지을 수 있는 트레이트(의존이 있거나 저절로 따라오는 것)는 함수 값을 구현으로 받지 않으니, 함수 출처는 늘 만드는 함수
+	const built, keep = assemble(trait, token, given, deps, type(given) == "function")
+	commit(trait, token, built, keep)
 end
 
 -- ⭐ **언제 만드는가**(2026-10-14 사용자 결정, 질문 AW: *"Trait 등록될 때 만들 수 있는 token 은 처리하고, 또 token 이
@@ -471,7 +491,8 @@ const function register(trait: any, token: any, impl: any, building: boolean)
 	if deps == nil then
 		Common.raise(`Trait: {token.name} must implement {missing.name} to implement {trait.name}`)
 	end
-	commit(trait, token, assemble(trait, token, impl, deps :: any), impl)
+	const built, keep = assemble(trait, token, impl, deps :: any, building)
+	commit(trait, token, built, keep)
 end
 
 const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
