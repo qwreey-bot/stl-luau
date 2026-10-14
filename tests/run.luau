@@ -20,6 +20,7 @@
 
 require("./spec.common")
 require("./spec.contracts")
+require("./spec.traitrebuild")
 require("./spec.arr")
 require("./spec.hashmap")
 require("./spec.hashset")

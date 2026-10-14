@@ -58,7 +58,7 @@ src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
   Types.luau       작은 공용 타입(비교자, 레코드). **말단 모듈** — 아무것도 require 안 함
   Common.luau      에러 규약(raise), 비교자 어댑터와 기본 3방향 비교자, 리스트 길이 규약
-  Trait.luau       ⭐ 트레이트 **시스템만** — 토큰(NewToken), New·Impl·ImplOf, ExpectImpl·Expose
+  Trait.luau       ⭐ 트레이트 **시스템만** — 토큰(NewToken), New·Impl·ImplWith·ImplOf, ExpectImpl·Expose. 표는 미리 만들고 의존이 바뀌면 다시 지음
   Traits/          ⭐ 트레이트 하나하나 — 계약 타입·마커·기본 구현·종류를 모르는 코드의 진입점이 한 파일에.
                    모듈이 곧 트레이트 객체(`Trait.Impl(List, …)` 와 `List.IndexOf(v, x)` 가 같은 이름)
     List.luau        위치 프리미티브 다섯 + 읽기 알고리즘의 기본 구현 일곱
@@ -107,7 +107,7 @@ tests/
   spec.arr.luau    이하 컨테이너별 테스트. assert + print, 프레임워크 없음
   spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
-  spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)
+  spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)  spec.traitrebuild.luau  (미리 만들기·다시 짓기·ImplWith)
   spec.circulardeque.luau  spec.linkeddeque.luau  (Node·Deque 트레이트 포함)
   spec.trees.luau  (RedBlack·Avl 을 같은 시나리오로 + Node 도구)
   spec.treemap.luau  spec.treeset.luau  (Flat 판의 스펙을 옮긴 것 + 균형 방식 선택·구조 불변식·Flat 판과 무작위 대조)

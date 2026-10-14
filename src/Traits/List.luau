@@ -116,8 +116,8 @@ export type MarkerMut<E, I> = {
 }
 
 --[[ 기본 구현 ]]
--- 프리미티브는 **부를 때** `ops`(그 종류의 살아 있는 완성 표)에서 꺼냅니다 — 나중에 재정의가 등록돼도
--- 그것을 씁니다.
+-- 프리미티브를 **호출마다 한 번** `ops` 에서 꺼내 지역에 두고 돕니다(만들 때 붙잡아도 됨 — 의존·필수가 바뀌면 이 함수가
+-- 다시 불립니다, 질문 AW. 루프형이라 붙잡아도 원소당 차이가 없었음 — perf 50절).
 const function defaults(ops: any): { [string]: any }
 	return {
 		Fold = function(self: any, init: any, fn: (any, any, any) -> any): any

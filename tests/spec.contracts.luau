@@ -1857,7 +1857,7 @@ do
 	const fresh: Counter = { __type = T.NewToken("FreshCounter"), n = 2 } :: any
 	T.Impl(CounterTrait, rawget(fresh :: any, "__type"), { Get = plainOps.Get, Inc = plainOps.Inc })
 	assert((T.ImplOf(LoudTrait, fresh) :: any).Loud(fresh) == "<2>!!!", "의존의 의존")
-	-- Show 가 나중에 재정의되면 Loud 도 따라감(의존 표를 부를 때 꺼내므로)
+	-- Show 가 나중에 재정의되면 Loud 도 따라감(Show 의 표가 다시 지어지면 Loud 도 다시 지어짐 — 질문 AW)
 	T.Impl(
 		ShowTrait,
 		rawget(fresh :: any, "__type"),
@@ -1944,33 +1944,46 @@ do
 	const value = { __type = Kind }
 
 	-- (1) `return` 을 빠뜨린 defaults — 라이브러리 줄의 `attempt to iterate over a nil value` 였음.
-	-- 저절로 따라오는 트레이트에서는 처음 물은 자리에서 드러납니다.
+	-- 저절로 따라오는 트레이트에서는 **표를 만드는 자리**에서 드러납니다(2026-10-14 — 조회할 때 만들지 않음):
+	-- 이미 의존을 갖춘 종류가 있으면 `New` 에서, 없으면 그 의존이 갖춰지는 `Impl` 에서.
 	for _, returned in { "nil", 5, "text", true } :: { any } do
-		const Forgot = T.New<<{ read Show: (v: any) -> string }>>("Forgot", {
-			dependencies = { BaseTrait },
-			defaults = (function(_ops: any, _deps: any): any
+		const defaults = (
+			function(_ops: any, _deps: any): any
 				if returned == "nil" then
 					return nil
 				end
 				return returned
-			end) :: any,
-		})
-		const asks: { { name: string, ask: (any, any) -> any } } = {
-			{ name = "ImplOf", ask = T.ImplOf },
-			{ name = "Implements", ask = T.Implements },
-		}
-		for _, entry in asks do
-			const ok, err = pcall(function()
-				where = debug.info(1, "l") + 1
-				entry.ask(Forgot, value)
-			end)
-			assert(
-				not ok and string.find(tostring(err), "defaults of Forgot must return a table", 1, true),
-				`{entry.name}(defaults 가 {tostring(returned)}): {err}`
-			)
-			assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {err}`)
-		end
-		assert(Forgot.impls[Kind] == nil and Forgot.derived[Kind] == nil, "실패한 뒤 남는 것 없음")
+			end
+		) :: any
+		local Forgot: any = nil
+		const okNew, errNew = pcall(function()
+			where = debug.info(1, "l") + 1
+			Forgot = T.New("Forgot", { dependencies = { BaseTrait }, defaults = defaults } :: any)
+		end)
+		assert(
+			not okNew and string.find(tostring(errNew), "defaults of Forgot must return a table", 1, true),
+			`New(defaults 가 {tostring(returned)}): {errNew}`
+		)
+		assert(string.find(tostring(errNew), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errNew}`)
+		-- 의존을 갖춘 종류가 아직 없으면 `New` 는 통과하고, 의존이 갖춰지는 등록에서
+		const LateBase = T.New<<{ read Get: (v: any) -> number }>>("LateBase", { required = { "Get" } })
+		Forgot = T.New("Forgot", { dependencies = { LateBase }, defaults = defaults } :: any)
+		const LateKind = T.NewToken("LateKind")
+		const okImpl, errImpl = pcall(function()
+			where = debug.info(1, "l") + 1
+			T.Impl(LateBase, LateKind, {
+				Get = function(_v: any): number
+					return 1
+				end,
+			})
+		end)
+		assert(
+			not okImpl and string.find(tostring(errImpl), "defaults of Forgot must return a table", 1, true),
+			`Impl(defaults 가 {tostring(returned)}): {errImpl}`
+		)
+		assert(string.find(tostring(errImpl), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errImpl}`)
+		assert(Forgot.impls[LateKind] == nil and Forgot.derived[LateKind] == nil, "실패한 표는 남지 않음")
+		assert(T.ImplOf(Forgot, { __type = LateKind }) == nil, "조회는 만들지 않음")
 	end
 	-- 필수 함수가 있는 트레이트의 명시 등록에서도
 	const ForgotReq = T.New<<{ read Get: (v: any) -> number }>>("ForgotReq", {
@@ -3019,7 +3032,7 @@ do
 		"거절 뒤에도 평범한 트레이트(넘긴 표 그대로)"
 	)
 
-	-- (2) 저절로 따라오는 트레이트의 **진입점**을 그 종류에 처음 부름(ExpectImpl 의 빗나감 경로가 만들어 줘야 함)
+	-- (2) 저절로 따라오는 트레이트의 **진입점**을 그 종류에 처음 부름(표는 의존이 갖춰질 때 이미 만들어져 있어야 함 — 2026-10-14)
 	type SizedFull = { read IsEmpty: (c: any) -> boolean }
 	const SizedBase = T.New<<SizedFull>>("Sized", {
 		dependencies = { stl.Collection },

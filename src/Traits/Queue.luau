@@ -15,7 +15,7 @@
 	어느 덱을 쓸지는 쓰는 쪽이 고릅니다 — 양끝만 쓰면 원형이 빠르고(perf 38-3절), 가운데 위치를 쥐어야 하면 연결.
 	더 빠른 판이 있는 종류는 같은 이름을 등록해 재정의할 수 있습니다(`Trait.Impl(Queue, TOKEN, { Push = … })`).
 
-	⚠️ 진입점을 거치면 호출이 두 겹 더 붙습니다(구현 찾기 + 기본 구현이 덱의 함수를 부름 — perf 48절). 종류를 아는
+	⚠️ 진입점을 거치면 구현 찾기가 붙습니다(덱 진입점과 같은 값 — 표에 든 것이 덱의 함수 자체, perf 52절). 종류를 아는
 	코드는 그 모듈의 함수(`CircularDeque.PushBack`)를 직접 쓰세요.
 
 	타입은 `Deque` 의 마커 그대로입니다(덱이면 타입으로도 큐) — 새 팬텀 필드가 없습니다.
@@ -47,20 +47,12 @@ export type MarkerMut<T> = Deque.MarkerMut<T>
 
 const Queue = Trait.New<<Full<any, any>>>("Queue", {
 	dependencies = { Deque },
-	-- 덱의 함수는 **부를 때** 꺼냅니다(만들 때 붙잡으면 나중의 재정의를 못 봄 — 규약).
+	-- ⭐ 덱의 함수를 **그대로** 돌려줍니다(감싸지 않음 — 2026-10-14, 질문 AW): 덱의 표가 바뀌면 이 함수가 다시 불려
+	-- 표를 다시 짓습니다. 그래서 `Trait.ImplOf(Queue, d).Push` 가 곧 `PushBack` 이고, 진입점의 호출이 한 겹 줄었습니다
+	-- (perf 52절).
 	defaults = function(_ops: any, deps: any)
 		const deque = deps[Deque]
-		return {
-			Push = function(self: any, item: any): any
-				return deque.PushBack(self, item)
-			end,
-			Pop = function(self: any): any
-				return deque.PopFront(self)
-			end,
-			Peek = function(self: any): any
-				return deque.Front(self)
-			end,
-		}
+		return { Push = deque.PushBack, Pop = deque.PopFront, Peek = deque.Front }
 	end,
 }) :: Trait.Trait<Full<any, any>, Provided<any, any>>
 const expectImpl = Trait.ExpectImpl

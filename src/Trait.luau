@@ -57,15 +57,26 @@ export type Trait<I, C = I> = {
 	read defaults: Defaults?,
 	read derived: { [any]: true },
 	read derivable: boolean, -- 등록 없이 저절로 따라올 수 있는 트레이트인가(`New` 가 한 번 계산)
+	-- [토큰] = 그 구현의 출처(넘긴 표 / 만드는 함수 / `false` = 저절로 따라옴) — 다시 만들 때 씁니다.
+	read sources: { [any]: any },
+	-- ⭐ 표식: 이 트레이트를 의존으로 적은 트레이트들. 어떤 종류의 이 트레이트 표가 (다시) 만들어지면 그 종류의 그것들을
+	-- 다시 만들거나(이미 있으면) 새로 만듭니다(이제 의존을 다 갖췄으면).
+	read dependents: { [any]: true },
 	-- 타입에만 있는 필드(구현 표의 타입). **함수 타입**이라 `C` 에 불변입니다 — `read __impl: C` 로 두었더니
 	-- `Impl` 에 엉뚱한 표를 넘겨도 `C` 가 조용히 넓어져 통과했습니다(읽기 마커와 같은 함정, `spikes/55`).
 	read __impl: (C) -> C,
 }
--- 기본 구현을 만드는 함수. `ops` 는 그 종류의 **완성 표**(살아 있는 표 — 나중에 재정의가 등록되면
--- 같은 표가 바뀜), `deps` 는 `[의존 트레이트] = 그 종류의 완성 표`. 돌려준 함수들이 완성 표의 빈
--- 자리를 채웁니다. ⚠️ 그 함수들은 필수 함수·다른 기본 구현·의존의 함수를 **부를 때 `ops`·`deps` 에서
--- 꺼내야** 합니다(여기서 지역 변수로 붙잡아 두면 나중의 재정의를 못 봅니다).
+-- 기본 구현을 만드는 함수. `ops` 는 **지금 짓는 완성 표**(구현이 준 필수 함수와 재정의가 들어 있음), `deps` 는
+-- `[의존 트레이트] = 그 종류의 완성 표`. 돌려준 함수들이 완성 표의 빈 자리를 채웁니다.
+-- ⭐ **의존·필수의 함수를 만들 때 붙잡거나 그대로 돌려줘도 됩니다**(2026-10-14 사용자 결정, 질문 AW): 의존의 표가 바뀌면
+-- (저절로 따라온 표 위에 재정의가 얹히면) 이 함수가 **다시 불려** 표를 다시 짓습니다. 같은 트레이트의 다른 기본 구현은
+-- 아직 표에 없으니 `ops.IndexOf or 내것` 처럼(구현이 재정의했으면 `ops` 에 있음).
+-- ⚠️ **계약**: 던지지 않고, 부작용 없이 표만 돌려줍니다 — 여러 번 불릴 수 있습니다. 다시 짓다 던지면 앞서 바뀐 표와
+-- 낡은 표가 섞인 채 남습니다(정의되지 않은 동작).
 export type Defaults = (ops: any, deps: { [any]: any }) -> { [string]: any }
+-- 구현을 만드는 함수 — `Trait.Impl(트레이트, 토큰, function(deps) return { … } end)`. 의존의 함수를 붙잡아 쓰는 구현이
+-- 표 대신 넘깁니다. 의존이 바뀌면 다시 불립니다(같은 계약: 던지지 않고 표만 돌려줌).
+export type Builder<C> = (deps: { [any]: any }) -> C
 -- `Trait.New` 의 둘째 인자.
 export type Spec = {
 	read required: { string }?,
@@ -88,13 +99,19 @@ const WEAK_KEYS = table.freeze({ __mode = "ks" })
 const tokens: { [any]: true } = setmetatable({}, WEAK_KEYS) :: any
 const traits: { [any]: true } = setmetatable({}, WEAK_KEYS) :: any
 
--- 새 타입 토큰. 사용자 컨테이너도 이걸로 만듭니다.
+-- 표를 미리 만드는 두 길(아래 "언제 만드는가" — 몸통은 등록 장치 뒤에)
+local deriveForToken: (token: any) -> ()
+local deriveForAllTokens: (trait: any) -> ()
+
+-- 새 타입 토큰. 사용자 컨테이너도 이걸로 만듭니다. 아무것도 요구하지 않는 트레이트(기본 구현만 있는 것)는 여기서
+-- 이 종류에 만들어 둡니다.
 const function NewToken(name: string): Token<string>
 	if type(name) ~= "string" then
 		Common.raise(`Trait: NewToken needs a name string, got {typeof(name)}`)
 	end
 	const token = table.freeze({ name = name })
 	tokens[token] = true
+	deriveForToken(token)
 	return token :: any
 end
 
@@ -111,7 +128,8 @@ end
 --   있고, 기본 구현은 의존의 완성 표를 받아 씁니다.
 --
 -- ⭐ **저절로 따라오는 구현**: 필수 함수가 없는 트레이트는 **등록이 필요 없습니다** — 의존을 다 갖춘
--- 종류면 처음 쓸 때 기본 구현으로 완성 표를 만들어 둡니다(Rust 의 `impl<T: A + B> C for T`). 사용자:
+-- 종류에는 기본 구현으로 완성 표를 **미리** 만들어 둡니다 — 이 트레이트가 생길 때(그때 갖춘 종류), 의존이 다
+-- 갖춰지는 등록 때(아래 "언제 만드는가" — 조회할 때 만들지 않음). Rust 의 `impl<T: A + B> C for T`. 사용자:
 -- *"A가 된다면 이게 된다가 자연히 따라오는 방식 … 인터페이스 자신이 필요한건 자신이 아니까."* 컨테이너를
 -- 만드는 쪽은 자기가 아는 트레이트만 등록하고, 나중에 누가 새 트레이트를 더해도 컨테이너를 고치지 않습니다.
 const function New<I>(name: string, spec: Spec?): Trait<I, I>
@@ -198,19 +216,33 @@ const function New<I>(name: string, spec: Spec?): Trait<I, I>
 		defaults = defaults,
 		derived = setmetatable({}, WEAK_KEYS),
 		derivable = derivable,
+		sources = setmetatable({}, WEAK_KEYS),
+		dependents = setmetatable({}, WEAK_KEYS),
 	}
+	-- 지금 있는 종류 중 만들 수 있는 것은 여기서 만듭니다(그 뒤로는 의존이 갖춰질 때 `commit` 이). **트레이트 목록과
+	-- 표식에 올리기 전에** — 기본 구현이 표를 안 돌려줘 여기서 던지면 이 트레이트는 어디에도 걸리지 않은 채 버려집니다
+	-- (표식을 먼저 박았더니 망가진 트레이트가 그 뒤의 등록마다 끼어들어 던졌습니다).
+	if derivable then
+		deriveForAllTokens(trait)
+	end
 	traits[trait] = true
+	-- 표식을 의존 트레이트에 박습니다(약한 키 — 버린 트레이트는 수거됨)
+	if dependencies then
+		for _, dep in dependencies do
+			dep.dependents[trait] = true
+		end
+	end
 	return trait :: any
 end
 
 -- 그 종류의 의존 표들(`[의존 트레이트] = 완성 표`). 하나라도 없으면 nil 과 그 트레이트.
-local resolve: (trait: any, token: any) -> any
+-- 표는 **미리 만들어져 있습니다**(아래 "언제 만드는가") — 여기서는 찾기만 합니다.
 const function depsOf(trait: any, token: any): ({ [any]: any }?, any)
 	const deps: { [any]: any } = {}
 	const dependencies = trait.dependencies
 	if dependencies then
 		for _, dep in dependencies do
-			const depImpl = resolve(dep, token)
+			const depImpl = dep.impls[token]
 			if depImpl == nil then
 				return nil, dep
 			end
@@ -241,9 +273,6 @@ const function lookup(impl: any, name: string): any
 	return nil
 end
 
--- 완성 표의 빈 자리를 기본 구현으로 채웁니다(기본 구현이 없는 트레이트면 아무 일도 안 함).
--- `impl` 은 구현이 넘긴 표(저절로 만들 땐 nil) — 기본 구현과 같은 이름을 **물려받고** 있으면(`lookup`)
--- 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히 기본 구현에 졌습니다, 리뷰).
 -- 재정의 자리의 값은 함수여야 합니다 — 필수 이름은 등록 때 확인하는데 재정의 이름은 안 봐서, 등록은 통과하고 부를 때
 -- 라이브러리 줄의 `attempt to call a number value` 였습니다(4라운드 리뷰).
 const function notFunction(trait: any, token: any, fnName: any, value: any): never
@@ -252,67 +281,6 @@ const function notFunction(trait: any, token: any, fnName: any, value: any): nev
 	)
 end
 
-const function fillDefaults(
-	trait: any,
-	token: any,
-	impl: any,
-	full: { [string]: any },
-	deps: { [any]: any }
-): { [string]: any }?
-	const defaults: Defaults? = trait.defaults
-	if defaults == nil then
-		return nil
-	end
-	const provided: any = defaults(full, deps)
-	if type(provided) ~= "table" then
-		-- `return` 을 빠뜨린 기본 구현 — 라이브러리 줄의 `attempt to iterate over a nil value` 였습니다(리뷰)
-		Common.raise(`Trait: defaults of {trait.name} must return a table of functions, got {typeof(provided)}`)
-	end
-	for fnName, fn in provided do
-		if full[fnName] == nil then
-			const inherited = if impl ~= nil then lookup(impl, fnName) else nil
-			-- 물려받은 재정의도 함수여야 합니다(자기 키만 보던 때는 등록을 통과하고 부를 때 죽었음 — 5라운드 리뷰)
-			if inherited ~= nil and type(inherited) ~= "function" then
-				notFunction(trait, token, fnName, inherited)
-			end
-			full[fnName] = if inherited ~= nil then inherited else fn
-		end
-	end
-	return provided
-end
-
--- 그 종류의 완성 표. 등록된 것이 없어도 **필수 함수가 없는** 트레이트면 의존만으로 만들어 둡니다
--- (저절로 따라오는 구현). 의존도 기본 구현도 없는 트레이트는 그럴 것이 없으니 nil.
-function resolve(trait: any, token: any): any
-	const found = trait.impls[token]
-	if found ~= nil then
-		return found
-	end
-	if not trait.derivable or not tokens[token] then
-		return nil
-	end
-	const deps = depsOf(trait, token)
-	if deps == nil then
-		return nil
-	end
-	const full: { [string]: any } = {}
-	fillDefaults(trait, token, nil, full, deps)
-	trait.impls[token] = full
-	trait.derived[token] = true
-	return full
-end
-
--- `token` 종류가 `trait` 를 구현한다고 등록합니다. 보통 모듈을 불러올 때 한 번.
--- **같은 (트레이트, 토큰) 을 두 번 등록하면 에러**입니다(2026-10-06, 제가 정함 — 되돌리기
--- 쉬움): 덮어쓰기를 허용하면 내장 구현도 조용히 바뀌어 다른 모듈의 `List.IndexOf(…)` 가 전역으로
--- 달라집니다. 바꾸고 싶으면 자기 트레이트를 만드세요.
--- ⭐ 단 **저절로 따라온 구현 위에는 등록할 수 있습니다**(2026-10-13 사용자 결정 — 빠른 판을 나중에
--- 얹는 길). 그때는 완성 표를 새로 만들지 않고 **같은 표를 제자리에서** 고칩니다 — 그 표를 이미 들고
--- 있는 쪽(의존으로 받은 다른 트레이트의 기본 구현 포함)도 새 함수를 보게 됩니다.
---
--- 저장되는 것: 기본 구현도 의존도 없는 트레이트는 **넘긴 표 그대로**, 그 밖에는 새 표입니다: 넘긴 표의 자기 키
--- (전부 그 트레이트의 이름 — 아래) + 필수·기본 구현 이름 중 물려받은 것(`__index` 가 테이블인 사슬) + 기본 구현.
--- (그 밖의 이름으로 물려받은 함수는 옮기지 않습니다 — 완성 표는 트레이트의 함수를 부르는 곳.)
 -- ⭐ **넘긴 표에는 그 트레이트의 함수만 들어 있어야 합니다**(2026-10-13 사용자 결정, 질문 AS: *"난 넘길것만 든 표
 -- 동의함. 그게 내 목적이긴 했음"*). 예전에는 모듈 테이블을 통째로 넘겼는데, 그러면 **같은 이름이 전부 그 트레이트의
 -- 구현이 됩니다** — 다른 트레이트를 위해 쓴 `Test` 가 이 트레이트의 `Test` 로도 먹고, 뜻이 다른 같은 이름(값으로 찾는
@@ -324,37 +292,34 @@ const function unknownName(trait: any, token: any, fnName: any): never
 	)
 end
 
-const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
-	if not traits[trait] then
-		Common.raise(`Trait: Impl needs a trait (from Trait.New), got {typeof(trait)}`)
-	end
-	if not tokens[token] then
-		Common.raise(`Trait: Impl needs a type token (from Trait.NewToken), got {typeof(token)}`)
-	end
-	if impl == nil then
-		Common.raise(`Trait: Impl needs an implementation for {trait.name}`)
-	end
-	const impls = trait.impls :: any
-	const derived = trait.derived :: any
-	const existing = impls[token]
-	if existing ~= nil and not derived[token] then
-		Common.raise(`Trait: {token.name} already implements {trait.name}`)
-	end
-	const required = trait.required
-	const merges = trait.defaults ~= nil or trait.dependencies ~= nil
-	if required or merges then
+-- 출처에서 그 종류의 완성 표를 **새로 짓습니다**. 아무것도 고치지 않습니다 — 검사에 걸리면 에러이고 그때까지 바뀐 것이
+-- 없습니다(실패한 등록은 아무것도 남기지 않음). `source` 는 넘긴 표 / 만드는 함수(`Builder`) / nil(저절로 따라옴).
+--
+-- 지은 표: 기본 구현도 의존도 없는 트레이트는 **넘긴 표 그대로**, 그 밖에는 새 표입니다: 넘긴 표의 자기 키(전부 그
+-- 트레이트의 이름) + 필수·기본 구현 이름 중 물려받은 것(`__index` 가 테이블인 사슬) + 기본 구현.
+-- (그 밖의 이름으로 물려받은 함수는 옮기지 않습니다 — 완성 표는 트레이트의 함수를 부르는 곳.)
+const function assemble(trait: any, token: any, source: any, deps: { [any]: any }): any
+	local impl: any = source
+	if type(source) == "function" then
+		const build = source :: Builder<any>
+		impl = build(deps)
 		if type(impl) ~= "table" then
-			Common.raise(`Trait: Impl needs a table of functions for {trait.name}, got {typeof(impl)}`)
+			Common.raise(
+				`Trait: the builder {token.name} gave for {trait.name} must return a table, got {typeof(impl)}`
+			)
 		end
 	end
-	if required then
+	const required: { string }? = trait.required
+	if impl ~= nil and required then
 		for _, fnName in required do
 			if type(lookup(impl, fnName)) ~= "function" then
 				Common.raise(`Trait: {token.name} is missing {fnName} for {trait.name}`)
 			end
 		end
 	end
-	if not merges then
+	const defaults: Defaults? = trait.defaults
+	if defaults == nil and trait.dependencies == nil then
+		-- 합칠 것이 없는 트레이트: 넘긴 표가 곧 구현(모르는 이름만 봄)
 		if required then
 			for fnName in impl :: any do
 				if not table.find(required, fnName) then
@@ -362,64 +327,165 @@ const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
 				end
 			end
 		end
-		impls[token] = impl
-		return
+		return impl
 	end
-	const deps, missing = depsOf(trait, token)
-	if deps == nil then
-		Common.raise(`Trait: {token.name} must implement {missing.name} to implement {trait.name}`)
-	end
-	if existing ~= nil then
-		-- 저절로 따라온 표 위에 재정의 — 같은 표를 고칩니다. 구현이 `__index` 로 물려받은 것도 재정의이니,
-		-- 자기 키를 옮긴 뒤 표에 이미 있는 이름들을 구현에서 한 번 더 찾습니다.
+	-- 넘긴 표는 고치지 않습니다(얼린 표도 됨)
+	const full: { [string]: any } = {}
+	if impl ~= nil then
 		for fnName, fn in impl :: any do
-			if existing[fnName] == nil then
+			full[fnName] = fn
+		end
+		if required then
+			-- 필수 함수는 `lookup` 으로 — 위의 검사가 물려받은 것도 인정했으니 완성 표에도 그렇게 넣습니다
+			-- (자기 키만 옮겼더니 물려받은 필수 함수가 완성 표에 없었습니다, 리뷰).
+			for _, fnName in required do
+				if full[fnName] == nil then
+					full[fnName] = lookup(impl, fnName)
+				end
+			end
+		end
+	end
+	local provided: any = nil
+	if defaults then
+		provided = defaults(full, deps)
+		if type(provided) ~= "table" then
+			-- `return` 을 빠뜨린 기본 구현 — 라이브러리 줄의 `attempt to iterate over a nil value` 였습니다(리뷰)
+			Common.raise(`Trait: defaults of {trait.name} must return a table of functions, got {typeof(provided)}`)
+		end
+		for fnName, fn in provided do
+			if full[fnName] == nil then
+				-- 기본 구현과 같은 이름을 **물려받고** 있으면 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히
+				-- 기본 구현에 졌습니다, 리뷰). 물려받은 재정의도 함수여야 합니다(5라운드 리뷰).
+				const inherited = if impl ~= nil then lookup(impl, fnName) else nil
+				if inherited ~= nil and type(inherited) ~= "function" then
+					notFunction(trait, token, fnName, inherited)
+				end
+				full[fnName] = if inherited ~= nil then inherited else fn
+			end
+		end
+	end
+	if impl ~= nil then
+		-- 모르는 이름: 필수도 아니고 기본 구현의 이름(재정의할 수 있는 것)도 아닌 키
+		for fnName, fn in impl :: any do
+			if not (required and table.find(required, fnName)) and not (provided and provided[fnName] ~= nil) then
 				unknownName(trait, token, fnName)
 			elseif type(fn) ~= "function" then
 				notFunction(trait, token, fnName, fn)
 			end
 		end
-		-- (자기 키를 따로 옮기지 않습니다 — 위에서 전부 표에 있는 이름임을 확인했으니 아래 루프의 `lookup` 이 자기 키부터 찾습니다)
-		-- 물려받은 것까지 먼저 다 확인하고(함수인지) 그다음에 고칩니다 — 실패하면 아무것도 적용되지 않게
-		for fnName in existing do
-			const inherited = lookup(impl, fnName)
-			if inherited ~= nil and type(inherited) ~= "function" then
-				notFunction(trait, token, fnName, inherited)
-			end
+	end
+	return full
+end
+
+-- 지은 표를 자리에 놓습니다. 처음이면 그 표가 곧 완성 표이고, 이미 있었으면 **같은 테이블을 비우고 다시 채웁니다**
+-- (그 표를 쥔 쪽 — 진입점, 의존으로 받은 다른 트레이트 — 이 새 함수를 봄). 그다음 ⭐ **이 트레이트를 의존으로 적은
+-- 트레이트들**(표식)을 그 종류에 대해 다시 만들거나(이미 있으면) 새로 만듭니다(저절로 따라올 수 있고 이제 의존을 다
+-- 갖췄으면). 그것이 다시 여기로 와서 위로 이어집니다.
+local refresh: (trait: any, token: any) -> ()
+const function commit(trait: any, token: any, built: any, source: any)
+	const impls = trait.impls
+	const existing = impls[token]
+	if existing ~= nil and existing ~= built then
+		table.clear(existing)
+		for fnName, fn in built do
+			existing[fnName] = fn
 		end
-		for fnName in existing do
-			const inherited = lookup(impl, fnName)
-			if inherited ~= nil then
-				existing[fnName] = inherited
-			end
-		end
-		derived[token] = nil
+	else
+		impls[token] = built
+	end
+	trait.sources[token] = if source == nil then false else source
+	trait.derived[token] = if source == nil then true else nil
+	for dependent in trait.dependents do
+		refresh(dependent, token)
+	end
+end
+
+function refresh(trait: any, token: any)
+	const existing = trait.impls[token]
+	if existing == nil and not trait.derivable then
 		return
 	end
-	-- 넘긴 표는 고치지 않습니다(얼린 표도 됨) — 완성 표를 따로 만듭니다.
-	const full: { [string]: any } = {}
-	for fnName, fn in impl :: any do
-		full[fnName] = fn
+	const deps = depsOf(trait, token)
+	if deps == nil then
+		return
 	end
-	if required then
-		-- 필수 함수는 `lookup` 으로 — 위의 검사가 물려받은 것도 인정했으니 완성 표에도 그렇게 넣습니다
-		-- (자기 키만 옮겼더니 물려받은 필수 함수가 완성 표에 없었습니다, 리뷰).
-		for _, fnName in required do
-			if full[fnName] == nil then
-				full[fnName] = lookup(impl, fnName)
-			end
+	const source = if existing ~= nil then trait.sources[token] else nil
+	const given = if source == false then nil else source
+	commit(trait, token, assemble(trait, token, given, deps), given)
+end
+
+-- ⭐ **언제 만드는가**(2026-10-14 사용자 결정, 질문 AW: *"Trait 등록될 때 만들 수 있는 token 은 처리하고, 또 token 이
+-- 만들어질 때 처리할 수 있는 trait 은 처리해두는 식으로"*): 표는 **조회할 때 만들지 않습니다**. 조회하려면 트레이트와
+-- 토큰이 둘 다 이미 있어야 하니, 둘 중 늦게 생기는 쪽이 생길 때 만들면 조회 때는 늘 있습니다.
+-- - 트레이트가 생길 때(`New`): 지금 있는 토큰 중 의존을 다 갖춘 것.
+-- - 토큰이 생길 때(`NewToken`): 아무것도 요구하지 않는 트레이트(기본 구현만 있는 것).
+-- - 등록될 때(`Impl` → `commit`): 그 등록으로 의존을 다 갖추게 된 트레이트(위로 이어짐).
+function deriveForAllTokens(trait: any)
+	for token in tokens do
+		refresh(trait, token)
+	end
+end
+
+function deriveForToken(token: any)
+	for trait in traits do
+		if (trait :: any).derivable and (trait :: any).dependencies == nil then
+			refresh(trait, token)
 		end
 	end
-	const provided = fillDefaults(trait, token, impl, full, deps :: any)
-	-- 모르는 이름: 필수도 아니고 기본 구현의 이름(재정의할 수 있는 것)도 아닌 키
-	for fnName, fn in impl :: any do
-		if not (required and table.find(required, fnName)) and not (provided and provided[fnName] ~= nil) then
-			unknownName(trait, token, fnName)
-		elseif type(fn) ~= "function" then
-			notFunction(trait, token, fnName, fn)
+end
+
+-- `token` 종류가 `trait` 를 구현한다고 등록합니다. 보통 모듈을 불러올 때 한 번.
+-- `impl` 은 **그 트레이트의 함수만 든 표**(위 `unknownName`). 의존의 함수를 붙잡아 쓰는 구현은 `ImplWith`(아래).
+-- **같은 (트레이트, 토큰) 을 두 번 등록하면 에러**입니다(2026-10-06, 제가 정함 — 되돌리기
+-- 쉬움): 덮어쓰기를 허용하면 내장 구현도 조용히 바뀌어 다른 모듈의 `List.IndexOf(…)` 가 전역으로
+-- 달라집니다. 바꾸고 싶으면 자기 트레이트를 만드세요.
+-- ⭐ 단 **저절로 따라온 구현 위에는 등록할 수 있습니다**(2026-10-13 사용자 결정 — 빠른 판을 나중에 얹는 길). 표는
+-- 다시 지어지고 **같은 테이블**에 놓이며, 그것에 의존하는 표들도 다시 지어집니다(2026-10-14 — 질문 AW).
+const function register(trait: any, token: any, impl: any, building: boolean)
+	const who = if building then "ImplWith" else "Impl"
+	if not traits[trait] then
+		Common.raise(`Trait: {who} needs a trait (from Trait.New), got {typeof(trait)}`)
+	end
+	if not tokens[token] then
+		Common.raise(`Trait: {who} needs a type token (from Trait.NewToken), got {typeof(token)}`)
+	end
+	if impl == nil then
+		Common.raise(`Trait: {who} needs an implementation for {trait.name}`)
+	end
+	const existing = (trait.impls :: any)[token]
+	if existing ~= nil and not (trait.derived :: any)[token] then
+		Common.raise(`Trait: {token.name} already implements {trait.name}`)
+	end
+	if building then
+		if type(impl) ~= "function" then
+			Common.raise(
+				`Trait: ImplWith needs a function that builds the implementation of {trait.name}, got {typeof(impl)}`
+			)
+		end
+	elseif trait.required or trait.defaults ~= nil or trait.dependencies ~= nil then
+		if type(impl) ~= "table" then
+			Common.raise(`Trait: Impl needs a table of functions for {trait.name}, got {typeof(impl)}`)
 		end
 	end
-	impls[token] = full
+	const deps, missing = depsOf(trait, token)
+	if deps == nil then
+		Common.raise(`Trait: {token.name} must implement {missing.name} to implement {trait.name}`)
+	end
+	commit(trait, token, assemble(trait, token, impl, deps :: any), impl)
+end
+
+const function Impl<I, C>(trait: Trait<I, C>, token: Token<any>, impl: C)
+	register(trait, token, impl, false)
+end
+
+-- `Impl` 과 같고, 표 대신 **표를 만드는 함수**를 받습니다: `Trait.ImplWith(트레이트, 토큰, function(deps) return { … } end)`.
+-- 구현이 의존 트레이트의 함수를 **붙잡아 쓰거나 그대로 넘길 때** — 의존의 표가 바뀌면 이 함수가 다시 불려 표를 다시
+-- 짓습니다(2026-10-14 사용자: *"그 함수를 캐싱하고 싶으면 그걸 가능하게 하는 Impl을 써서"*). `deps` 는
+-- `[의존 트레이트] = 그 종류의 완성 표`. ⚠️ 계약: 던지지 않고, 부작용 없이 표만 돌려줍니다(여러 번 불릴 수 있음).
+-- (한 이름으로 두 모양을 받게 `C | Builder<C>` 나 오버로드로 적었더니 새 솔버가 `C` 를 못 풀어 등록 줄이 전부 타입
+-- 에러였습니다 — 그래서 이름을 나눔.)
+const function ImplWith<I, C>(trait: Trait<I, C>, token: Token<any>, build: Builder<C>)
+	register(trait, token, build, true)
 end
 
 -- 값의 타입 토큰. 테이블이 아니거나, `__type` 이 없거나 토큰이 아니면 nil.
@@ -436,26 +502,16 @@ const function ImplOf<I, C>(trait: Trait<I, C>, value: any): I?
 	if not traits[trait] then
 		Common.raise(`Trait: ImplOf needs a trait (from Trait.New), got {typeof(trait)}`)
 	end
-	-- `impls[nil]` 읽기는 에러가 아닙니다 — 토큰이 없으면 그대로 nil. 등록된 것이 없으면 저절로
-	-- 따라오는 구현을 찾습니다(있으면 만들어 둠 — 그 뒤로는 첫 줄의 조회 하나).
-	const token: any = TokenOf(value)
-	const found = (trait.impls :: any)[token]
-	-- 저절로 따라올 수 없는 트레이트는 여기서 끝(빗나갈 때마다 만들기 경로를 타 1.6~1.9배였습니다, 리뷰)
-	if found ~= nil or not (trait :: any).derivable then
-		return found
-	end
-	return resolve(trait, token)
+	-- `impls[nil]` 읽기는 에러가 아닙니다 — 토큰이 없으면 그대로 nil. 저절로 따라오는 구현도 이미 만들어져
+	-- 있습니다(조회할 때 만들지 않음 — "언제 만드는가").
+	return (trait.impls :: any)[TokenOf(value)]
 end
 
 const function Implements<I, C>(trait: Trait<I, C>, value: any): boolean
 	if not traits[trait] then
 		Common.raise(`Trait: Implements needs a trait (from Trait.New), got {typeof(trait)}`)
 	end
-	const token: any = TokenOf(value)
-	if (trait.impls :: any)[token] ~= nil then
-		return true
-	end
-	return (trait :: any).derivable and resolve(trait, token) ~= nil
+	return (trait.impls :: any)[TokenOf(value)] ~= nil
 end
 
 -- 값에 타입 토큰을 붙입니다. 사용자 컨테이너의 생성자가 씁니다(라이브러리 모듈은 상수
@@ -473,12 +529,8 @@ end
 
 --[[ 트레이트 모듈을 짜는 도구 — `src/Traits/*` 와 사용자 트레이트가 씁니다 ]]
 
--- 구현을 못 찾았을 때. 저절로 따라오는 트레이트면 여기서 만들어지고, 아니면 사용자 줄 에러.
-const function expectImplMiss(trait: any, value: any, who: string): any
-	const derived = if trait.derivable then resolve(trait, TokenOf(value)) else nil
-	if derived ~= nil then
-		return derived
-	end
+-- 구현을 못 찾았을 때 — 사용자 줄 에러(저절로 따라오는 구현도 미리 만들어져 있으니 여기서 만들 것은 없음).
+const function expectImplMiss(trait: any, value: any, who: string): never
 	-- 셋으로 가릅니다(리뷰 2라운드 — 반대로 안내했음): 이 사본의 토큰인데 구현이 없음 /
 	-- 이름 있는 토큰 모양이지만 이 사본이 모름(다른 사본의 라이브러리, 되읽은 테이블) / 토큰 없음.
 	const token = TokenOf(value)
@@ -496,7 +548,7 @@ const function expectImplMiss(trait: any, value: any, who: string): any
 end
 
 -- 값의 종류가 구현한 `trait` 의 완성 표. 없으면 **사용자 줄 에러**(`"List: IndexOf needs a List — …"`) —
--- 종류를 모르는 코드의 진입점이 씁니다: `ExpectImpl(List, list, "IndexOf").IndexOf(list, item)`.
+-- 종류를 모르는 코드의 진입점이 씁니다(진입점은 조회를 안에 펼치고 못 찾았을 때만 이것을 부름 — 규약, perf 51절).
 -- `who` 는 에러 메시지에 적을 진입점 이름. `ImplOf` 와 달리 트레이트 인자를 검사하지 않습니다(진입점이
 -- 자기 트레이트를 넘기는 자리 — 원소 수와 무관하게 호출당 조회 하나, perf 21절).
 const function ExpectImpl<I, C>(trait: Trait<I, C>, value: any, who: string): I
@@ -516,6 +568,8 @@ const RESERVED: { [any]: true } = {
 	defaults = true,
 	derived = true,
 	derivable = true,
+	sources = true,
+	dependents = true,
 	__impl = true,
 }
 
@@ -546,7 +600,7 @@ end
 -- stylua: ignore
 return {
 	TYPE_KEY = TYPE_KEY,
-	NewToken = NewToken, New = New, Impl = Impl,
+	NewToken = NewToken, New = New, Impl = Impl, ImplWith = ImplWith,
 	TokenOf = TokenOf, ImplOf = ImplOf, Implements = Implements, Stamp = Stamp,
 	ExpectImpl = ExpectImpl, Expose = Expose,
 }
