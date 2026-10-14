@@ -18,9 +18,13 @@ TEST_TIMEOUT=300
 # tests 를 넣으면 require 로 src 도 같이 끌려와 같은 파일이 "src/arr.luau" 와
 # "./src/arr.luau" 두 경로로 중복 보고됩니다. 정규화 후 중복을 지웁니다.
 # ⚠️ 검사기의 **종료 코드**를 봅니다(0 = 진단 없음, 1 = 진단 있음, 그 밖 = 비정상). 검사기가 도중에 죽으면 진단이 비어
-# "TypeError 0건" 으로 통과할 수 있었습니다 — 2026-10-14 에 luau-analyze 가 몇 번에 한 번 메모리 오류로 죽는 모양을
-# 만났습니다(`corrupted size vs. prev_size`, 타입 함수와 무관 — 작은 모듈과 배럴을 같이 require 하는 파일).
-raw=$(luau-analyze src tests 2>&1)
+# "TypeError 0건" 으로 통과할 수 있었습니다.
+# ⚠️ **`-j1`**(한 스레드): luau 0.734 의 `luau-analyze` 는 여러 모듈을 병렬로 검사할 때 스레드들이 공유 문자열
+# (`Frontend.cpp` 의 `iceHandler->moduleName`)에 동시에 대입해 몇 번에 한 번 힙이 깨집니다(`corrupted size vs. prev_size` —
+# 상류 luau-lang/luau#3020, 0.742 에서 고쳐짐). 2026-10-14 에 만났고, 이 게이트도 같은 경쟁에 노출돼 있었습니다(TSan).
+# 대가는 check.sh 전체 9.6 → 12.3초. luau 를 0.742 이상으로 올리면 뗄 수 있습니다(올리는 것은 배터리 수치가 바뀌는지와
+# 같이 볼 일 — mise.toml 머리 주석).
+raw=$(luau-analyze -j1 src tests 2>&1)
 analyze_rc=$?
 out=$(printf '%s\n' "$raw" | sed "s|^$PWD/||; s|^\./||" | sort -u)
 [ -n "$out" ] && printf '%s\n' "$out"
@@ -97,7 +101,7 @@ while IFS=$'\t' read -r want path lines || [ -n "$want" ]; do
 		continue
 	fi
 	base=$(basename "$path")
-	spike_raw=$(luau-analyze "$path" 2>&1)
+	spike_raw=$(luau-analyze -j1 "$path" 2>&1)
 	spike_rc=$?
 	if [ "$spike_rc" -gt 1 ]; then
 		echo "  FAIL  $path"
