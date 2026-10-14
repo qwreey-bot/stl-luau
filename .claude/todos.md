@@ -13,6 +13,7 @@
 | ~~AT. 노드의 계약~~ → **2026-10-13 결정·반영**: 종류별 불투명 핸들 + 전부 번호 칸, 칸 배치는 계약으로(값은 1번 칸). perf 38-3 | `question.md` AT |
 | ~~AU. 이름~~ → **2026-10-13 밤 2차(넷의 다수결)로 닫음**: 바뀐 이름 없음 — 지난번에 바꾼 것은 넷이 유지, 갈렸던 것은 2:2(외부자 둘 대 내부자 둘)라 유지. **배포 전에 다시 볼 후보**(외부자 둘이 같은 대안): `Balance.Strategy`, `Node.Singly`/`Doubly`, 목적지 인자 전부 `into`, 불리언 전부 `Is…`, 그리고 `FlatMap`·`Exchange`·`Trees/Search` | `question.md` AU 2차 |
 | ~~AW. 구현 등록부를 다시 실행할 수 있는 함수로~~ → **2026-10-14 결정·반영**: 표는 미리 만들고(조회는 만들지 않음) 의존이 바뀌면 다시 지음, `Trait.ImplWith`, `Stack`·`Queue` 는 덱 함수 그대로, 진입점 펼침. 남은 것: 뭉텅이 구현(`ImplFor`) | `question.md` AW |
+| ⭐ **AY. 트레이트의 타입 설계** — 토론·판정(둘 다)이 모은 최종안 D3(`research/trait-v9`). 들일지·선택 둘·이름 | `question.md` AY |
 | **AX. 떼어 낸 트리의 크기** — 지금은 작은 쪽을 셈(10만 개의 가운데를 가르면 3ms). 사용자가 든 "불러야 세기" 를 NaN 으로 값싸게 할 수 있음 — `size` 필드의 계약이 바뀌는 일이라 확인 | `question.md` AX |
 | ~~AV. `Stack`·`Queue`~~ → **2026-10-14 결정·반영**: 트레이트로(덱이면 저절로 따라옴), 동사는 `Push`/`Pop`/`Peek` | `question.md` AV |
 | ~~AS. 모듈을 통째로 등록하면 같은 이름이 전부 재정의~~ → **2026-10-13 결정·반영**: 넘길 것만 든 표, 모르는 이름은 `Trait.Impl` 이 에러 | `question.md` AS |
@@ -20,6 +21,19 @@
 | ~~제가 고른 이름들~~ → 위 AU 로 합침 | `question.md` AU |
 
 (2026-10-13 에 확인 끝: AJ·AK·AN·AO — 바뀐 것은 `MapOps` 에서 `Records` 를 뺀 것과 AR.)
+
+## 🌅 돌아오시면 볼 것 (2026-10-15 새벽 — 트레이트 타입 토론, 주무시는 동안)
+
+| 순서 | 무엇 | 어디 |
+|---|---|---|
+| 1 | ⭐ **정해 주실 것 — AY**: 토론·판정이 모은 최종안 **D3**(`trait-v9`). 판정자 둘(Opus·Gemini, 따로)이 **같은 결론**. 들일지, 선택 둘(한 줄 등록·진입점 타입), 이름 | `question.md` AY |
+| 2 | 토론 기록: DX 변호인(Opus) B>A>C → **D3**, 타입 변호인(Sonnet) A>B>C → **B'**(둘 다 "모드를 밝혀 적기" 로 모임) → 판정 D3. Gemini 는 DX 팀원(한 줄 등록)·B' 레드팀(구멍 넷 — v9 가 하나를 막음, 셋은 공통 경계) | `research/trait-debate/README.md`, `trait-candidates.md` |
+| 3 | ⭐ **Luau 소스 분석**(말씀하신 것): ① 제네릭 몸통이 검사되지 않는 뿌리는 `Subtyping.cpp:830`(상류 주석 "entirely incorrect", 내부 티켓 CLI-225132 — 상류도 아는 결함, 곧 안 고쳐질 듯) → 탐침 타입 몸통은 원리상 맞는 우회. ② **"등록 표는 주석 단 지역이어야" 는 설계 사실이 아니라 캐시 오염 결함의 부작용** — `read` 필드면 표 리터럴을 인자로 넘겨도 됨(상류에 흔적 없음 → `DRAFTS.md` 6번 후보). ③ 덜 줄어든 `index<>` 는 `never` → 같은 모듈 구멍. Sonnet 의 웹 검색: 상류 이슈 상태(#2733 일부만 고쳐짐, #2463 열림 — 우리 초안 4번은 거기 댓글로) | `research/luau-source/README.md`, `sonnet-web.md` |
+| 4 | 시제품 v5~v9(전부 남김): v5 두 보기(`index<>`)·`Mut`, v6 v4 모양 + `of` 로 빌린 참조·`ImplFor`/`ImplWhere`·탐침 몸통, v7 정의를 한 번 넘기기, v8 v7 + `Mut` 없음, **v9 = D3** | `research/trait-v5`~`v9/` |
+| 5 | 고친 사실: 실험 색인의 "함수 하나를 인자로·표 리터럴 인자: 안 됨" 정정, 상류 보고 초안 3번에 소스 근거, 6번(캐시 오염) 추가 | `trait-typing-probes/README.md`, `audit/luau-solver-issues/DRAFTS.md` |
+| 6 | 그대로 둔 것: 커밋 안 한 `src/Trait.luau`·`tests/spec.traitrebuild.luau`(리뷰 2라운드 작업분 — AY 가 정해지면 흡수), src 에 넣은 팬텀 둘(`__generics` 3951643, `__readGenerics` b2e0906 — 타입만, check.sh exit 0) | — |
+
+에이전트: Claude 서브에이전트 일곱(소스 Opus·웹 Sonnet·변호인 둘 × 2라운드·판정 Opus), Gemini 일곱(소스 둘·DX 팀·레드팀·판정·그 전의 3회차 셋) — 결과는 전부 메인이 다시 돌려 확인하고 검증 머리를 붙여 커밋.
 
 ## 🌅 돌아오시면 볼 것 (2026-10-14 새벽 — 주무시는 동안)
 

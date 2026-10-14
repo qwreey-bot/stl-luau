@@ -1351,6 +1351,74 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 
 ---
 
+### AY. 트레이트의 타입 설계 — 토론·판정이 모은 최종안 **D3**(`research/trait-v9/`) — **[열림, 2026-10-14 밤 — 결정 대기]**
+
+> 사용자(자기 전): *"일단 네 생각 상 최적안을 만들어보자. 근데, 가급적 에이전트 둘 이상을 두고 토론해서 최종안을 골라주면 좋겠어 …
+> 최종 결정이 내가 원하는 방향도 있겠지만, 객관적으로 원해지는 방향도 중요한것 같거든"*. 결정은 하지 않고 고르실 수 있게만 정리했습니다.
+> 전부 `.claude/research/` 아래: 후보 비교 `trait-candidates.md`, 토론 `trait-debate/`, 시제품 `trait-v4`~`v9`(지우지 않음).
+
+**과정**: DX 변호인(Opus)과 타입·견고함 변호인(Sonnet)이 입장 → 서로 반박(2라운드), Gemini 가 DX 팀원·B' 레드팀으로 붙음, 중간에 Luau **소스**
+분석(Opus·Gemini 둘 — `research/luau-source/`)이 새 사실을 넣음, 판정은 **Opus 와 Gemini 가 따로** — **둘 다 D3**.
+
+**D3 의 모양**(`trait-v9/README.md`):
+
+```lua
+-- 기본 구현 없는 트레이트(지금 일곱 중 여섯): v4·v6 과 같은 한 겹, Trait() 안에서 끝남
+const Stack = Trait.Trait("Stack", function<Self, T>(of: (Self & Item<T>) | AnyToken)
+	return { Push = Fn<<(stack: Self, item: T) -> Self>>(), Pop = …, Peek = … }
+end)
+export type Stack<Self, T> = typeof(Stack.Of<<Self, T>>(nil :: any))
+export type StackImpl<Self, T> = typeof(Stack.ImplOf<<Self, T>>(nil :: any))   -- 모든 트레이트가 내보냄
+
+-- 기본 구현 있는 트레이트(List): 정의 함수 하나 + 모드를 값으로 두 번
+local function listDef<M>(mode: M)
+	return function<Self, E, I>(of: (Self & ItemIndexRead<E, I>) | AnyToken)
+		return { Get = Fn<<…>>(), …, IndexOf = Default(mode, function(ops: List<Self, E, I>) … end) }
+	end
+end
+const List = Trait.Trait("List", listDef(Trait.FULL), listDef(Trait.IMPL))
+
+-- 등록: 필수만 — 기본 구현 칸은 안 적으면 기본 구현, 적으면 재정의(서명 검사됨). Inherit 없음
+const cdList: ListImpl<CircularDeque<A>, A, number> = { Get = …, FirstIndex = …, LastIndex = …, NextIndex = …, PrevIndex = … }
+List.ImplFor(CD, cdList)
+```
+
+**왜 이것인가**(두 판정자의 결정적 근거 — 겹침):
+1. **바깥 등록자 쪽 비용**: A(v6, `Inherit`)는 트레이트에 기본 구현이 늘 때마다 바깥 등록 표가 `missing field` 로 깨짐 — "알고리즘은 작게 시작해 점점
+   늘림" 과 정면충돌. D3 는 성장 전후 같은 등록이 글자 그대로 통과. 지금 src 의 등록(`List.Provided`)도 이미 필수만 적는 모양.
+2. **조용한 구멍이 가장 적음**: 모드를 추론에 맡기는 모양(v8 인라인, `<<"full">>` 를 잊은 B', 그리고 **"정의를 한 번만 넘기기"**)은 정의와 같은
+   모듈에서 기본 구현의 반환 검사가 0건(덜 줄어든 `index<>` 가 `never` — 소스 확인). 모드를 **값**으로 넘기면 정의자의 실수(맞바꿈·글자 리터럴·
+   부르지 않고 넘김·`FULL` 두 번·하나만 넘김)가 전부 에러.
+3. **말씀하신 취향**: `Mut` 없음(빌린 참조는 트레이트가 `of` 에서 고름 — 쓰는 트레이트는 빌린 참조에 아예 없음, 말씀하신 방향), 기본 구현 없는
+   트레이트는 `Trait()` 안 한 겹, 이름은 `Trait.Trait` 하나(인자 수로 가름).
+
+**취향과 객관이 갈린 곳**: *"stackDef, stackDef 로 쓰이는것만 하나로"* — 한 번 넘기는 모양이 곧 위 2번의 구멍이라 객관 쪽을 따랐습니다
+(`trait-debate/judge-opus/j5_single_pass_v8.luau`). 대신 두 번 넘기는 것을 빠뜨리거나 바꾸면 시끄럽게 실패합니다. 정의가 `Trait()` 밖으로 나가는
+것은 기본 구현이 있는 트레이트(지금 `List` 하나)뿐.
+
+**`index<>`(내장 타입 함수)가 한 일** — 말씀하신 *"무슨 일을 내나 보고싶음"*: 시스템 안 `Default` 의 반환 타입 하나. 보이는 타입·에러 문구에 안
+나옴, 검사 시간 0.097 → 0.105s, `Fold<U>` 의 검사 유지. **사고는 하나** — 모드가 덜 정해진 채 쓰이면 `never` 가 되어 조용히 다 통과(위 2번).
+D3 가 그 길을 막고, 남는 위험(상류가 줄이는 방식을 바꾸면)은 아래 배터리로 지킵니다.
+
+**들일 때의 조건**(판정자 둘이 요구 — 들이기로 하시면 같이):
+- 음성 대조군 배터리에 **같은 모듈의 기본 구현 반환 NEG** 를 기본 구현 있는 트레이트마다(`never` 폴스루의 유일한 경보), 정의자 실수 스파이크(전부 에러여야),
+  성장 POS(기본 구현을 더해도 옛 등록이 통과).
+- 규약: 기본 구현이 있으면 `def(Trait.FULL), def(Trait.IMPL)` 로만 / 모든 트레이트가 `XImpl` 을 내보냄 / 등록은 주석 단 지역(`ImplFor(토큰, { … })` 에
+  리터럴을 바로 넘기면 검사 0건 — `check.sh` 덫 후보) / 기본 구현 타입에 오버로드(`&`) 금지(레드팀: 한쪽 갈래만 든 재정의가 0건) / 명시적 타입 인자는 다.
+
+**정해 주실 것**:
+1. **D3 를 src 에 들일까요?** (제 권장: 예 — 위 조건과 같이. 들이는 일은 `src/Trait.luau` 의 타입 모양 + 트레이트 일곱 + 등록 21곳 + 배터리, 그리고 이번
+   리뷰 2라운드 작업분(커밋 안 한 `src/Trait.luau`·`tests/spec.traitrebuild.luau`)을 흡수.)
+2. **선택 둘**(둘 다 실측으로 됨, 기본으로는 권하지 않음 — 판정자 둘 같음):
+   - **한 줄 등록**: 팩토리가 `table.freeze({ … })` 를 돌려주면 트레이트 타입 필드가 `read` 가 되어(소스 분석: "등록 표는 주석 단 지역이어야" 는 캐시 오염
+     결함의 부작용이었음) `Stack.For(Stack.ImplOf<<Arr<A>, A>>)(ARR, { … })` 나 트레이트마다 `ImplFor` 타입을 한 줄 적어 `Stack.ImplFor<<Arr<A>, A>>(ARR, { … })`.
+     낯선 두 단계 호출·에러 문구에서 별칭 이름이 사라짐·비슷한 모양(같은 호출에 증인과 표)은 0건 함정.
+   - **편한 진입점의 타입**(`List.IndexOf(d, x)` 가 지금 any — 모든 후보 공통, src 의 손으로 쓴 진입점보다 후퇴): 진입점에 타입만 캐스트 + 정의와의 어긋남을
+     잡는 줄 하나(`trait-debate/judge-opus/j6_typed_entry.luau`) — 비용 0, 진입점마다 두 줄. 읽기 트레이트의 입력 원소는 넓어짐(규약의 `==` 경계).
+3. 이름(지난번부터 열림): `Of`(생성자 `Arr.Of` 와 겹침 — `Ops` 제안), `ImplFor`·`ImplWhere`(말씀하신 것 — v6~v9 에 들어 있음), `FULL`/`IMPL`.
+
+---
+
 ### AX. 떼어 낸 트리의 크기 — 세기(지금) / "아직 모름" 으로 두기 / 노드에 크기 칸 — **[열림, 2026-10-14]**
 
 > `SplitOff`·`Join` 을 넣었습니다(사용자: *"만들어보자"*). 구조를 가르는 일은 μs 인데, **작은 쪽의 크기를 세는 값**이

@@ -108,3 +108,8 @@ Stack.Of(borrowed)                 -- 에러: 쓰는 트레이트는 빌린 참�
    같은 호출에 증인과 표를 같이 넘기는 `ImplFor(토큰, Stack.Of<<…>>, 표)` 는 **안 됨**(R 이 표에서도 추론돼 틀린 표가 0건 — `freeze2.luau`).
    오타 칸(남는 필드)은 어느 모양이든 타입이 못 잡음(런타임 `unknownName` 이 잡음).
 4. 제네릭 몸통 결함의 뿌리는 `Subtyping.cpp:830`(상류 TODO "entirely incorrect", CLI-225132) — 탐침 타입 몸통은 원리상 맞는 우회.
+
+## 6. 판정 (2026-10-14 밤)
+
+토론(`trait-debate/`)이 "모드를 밝혀 적기" 로 모였고, DX 변호인이 낸 **D3**(모드를 값으로 — `trait-v9/`)를 판정자 둘(Opus·Gemini, 따로)이 **둘 다** 골랐습니다.
+순위: Opus D3 > A > B' > B > C, Gemini D3 > B' > A > B > C. 결정·조건·선택지는 `../question.md` AY.

@@ -7,5 +7,13 @@
 | 1 입장 | `dx/POSITION.md` — **B > A > C**(등록 자리 21곳·성장 정책), 변형 "이름 둘" | `type/POSITION.md` — **A > B > C**(B 의 같은 파일 구멍, 재정의 오타, 솔버 의존) |
 | 2 반박 | `dx/REBUTTAL.md` — 인라인 B 를 내림, **D3 > A > B' > B > C**: 모드를 **값**으로(`listDef(Trait.FULL), listDef(Trait.IMPL)`) — B' 는 `<<…>>` 를 잊으면 조용히 구멍 | `type/REBUTTAL.md` — **B' > A > C**: 등록 퇴행·성장 정책 충돌 인정, 조건(기본 구현 반환 NEG 를 배터리에, `implDef` 필수), "이름 둘" 반대 |
 
-Gemini 팀원: DX 팀 `../../audit/agy/2026-10-14-team-dx.md`(한 줄 등록 — 트레이트마다 `ImplFor` 타입), 레드팀(B' 깨기 — 돌고 있음).
+Gemini 팀원: DX 팀 `../../audit/agy/2026-10-14-team-dx.md`(한 줄 등록 — 트레이트마다 `ImplFor` 타입), 레드팀 `../../audit/agy/2026-10-14-redteam.md`(B' 깨기 —
+구멍 넷: 모드 누락 침묵은 D3 가 막음, 오버로드 기본 구현의 부분 재정의·비제네릭 모드·타입 인자 덜 주기는 공통 경계).
 메인이 D3 를 시제품으로: `../trait-v9/`.
+
+| 판정 | 결론 | 어디 |
+|---|---|---|
+| Opus(중립) | **D3** — D3 > A > B' > B > C. 조건: 같은 모듈 반환 NEG 를 배터리에, 규약 넷, 리터럴 직접 등록 덫. 진입점 타입 되찾기(`j6`)는 선택 | `judge-opus/VERDICT.md`, 프로브 `j1`~`j7` |
+| Gemini(독립) | **D3** — D3 > B' > A > B > C. 같은 조건 + 오버로드 기본 구현 금지 | `judge-gemini/VERDICT.md` |
+
+결정 대기: `../../question.md` AY.

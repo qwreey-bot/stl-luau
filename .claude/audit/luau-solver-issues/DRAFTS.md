@@ -201,6 +201,13 @@ local union: Plain<number> | boolean = ps  -- 0건
 결과를 캐시하지 않는 두 줄 고침(P1, 같은 폴더 `patches/`)으로 사라지고 우리 저장소는 0건 그대로. 소스에 TODO·테스트 흔적 없음 — 새 이슈 후보.
 실해: 거짓 양성(숨지는 않음). 스파이크 배터리에서 원인 줄이 아닌 곳에 에러가 보이면 이것을 의심.
 
+## 7. 덜 줄어든 타입 함수가 서브타입 검사에서 `never` 가 됨 — 정의와 같은 모듈에서 검사가 사라짐 (2026-10-14 후보 — 확인 더 필요)
+
+재현: `.claude/audit/agy/2026-10-14-src-index-probes/main-v8-same-module-hole.luau`(모드를 추론에 맡긴 `index<{ full: F, impl: F? }, M>` — 같은 모듈에서
+`Stack.Of(a).IsEmpty(a)` 의 반환을 아무 타입에 넣어도 0건, 모듈을 나누거나 모드를 밝히면 잡힘). 원인 후보: `Subtyping.cpp` 의
+`handleTypeFunctionReductionResult` 가 강제로 줄이다 실패하면 `never` 를 돌려줌(아랫자리면 무엇에나 들어감). 올리기 전에 최소 재현을 타입 함수
+하나로 줄이고(`index<>` 만으로), "줄이지 못하면 에러" 가 맞는지 상류 의도를 확인할 것.
+
 ## 참고 — 올리지 않는 것
 
 - **맨 람다가 제약될 때 에러가 남**(`Arr.Map(a, function(v) return v * 2 end)` — 타입 인자도 주석도 없을 때): 이미 있는
