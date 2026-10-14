@@ -84,6 +84,12 @@
 
 ## 3. 제네릭 함수의 몸통이 타입 변수로 검사되지 않음
 
+> ⭐ **2026-10-14 소스 분석**(`.claude/research/luau-source/README.md`): 원인은 `Analysis/src/Subtyping.cpp:830-835` — 스코프 안의
+> 제네릭을 서브타입 쪽이면 `never`, 슈퍼타입 쪽이면 `unknown` 으로 바꿔 끼움(상한·하한을 뒤바꾼 모양). 상류 주석 *"TODO: These branches
+> are entirely incorrect"*, 내부 티켓 **CLI-225132**(`TypeChecker2.cpp` 의 `HACK`, `TypeInfer.generics.test.cpp:118-140` 의 `FIXME … unsound`) —
+> 상류도 아는 결함이고 739 에서 맨 `T` 자리만 땜질(`LuauSoundGenericMismatches`). 공개 이슈 #2733 은 일부만 고치고 닫힘. 올릴 땐 이 둘을
+> 인용하고 "공개 추적용" 으로. 순진하게 고친 판은 우리 저장소에서 4522건(정의 파일의 제네릭이 전역 스코프라) — 곧 고쳐지길 기대하지 않음.
+
 재현: `3-generic-body-unchecked.luau`, `3b-generic-body-arguments.luau`(인자 쪽)
 
 > **New solver: a value of a generic type parameter is accepted where a concrete type is required inside the generic function's body**
@@ -184,6 +190,16 @@ local union: Plain<number> | boolean = ps  -- 0건
   옵셔널 자리에서도 잡힙니다(`spikes/65`·`66` 의 NEG). 솔버 결함 자체는 그대로라 보고할 가치는 남습니다 — 재현 파일은
   라이브러리 없이 혼자 돕니다.
 - 실해 순위: 3번 다음(조용히 다른 타입이 컨테이너에 들어감).
+
+## 6. 표 리터럴의 실패한 불변 비교가 서브타입 캐시를 오염시킴 (2026-10-14 추가 — 소스 분석)
+
+재현: `.claude/research/luau-source/opus-probes/p5/12-poison.luau`(한 파일에 한 줄씩인 `p5/` 전체가 경계).
+제네릭 함수가 든 표 리터럴을 지역 초기화가 아닌 자리(인자·`return`·대입)에 두면, `TypeChecker2` 가 먼저 표 전체를 일반 서브타입으로
+비교(`testLiteralOrAstTypeIsSubtype`) — 읽기·쓰기 필드는 불변이라 반대 방향(`(number)->number <: <T>(T)->T`)을 보고, super 쪽 제네릭은
+묶이지 않아 거짓. 그 거짓이 `Subtyping` 캐시에 남고(`isCacheable` 기본 참), 다시 하는 리터럴용 공변 검사가 **묶였는지 보기 전에 캐시부터**
+봐서(`Subtyping.cpp:722`) 거짓을 돌려받음. 캐시는 모듈 검사 내내 살아 있어 **뒷줄의 멀쩡한 비교도 실패**(거짓 양성). 묶이지 않은 제네릭의
+결과를 캐시하지 않는 두 줄 고침(P1, 같은 폴더 `patches/`)으로 사라지고 우리 저장소는 0건 그대로. 소스에 TODO·테스트 흔적 없음 — 새 이슈 후보.
+실해: 거짓 양성(숨지는 않음). 스파이크 배터리에서 원인 줄이 아닌 곳에 에러가 보이면 이것을 의심.
 
 ## 참고 — 올리지 않는 것
 

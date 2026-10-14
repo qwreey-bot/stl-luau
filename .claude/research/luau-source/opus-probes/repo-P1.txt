@@ -1,0 +1,2 @@
+/code/Projects/stl-luau/tests/spec.treemap.luau(981,10): LocalShadow: Variable 'rest' shadows previous declaration at line 970
+./tests/spec.treemap.luau(981,10): LocalShadow: Variable 'rest' shadows previous declaration at line 970

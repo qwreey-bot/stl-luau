@@ -1,0 +1,103 @@
+== p1-body.luau
+(6,9): TypeError: Expected this to be 'T', but got 'number'
+(22,9): TypeError: Expected this to be 'U', but got 'T'
+(34,9): TypeError: Expected this to be 'T & {  }', but got 'number'; 
+== p2-annotated-lambda.luau
+(4,9): TypeError: Expected this to be 'string', but got 'T'
+(7,9): TypeError: Expected this to be 'T', but got 'number'
+(10,9): TypeError: Expected this to be 'T?', but got 'number'
+(13,9): TypeError: Expected this to be 'T?', but got 'number?'; 
+(16,20): TypeError: Expected this to be 'number', but got 'T'
+(20,11): TypeError: Unknown type 'T'
+(23,9): TypeError: Expected this to be 'U', but got 'T'
+(26,9): TypeError: Expected this to be 'T | string', but got 'number'
+(29,11): TypeError: Expected this to be 'T', but got 'number'
+(33,9): TypeError: Expected this to be 'T?', but got 'T'
+(42,9): TypeError: Expected this to be 'T?', but got 'T'
+(46,14): TypeError: Expected this to be 'number', but got 'T'
+(50,2): TypeError: Expected this to be 'T?', but got 'T'; 
+(53,2): TypeError: Expected this to be 'T?', but got 'number'; 
+== p3-hack-reach.luau
+(6,6): TypeError: Expected this to be 'T', but got 'number'
+(8,8): TypeError: Expected this to be 'T', but got 'number'
+(13,10): TypeError: Expected this to be 'T', but got 'number'
+== p4a.luau
+== p4b.luau
+(7,18): TypeError: Expected this to be
+(9,21): TypeError: Expected this to be
+(12,9): TypeError: Expected this to be
+== p5/1-local-direct.luau
+== p5/10-local-twice.luau
+== p5/11-arg-table-twice.luau
+(6,22): TypeError: Expected this to be
+(7,22): TypeError: Expected this to be
+== p5/12-poison.luau
+(6,22): TypeError: Expected this to be
+(7,8): TypeError: Expected this to be
+== p5/13-nopoison.luau
+(7,22): TypeError: Expected this to be
+== p5/2-local-table.luau
+== p5/3-assign-table.luau
+(7,18): TypeError: Expected this to be
+== p5/4-return-table.luau
+(6,45): TypeError: Expected this to be
+== p5/5-return-fn.luau
+== p5/6-arg-fn.luau
+== p5/7-arg-table.luau
+(6,22): TypeError: Expected this to be
+== p5/8-local-then-arg.luau
+== p5/9-arg-then-local.luau
+== p6/01-local.luau
+== p6/02-arg.luau
+(13,19): TypeError: Expected this to be
+(13,35): TypeError: Expected this to be
+== p6/03-arg-readonly.luau
+== p6/04-arg-readonly-NEG.luau
+(13,20): TypeError: Expected this to be
+== p6/05-local-then-arg.luau
+== p6/06-arg-cast.luau
+== p6/07-arg-cast-NEG.luau
+== p6/08-generic-register.luau
+(13,20): TypeError: Expected this to be
+(13,36): TypeError: Expected this to be
+== p6/09-generic-register-explicit.luau
+(13,33): TypeError: Expected this to be
+(13,49): TypeError: Expected this to be
+== p6/10-generic-register-R-explicit.luau
+== p6/11-generic-register-R-explicit-NEG.luau
+(13,34): TypeError: Expected this to be
+== p6/12-local-readonly.luau
+== p6/13-local-NEG.luau
+(13,38): TypeError: Expected this to be
+== p6/14-arg-mono-ok.luau
+== p6/15-arg-readonly-then-fn.luau
+== p6/16-poison.luau
+(13,19): TypeError: Expected this to be
+(13,35): TypeError: Expected this to be
+(14,34): TypeError: Expected this to be
+== p6/17-var-readonly.luau
+== p6/18-var-mutable.luau
+(15,10): TypeError: Expected this to be 'Stack<Arr<A>, A>', but got 'impl'; 
+== p6/19-var-readonly-NEG.luau
+(15,11): TypeError: Expected this to be 'StackR<Arr<A>, A>', but got 'impl'; 
+== p6/20-return-readonly.luau
+== p6/21-return-mutable.luau
+(14,55): TypeError: Expected this to be
+(14,71): TypeError: Expected this to be
+== p6/22-local-ok-then-NEG-then-ok.luau
+(15,20): TypeError: Expected this to be
+== p6/23-mutable-arg-then-readonly.luau
+(14,19): TypeError: Expected this to be
+(14,35): TypeError: Expected this to be
+(15,20): TypeError: Expected this to be
+(15,36): TypeError: Expected this to be
+== p6/24-explicit-inst-value.luau
+== p6/25-explicit-inst-NEG.luau
+(14,19): TypeError: Expected this to be
+(16,22): TypeError: Expected this to be 'number', but got '(Arr<A>, A) -> Arr<A>'
+(17,40): TypeError: Expected this to be
+== p7-probe-type.luau
+(5,39): TypeError: Expected this to be 'string', but got 'A'
+(6,35): TypeError: Expected this to be 'A?', but got 'number'
+(7,41): TypeError: Expected this to be 'A?', but got 'number?'; 
+(8,34): TypeError: Expected this to be 'B', but got 'A'
