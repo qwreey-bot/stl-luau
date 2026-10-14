@@ -91,3 +91,20 @@ Stack.Of(borrowed)                 -- 에러: 쓰는 트레이트는 빌린 참�
 | 솔버 위험 | 낮음(v4 에서 오래 봄) | `index<>` + 표 리터럴 인자 결함이 상류에 열려 있음(#2608 — 우리는 표 리터럴을 인자로 안 넘김). 같은 파일 안 짧은 프로브에서 기본 구현 칸 반환 검사가 빠지는 모양을 봄(정의와 쓰기가 한 파일일 때 — 실제 구조인 모듈 분리에선 잡힘, 원인 미확정) | 교집합 + 제네릭은 상류에 열린 결함 다수(#2390·#2625·#2621) |
 | 에러 문구 | 깔끔 | 대체로 깔끔(모드 오타는 쓰는 자리로 번짐) | 교집합 타입이 문구에 나옴 |
 | 기본 구현 몸통 | 팩토리(제네릭) 안 — 몸통 결함 노출 | 같음 | 별도 제네릭 함수 — 같음 |
+
+## 5. 토론 중에 새로 나온 사실 (2026-10-14 밤, 메인 실측·소스 분석)
+
+1. **B 의 같은 모듈 구멍**: 모드를 추론에 맡기는 B(인라인 `Trait.Trait("X", function<M>(mode: M) …)`)는 트레이트를 **정의한 모듈 안에서** 쓰면 기본 구현
+   칸 함수의 반환 검사가 사라짐(아무 타입에 넣어도 0건 — 덜 줄어든 `index<>` 가 `never`). 모듈을 나누면 잡힘. 재현
+   `../audit/agy/2026-10-14-src-index-probes/main-v8-same-module-hole.luau`. 타입 변호인도 독립적으로 찾음.
+2. **모드를 밝혀 적는 B'**(v5 모양: `local function stackDef<M>(mode: M) … end` + `Trait.Trait("Stack", stackDef<<"full">>, stackDef<<"impl">>)`)는 같은 모듈에서도
+   전부 잡힘(`main-v8-explicit-mode.luau`). 정의가 `Trait()` 밖으로 나감.
+3. ⭐ **"등록 표는 주석 단 지역이어야 한다" 는 결함의 부작용이었음**(`luau-source/README.md` 2절): 받는 타입의 필드가 `read` 면 표 리터럴을 인자로 넘겨도
+   검사됨. 정의 팩토리가 **`table.freeze({ … })`** 를 돌려주면 트레이트 타입의 필드가 `read` 가 되고(`luau-source/freeze.luau`), 증인을 먼저 받는 두 단계
+   등록이 검사됨(`luau-source/freeze3.luau`):
+   ```lua
+   Stack.For(Stack.Of<<Arr<A>, A>>)(ARR, { Push = Arr.PushBack, Pop = Arr.PopBack })   -- 한 줄. 원소를 못박은 함수·빠진 칸 잡힘
+   ```
+   같은 호출에 증인과 표를 같이 넘기는 `ImplFor(토큰, Stack.Of<<…>>, 표)` 는 **안 됨**(R 이 표에서도 추론돼 틀린 표가 0건 — `freeze2.luau`).
+   오타 칸(남는 필드)은 어느 모양이든 타입이 못 잡음(런타임 `unknownName` 이 잡음).
+4. 제네릭 몸통 결함의 뿌리는 `Subtyping.cpp:830`(상류 TODO "entirely incorrect", CLI-225132) — 탐침 타입 몸통은 원리상 맞는 우회.
