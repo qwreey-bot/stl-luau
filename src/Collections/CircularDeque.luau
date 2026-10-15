@@ -49,37 +49,42 @@ local Deque = require("../Traits/Deque")
 local Collection = require("../Traits/Collection")
 local Arr = require("./Arr")
 
+-- ⭐ **공개 타입은 칸을 보이지 않습니다**(2026-10-15 질문 BB 시제품 — 사용자: *"read [number]: T 를 공개 해야할 까 … At 같은거 없이 읽는거 …
+-- 길이 확인이나 그런거 하나도 안 거치는 경로 … 맨 뒤에 집어넣으면 길이가 깨지니까"*). 링 버퍼의 칸은 **물리** 위치라 `d[1]` 이 첫 원소도
+-- 아니었습니다. 원소 타입은 트레이트 레코드(`__traits`)에만 있고, 읽기는 `CircularDeque.At`·`Front`·`Iter`, 크기는 `size`(읽기 전용).
+-- 링 버퍼의 안쪽(`head`·`cap`·칸)은 이 모듈의 `Raw<T>` 로만 — 함수가 받자마자 캐스트합니다(런타임 비용 0).
 export type CircularDequeData<T> = {
+	read size: number,
+	read __type: Trait.Token<"Stl.CircularDeque">,
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read List: List.Assoc<T, number>, read Deque: Deque.Assoc<T>, read Collection: Collection.Assoc },
+}
+export type CircularDeque<T> = CircularDequeData<T>
+
+-- ⭐ **읽기만 하는 함수의 첫 인자**(2026-10-12 사용자 결정, 질문 AK — `Arr` 의 `ArrRead`, 질문 AC 와 같은 결). 공개 타입과의 차이는
+-- 트레이트 레코드 하나 — 읽기 레코드(`AssocRead` — 원소에 공변)만 있어 `CircularDeque<number>` 를 `CircularDequeRead<number?>` 자리에 넘길
+-- 수 있고, 쓰는 함수·쓰는 제네릭(`List.Value`·`Deque.Value`)에는 못 들어갑니다.
+export type CircularDequeRead<T> = {
+	read size: number,
+	read __type: Trait.Token<"Stl.CircularDeque">,
+	read __traits: { read List: List.AssocRead<T, number>, read Deque: Deque.AssocRead<T> },
+}
+-- 안쪽 타입(이 모듈만): 링 버퍼의 머리·칸 수·물리 칸.
+type Raw<T> = {
 	head: number,
 	size: number,
 	cap: number,
 	read __type: Trait.Token<"Stl.CircularDeque">,
-	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
 	read __traits: { read List: List.Assoc<T, number>, read Deque: Deque.Assoc<T>, read Collection: Collection.Assoc },
 	[number]: T,
-}
-export type CircularDeque<T> = CircularDequeData<T>
-
--- ⭐ **읽기만 하는 함수의 첫 인자**(2026-10-12 사용자 결정, 질문 AK — `Arr` 의 `ArrRead`, 질문 AC 와 같은 결).
--- `read` 인덱서라 원소에 **공변**입니다 — `CircularDeque<number>` 를 `CircularDequeRead<number?>` 자리에, 하위 레코드의
--- 덱을 상위 레코드 자리에 넘길 수 있습니다(읽기·쓰기 인덱서인 `CircularDequeData` 는 불변이라 안 됐음). 쓰는
--- 함수(`Push*`·`Pop*`·`Clear`)는 `CircularDequeData` 를 받습니다 — 넓어진 원소로 쓰면 건전하지 않으니까요.
--- `head`·`size`·`cap` 도 `read` 라 빌린 참조로는 길이를 못 바꾸고, 읽기 레코드(`AssocRead`)만 있어 쓰는
--- 제네릭(`List.Value`)에도 못 들어갑니다. 사용자 함수도 같은 규칙으로 쓰라고 공개합니다.
-export type CircularDequeRead<T> = {
-	read head: number,
-	read size: number,
-	read cap: number,
-	read __type: Trait.Token<"Stl.CircularDeque">,
-	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
-	read __traits: { read List: List.AssocRead<T, number>, read Deque: Deque.AssocRead<T> },
-	read [number]: T,
 }
 type Arr<T> = Arr.Arr<T>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewToken("Stl.CircularDeque") :: Trait.Token<"Stl.CircularDeque">
+-- 이 종류 = 닫힌 트레이트(질문 BB): 맨 위에서 만들고 맨 끝에서 모듈 표를 봉인 — 그 표가 곧 `stl.CircularDeque`(종류의 정체).
+const Kind = Trait.Struct("Stl.CircularDeque")
+const TOKEN = Kind.Token -- 안쪽에서만(생성자가 `__type` 에 찍는 상수)
 
 -- 처음 칸 수. 0 이면 두 배로 늘릴 수 없어 바닥을 둡니다.
 const MIN_CAPACITY = 4
@@ -88,7 +93,7 @@ const MAX_LENGTH = 2 ^ 26
 
 --#region ----------- 내부 헬퍼 -----------
 
-const function newBuffer<T>(cap: number): CircularDeque<T>
+const function newBuffer<T>(cap: number): Raw<T>
 	const d = table.create(cap) :: any
 	d.head = 0
 	d.size = 0
@@ -108,7 +113,7 @@ end
 
 -- 꽉 찬 버퍼를 두 배로. 감긴 앞부분(물리 `1..head`)을 `cap + 1..` 로 옮기면 원소가
 -- `head + 1 .. head + cap` 에 이어지고, 새 `cap`(두 배) 안에서는 감기지 않습니다.
-const function grow<T>(self: CircularDequeData<T>)
+const function grow<T>(self: Raw<T>)
 	const cap = self.cap
 	const head = self.head
 	if head > 0 then
@@ -121,13 +126,13 @@ const function grow<T>(self: CircularDequeData<T>)
 end
 
 -- 논리 위치(1..size)의 물리 칸.
-const function slot<T>(self: CircularDequeRead<T>, idx: number): number
+const function slot<T>(self: Raw<T>, idx: number): number
 	const pos = self.head + idx
 	return if pos > self.cap then pos - self.cap else pos
 end
 
 -- 논리 순서대로 `out` 의 `1..size` 에 복사합니다(감긴 두 조각을 `table.move` 둘로).
-const function copyInto<T>(self: CircularDequeRead<T>, out: any)
+const function copyInto<T>(self: Raw<T>, out: any)
 	const size = self.size
 	const head = self.head
 	const firstLen = math.min(size, self.cap - head)
@@ -143,22 +148,26 @@ end
 -- 위치는 논리 위치(1..size). 알고리즘이 준 위치만 받는 자리라 검사하지 않습니다(`Arr` 과 같음).
 -- 읽기만 하니 `CircularDequeRead`(공변) — 조회 절의 함수들과 `ToArr`·`Clone`(새 컨테이너를 만듦)도 같습니다.
 
-const function Get<T>(self: CircularDequeRead<T>, idx: number): T?
+const function Get<T>(deque: CircularDequeRead<T>, idx: number): T?
+	const self = deque :: Raw<T>
 	if idx < 1 or idx > self.size then
 		return nil
 	end
 	return self[slot(self, idx)]
 end
-const function FirstIndex<T>(self: CircularDequeRead<T>): number?
+const function FirstIndex<T>(deque: CircularDequeRead<T>): number?
+	const self = deque :: Raw<T>
 	return if self.size > 0 then 1 else nil
 end
-const function LastIndex<T>(self: CircularDequeRead<T>): number?
+const function LastIndex<T>(deque: CircularDequeRead<T>): number?
+	const self = deque :: Raw<T>
 	return if self.size > 0 then self.size else nil
 end
-const function NextIndex<T>(self: CircularDequeRead<T>, idx: number): number?
+const function NextIndex<T>(deque: CircularDequeRead<T>, idx: number): number?
+	const self = deque :: Raw<T>
 	return if idx < self.size then idx + 1 else nil
 end
-const function PrevIndex<T>(self: CircularDequeRead<T>, idx: number): number?
+const function PrevIndex<T>(_deque: CircularDequeRead<T>, idx: number): number?
 	return if idx > 1 then idx - 1 else nil
 end
 
@@ -167,7 +176,8 @@ end
 --#region ----------- 넣기·꺼내기 -----------
 
 -- 맨 뒤에 넣습니다. 분할 상환 O(1). 자기 자신을 돌려줍니다(`Arr.PushBack` 과 같음).
-const function PushBack<T>(self: CircularDequeData<T>, item: T): CircularDeque<T>
+const function PushBack<T>(deque: CircularDequeData<T>, item: T): CircularDeque<T>
+	const self = deque :: Raw<T>
 	const size = self.size
 	if size == self.cap then
 		grow(self)
@@ -182,7 +192,8 @@ const function PushBack<T>(self: CircularDequeData<T>, item: T): CircularDeque<T
 end
 
 -- 맨 앞에 넣습니다. 분할 상환 O(1).
-const function PushFront<T>(self: CircularDequeData<T>, item: T): CircularDeque<T>
+const function PushFront<T>(deque: CircularDequeData<T>, item: T): CircularDeque<T>
+	const self = deque :: Raw<T>
 	const size = self.size
 	if size == self.cap then
 		grow(self)
@@ -198,7 +209,8 @@ const function PushFront<T>(self: CircularDequeData<T>, item: T): CircularDeque<
 end
 
 -- 맨 앞을 꺼냅니다. 비었으면 `nil`(질문 AI — `Arr.PopFront` 와 같음). O(1).
-const function PopFront<T>(self: CircularDequeData<T>): T?
+const function PopFront<T>(deque: CircularDequeData<T>): T?
+	const self = deque :: Raw<T>
 	const size = self.size
 	if size == 0 then
 		return nil
@@ -212,7 +224,8 @@ const function PopFront<T>(self: CircularDequeData<T>): T?
 end
 
 -- 맨 뒤를 꺼냅니다. 비었으면 `nil`. O(1).
-const function PopBack<T>(self: CircularDequeData<T>): T?
+const function PopBack<T>(deque: CircularDequeData<T>): T?
+	const self = deque :: Raw<T>
 	const size = self.size
 	if size == 0 then
 		return nil
@@ -229,7 +242,8 @@ end
 --#region ----------- 조회 -----------
 
 -- 맨 앞 원소(꺼내지 않음). 비었으면 `nil`.
-const function Front<T>(self: CircularDequeRead<T>): T?
+const function Front<T>(deque: CircularDequeRead<T>): T?
+	const self = deque :: Raw<T>
 	if self.size == 0 then
 		return nil
 	end
@@ -237,7 +251,8 @@ const function Front<T>(self: CircularDequeRead<T>): T?
 end
 
 -- 맨 뒤 원소(꺼내지 않음). 비었으면 `nil`.
-const function Back<T>(self: CircularDequeRead<T>): T?
+const function Back<T>(deque: CircularDequeRead<T>): T?
+	const self = deque :: Raw<T>
 	if self.size == 0 then
 		return nil
 	end
@@ -246,7 +261,8 @@ end
 
 -- 논리 위치의 원소. `Arr.At` 과 같은 규약 — 음수는 뒤에서(`-1` = 맨 뒤), 소수는 0 쪽으로,
 -- NaN 은 에러, 범위 밖은 `nil`.
-const function At<T>(self: CircularDequeRead<T>, idx: number): T?
+const function At<T>(deque: CircularDequeRead<T>, idx: number): T?
+	const self = deque :: Raw<T>
 	if idx ~= idx then
 		Common.raise("CircularDeque: At index is NaN")
 	end
@@ -259,17 +275,20 @@ const function At<T>(self: CircularDequeRead<T>, idx: number): T?
 	return self[slot(self, pos)]
 end
 
-const function Len<T>(self: CircularDequeRead<T>): number
+const function Len<T>(deque: CircularDequeRead<T>): number
+	const self = deque :: Raw<T>
 	return self.size
 end
 
-const function Empty<T>(self: CircularDequeRead<T>): boolean
+const function Empty<T>(deque: CircularDequeRead<T>): boolean
+	const self = deque :: Raw<T>
 	return self.size == 0
 end
 
 -- `for i, v in CircularDeque.Iter(d) do … end` — 앞에서 뒤로, `i` 는 논리 위치. `(number, T)` 비옵셔널
 -- 선언은 `ipairs`·`Arr.Iter` 와 같은 이유. 도는 동안 넣거나 빼면 순서는 약속하지 않습니다.
-const function iterStep<T>(self: CircularDequeRead<T>, idx: number): (number, T)
+const function iterStep<T>(deque: CircularDequeRead<T>, idx: number): (number, T)
+	const self = deque :: Raw<T>
 	const nextIdx = idx + 1
 	if nextIdx > self.size then
 		return nil :: any, nil :: any
@@ -277,12 +296,14 @@ const function iterStep<T>(self: CircularDequeRead<T>, idx: number): (number, T)
 	return nextIdx, self[slot(self, nextIdx)]
 end
 
-const function Iter<T>(self: CircularDequeRead<T>): (typeof(iterStep), CircularDequeRead<T>, number)
+const function Iter<T>(deque: CircularDequeRead<T>): (typeof(iterStep), CircularDequeRead<T>, number)
+	const self = deque :: Raw<T>
 	return iterStep, self, 0
 end
 
 -- 앞에서 뒤 순서의 새 `Arr`(구멍은 그대로, 길이는 `size`). 리스트 진입점에 넘길 때.
-const function ToArr<T>(self: CircularDequeRead<T>): Arr<T>
+const function ToArr<T>(deque: CircularDequeRead<T>): Arr<T>
+	const self = deque :: Raw<T>
 	const size = self.size
 	const raw = table.create(size) :: any
 	copyInto(self, raw)
@@ -297,7 +318,8 @@ end
 -- 비웁니다. 칸 수(`cap`)는 그대로입니다. 살아 있는 칸(감긴 두 구간)만 지워 **O(size)** — 처음엔
 -- `1..cap` 을 다 지워, 크게 자랐던 덱을 재사용(BFS 마다 `Clear`)하면 원소 둘에도 O(cap) 이었습니다
 -- (M5 리뷰 1라운드: cap 131072 에서 1000번 722ms). 살아 있지 않은 칸은 늘 비어 있습니다(꺼낼 때 지움).
-const function Clear<T>(self: CircularDequeData<T>): CircularDeque<T>
+const function Clear<T>(deque: CircularDequeData<T>): CircularDeque<T>
+	const self = deque :: Raw<T>
 	const size = self.size
 	const head = self.head
 	const firstLen = math.min(size, self.cap - head)
@@ -314,7 +336,8 @@ end
 
 -- 얕은 복사. 감긴 것을 펴서 앞에서부터 담습니다. 칸 수는 원소 수에 맞춥니다(최소 4) — 줄이는
 -- 길이기도 합니다.
-const function Clone<T>(self: CircularDequeRead<T>): CircularDeque<T>
+const function Clone<T>(deque: CircularDequeRead<T>): CircularDeque<T>
+	const self = deque :: Raw<T>
 	const size = self.size
 	const copy = newBuffer(if size < MIN_CAPACITY then MIN_CAPACITY else size)
 	copyInto(self, copy)
@@ -359,17 +382,15 @@ end
 --#endregion
 
 -- stylua: ignore
-const CircularDequeModule = {
+const CircularDequeModule = Kind.Seal({
 	New = New, FromList = FromList, Of = Of, isCircularDeque = isCircularDeque,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `MyTrait.ImplFor(CircularDeque.Token, impl)`
-	Token = TOKEN,
 
 	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`CircularDeque.X(d, …)`) — 콜론 호출은 없습니다(질문 AB).
 	PushBack = PushBack, PushFront = PushFront, PopBack = PopBack, PopFront = PopFront,
 	Front = Front, Back = Back, At = At, Len = Len, Empty = Empty, Iter = Iter, ToArr = ToArr,
 	Clear = Clear, Clone = Clone,
 	Get = Get, FirstIndex = FirstIndex, LastIndex = LastIndex, NextIndex = NextIndex, PrevIndex = PrevIndex,
-}
+})
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
 -- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
@@ -394,8 +415,8 @@ const dequeImpl: Deque.Provided<CircularDeque<A>, A> = {
 }
 const collectionImpl: Collection.Provided<CircularDeque<A>> =
 	{ Len = CircularDequeModule.Len, Clear = CircularDequeModule.Clear }
-List.ImplFor(TOKEN, listImpl)
-Deque.ImplFor(TOKEN, dequeImpl)
-Collection.ImplFor(TOKEN, collectionImpl)
+List.ImplFor(CircularDequeModule, listImpl)
+Deque.ImplFor(CircularDequeModule, dequeImpl)
+Collection.ImplFor(CircularDequeModule, collectionImpl)
 
 return CircularDequeModule

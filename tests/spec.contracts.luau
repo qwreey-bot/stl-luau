@@ -483,14 +483,14 @@ do
 	-- **우연**은 막힙니다: 모양만 같은 테이블, 옛 문자열 태그, 직렬화했다 되읽은 것
 	-- (토큰의 정체성을 잃음)은 그 종류가 아닙니다.
 	const predicates: { { name: string, is: (any) -> boolean, token: any } } = {
-		{ name = "Arr", is = stl.isArr, token = stl.Arr.Token },
+		{ name = "Arr", is = stl.isArr, token = stl.Trait.TokenOf(stl.Arr) },
 		{ name = "HashMap", is = stl.isHashMap, token = stl.HashMap.Token },
 		{ name = "HashSet", is = stl.isHashSet, token = stl.HashSet.Token },
 		{ name = "FlatMap", is = stl.isFlatMap, token = stl.FlatMap.Token },
 		{ name = "FlatSet", is = stl.isFlatSet, token = stl.FlatSet.Token },
 		{ name = "Heap", is = stl.isHeap, token = stl.Heap.Token },
 		{ name = "Fut", is = stl.isFut, token = stl.Fut.Token },
-		{ name = "CircularDeque", is = stl.isCircularDeque, token = stl.CircularDeque.Token },
+		{ name = "CircularDeque", is = stl.isCircularDeque, token = stl.Trait.TokenOf(stl.CircularDeque) },
 		{ name = "LinkedDeque", is = stl.isLinkedDeque, token = stl.LinkedDeque.Token },
 		{ name = "TreeMap", is = stl.isTreeMap, token = stl.TreeMap.Token },
 		{ name = "TreeSet", is = stl.isTreeSet, token = stl.TreeSet.Token },
@@ -555,7 +555,7 @@ do
 	const ShowTrait: any = stl.Trait.Trait("Show", function(_of: any): any
 		return table.freeze({ Show = stl.Trait.Fn() })
 	end)
-	ShowTrait.ImplFor(stl.Arr.Token, {
+	ShowTrait.ImplFor(stl.Trait.TokenOf(stl.Arr), {
 		Show = function(a: any): string
 			return `Arr({a.n})`
 		end,
@@ -649,7 +649,8 @@ do
 			)
 		end
 		assert(T.Implements(stl.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
-		assert(T.TokenOf(case.value) == (stl :: any)[case.name].Token, `{case.name} 의 TokenOf`)
+		const module = (stl :: any)[case.name]
+		assert(T.TokenOf(case.value) == (T.TokenOf(module) or module.Token), `{case.name} 의 TokenOf`) -- 봉인한 종류(질문 BB)는 TokenOf(모듈)
 	end
 	-- TokenOf 는 토큰이 아닌 `__type`(숫자·문자열·아무 테이블)을 토큰으로 돌려주지 않음
 	for _, bogus in { 5, true, "Player", 0 / 0, {}, table.freeze({ name = "Arr" }) } :: { any } do
@@ -685,7 +686,7 @@ do
 			needle = "Trait: List.ImplFor needs a type token (from Trait.NewToken), got table",
 			run = function()
 				where = debug.info(1, "l") + 1
-				list.ImplFor({ Arr = stl.Arr.Token } :: any, arrListCore)
+				list.ImplFor({ Arr = stl.Trait.TokenOf(stl.Arr) } :: any, arrListCore)
 			end,
 		},
 		{
@@ -730,7 +731,7 @@ do
 			needle = "Trait: Stl.Arr already implements List",
 			run = function()
 				where = debug.info(1, "l") + 1
-				list.ImplFor(stl.Arr.Token, {} :: any)
+				list.ImplFor(stl.Trait.TokenOf(stl.Arr), {} :: any)
 			end,
 		},
 		{
@@ -740,7 +741,7 @@ do
 			needle = "Trait: Stl.Arr already implements List",
 			run = function()
 				where = debug.info(1, "l") + 1
-				list.ImplFor(stl.Arr.Token, table.clone(arrListCore))
+				list.ImplFor(stl.Trait.TokenOf(stl.Arr), table.clone(arrListCore))
 			end,
 		},
 		{
@@ -1058,7 +1059,7 @@ do
 	const ShowKept: any = T.Trait("ShowKept", function(_of: any): any
 		return table.freeze({ Show = T.Fn() })
 	end)
-	ShowKept.ImplFor(stl.Arr.Token, {
+	ShowKept.ImplFor(stl.Trait.TokenOf(stl.Arr), {
 		Show = function(_: any): string
 			return "kept"
 		end,
@@ -4025,7 +4026,7 @@ do
 	}
 	for _, wiring in wirings do
 		const module = (stl :: any)[wiring.kind]
-		const impl = stl.Trait.Impls(wiring.trait)[module.Token]
+		const impl = stl.Trait.Impls(wiring.trait)[stl.Trait.TokenOf(module) or module.Token] -- 봉인한 종류(질문 BB)는 TokenOf(모듈)
 		const label = `{wiring.kind} 의 {wiring.traitName}`
 		assert(impl ~= nil, `{label}: 등록이 없음`)
 		local expected = 0

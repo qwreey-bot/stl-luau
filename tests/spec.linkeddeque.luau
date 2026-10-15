@@ -584,7 +584,7 @@ do
 			make = function(): any
 				return CircularDeque.New()
 			end,
-			token = CircularDeque.Token,
+			token = stl.Trait.TokenOf(CircularDeque),
 		},
 		{
 			name = "LinkedDeque",

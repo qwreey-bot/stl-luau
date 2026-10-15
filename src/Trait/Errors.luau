@@ -137,5 +137,11 @@ function Errors.convertMismatch(trait: string, kind: string?, value: any): never
 	end
 	return raise(`{trait}: the converter for {kind} got {got}`)
 end
+function Errors.structSealed(name: string): never
+	return raise(`Trait: {name} is already sealed (Trait.Struct seals once)`)
+end
+function Errors.structBad(name: string, got: any): never
+	return raise(`Trait: {name}.Seal needs a module table that is not already a trait or a kind (got {typeof(got)})`)
+end
 
 return Errors

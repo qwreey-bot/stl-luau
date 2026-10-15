@@ -158,7 +158,9 @@ export type Rng = (min: number, max: number) -> number
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewToken("Stl.Arr") :: Trait.Token<"Stl.Arr">
+-- 이 종류 = 닫힌 트레이트(질문 BB): 맨 위에서 만들고 맨 끝에서 모듈 표를 봉인 — 그 표가 곧 `stl.Arr`(종류의 정체).
+const Kind = Trait.Struct("Stl.Arr")
+const TOKEN = Kind.Token -- 안쪽에서만(생성자가 `__type` 에 찍는 상수)
 const isHashMap, expectImpl = HashMap.isHashMap, Trait.ExpectImpl
 HashMap.BindArr(TOKEN)
 
@@ -2816,7 +2818,7 @@ end
 --#endregion
 
 -- stylua: ignore
-const ArrModule = {
+const ArrModule = Kind.Seal({
 	Of = Of,
 	Sized = Sized,
 	Adopt = Adopt,
@@ -2826,8 +2828,6 @@ const ArrModule = {
 	Concat = Concat,
 	Range = Range,
 	isArr = isArr,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `MyTrait.ImplFor(Arr.Token, impl)`
-	Token = TOKEN,
 
 	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`Arr.X(v, …)`) — 콜론 호출은
 	-- 없습니다(질문 AB). `local Map = Arr.Map` 처럼 받아 부르면 더 빠릅니다
@@ -2863,7 +2863,7 @@ const ArrModule = {
 
 	-- M4(2026-10-07) — 키로 맵 만들기
 	GroupBy = GroupBy, CountBy = CountBy, KeyBy = KeyBy,
-}
+})
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
 -- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
@@ -2887,7 +2887,7 @@ const listImpl: List.Provided<Arr<A>, A, number> = {
 	Every = ArrModule.Every,
 }
 const collectionImpl: Collection.Provided<Arr<A>> = { Len = ArrModule.Len, Clear = ArrModule.Clear }
-List.ImplFor(TOKEN, listImpl)
-Collection.ImplFor(TOKEN, collectionImpl)
+List.ImplFor(ArrModule, listImpl)
+Collection.ImplFor(ArrModule, collectionImpl)
 
 return ArrModule

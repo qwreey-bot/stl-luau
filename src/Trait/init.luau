@@ -97,7 +97,7 @@ export type Object<R, F, G> = {
 	read Of: R, -- 읽기 보기 꺼내기(값이나 토큰으로) — `FnMut` 칸이 없음. 읽기 전용으로 빌린 참조도 받음(정의의 첫 매개변수)
 	read OfMut: F, -- 완성 표 꺼내기 — 모든 칸. 바꿀 수 있는 참조만(정의의 둘째 매개변수 — 없으면 첫째). 런타임은 `Of` 와 같은 함수
 	read ImplOf: G, -- 타입 전용: `typeof(X.ImplOf<<…>>(nil :: any))` 로 등록 표 타입을 얻음(런타임은 `Of` 와 같은 함수)
-	read ImplFor: (token: AnyToken, impl: any) -> (),
+	read ImplFor: (kind: any, impl: any) -> (), -- 종류(봉인한 모듈 표 — `stl.Arr`) 또는 토큰
 	read ImplWhere: (deps: { any } | AnyKind, build: (deps: { [any]: any }) -> any) -> (),
 	read FnTok: { [string]: number },
 }
@@ -432,10 +432,14 @@ const function NewToken<N>(name: N & string): Token<N>
 	return token :: any
 end
 
--- 값의 타입 토큰. 테이블이 아니거나, `__type` 이 없거나 이 사본의 토큰이 아니면 nil.
+-- 값의 타입 토큰. 테이블이 아니거나, `__type` 이 없거나 이 사본의 토큰이 아니면 nil. 봉인한 종류(`stl.Arr` — 질문 BB)를 넘기면 그 종류의 토큰.
 const function TokenOf(value: any): Token<string>?
 	if type(value) ~= "table" then
 		return nil
+	end
+	const kindTok = Registry.kindToken[value]
+	if kindTok ~= nil then
+		return kindTok
 	end
 	const token = rawget(value, TYPE_KEY)
 	return if isToken[token] then token :: any else nil
@@ -484,6 +488,51 @@ const function Restore<T>(value: T): T
 		end
 	end
 	return value
+end
+
+--[[ 종류 = 닫힌 트레이트(2026-10-15 질문 BB — 사용자: *"Arr 조차 Trait 이여야 하는거 아닌가 … rust 처럼 익명 trait? struct Arr impl Arr {}"*) ]]
+-- 종류마다 **그 종류 하나만 구현하는 닫힌 트레이트**. 다른 곳에서 구현될 일이 없어 `ImplFor`·`ImplWhere` 가 없고, 한 번 봉인하면 끝입니다.
+-- 모듈 맨 위에서 `Trait.Struct(이름)`(토큰도 같이 — `NewToken` 자리), 맨 끝에서 `Kind.Seal(모듈 표)` — **그 표가 곧 종류의 정체이자 닫힌
+-- 트레이트**입니다(`stl.Arr`). 그래서 쓰는 쪽은 토큰을 만지지 않습니다: `Stack.ImplFor(stl.Arr, impl)`, `Trait.Converter(stl.Arr)`(아래로),
+-- `Trait.Implements(stl.Arr, v)`. 함수는 그 자리 그대로(직접 호출 — 닫혀 있으니 구현을 찾을 일이 없음).
+-- 토큰은 라이브러리 안쪽에서만(생성자가 `__type` 에 찍는 상수 — `Kind.Token`).
+export type Kind<N> = {
+	read Token: Token<N>,
+	read Seal: <M>(module: M) -> M,
+}
+const kindToken = Registry.kindToken
+const function Struct<N>(name: N & string): Kind<N>
+	const token = NewToken(name)
+	local sealed = false
+	const function Seal(module: any): any
+		if sealed then
+			Errors.structSealed(name)
+		end
+		if type(module) ~= "table" or records[module] ~= nil or kindToken[module] ~= nil then
+			Errors.structBad(name, module)
+		end
+		sealed = true
+		kindToken[module] = token
+		-- 닫힌 트레이트의 기록: 구현은 그 종류 하나(완성 표 = 모듈 표 자체). 뭉텅이·다시 짓기에 끼지 않음(`Registry.traits` 에 안 넣음)
+		records[module] = {
+			name = name,
+			fnNames = {},
+			fnTok = {},
+			impls = { [token] = module },
+			required = {},
+			builders = {},
+			explicit = {},
+			blankets = {},
+			dependents = {},
+			dependentSet = {},
+		}
+		return module
+	end
+	return table.freeze({ Token = token, Seal = Seal }) :: any
+end
+-- 종류 자리에 봉인한 종류(모듈 표)를 넘겨도 되게: 토큰이면 그대로, 종류면 그 토큰
+const function asToken(kind: any): any
+	return kindToken[kind] or kind
 end
 
 --[[ 트레이트 ]]
@@ -604,7 +653,8 @@ end
 
 -- 종류 하나의 구현. 같은 (트레이트, 토큰) 을 두 번 명시 등록하면 에러(덮어쓰기를 허용하면 내장 구현이 전역으로 조용히 바뀜).
 -- 뭉텅이 구현으로 따라온 것 위에는 등록할 수 있습니다(빠른 판을 나중에 얹는 길 — 같은 표를 다시 짓고 위로 번짐).
-function implFor(trait: any, token: any, impl: any)
+function implFor(trait: any, kind: any, impl: any)
+	const token = asToken(kind)
 	const rec = records[trait]
 	if not isToken[token] then
 		Errors.notToken(`{rec.name}.ImplFor`, token)
@@ -734,6 +784,7 @@ const function Converter(trait: any, token: any?): (value: any) -> any
 			return value
 		end
 	end
+	token = asToken(token)
 	if not isToken[token] then
 		Errors.notToken(`{traitName}.Converter`, token)
 	end
@@ -784,6 +835,6 @@ end
 return {
 	TYPE_KEY = TYPE_KEY,
 	NewToken = NewToken, TokenOf = TokenOf, Stamp = Stamp, Restore = Restore,
-	Trait = Trait, Fn = Fn, FnMut = FnMut, Default = Default, DefaultMut = DefaultMut, Sig = Sig, Any = Any,
+	Struct = Struct, Trait = Trait, Fn = Fn, FnMut = FnMut, Default = Default, DefaultMut = DefaultMut, Sig = Sig, Any = Any,
 	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose, Impls = Impls, Converter = Converter,
 }

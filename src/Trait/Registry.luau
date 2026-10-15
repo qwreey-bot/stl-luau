@@ -30,6 +30,7 @@ const Registry = {
 	isToken = {} :: { [any]: true },
 	traits = {} :: { any },
 	records = {} :: { [any]: Record },
+	kindToken = {} :: { [any]: any }, -- [봉인한 종류(모듈 표)] = 그 토큰 — `Trait.Struct`(닫힌 트레이트)
 }
 
 return Registry

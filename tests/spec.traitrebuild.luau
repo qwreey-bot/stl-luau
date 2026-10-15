@@ -55,7 +55,7 @@ do
 	end, "got a Stl.CircularDeque this library does not know (deserialized? Trait.Restore it", "복사본")
 	assert(T.TokenOf(copy) == nil, "복사본의 토큰은 이 사본의 것이 아님")
 	T.Restore(outer)
-	assert(T.TokenOf(copy) == stl.CircularDeque.Token, "Restore 가 진짜 토큰으로")
+	assert(T.TokenOf(copy) == stl.Trait.TokenOf(stl.CircularDeque), "Restore 가 진짜 토큰으로")
 	stl.Stack.Push(copy, 3)
 	assert(stl.Stack.Pop(copy) == 3, "되찾은 값은 스택")
 	-- 이름이 이 사본에 없는 토큰은 그대로
@@ -82,7 +82,7 @@ do
 	-- 함수 번호는 정렬한 이름 순, 완성 표는 이름과 번호 둘 다
 	const stack: any = stl.Stack
 	assert(stack.FnTok.Peek == 1 and stack.FnTok.Pop == 2 and stack.FnTok.Push == 3, "함수 번호")
-	const full = stack.Of(stl.CircularDeque.Token)
+	const full = stack.Of(stl.Trait.TokenOf(stl.CircularDeque))
 	assert(
 		full.Push == stl.CircularDeque.PushBack and full[3] == full.Push,
 		"완성 표: 덱 함수 그대로 + 번호 칸"
@@ -514,7 +514,7 @@ do
 	T.Expose(E, { Extra = print })
 	assert(E.Extra == print, "얹음")
 	-- `Trait.Impls`: 완성 표가 든 표(키는 토큰뿐), 트레이트가 아니면 에러
-	assert(T.Impls(stl.Deque)[stl.CircularDeque.Token] == stl.Deque.Of(d), "Impls")
+	assert(T.Impls(stl.Deque)[stl.Trait.TokenOf(stl.CircularDeque)] == stl.Deque.Of(d), "Impls")
 	fails(function()
 		where = debug.info(1, "l") + 1
 		T.Impls({} :: any)
@@ -612,7 +612,7 @@ do
 	end
 	T.Restore(head)
 	assert(
-		T.TokenOf(head) == stl.Arr.Token and T.TokenOf(tail) == stl.Arr.Token,
+		T.TokenOf(head) == stl.Trait.TokenOf(stl.Arr) and T.TokenOf(tail) == stl.Trait.TokenOf(stl.Arr),
 		"깊은 사슬의 끝까지 되찾음"
 	)
 	-- 얼린 표는 건드리지 않음(에러 없이), 그 안은 그대로 걸음
@@ -620,7 +620,7 @@ do
 	const frozen = table.freeze({ __type = { name = "Stl.Arr" }, n = 0, inner = frozenInner }) :: any
 	T.Restore({ frozen })
 	assert(
-		T.TokenOf(frozen) == nil and T.TokenOf(frozenInner) == stl.Arr.Token,
+		T.TokenOf(frozen) == nil and T.TokenOf(frozenInner) == stl.Trait.TokenOf(stl.Arr),
 		"얼린 표는 건너뛰고 안쪽은 되찾음"
 	)
 
@@ -824,7 +824,7 @@ do
 	mapCopy.data.k.__type = { name = "Stl.Arr" }
 	T.Restore(mapCopy)
 	assert(
-		T.TokenOf(mapCopy) == stl.HashMap.Token and T.TokenOf(mapCopy.data.k) == stl.Arr.Token,
+		T.TokenOf(mapCopy) == stl.HashMap.Token and T.TokenOf(mapCopy.data.k) == stl.Trait.TokenOf(stl.Arr),
 		"맵 안의 data 를 지나 안쪽 Arr 까지"
 	)
 	const hidden = { __type = { name = "Stl.Arr" }, n = 0 }
@@ -837,12 +837,12 @@ do
 	}) :: any
 	T.Restore(withIter)
 	assert(
-		iterCalls == 0 and T.TokenOf(hidden) == stl.Arr.Token,
+		iterCalls == 0 and T.TokenOf(hidden) == stl.Trait.TokenOf(stl.Arr),
 		"raw 로 걸음(__iter 를 안 부르고 숨긴 자식까지)"
 	)
 
 	-- (10) 진입점은 값 **자신의** `__type` 만 — 메타테이블로 물려받은 토큰은 종류가 아님(TokenOf 와 같게, 2라운드)
-	const proto = { __type = stl.CircularDeque.Token } :: any
+	const proto = { __type = stl.Trait.TokenOf(stl.CircularDeque) } :: any
 	proto.__index = proto
 	const obj = setmetatable({}, proto) :: any
 	assert(T.TokenOf(obj) == nil, "TokenOf 는 raw")
@@ -1157,9 +1157,66 @@ do
 		convert(42)
 	end, "Stack: the converter for Test.Rebuild.ConvKind got number", "테이블 아님")
 	-- (d) 뭉텅이로 따라온 구현도 등록으로 침(덱이면 스택)
-	const fromDeque = T.Converter(stl.Stack, stl.CircularDeque.Token)
+	const fromDeque = T.Converter(stl.Stack, stl.Trait.TokenOf(stl.CircularDeque))
 	const d = stl.CircularDeque.Of(1, 2)
 	assert(rawequal(fromDeque(d), d), "뭉텅이 구현")
+	-- (d′) 종류는 닫힌 트레이트(질문 BB): 바깥 종류도 `Trait.Struct` 로 — 종류 자리에 모듈을 넘기고(토큰 대신), 닫힌 트레이트로 바꾸면 "그 종류인가"
+	const BagKind = T.Struct("Test.Rebuild.BagKind")
+	const BAG = BagKind.Token
+	const Bag = BagKind.Seal({
+		New = function(): any
+			return { __type = BAG, items = {} }
+		end,
+	})
+	fails(function()
+		where = debug.info(1, "l") + 1
+		BagKind.Seal({})
+	end, "Trait: Test.Rebuild.BagKind is already sealed", "두 번 봉인")
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			T.Struct("Test.Rebuild.BagKind2").Seal(stl.Stack)
+		end,
+		"Trait: Test.Rebuild.BagKind2.Seal needs a module table that is not already a trait or a kind",
+		"트레이트를 봉인"
+	)
+	stl.Stack.ImplFor(Bag, {
+		Push = function(b: any, x: any): any
+			table.insert(b.items, x)
+			return b
+		end,
+		Pop = function(b: any): any
+			return table.remove(b.items)
+		end,
+		Peek = function(b: any): any
+			return b.items[#b.items]
+		end,
+	})
+	const bagToStack = T.Converter(stl.Stack, Bag)
+	const stackToBag = T.Converter(Bag)
+	const bag = Bag.New()
+	stl.Stack.Push(bagToStack(bag), 8)
+	assert(rawequal(stackToBag(bagToStack(bag)), bag) and stl.Stack.Peek(bagToStack(bag)) == 8, "위로·아래로")
+	assert(
+		T.Implements(Bag, bag) and not T.Implements(Bag, d) and T.ImplOf(Bag, bag) == Bag,
+		"닫힌 트레이트의 조회"
+	)
+	assert(
+		T.TokenOf(Bag) == T.TokenOf(bag) and T.TokenOf(stl.Arr) == T.TokenOf(stl.Arr.Of(1)),
+		"종류의 토큰 = 값의 토큰"
+	)
+	assert(
+		T.Implements(stl.Arr, stl.Arr.Of(1)) and not T.Implements(stl.Arr, d),
+		"라이브러리 종류도 닫힌 트레이트"
+	)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			stackToBag(d)
+		end,
+		"Test.Rebuild.BagKind: the converter needs a Test.Rebuild.BagKind — got Stl.CircularDeque",
+		"아래로: 다른 종류"
+	)
 	-- (e) 토큰 없이 — 그 트레이트를 구현한 종류면 무엇이든(덱 쪽이 내주는 `Deque.AsStack`·`AsQueue` — 스택·큐는 덱을 모름)
 	const ld = stl.LinkedDeque.Of(5)
 	assert(rawequal(stl.Deque.AsStack(d), d) and rawequal(stl.Deque.AsQueue(ld), ld), "덱 두 종류")

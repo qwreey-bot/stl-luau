@@ -61,7 +61,7 @@
 7	.claude/audit/arr-type-redesign/spikes/57-bare-lambda-free-type.luau	27,31,35,43,47,48,52
 20	.claude/audit/arr-type-redesign/spikes/58-arr-m3-surface.luau	60,61,62,63,64,70,73,76,79,82,88,89,92,93,98,101,104,110,113,117
 24	.claude/audit/arr-type-redesign/spikes/59-maps-m4-surface.luau	55,58,59,60,63,64,67,68,71,72,72,72,73,77,78,79,80,82,85,88,91,94,97,101
-33	.claude/audit/arr-type-redesign/spikes/60-deque.luau	37,38,39,40,41,44,45,46,47,49,53,56,56,56,57,58,111,112,113,114,115,116,117,118,119,122,127,132,134,135,135,137,139
+31	.claude/audit/arr-type-redesign/spikes/60-deque.luau	37,38,39,40,41,44,45,46,47,49,53,56,57,58,111,112,113,114,115,116,117,118,119,122,127,132,134,135,135,137,139
 12	.claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau	72,73,74,75,76,77,78,79,80,81,85,88
 4	.claude/audit/arr-type-redesign/spikes/62-solver-generic-body-and-literal-key.luau	32,34,34,36
 26	.claude/audit/arr-type-redesign/spikes/63-collection-trait.luau	102,103,107,108,112,113,116,117,118,118,121,125,126,133,137,138,143,144,145,146,147,149,152,155,156,158
@@ -72,4 +72,5 @@
 33	.claude/audit/arr-type-redesign/spikes/69-trait-definition.luau	29,30,33,41,42,46,47,49,59,60,67,98,103,108,108,108,109,109,109,112,112,112,115,124,133,134,135,139,146,151,163,166,170
 9	.claude/audit/arr-type-redesign/spikes/70-trait-view.luau	32,38,44,50,63,75,87,120,125
 17	.claude/audit/arr-type-redesign/spikes/71-trait-ofmut.luau	17,18,25,26,28,45,47,54,55,59,90,92,104,106,106,106,113
-10	.claude/audit/arr-type-redesign/spikes/72-trait-adapter.luau	26,27,28,29,30,31,32,34,36,37
+10	.claude/audit/arr-type-redesign/spikes/72-trait-adapter.luau	27,28,29,30,31,32,33,35,37,38
+8	.claude/audit/arr-type-redesign/spikes/73-trait-struct.luau	18,24,25,26,27,30,31,33

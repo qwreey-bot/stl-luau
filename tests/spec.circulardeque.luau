@@ -75,8 +75,11 @@ do
 
 	-- capacity: 미리 잡기, 정책
 	const big = CircularDeque.New<<number>>(100)
-	assert(big.cap == 100 and CircularDeque.Len(big) == 0, "capacity")
-	assert(CircularDeque.New<<number>>(0).cap == 4 and CircularDeque.New<<number>>(2.9).cap == 4, "최소 4")
+	assert((big :: any).cap == 100 and CircularDeque.Len(big) == 0, "capacity")
+	assert(
+		(CircularDeque.New<<number>>(0) :: any).cap == 4 and (CircularDeque.New<<number>>(2.9) :: any).cap == 4,
+		"최소 4"
+	)
 	assert(
 		not pcall(CircularDeque.New, -1)
 			and not pcall(CircularDeque.New, 0 / 0)
@@ -87,17 +90,20 @@ do
 	-- 못 지켰음(2라운드)
 	const okBig, errBig = pcall(CircularDeque.New, 2 ^ 26 + 1)
 	assert(not okBig and string.find(tostring(errBig), "CircularDeque: capacity must be in", 1, true), tostring(errBig))
-	assert(CircularDeque.New<<number>>(-0.5).cap == 4, "capacity 경계(소수는 0 쪽)")
+	assert((CircularDeque.New<<number>>(-0.5) :: any).cap == 4, "capacity 경계(소수는 0 쪽)")
 	-- 빈 입력에서 만든 것도 최소 4칸 — 0 칸이면 두 배로 늘릴 수 없음(1라운드: 바닥을 지워도 값은
 	-- 맞아 테스트가 통과했지만 cap 0·head -1 로 불변식이 깨졌음)
 	for _, empty in
 		{ CircularDeque.Of(), CircularDeque.FromList({}), CircularDeque.Clone(CircularDeque.New<<number>>()) } :: { CircularDeque<number> }
 	do
-		assert(empty.cap >= 4, `빈 입력 cap {empty.cap}`)
+		assert((empty :: any).cap >= 4, `빈 입력 cap {(empty :: any).cap}`)
 		for i = 1, 6 do
 			CircularDeque.PushFront(empty, i * 10)
 		end
-		assert(empty.size <= empty.cap and empty.head >= 0 and empty.head < empty.cap, "빈 입력 뒤 불변식")
+		assert(
+			empty.size <= (empty :: any).cap and (empty :: any).head >= 0 and (empty :: any).head < (empty :: any).cap,
+			"빈 입력 뒤 불변식"
+		)
 		same(empty, { 60, 50, 40, 30, 20, 10 }, "빈 입력 뒤 PushFront")
 	end
 end
@@ -110,13 +116,13 @@ do
 	CircularDeque.PushBack(d, 30)
 	same(d, { 10, 20, 30 }, "양끝")
 	-- PushFront 가 감김(head 가 cap 끝으로)
-	assert(d.head ~= 0, "PushFront 는 감김")
+	assert((d :: any).head ~= 0, "PushFront 는 감김")
 	CircularDeque.PushFront(d, 5)
 	same(d, { 5, 10, 20, 30 }, "꽉 참(cap 4)")
-	assert(d.cap == 4, "아직 cap 4")
+	assert((d :: any).cap == 4, "아직 cap 4")
 	-- 감긴 채로 늘리기
 	CircularDeque.PushBack(d, 40)
-	assert(d.cap == 8, "두 배")
+	assert((d :: any).cap == 8, "두 배")
 	same(d, { 5, 10, 20, 30, 40 }, "감긴 채 늘림")
 	CircularDeque.PushFront(d, 1)
 	same(d, { 1, 5, 10, 20, 30, 40 }, "늘린 뒤 PushFront")
@@ -124,7 +130,7 @@ do
 	same(d, { 5, 10, 20, 30 }, "꺼낸 뒤")
 	-- 쓰지 않는 물리 칸은 비어 있음(꺼낸 원소를 붙잡지 않음 — GC)
 	local live = 0
-	for idx = 1, d.cap do
+	for idx = 1, (d :: any).cap do
 		if rawget(d :: any, idx) ~= nil then
 			live += 1
 		end
@@ -148,7 +154,7 @@ do
 		CircularDeque.PushBack(q, i * 10)
 		assert(CircularDeque.PopFront(q) == (i - 3) * 10, "큐 순서")
 	end
-	assert(q.cap == 4 and CircularDeque.Len(q) == 3, `큐 cap {q.cap}`)
+	assert((q :: any).cap == 4 and CircularDeque.Len(q) == 3, `큐 cap {(q :: any).cap}`)
 	same(q, { 9980, 9990, 10000 }, "큐 끝")
 end
 print("PASS")
@@ -166,17 +172,17 @@ do
 	-- Clone: 펴서 담음, 원본과 독립
 	const c = CircularDeque.Clone(d)
 	same(c, { 0, 10, 20, 30 }, "Clone")
-	assert(c.head == 0, "Clone 은 편 것")
+	assert((c :: any).head == 0, "Clone 은 편 것")
 	CircularDeque.PushBack(c, 99)
 	same(d, { 0, 10, 20, 30 }, "원본 그대로")
 	assert(stl.isCircularDeque(CircularDeque.Clone(CircularDeque.New<<number>>())), "빈 Clone")
 
 	-- Clear: 칸 수 유지, 칸은 비움, 이어 쓸 수 있음
-	const cap = d.cap
+	const cap = (d :: any).cap
 	assert(CircularDeque.Clear(d) == d, "자기 자신")
 	same(d, {}, "Clear")
-	assert(d.cap == cap, "cap 유지")
-	for idx = 1, d.cap do
+	assert((d :: any).cap == cap, "cap 유지")
+	for idx = 1, (d :: any).cap do
 		assert(rawget(d :: any, idx) == nil, "칸 비움")
 	end
 	CircularDeque.PushFront(d, 7)
@@ -192,9 +198,9 @@ do
 	for i = 6, 9 do
 		CircularDeque.PushBack(wrapped, i * 10)
 	end
-	assert(wrapped.head + wrapped.size > wrapped.cap, "감긴 상태여야 함")
+	assert((wrapped :: any).head + wrapped.size > (wrapped :: any).cap, "감긴 상태여야 함")
 	CircularDeque.Clear(wrapped)
-	for idx = 1, wrapped.cap do
+	for idx = 1, (wrapped :: any).cap do
 		assert(rawget(wrapped :: any, idx) == nil, `감긴 Clear 칸 {idx}`)
 	end
 	same(wrapped, {}, "감긴 Clear")
@@ -278,7 +284,10 @@ do
 				Arr.Clear(model)
 			end
 			assert(CircularDeque.Len(d) == model.n, "길이 대조")
-			assert(d.size <= d.cap and d.head >= 0 and d.head < d.cap, "head·size 불변식")
+			assert(
+				d.size <= (d :: any).cap and (d :: any).head >= 0 and (d :: any).head < (d :: any).cap,
+				"head·size 불변식"
+			)
 		end
 		const expected = table.create(model.n) :: { number }
 		for idx = 1, model.n do
@@ -287,13 +296,13 @@ do
 		same(d, expected, "무작위")
 		-- 물리 칸 중 살아 있는 것은 정확히 size 개
 		local live = 0
-		for idx = 1, d.cap do
+		for idx = 1, (d :: any).cap do
 			if rawget(d :: any, idx) ~= nil then
 				live += 1
 			end
 		end
 		assert(live == d.size, `살아 있는 칸 {live} ~= {d.size}`)
-		assert(rawget(d :: any, d.cap + 1) == nil, "cap 밖 칸 없음")
+		assert(rawget(d :: any, (d :: any).cap + 1) == nil, "cap 밖 칸 없음")
 	end
 end
 print("PASS")

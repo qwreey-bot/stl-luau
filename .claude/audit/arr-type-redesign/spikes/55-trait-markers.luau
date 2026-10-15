@@ -59,7 +59,7 @@ local showArr: typeof(ShowTrait.ImplOf<<Arr<any>>>(nil :: any)) = {
 		return "arr"
 	end,
 }
-ShowTrait.ImplFor(stl.Arr.Token, showArr)
+ShowTrait.ImplFor(stl.Trait.TokenOf(stl.Arr), showArr)
 local shown = ShowTrait.Of(nums)
 local text: string? = shown.Show(nums)
 

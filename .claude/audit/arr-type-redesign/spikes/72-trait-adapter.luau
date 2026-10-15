@@ -3,7 +3,8 @@
 	바깥에서 트레이트를 붙이는 중간자(질문 BA, 2026-10-15 — 사용자: "<T>(Arr<T>) -> Stack<T> 를 주는 뭔가", "a to b 계약자가 두 점이 확실한지",
 	"깔끔하게 … Stack<T> 와 Arr<T> 를 두고 진짜 변환"). 등록(런타임)은 타입을 못 바꾸니 그 쌍을 아는 쪽이 `Trait.Converter` 에 **타입을 적어**
 	씁니다. 위로 바꾼 값은 그 트레이트로만 보이고(`Arr` 함수·덱 진입점은 못 받음), 아래로 바꾸면 다시 그 종류.
-	⚠️ 타입만 봅니다(런타임에 돌리지 않음 — 실제로는 `Stack.ImplFor(Arr.Token, …)` 뒤에 만들어야 `Converter` 가 받음, `spec.traitrebuild` 9절).
+	⚠️ 타입만 봅니다(런타임에 돌리지 않음 — 실제로는 `Stack.ImplFor(stl.Arr, …)` 뒤에 만들어야 `Converter` 가 받음, `spec.traitrebuild` 9절).
+	종류는 닫힌 트레이트(질문 BB): 위로는 `Converter(stl.Stack, stl.Arr)`(그 종류를), 아래로는 `Converter(stl.Arr)`(닫힌 트레이트로) — 토큰을 안 만짐.
 
 	기대 진단: 줄 번호는 scripts/spike-expectations.tsv (NEG 줄마다 + CANARY 1).
 ]]
@@ -11,9 +12,9 @@ local stl = require("../../../../src")
 type Arr<T> = stl.Arr<T>
 local Trait = stl.Trait
 
-local asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, stl.Arr.Token)
-local asArr: <T>(s: stl.Stack<T>) -> Arr<T> = Trait.Converter(stl.Stack, stl.Arr.Token)
-local asPeek: <T>(a: stl.ArrRead<T>) -> stl.StackRead<T> = Trait.Converter(stl.Stack, stl.Arr.Token)
+local asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, stl.Arr)
+local asArr: <T>(s: stl.Stack<T>) -> Arr<T> = Trait.Converter(stl.Arr)
+local asPeek: <T>(a: stl.ArrRead<T>) -> stl.StackRead<T> = Trait.Converter(stl.Stack, stl.Arr)
 
 local a = stl.Arr.Of(1, 2, 3)
 local s = asStack(a)
