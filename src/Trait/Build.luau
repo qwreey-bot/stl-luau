@@ -91,7 +91,9 @@ const function assemble(rec: Record, token: any, given: { [string]: any }): { [a
 	if next(builders) ~= nil then
 		const building: { [string]: true } = {}
 		local buildOne: (fnName: string) -> ()
-		setmetatable(fresh, {
+		-- `:: any`: Luau 0.740(luau-lsp 1.70.1 — 편집기·Studio)은 `setmetatable` 뒤 `fresh` 를 메타테이블 타입으로 바꿔 아래 반환이 31건
+		-- 에러였습니다(게이트의 0.742 는 0건).
+		setmetatable(fresh :: any, {
 			__index = function(_: any, fnName: any): any
 				if type(fnName) == "string" and builders[fnName] ~= nil then
 					buildOne(fnName)
