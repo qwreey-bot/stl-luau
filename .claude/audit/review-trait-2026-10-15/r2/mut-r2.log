@@ -1,0 +1,17 @@
+생존 R01 다시 짓기 경로가 뭉텅이를 탓하지 않음 -O1 rc=0  | -O2 rc=0 
+생존 R02 의존 목록의 첫째만 고리 검사 -O1 rc=0  | -O2 rc=0 
+생존 R03 reaches 가 첫 의존의 결과를 그대로 돌려줌 -O1 rc=0  | -O2 rc=0 
+생존 R04 reaches 가 첫 뭉텅이만 봄 -O1 rc=0  | -O2 rc=0 
+잡힘 R05 고리 검사가 직접 의존만 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:15: 세 단계 고리: wanted "Trait: Test.Rebuild.CycleA.ImplWhere on Test.Rebuild.CycleC makes a c | -O2 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:15: 세 단계 고리: wanted "Trait: Test.Rebuild.CycleA.ImplWhere on Test.Rebuild.CycleC makes a c
+생존 R06 이미 본 것을 고리로(다이아몬드 거절) -O1 rc=0  | -O2 rc=0 
+생존 R07 Entry 가 rawget 대신 인덱싱 -O1 rc=0  | -O2 rc=0 
+잡힘 R08 ExpectImpl 의 테이블 확인 생략 -O1 rc=1 ./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:846: 등록 안 된 __type: ./src/Trait/init.luau:390: invalid argument #1 to 'rawget' (table expecte | -O2 rc=1 ./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:846: 등록 안 된 __type: ./src/Trait/init.luau:390: invalid argument #1 to 'rawget' (table expecte
+잡힘 R09 commit 이 같은 표를 고치지 않고 갈아 끼움 -O1 rc=1 ./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:2023: 같은 표 | -O2 rc=1 ./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:2023: 같은 표
+생존 R10 Restore 가 __type 있는 표만 따라 내려감 -O1 rc=0  | -O2 rc=0 
+잡힘 R11 Restore 가 뿌리만(자식 안 넣음) -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:58: Restore 가 진짜 토큰으로 | -O2 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:58: Restore 가 진짜 토큰으로
+잡힘 R12 Map.Keys 의 펼친 조회에서 테이블 확인 생략 -O1 rc=1 ./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:846: 등록 안 된 __type: ./src/Traits/Map.luau:99: invalid argument #1 to 'rawget' (table expected | -O2 rc=1 ./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:846: 등록 안 된 __type: ./src/Traits/Map.luau:99: invalid argument #1 to 'rawget' (table expected
+생존 R13 Impls 가 사본을 돌려줌 -O1 rc=0  | -O2 rc=0 
+생존 R14 Implements 가 TokenOf 대신 raw __type -O1 rc=0  | -O2 rc=0 
+잡힘 R15 고리 검사가 onWhere 뒤 -O1 rc=1 ./tests/run.luau:23: error while running module: ./src/Trait/Build.luau:57: stack overflow | -O2 rc=1 ./tests/run.luau:23: error while running module: ./src/Trait/Build.luau:57: stack overflow
+생존 R16 ImplOf 가 TokenOf 대신 raw -O1 rc=0  | -O2 rc=0 
+생존 R17 Of 의 값 갈래가 토큰 확인 없이 -O1 rc=0  | -O2 rc=0 

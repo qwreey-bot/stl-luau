@@ -1,0 +1,8 @@
+잡힘 R01 다시 짓기 경로가 뭉텅이를 탓하지 않음 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:15: 다시 짓기에서 드러난 빠뜨림: wanted "Trait: a blanket implementation of Test.Rebuild.LateD
+잡힘 R02 의존 목록의 첫째만 고리 검사 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:15: 의존 목록의 둘째: wanted "Trait: Test.Rebuild.CycleB.A.ImplWhere on Test.Rebuild.CycleB.B 
+잡힘 R03 reaches 가 첫 의존의 결과를 그대로 돌려줌 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:15: 의존 트레이트의 둘째 뭉텅이: wanted "Trait: Test.Rebuild.CycleC.A.ImplWhere on Test.
+잡힘 R04 reaches 가 첫 뭉텅이만 봄 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:15: 의존 트레이트의 둘째 뭉텅이: wanted "Trait: Test.Rebuild.CycleC.A.ImplWhere on Test.Rebuild.C
+잡힘 R06 이미 본 것을 고리로(다이아몬드 거절) -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:792: Trait: Test.Rebuild.StackQueue.ImplWhere on Queue makes a cycle — Queue alrea
+잡힘 R07 Entry 가 rawget 대신 인덱싱 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:15: 물려받은 __type 의 진입점: wanted "Stack: Push needs a Stack (got table without a type
+잡힘 R10 Restore 가 __type 있는 표만 따라 내려감 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:807: 맵 안의 data 를 지나 안쪽 Arr 까지 | -O2 rc=1 ./tests/run.luau:23: error while 
+잡힘 R13 Impls 가 사본을 돌려줌 -O1 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.traitrebuild.luau:846: 살아 있는 표 | -O2 rc=1 ./tests/run.luau:23: error while running module: ./tests/spec.tr

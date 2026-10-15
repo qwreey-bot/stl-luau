@@ -1,0 +1,31 @@
+== R02 의존 목록의 첫째만 고리 검사 rc=0
+    다이아몬드 D<-{B,C}	true	
+    D.d	A
+    둘째 의존이 고리	true	
+    둘째 뭉텅이를 지나는 고리	false	./p01-cycle-shapes.luau:42: Trait: P01.A.ImplWhere on P01.E makes a cycle — P01.E already comes from P01.A through blanket implementations
+    Deque <- Stack	false	./p01-cycle-shapes.luau:47: Trait: Deque.ImplWhere on Stack makes a cycle — Stack already comes from Deque through blanket implementations
+    Deque <- MyRing	true	
+    Stack.Pop/Queue.Peek via Deque<-MyRing	20	10
+    의존 중복 {A, A}	true	
+    F.f	A
+    거절된 A<-{X,D} 가 k2 에 남지 않음 (Implements A)	false
+== R04 reaches 가 첫 뭉텅이만 봄 rc=0
+    다이아몬드 D<-{B,C}	true	
+    D.d	A
+    둘째 의존이 고리	false	./p01-cycle-shapes.luau:33: Trait: P01.A.ImplWhere on P01.D makes a cycle — P01.D already comes from P01.A through blanket implementations
+    둘째 뭉텅이를 지나는 고리	true	
+    Deque <- Stack	false	./p01-cycle-shapes.luau:47: Trait: Deque.ImplWhere on Stack makes a cycle — Stack already comes from Deque through blanket implementations
+    Deque <- MyRing	true	
+    Stack.Pop/Queue.Peek via Deque<-MyRing	20	10
+    의존 중복 {A, A}	true	
+    F.f	A
+    거절된 A<-{X,D} 가 k2 에 남지 않음 (Implements A)	false
+== R06 이미 본 것을 고리로(다이아몬드 거절) rc=1
+    다이아몬드 D<-{B,C}	false	./p01-cycle-shapes.luau:24: Trait: P01.D.ImplWhere on P01.C makes a cycle — P01.C already comes from P01.D through blanket implementations
+    ./p01-cycle-shapes.luau:28: P01.D: d needs a P01.D — P01.Kind does not implement P01.D
+    stacktrace:
+    [C] function error
+    ../../../../src/Common.luau:191 function raise
+    ../../../../src/Trait/Errors.luau:111 function entryMiss
+    ../../../../src/Trait/Entry.luau:20
+    ./p01-cycle-shapes.luau:28

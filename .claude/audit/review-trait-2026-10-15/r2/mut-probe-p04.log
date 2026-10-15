@@ -1,0 +1,44 @@
+== R01 다시 짓기 경로가 뭉텅이를 탓하지 않음 rc=1
+    ./p04-gap-tests.luau:13: (a) 다시 짓기에서 드러난 빠뜨림: wanted "Trait: a blanket implementation of P04.Dst (ImplWhere) for P04.K1 is missing stop for P04.Dst", got ./p04-gap-tests.luau:24: Trait: P04.K1 is missing stop for P04.Dst
+    stacktrace:
+    [C] function assert
+    ./p04-gap-tests.luau:13 function fails
+    ./p04-gap-tests.luau:23
+== R02 의존 목록의 첫째만 고리 검사 rc=1
+    ./p04-gap-tests.luau:13: (b) 둘째 의존: wanted "Trait: P04.bA.ImplWhere on P04.bB makes a cycle", got nil
+    stacktrace:
+    [C] function assert
+    ./p04-gap-tests.luau:13 function fails
+    ./p04-gap-tests.luau:34
+== R03 reaches 가 첫 의존의 결과를 그대로 돌려줌 rc=1
+    ./p04-gap-tests.luau:13: (c) 둘째 뭉텅이: wanted "Trait: P04.cA.ImplWhere on P04.cE makes a cycle", got nil
+    stacktrace:
+    [C] function assert
+    ./p04-gap-tests.luau:13 function fails
+    ./p04-gap-tests.luau:46
+== R04 reaches 가 첫 뭉텅이만 봄 rc=1
+    ./p04-gap-tests.luau:13: (c) 둘째 뭉텅이: wanted "Trait: P04.cA.ImplWhere on P04.cE makes a cycle", got nil
+    stacktrace:
+    [C] function assert
+    ./p04-gap-tests.luau:13 function fails
+    ./p04-gap-tests.luau:46
+== R06 이미 본 것을 고리로(다이아몬드 거절) rc=1
+    ./p04-gap-tests.luau:65: Trait: P04.StackQueue.ImplWhere on Queue makes a cycle — Queue already comes from P04.StackQueue through blanket implementations
+    stacktrace:
+    [C] function error
+    ../../../../src/Common.luau:191 function raise
+    ../../../../src/Trait/Errors.luau:75 function whereCycle
+    ../../../../src/Trait/init.luau:358 function implWhere
+    ../../../../src/Trait/init.luau:286
+    ./p04-gap-tests.luau:65
+== R07 Entry 가 rawget 대신 인덱싱 rc=1
+    ./p04-gap-tests.luau:13: (g) 물려받은 __type 의 진입점: wanted "Stack: Push needs a Stack (got table without a type token)", got ../../../../src/Collections/CircularDeque.luau:128: attempt to compare number < nil
+    stacktrace:
+    [C] function assert
+    ./p04-gap-tests.luau:13 function fails
+    ./p04-gap-tests.luau:88
+== R10 Restore 가 __type 있는 표만 따라 내려감 rc=1
+    ./p04-gap-tests.luau:79: (f) 맵 안의 data 를 지나 안쪽 Arr 까지
+    stacktrace:
+    [C] function assert
+    ./p04-gap-tests.luau:79
