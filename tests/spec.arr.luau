@@ -155,7 +155,7 @@ print("=== 5. 복제 / 비우기 / 채우기 ===")
 do
 	local a = Arr.Of(1, 2, 3)
 	local b = Arr.Clone(a)
-	b[1] = 99
+	Arr.Set(b, 1, 99)
 	assert(a[1] == 1, "Clone 은 독립적이어야 합니다")
 	same(b, { 99, 2, 3 }, "Clone 내용")
 
@@ -583,7 +583,8 @@ do
 	-- ⚠️ **구멍이 있을 때 문서대로 망가지는지**를 고정합니다. 이걸 고정해두지
 	-- 않으면 나중에 누가 "안전하게" 고쳐서 unchecked 의 존재 이유가 사라집니다.
 	const holed = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
-	holed[1], holed[3] = 1, 3
+	Arr.Set(holed, 1, 1)
+	Arr.Set(holed, 3, 3)
 	assert(not pcall(function()
 		return Arr.SumUnchecked(holed)
 	end), "SumUnchecked 는 구멍에서 터져야 합니다")
@@ -600,7 +601,8 @@ do
 	-- 돌려줘 `# == n` — 그물에 안 걸려 정렬이 구멍에서 터졌습니다(2026-10-14 버전 올리기). 가운데 구멍에서 터지는 것은
 	-- unchecked 의 계약 안(위의 SumUnchecked 와 같음).
 	const holedSorted = (Arr.Sized<<number?>>(3, nil) :: any) :: Arr<number>
-	holedSorted[1], holedSorted[2] = 2, 1
+	Arr.Set(holedSorted, 1, 2)
+	Arr.Set(holedSorted, 2, 1)
 	assert(
 		pcall(function()
 			return Arr.SortInplaceUnchecked(holedSorted)
@@ -690,7 +692,7 @@ do
 		return out
 	end
 	local function sortedCopy(a: Arr<number>): { number }
-		const copy = table.move(a, 1, a.n, 1, {}) :: { number }
+		const copy = table.move(a :: any, 1, a.n, 1, {}) :: { number }
 		table.sort(copy)
 		return copy
 	end
@@ -715,7 +717,7 @@ do
 	assert(recs[1].id == 10, "StableSort 는 원본을 안 건드림")
 	for _ = 1, 300 do
 		const input = randomRecs(math.random(0, 120), math.random(1, 6))
-		const expected = stableRef(table.move(input, 1, input.n, 1, {}) :: { Rec })
+		const expected = stableRef(table.move(input :: any, 1, input.n, 1, {}) :: { Rec })
 		const got = Arr.StableSort(input, byK)
 		assert(got.n == input.n, "StableSort 길이")
 		for idx = 1, input.n do
@@ -726,8 +728,8 @@ do
 	same(Arr.StableSort(emptyNum()), {}, "StableSort 빈 것")
 	-- 이미 정렬된 입력(병합 생략 경로)과 역순
 	const ascending = Arr.Range(1, 200)
-	same(Arr.StableSort(ascending), table.move(ascending, 1, 200, 1, {}), "StableSort 이미 정렬")
-	same(Arr.StableSort(Arr.Range(200, 1, -1)), table.move(ascending, 1, 200, 1, {}), "StableSort 역순")
+	same(Arr.StableSort(ascending), table.move(ascending :: any, 1, 200, 1, {}), "StableSort 이미 정렬")
+	same(Arr.StableSort(Arr.Range(200, 1, -1)), table.move(ascending :: any, 1, 200, 1, {}), "StableSort 역순")
 	-- 구멍은 꼬리로, n 은 그대로
 	const holed = Arr.Of<<number?>>(30, nil, 10, nil, 20)
 	const holedSorted = Arr.StableSort(holed)
@@ -778,7 +780,7 @@ do
 	)
 	for _ = 1, 100 do
 		const input = randomRecs(math.random(0, 80), math.random(1, 5))
-		const expected = stableRef(table.move(input, 1, input.n, 1, {}) :: { Rec })
+		const expected = stableRef(table.move(input :: any, 1, input.n, 1, {}) :: { Rec })
 		const got = Arr.SortBy(input, function(r: Rec): number
 			return r.k
 		end)
@@ -804,7 +806,7 @@ do
 	for _ = 1, 100 do
 		const input = randomNums(math.random(1, 60), math.random(1, 30))
 		const ref = sortedCopy(input)
-		const before = table.move(input, 1, input.n, 1, {}) :: { number }
+		const before = table.move(input :: any, 1, input.n, 1, {}) :: { number }
 		for k = 1, input.n do
 			assert(Arr.NthElement(input, k) == ref[k], "NthElement 대조")
 			assert(Arr.NthElement(input, -k) == ref[input.n - k + 1], "NthElement 음수")
@@ -1561,7 +1563,7 @@ do
 	assert(allHoles.n == 4 and allHoles[1] == nil and allHoles[4] == nil, "전부 구멍")
 	const sparse = Arr.Sized<<number?>>(9, nil)
 	for idx = 1, 9, 3 do
-		sparse[idx] = idx * 10
+		Arr.Set(sparse, idx, idx * 10)
 	end
 	const sparseBack = Arr.FromIter(Arr.Iter(sparse))
 	for idx = 1, 9 do
@@ -1958,7 +1960,7 @@ do
 	same(ch[2], { 30, 40 }, "조각 2")
 	same(ch[3], { 50 }, "마지막 조각은 짧음")
 	assert(Arr.isArr(ch[1]) and Arr.isArr(ch), "조각도 Arr")
-	ch[1][1] = 99
+	Arr.Set(ch[1], 1, 99)
 	assert(c[1] == 10, "조각은 사본")
 	same(Arr.Chunks(c, 5)[1], { 10, 20, 30, 40, 50 }, "딱 맞음")
 	assert(Arr.Chunks(c, 5).n == 1 and Arr.Chunks(c, 1).n == 5, "크기 5·1")
@@ -1980,7 +1982,7 @@ do
 	assert(w.n == 2, `창 수 {w.n}`)
 	same(w[1], { 10, 20, 30 }, "창 1")
 	same(w[2], { 20, 30, 40 }, "창 2")
-	w[1][2] = 99
+	Arr.Set(w[1], 2, 99)
 	assert(w[2][1] == 20, "창은 서로 다른 사본")
 	assert(Arr.Windows(Arr.Of(10, 20), 3).n == 0, "길이보다 크면 빔")
 	assert(Arr.Windows(Arr.Of(10, 20), math.huge).n == 0, "무한대도 빔")
@@ -2429,6 +2431,35 @@ do
 			assert(FlatMap.Get(treeKeyed, key) == item, "FlatMap KeyBy 가 같음")
 		end
 	end
+end
+print("PASS")
+
+print("=== 24. Set — 칸 하나 쓰기(2026-10-15 질문 BB — 공개 타입의 칸·n 은 읽기 전용) ===")
+do
+	const a = Arr.Of(10, 20, 30)
+	assert(Arr.Set(a, 2, 25) == a and a[2] == 25 and a.n == 3, "가운데")
+	Arr.Set(a, -1, 35)
+	assert(a[3] == 35 and a.n == 3, "음수는 뒤에서")
+	Arr.Set(a, 1.9, 15)
+	assert(a[1] == 15, "소수는 0 쪽으로")
+	-- 범위 밖·NaN 은 에러이고 아무것도 안 바뀜(사용자 줄은 spec.common)
+	for _, bad in { 0, 4, -4, math.huge, -math.huge, 0 / 0 } do
+		assert(not pcall(Arr.Set, a, bad, 99), `범위 밖 {bad}`)
+	end
+	assert(
+		a.n == 3
+			and a[1] == 15
+			and a[2] == 25
+			and a[3] == 35
+			and rawget(a :: any, 4) == nil
+			and rawget(a :: any, 0) == nil,
+		"안 바뀜"
+	)
+	-- 구멍을 만드는 것도 Set(타입이 `T?` 일 때)
+	const holes = Arr.Of<<number?>>(1, 2, 3)
+	Arr.Set(holes, 2, nil)
+	assert(holes[2] == nil and holes.n == 3, "구멍")
+	assert(not pcall(Arr.Set, Arr.Of<<number>>(), 1, 5), "빈 배열에는 못 씀")
 end
 print("PASS")
 

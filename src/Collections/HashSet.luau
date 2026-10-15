@@ -312,7 +312,7 @@ const function Of<T>(...: T): HashSet<T>
 end
 
 -- 평범한 Lua 배열의 원소로 만듭니다. 중복은 하나로 접힙니다.
-const function FromList<T>(list: { T }): HashSet<T>
+const function FromList<T>(list: { read [number]: T }): HashSet<T>
 	const out: { [T]: T } = {}
 	local count = 0
 	-- 길이는 `Common.listLength` 규약(`n` 우선) — `pairs` 로 돌면 `Arr` 의 `n`·태그도

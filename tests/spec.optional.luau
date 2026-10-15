@@ -79,7 +79,9 @@ print("=== 4. Arr — 구멍 다루기 넷 ===")
 do
 	-- 구멍이 있는 배열은 타입에도 `?` 가 드러납니다(질문 T (b)).
 	const holed = Arr.Sized<<number?>>(5, nil)
-	holed[1], holed[3], holed[5] = 10, 30, 50
+	Arr.Set(holed, 1, 10)
+	Arr.Set(holed, 3, 30)
+	Arr.Set(holed, 5, 50)
 
 	-- Compact: 새 배열, 순서 유지, 원본 불변
 	const compact = Arr.Compact(holed)
@@ -89,7 +91,8 @@ do
 
 	-- CompactInplace: 제자리, 꼬리를 비움
 	const inplace = Arr.Sized<<number?>>(4, nil)
-	inplace[2], inplace[4] = 2, 4
+	Arr.Set(inplace, 2, 2)
+	Arr.Set(inplace, 4, 4)
 	const same = Arr.CompactInplace(inplace)
 	assert(same == inplace, "CompactInplace 는 자기 자신")
 	assert(inplace.n == 2 and inplace[1] == 2 and inplace[2] == 4, "CompactInplace 결과")
@@ -97,7 +100,7 @@ do
 
 	-- FillHoles: 새 배열, 길이 불변, 원본 불변. 결과 타입에서 `?` 가 빠집니다.
 	const fillSource = Arr.Sized<<number?>>(3, nil)
-	fillSource[2] = 7
+	Arr.Set(fillSource, 2, 7)
 	const filled: Arr<number> = Arr.FillHoles(fillSource, 0)
 	assert(filled ~= fillSource, "FillHoles 는 새 배열")
 	assert(filled.n == 3 and filled[1] == 0 and filled[2] == 7 and filled[3] == 0, "FillHoles")
@@ -106,7 +109,7 @@ do
 
 	-- FillHolesInplace: 제자리, 길이 불변
 	const fill = Arr.Sized<<number?>>(3, nil)
-	fill[2] = 7
+	Arr.Set(fill, 2, 7)
 	assert(Arr.FillHolesInplace(fill, 0) == fill, "FillHolesInplace 는 자기 자신")
 	assert(fill.n == 3 and fill[1] == 0 and fill[2] == 7 and fill[3] == 0, "FillHolesInplace")
 
@@ -123,7 +126,9 @@ do
 	-- 타입은 거짓말하는 쪽(`Arr<number>`)으로 둡니다 — checked 가 **런타임
 	-- 그물**로 받아내는지, unchecked 가 문서대로 망가지는지를 보는 절이라서요.
 	const holed = (Arr.Sized<<number?>>(5, nil) :: any) :: Arr<number>
-	holed[1], holed[3], holed[5] = 3, 1, 2
+	Arr.Set(holed, 1, 3)
+	Arr.Set(holed, 3, 1)
+	Arr.Set(holed, 5, 2)
 	-- 정리 전: SumUnchecked 는 터지고 SortInplaceUnchecked 는 구멍에서 터지거나 checked 로 넘어간다
 	assert(not pcall(function()
 		return Arr.SumUnchecked(holed)

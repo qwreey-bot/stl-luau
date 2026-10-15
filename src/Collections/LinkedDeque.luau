@@ -343,7 +343,7 @@ const function New<T>(): LinkedDeque<T>
 end
 
 -- 리스트에서(`Common.listLength` 규약 — `n` 이 있으면 그것, 없으면 `#`). 구멍은 구멍 그대로 담습니다.
-const function FromList<T>(list: { T }): LinkedDeque<T>
+const function FromList<T>(list: { read [number]: T }): LinkedDeque<T>
 	const out = newEmpty() :: LinkedDeque<T>
 	for idx = 1, Common.listLength(list) do
 		PushBack(out, list[idx])

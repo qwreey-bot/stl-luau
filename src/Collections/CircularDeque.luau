@@ -356,7 +356,7 @@ const function New<T>(capacity: number?): CircularDeque<T>
 end
 
 -- 리스트에서 만듭니다(복사). 길이는 `Common.listLength` 규약(`n` 우선, `Arr` 이면 그 `n`, 아니면 `#`).
-const function FromList<T>(list: { T }): CircularDeque<T>
+const function FromList<T>(list: { read [number]: T }): CircularDeque<T>
 	const len = Common.listLength(list)
 	const d = newBuffer(if len < MIN_CAPACITY then MIN_CAPACITY else len)
 	table.move(list :: any, 1, len, 1, d :: any)

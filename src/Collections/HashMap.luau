@@ -407,7 +407,7 @@ const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
 end
 
 -- 키-값 쌍 목록에서 만듭니다. `Records()` 의 역연산입니다.
-const function FromRecords<K, V>(source: { Record<K, V> }): HashMap<K, V>
+const function FromRecords<K, V>(source: { read [number]: Record<K, V> }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드) —

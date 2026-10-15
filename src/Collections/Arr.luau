@@ -93,10 +93,21 @@ type Optional<T> = Optional.Optional<T>
 -- 막습니다(M0 리뷰). `__traits` 는 **타입에만 있는** 트레이트 레코드(질문 BA)입니다 — `List.IndexOf(a, x)` 가 원소 타입을
 -- 여기서 추론합니다(런타임엔 없음). `ArrData` 는 `List.Assoc`(불변 팬텀 `Mut` 포함)와 `Collection.Assoc` 을, 읽기 전용으로 빌린
 -- `ArrRead` 는 `List.AssocRead` 만 적어 쓰는 제네릭(`List.Value`)·`Collection.OfMut` 에 못 들어갑니다.
+-- ⭐ **칸과 `n` 은 읽기만 공개합니다**(2026-10-15 질문 BB (나) ② — 사용자: *"맨 뒤에 집어넣으면 길이가 깨지니까. 처음부터 사용자 타입에
+-- 있는게 맞나"*). 읽기(`a[i]`, `a.n`)는 직접 그대로 — 함수를 거치면 2.7~5배 느려져서(perf 56절) 열어 둡니다. 쓰기는 함수로만: 칸 하나는
+-- `Arr.Set`, 늘리고 줄이기는 `PushBack`·`PopBack`·`Insert`·`SliceInplace` …. 이 모듈의 함수는 받자마자 안쪽 타입 `Raw<T>` 로 캐스트해
+-- 직접 씁니다(비용 0). 그래서 공개 타입과 `ArrRead` 의 차이는 트레이트 레코드 하나 — 원소의 불변(쓰기)은 레코드의 `Mut` 이 맡습니다.
 export type ArrData<T> = {
-	n: number,
+	read n: number,
 	read __type: Trait.Token<"Stl.Arr">,
 	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read List: List.Assoc<T, number>, read Collection: Collection.Assoc },
+	read [number]: T,
+}
+-- 안쪽 타입(이 모듈만): 칸과 `n` 을 씀.
+type Raw<T> = {
+	n: number,
+	read __type: Trait.Token<"Stl.Arr">,
 	read __traits: { read List: List.Assoc<T, number>, read Collection: Collection.Assoc },
 	[number]: T,
 }
@@ -114,15 +125,15 @@ export type ArrRead<T> = {
 	read [number]: T,
 }
 
--- **입력을 소비하는** 제자리 변환의 첫 인자(질문 Y·AC). 원소는 공변 인덱서를 빌리지만(`?` 를
--- 떼려고) **`n` 은 읽기·쓰기**입니다 — `ArrRead` 와 같은 타입으로 두었더니 읽기 전용으로 빌린
--- 참조(`ArrRead<Base>`)가 `CompactInplace` 를 거쳐 쓰기 가능한 `Arr<Base>` 를 얻어, 호출자의
--- `Arr<Derived>` 에 `Base` 를 써 넣었습니다(진단 0건, AC 리뷰). 이제 `ArrRead` 는 못 들어옵니다.
+-- **입력을 소비하는** 제자리 변환의 첫 인자(질문 Y·AC). 원소는 공변(`?` 를 떼려고)이지만 **바꿀 수 있는 참조**만 — `ArrRead` 와 같은
+-- 타입으로 두었더니 읽기 전용으로 빌린 참조(`ArrRead<Base>`)가 `CompactInplace` 를 거쳐 쓰기 가능한 `Arr<Base>` 를 얻어, 호출자의
+-- `Arr<Derived>` 에 `Base` 를 써 넣었습니다(진단 0건, AC 리뷰). 바꿀 수 있는 참조의 표시는 레코드의 `Collection`(빌린 읽기 타입엔 없음 —
+-- 2026-10-15 BB 전엔 `n` 의 쓰기였음).
 type ArrConsumed<T> = {
-	n: number,
+	read n: number,
 	read __type: Trait.Token<"Stl.Arr">,
 	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
-	read __traits: { read List: List.AssocRead<T, number> },
+	read __traits: { read List: List.AssocRead<T, number>, read Collection: Collection.Assoc },
 	read [number]: T,
 }
 
@@ -217,7 +228,7 @@ end
 
 -- 날 테이블에 길이와 태그를 붙여 배열로 만듭니다. 생성자들이 공유합니다.
 -- **메타테이블은 없습니다**(질문 AB) — 태그는 `isArr` 의 판별용입니다.
-const function wrap<T>(raw: { [number]: T }, len: number): Arr<T>
+const function wrap<T>(raw: { [number]: T }, len: number): Raw<T>
 	const result = raw :: any
 	result.n = len
 	result[TYPE_KEY] = TOKEN
@@ -250,7 +261,7 @@ const function checkSize(size: number, who: string): number
 	return width
 end
 
-const function newSized<T>(len: number): Arr<T>
+const function newSized<T>(len: number): Raw<T>
 	return wrap(table.create(len) :: any, len)
 end
 
@@ -310,6 +321,23 @@ const function At<T>(self: ArrRead<T>, idx: number): T?
 		return nil
 	end
 	return self[pos]
+end
+
+-- 칸 하나를 씁니다(2026-10-15 질문 BB — 공개 타입의 칸은 읽기 전용이라 쓰기는 이것으로). 위치는 `At` 처럼 음수면 뒤에서 세고, NaN 과
+-- `1..n` 밖은 에러입니다 — 밖에 쓰면 `n` 이 안 따라와 길이가 깨지는 길이라서(끝에 더하려면 `PushBack`). 자기 자신을 돌려줍니다.
+const function Set<T>(arr: ArrData<T>, idx: number, item: T): Arr<T>
+	const self = arr :: Raw<T>
+	if idx ~= idx then
+		Common.raise("Arr: Set index is NaN")
+	end
+	const len = self.n
+	const i = toIndex(idx)
+	const pos = if i < 0 then len + i + 1 else i
+	if pos < 1 or pos > len then
+		Common.raise(`Arr: Set index {idx} is out of range [1, {len}] (use PushBack to append)`)
+	end
+	self[pos] = item
+	return self
 end
 
 const function Len<T>(self: ArrRead<T>): number
@@ -768,7 +796,8 @@ end
 -- 빼야 하면 `FillHoles`(새 배열)나 `Compact` 를 쓰세요. `Arr<number>`(캐스트나
 -- 직접 대입으로 런타임에만 구멍이 난 것)는 그대로
 -- `Arr.SumUnchecked(Arr.FillHolesInplace(arr, 0))` 로 이어집니다.
-const function FillHolesInplace<T>(self: ArrData<T>, value: T): Arr<T>
+const function FillHolesInplace<T>(arr: ArrData<T>, value: T): Arr<T>
+	const self = arr :: Raw<T>
 	for idx = 1, self.n do
 		if self[idx] == nil then
 			self[idx] = value
@@ -835,7 +864,8 @@ end
 
 -- 맨 뒤에 하나 추가. **고정 인자입니다**(가변인자로 만들면 가장 흔한 이
 -- 경로가 8~13% 느려집니다). 여러 개는 `PushBackMany`, 배열은 `PushBackArray`.
-const function PushBack<T>(self: ArrData<T>, item: T): Arr<T>
+const function PushBack<T>(arr: ArrData<T>, item: T): Arr<T>
+	const self = arr :: Raw<T>
 	const n = self.n + 1
 	self[n] = item
 	self.n = n
@@ -843,7 +873,8 @@ const function PushBack<T>(self: ArrData<T>, item: T): Arr<T>
 end
 
 -- 맨 뒤에 여러 개 추가. `table.pack` 이 아니라 `select` 루프입니다(1.6~2.3배).
-const function PushBackMany<T>(self: ArrData<T>, ...: T): Arr<T>
+const function PushBackMany<T>(arr: ArrData<T>, ...: T): Arr<T>
+	const self = arr :: Raw<T>
 	const count = select("#", ...)
 	if count == 0 then
 		return self :: any
@@ -859,7 +890,8 @@ end
 
 -- 다른 배열의 내용을 맨 뒤에 이어붙입니다. `table.move` 라 원소 수와 무관하게
 -- 한 번에 끝납니다.
-const function PushBackArray<T>(self: ArrData<T>, source: ArrData<T>): Arr<T>
+const function PushBackArray<T>(arr: ArrData<T>, source: ArrData<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const sourceLen = source.n
 	if sourceLen == 0 then
 		return self :: any
@@ -871,7 +903,8 @@ end
 
 -- 맨 앞에 하나 추가. **뒤 원소를 전부 밀어야 하므로 `PushBack` 과 달리
 -- O(n) 입니다** — 이름이 대칭이라고 비용까지 대칭이 아닙니다.
-const function PushFront<T>(self: ArrData<T>, item: T): Arr<T>
+const function PushFront<T>(arr: ArrData<T>, item: T): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	table.move(self :: any, 1, len, 2)
 	self[1] = item
@@ -881,7 +914,8 @@ end
 
 -- 맨 앞에 여러 개 추가. 인자 순서가 보존됩니다(`PushFrontMany(1, 2)` 뒤엔
 -- 앞에서부터 `1, 2, …` 입니다). O(n) 입니다.
-const function PushFrontMany<T>(self: ArrData<T>, ...: T): Arr<T>
+const function PushFrontMany<T>(arr: ArrData<T>, ...: T): Arr<T>
+	const self = arr :: Raw<T>
 	const count = select("#", ...)
 	if count == 0 then
 		return self :: any
@@ -896,7 +930,8 @@ const function PushFrontMany<T>(self: ArrData<T>, ...: T): Arr<T>
 end
 
 -- 다른 배열을 맨 앞에 이어붙입니다. O(n) 입니다.
-const function PushFrontArray<T>(self: ArrData<T>, source: ArrData<T>): Arr<T>
+const function PushFrontArray<T>(arr: ArrData<T>, source: ArrData<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const sourceLen = source.n
 	if sourceLen == 0 then
 		return self :: any
@@ -911,7 +946,8 @@ end
 -- `at` 위치에 하나 끼워넣습니다. 기존 원소는 뒤로 밀립니다.
 -- **`at` 의 유효 범위는 `1 .. n + 1`** 이고 `n + 1` 이 "맨 뒤에 붙이기" 입니다.
 -- 음수는 끝에서부터(`-1` = 마지막 원소 앞).
-const function Insert<T>(self: ArrData<T>, at: number, item: T): Arr<T>
+const function Insert<T>(arr: ArrData<T>, at: number, item: T): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const pos = resolveInsertPos(len, at)
 	if pos <= len then
@@ -922,7 +958,8 @@ const function Insert<T>(self: ArrData<T>, at: number, item: T): Arr<T>
 	return self :: any
 end
 
-const function InsertMany<T>(self: ArrData<T>, at: number, ...: T): Arr<T>
+const function InsertMany<T>(arr: ArrData<T>, at: number, ...: T): Arr<T>
+	const self = arr :: Raw<T>
 	const count = select("#", ...)
 	if count == 0 then
 		return self :: any
@@ -939,7 +976,8 @@ const function InsertMany<T>(self: ArrData<T>, at: number, ...: T): Arr<T>
 	return self :: any
 end
 
-const function InsertArray<T>(self: ArrData<T>, at: number, source: ArrData<T>): Arr<T>
+const function InsertArray<T>(arr: ArrData<T>, at: number, source: ArrData<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const sourceLen = source.n
 	if sourceLen == 0 then
 		return self :: any
@@ -962,7 +1000,8 @@ end
 -- 같음). 구멍을 꺼내도 `nil` 이니 둘을 가르려면 `Len` 을 먼저 보세요.
 
 -- 마지막 원소를 꺼냅니다. O(1).
-const function PopBack<T>(self: ArrData<T>): T?
+const function PopBack<T>(arr: ArrData<T>): T?
+	const self = arr :: Raw<T>
 	const len = self.n
 	if len == 0 then
 		return nil
@@ -975,7 +1014,8 @@ end
 
 -- 첫 원소를 꺼냅니다. **뒤 원소를 전부 당겨야 해 O(n)** 입니다(`PushFront` 와 같음) — 큐로
 -- 쓸 거면 양끝이 O(1) 인 `CircularDeque` 를 쓰세요(perf 24절 — 길이 1000 큐에서 0.24배).
-const function PopFront<T>(self: ArrData<T>): T?
+const function PopFront<T>(arr: ArrData<T>): T?
+	const self = arr :: Raw<T>
 	const len = self.n
 	if len == 0 then
 		return nil
@@ -990,7 +1030,8 @@ end
 -- `idx` 의 원소를 꺼내고 **마지막 원소로 그 자리를 메웁니다** — 순서를 버리는 대신 O(1)
 -- (Rust `Vec::swap_remove`). 순서를 지키려면 `EraseInplace(a, idx, idx)`(O(n)).
 -- `idx` 는 `At` 과 같은 규약: 음수는 뒤에서, 소수는 0 쪽으로, NaN 은 에러, 범위 밖은 `nil`.
-const function SwapRemove<T>(self: ArrData<T>, idx: number): T?
+const function SwapRemove<T>(arr: ArrData<T>, idx: number): T?
+	const self = arr :: Raw<T>
 	if idx ~= idx then
 		Common.raise("Arr: SwapRemove index is NaN")
 	end
@@ -1021,7 +1062,8 @@ end
 
 -- 내용을 비웁니다. **`n` 도 0 이 되고 태그는 유지됩니다** — `table.clear` 를
 -- 쓰면 태그까지 날아가 비운 배열이 `isArr` 를 통과 못 하는 버그가 있었습니다.
-const function Clear<T>(self: ArrData<T>): Arr<T>
+const function Clear<T>(arr: ArrData<T>): Arr<T>
+	const self = arr :: Raw<T>
 	for idx = 1, self.n do
 		self[idx] = nil :: any
 	end
@@ -1030,7 +1072,8 @@ const function Clear<T>(self: ArrData<T>): Arr<T>
 end
 
 -- 구간을 같은 값으로 채웁니다. 길이는 바뀌지 않습니다.
-const function Fill<T>(self: ArrData<T>, item: T, start: number?, last: number?): Arr<T>
+const function Fill<T>(arr: ArrData<T>, item: T, start: number?, last: number?): Arr<T>
+	const self = arr :: Raw<T>
 	const s, l = resolveRange(self.n, start, last)
 	for idx = s, l do
 		self[idx] = item
@@ -1045,9 +1088,10 @@ end
 -- 구간을 잘라낸 **새 배열**. `to` 를 주면 그 배열의 **뒤에 이어붙이고** 그것을
 -- 돌려줍니다(누적용). 뒤집힌 구간은 빈 결과입니다.
 const function Slice<T>(self: ArrRead<T>, start: number?, last: number?, to: Arr<T>?): Arr<T>
+	const dst = to :: Raw<T>?
 	const s, l = resolveRange(self.n, start, last)
 	const count = if l >= s then l - s + 1 else 0
-	if to == nil then
+	if dst == nil then
 		const result = newSized(count)
 		if count > 0 then
 			table.move(self :: any, s, l, 1, result :: any)
@@ -1055,14 +1099,15 @@ const function Slice<T>(self: ArrRead<T>, start: number?, last: number?, to: Arr
 		return result
 	end
 	if count > 0 then
-		table.move(self :: any, s, l, to.n + 1, to :: any)
-		to.n += count
+		table.move(self :: any, s, l, dst.n + 1, dst :: any)
+		dst.n += count
 	end
-	return to
+	return dst
 end
 
 -- 구간만 남기고 나머지를 버립니다(제자리).
-const function SliceInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
+const function SliceInplace<T>(arr: ArrData<T>, start: number?, last: number?): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	if l < s then
@@ -1096,7 +1141,8 @@ end
 -- 구간을 지웁니다(제자리).
 -- ⚠️ 뒤집힌 구간에서 아무것도 안 하는 가드가 필수입니다 — 없으면 지운 개수가
 -- 음수가 되어 배열이 **오히려 늘어납니다**(실제로 났던 버그).
-const function EraseInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
+const function EraseInplace<T>(arr: ArrData<T>, start: number?, last: number?): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const s, l = resolveRange(len, start, last)
 	if l < s then
@@ -1139,7 +1185,8 @@ const function Splice<T>(self: ArrRead<T>, start: number, last: number, with: Ar
 end
 
 -- `Splice` 의 제자리 판.
-const function SpliceInplace<T>(self: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
+const function SpliceInplace<T>(arr: ArrData<T>, start: number, last: number, with: ArrData<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const rs, l = resolveRange(len, start, last)
 	-- 지울 구간이 비면 `with` 는 **삽입 위치**에 들어가므로 `1..n+1` 로 자릅니다.
@@ -1171,7 +1218,7 @@ end
 -- 두 판이 각자 구간을 풉니다. (처음엔 에러 줄 때문이었습니다 — 손으로 센 level 은
 -- 새 배열판이 `XxxInplace(Clone(self))` 로 부르면 한 프레임 어긋났습니다. 지금은
 -- `Common.raise` 가 스택을 걸어 깊이와 무관하지만, 구조는 그대로 둡니다.)
-const function reverseRange<T>(self: ArrData<T>, s: number, l: number)
+const function reverseRange<T>(self: Raw<T>, s: number, l: number)
 	while s < l do
 		self[s], self[l] = self[l], self[s]
 		s += 1
@@ -1179,7 +1226,8 @@ const function reverseRange<T>(self: ArrData<T>, s: number, l: number)
 	end
 end
 
-const function ReverseInplace<T>(self: ArrData<T>, start: number?, last: number?): Arr<T>
+const function ReverseInplace<T>(arr: ArrData<T>, start: number?, last: number?): Arr<T>
+	const self = arr :: Raw<T>
 	const s, l = resolveRange(self.n, start, last)
 	reverseRange(self, s, l)
 	return self :: any
@@ -1188,7 +1236,7 @@ end
 -- 구간을 뒤집은 **새 배열**(나머지는 그대로).
 const function Reverse<T>(self: ArrRead<T>, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
-	const copy = Clone(self)
+	const copy = Clone(self) :: Raw<T>
 	reverseRange(copy, s, l)
 	return copy
 end
@@ -1228,12 +1276,12 @@ end
 
 const function Rotate<T>(self: ArrRead<T>, shift: number, start: number?, last: number?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
-	const copy = Clone(self)
+	const copy = Clone(self) :: Raw<T>
 	rotateRange(copy, shift, s, l)
 	return copy
 end
 
-const function shuffleRange<T>(self: ArrData<T>, s: number, l: number, rng: Rng?)
+const function shuffleRange<T>(self: Raw<T>, s: number, l: number, rng: Rng?)
 	const random = rng or math.random
 	for idx = l, s + 1, -1 do
 		const pick = random(s, idx)
@@ -1251,7 +1299,8 @@ end
 -- 구간을 섞습니다(제자리). Fisher-Yates.
 -- `rng` 를 주입할 수 있습니다(`(min, max) -> number`). 기본은 `math.random`
 -- 이고, 테스트에서 결정적으로 만들려면 직접 넣으세요.
-const function ShuffleInplace<T>(self: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
+const function ShuffleInplace<T>(arr: ArrData<T>, start: number?, last: number?, rng: Rng?): Arr<T>
+	const self = arr :: Raw<T>
 	const s, l = resolveRange(self.n, start, last)
 	shuffleRange(self, s, l, rng)
 	return self :: any
@@ -1259,7 +1308,7 @@ end
 
 const function Shuffle<T>(self: ArrRead<T>, start: number?, last: number?, rng: Rng?): Arr<T>
 	const s, l = resolveRange(self.n, start, last)
-	const copy = Clone(self)
+	const copy = Clone(self) :: Raw<T>
 	shuffleRange(copy, s, l, rng)
 	return copy
 end
@@ -1298,7 +1347,8 @@ const function Sort<T>(self: ArrRead<T>, less: LessThan<T>?): Arr<T>
 	return result
 end
 
-const function SortInplace<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
+const function SortInplace<T>(arr: ArrData<T>, less: LessThan<T>?): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const buffer = table.create(len)
 	const count = sortInto(self, buffer, less)
@@ -1407,7 +1457,7 @@ const function gatherValues<T>(self: ArrRead<T>, buffer: { T }): number
 end
 
 -- 조밀 버퍼를 제자리로 되쓰고 꼬리(구멍 자리)를 비웁니다.
-const function writeBack<T>(self: ArrData<T>, buffer: { T }, count: number)
+const function writeBack<T>(self: Raw<T>, buffer: { T }, count: number)
 	table.move(buffer, 1, count, 1, self :: any)
 	for idx = count + 1, self.n do
 		self[idx] = nil :: any
@@ -1563,7 +1613,8 @@ const function StableSort<T>(self: ArrRead<T>, less: LessThan<T>?): Arr<T>
 end
 
 -- `StableSort` 의 제자리 판.
-const function StableSortInplace<T>(self: ArrData<T>, less: LessThan<T>?): Arr<T>
+const function StableSortInplace<T>(arr: ArrData<T>, less: LessThan<T>?): Arr<T>
+	const self = arr :: Raw<T>
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
 	stableSortBuffer(buffer, count, less or defaultLess)
@@ -1602,7 +1653,8 @@ const function SortBy<T, K>(self: ArrRead<T>, key: (element: T) -> K, less: Less
 end
 
 -- `SortBy` 의 제자리 판.
-const function SortByInplace<T, K>(self: ArrData<T>, key: (element: T) -> K, less: LessThan<K>?): Arr<T>
+const function SortByInplace<T, K>(arr: ArrData<T>, key: (element: T) -> K, less: LessThan<K>?): Arr<T>
+	const self = arr :: Raw<T>
 	const sorted, count = sortByInto(self, key, less)
 	writeBack(self, sorted, count)
 	return self :: any
@@ -1627,7 +1679,8 @@ end
 -- C++ `nth_element` 의 모양 그대로(제자리): `k` 번째 자리에 정렬했을 때의 값이
 -- 오고, 그 왼쪽은 전부 이하, 오른쪽은 이상입니다(양쪽 안의 순서는 정하지
 -- 않음). 구멍은 꼬리로. `k` 가 범위 밖이면 구멍만 치웁니다.
-const function NthElementInplace<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+const function NthElementInplace<T>(arr: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+	const self = arr :: Raw<T>
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
 	const i = toIndex(k)
@@ -1714,7 +1767,8 @@ end
 
 -- `PartialSort` 의 제자리 판(C++ `partial_sort` 모양): 앞 `k` 칸에 가장 앞에 올
 -- 값들이 정렬되어 오고, 나머지 값들은 그 뒤에 **순서 없이** 옵니다. 구멍은 꼬리로.
-const function PartialSortInplace<T>(self: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+const function PartialSortInplace<T>(arr: ArrData<T>, k: number, less: LessThan<T>?): Arr<T>
+	const self = arr :: Raw<T>
 	const lt: (any, any) -> boolean = less or defaultLess
 	const buffer = table.create(self.n)
 	const count = gatherValues(self, buffer)
@@ -1809,21 +1863,22 @@ end
 
 -- 각 원소를 변환한 **새 배열**. `to` 를 주면 그 뒤에 이어붙입니다.
 const function Map<T, G>(self: ArrRead<T>, fn: Mapper<T, G>, to: Arr<G>?): Arr<G>
+	const dst = to :: Raw<G>?
 	const len = self.n
-	if to == nil then
+	if dst == nil then
 		const result = newSized(len)
 		for idx = 1, len do
 			result[idx] = fn(self[idx], idx, self :: any)
 		end
 		return result :: any
 	end
-	local outLen = to.n
+	local outLen = dst.n
 	for idx = 1, len do
 		outLen += 1
-		to[outLen] = fn(self[idx], idx, self :: any)
+		dst[outLen] = fn(self[idx], idx, self :: any)
 	end
-	to.n = outLen
-	return to
+	dst.n = outLen
+	return dst
 end
 
 -- 각 원소를 변환해 **제자리에** 덮어씁니다. 타입이 바뀔 수 있습니다.
@@ -1848,8 +1903,9 @@ end
 
 -- 조건을 만족하는 원소만 모은 **새 배열**. `to` 를 주면 그 뒤에 이어붙입니다.
 const function Filter<T>(self: ArrRead<T>, fn: Predicate<T>, to: Arr<T>?): Arr<T>
+	const dst = to :: Raw<T>?
 	const len = self.n
-	const out: Arr<T> = to or newSized(0)
+	const out: Raw<T> = dst or newSized(0)
 	local outLen = out.n
 	for idx = 1, len do
 		const item = self[idx]
@@ -1863,7 +1919,8 @@ const function Filter<T>(self: ArrRead<T>, fn: Predicate<T>, to: Arr<T>?): Arr<T
 end
 
 -- 조건을 만족하는 원소만 **남깁니다**(제자리). 나머지는 버립니다.
-const function Retain<T>(self: ArrData<T>, fn: Predicate<T>): Arr<T>
+const function Retain<T>(arr: ArrData<T>, fn: Predicate<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	local kept = 0
 	for idx = 1, len do
@@ -1923,7 +1980,8 @@ const function TakeWhile<T>(self: ArrRead<T>, fn: Predicate<T>): Arr<T>
 end
 
 -- `TakeWhile` 의 제자리 판 — 앞부분만 남깁니다.
-const function TakeWhileInplace<T>(self: ArrData<T>, fn: Predicate<T>): Arr<T>
+const function TakeWhileInplace<T>(arr: ArrData<T>, fn: Predicate<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const count = leadingCount(self, fn)
 	for idx = count + 1, len do
@@ -1943,7 +2001,8 @@ const function DropWhile<T>(self: ArrRead<T>, fn: Predicate<T>): Arr<T>
 end
 
 -- `DropWhile` 의 제자리 판 — 남은 원소를 앞으로 당깁니다.
-const function DropWhileInplace<T>(self: ArrData<T>, fn: Predicate<T>): Arr<T>
+const function DropWhileInplace<T>(arr: ArrData<T>, fn: Predicate<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const skip = leadingCount(self, fn)
 	if skip == 0 then
@@ -1990,7 +2049,8 @@ const function Dedup<T>(self: ArrRead<T>, eq: ((kept: T, item: T) -> boolean)?):
 end
 
 -- `Dedup` 의 제자리 판.
-const function DedupInplace<T>(self: ArrData<T>, eq: ((kept: T, item: T) -> boolean)?): Arr<T>
+const function DedupInplace<T>(arr: ArrData<T>, eq: ((kept: T, item: T) -> boolean)?): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const count = dedupInto(self, eq, self)
 	for idx = count + 1, len do
@@ -2038,7 +2098,8 @@ const function Unique<T, K>(self: ArrRead<T>, key: ((element: T) -> K)?): Arr<T>
 end
 
 -- `Unique` 의 제자리 판.
-const function UniqueInplace<T, K>(self: ArrData<T>, key: ((element: T) -> K)?): Arr<T>
+const function UniqueInplace<T, K>(arr: ArrData<T>, key: ((element: T) -> K)?): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const count = uniqueInto(self, key, self)
 	for idx = count + 1, len do
@@ -2146,8 +2207,9 @@ end
 -- 것이라 `Flat<<number>>` 라고 하면 구멍이 든 `Arr<number>` 가 나올 수 있습니다
 -- — 안쪽에 구멍이 있을 수 있으면 `Flat<<number?>>` 로 받으세요.
 const function Flat<T>(self: ArrRead<any>, start: number?, last: number?, to: Arr<T>?): Arr<T>
+	const dst = to :: Raw<T>?
 	const s, l = resolveRange(self.n, start, last)
-	const out: Arr<T> = to or newSized(0)
+	const out: Raw<T> = dst or newSized(0)
 	local outLen = out.n
 	local runStart = s
 	for idx = s, l do
@@ -2194,7 +2256,8 @@ end
 -- ⚠️ **입력을 소비합니다**(질문 Y): 돌려받은 값이 같은 테이블이고 **타입이
 -- 바뀝니다.** 결과만 쓰고 원래 변수는 다시 쓰지 마세요 — 원래 변수는 옛 타입
 -- 그대로라 타입 검사가 못 잡습니다(Rust 의 move 와 같은 결, Luau 는 강제 못 함).
-const function FlatInplace<T>(self: ArrData<any>): Arr<T>
+const function FlatInplace<T>(arr: ArrData<any>): Arr<T>
+	const self = arr :: Raw<any>
 	local idx = 1
 	local len = self.n
 	while idx <= len do
@@ -2227,7 +2290,8 @@ end
 -- 각 원소를 여러 값으로 펼쳐 이어붙인 **새 배열**. 콜백은 값 여러 개를
 -- 돌려줄 수 있습니다.
 const function Flatmap<T, G>(self: ArrRead<T>, fn: Spreader<T, G>, to: Arr<G>?): Arr<G>
-	const out: Arr<G> = to or newSized(0)
+	const dst = to :: Raw<G>?
+	const out: Raw<G> = dst or newSized(0)
 	local outLen = out.n
 	for idx = 1, self.n do
 		-- 콜백은 **한 번만** 부릅니다. 개수를 먼저 세려고 두 번 부르면
@@ -2252,7 +2316,8 @@ end
 -- ⚠️ **입력을 소비합니다**(질문 Y): 돌려받은 값이 같은 테이블이고 **타입이
 -- 바뀝니다.** 결과만 쓰고 원래 변수는 다시 쓰지 마세요 — 원래 변수는 옛 타입
 -- 그대로라 타입 검사가 못 잡습니다(Rust 의 move 와 같은 결, Luau 는 강제 못 함).
-const function FlatmapInplace<T, G>(self: ArrData<T>, fn: Spreader<T, G>): Arr<G>
+const function FlatmapInplace<T, G>(arr: ArrData<T>, fn: Spreader<T, G>): Arr<G>
+	const self = arr :: Raw<T>
 	const len = self.n
 	const buffer = table.create(len)
 	local outLen = 0
@@ -2277,7 +2342,8 @@ end
 
 -- 순회하며 **비웁니다**(Rust 의 drain). 콜백이 각 원소를 받고, 끝나면 배열은
 -- 비어 있습니다.
-const function Drain<T>(self: ArrData<T>, fn: Mapper<T, any>): Arr<T>
+const function Drain<T>(arr: ArrData<T>, fn: Mapper<T, any>): Arr<T>
+	const self = arr :: Raw<T>
 	const len = self.n
 	for idx = 1, len do
 		fn(self[idx], idx, self :: any)
@@ -2290,7 +2356,8 @@ end
 -- 다른 배열들을 뒤에 이어붙입니다(제자리). 새 배열판은 생성자 `Arr.Concat`.
 -- (2026-09-30 에 `MergeInplace` 에서 개명 — `merge` 는 C++·정렬 전통에서 정렬
 -- 유지 병합이라 오해를 불렀습니다. 그건 `MergeSorted` 자리입니다.)
-const function ConcatInplace<T>(self: ArrData<T>, ...: ArrData<T>): Arr<T>
+const function ConcatInplace<T>(arr: ArrData<T>, ...: ArrData<T>): Arr<T>
+	const self = arr :: Raw<T>
 	const count = select("#", ...)
 	local outLen = self.n
 	for argIdx = 1, count do
@@ -2592,7 +2659,7 @@ end
 
 -- `Adopt` 의 복사 판. 길이는 `Common.listLength` 규약(`n` 우선, 없으면 `#` —
 -- 대입으로 만든 구멍은 `#` 의 함정이 같음). 메타테이블이 있어도 됩니다(원소 단위로 읽음).
-const function FromTable<T>(tbl: { T }): Arr<T>
+const function FromTable<T>(tbl: { read [number]: T }): Arr<T>
 	-- 길이는 `Common.listLength` 규약(`n` 우선) — `#` 면 `Arr`·`table.pack` 결과의
 	-- 구멍 뒤가 조용히 사라졌습니다(M0 3라운드). 구멍은 **그대로** 복사합니다.
 	const len = Common.listLength(tbl)
@@ -2668,7 +2735,7 @@ const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 			-- `__iter`/`__call`(테이블로 가린 메타테이블)을 따라가, 값 하나짜리 순회자에서 전부 nil 이
 			-- 됐습니다(3라운드 리뷰). 컴파일러가 `in next, t` 를 알아봐 속도는 같습니다(perf 28절). raw
 			-- 값은 nil 일 수 없으니 구멍 처리가 필요 없습니다.
-			const values: Arr<T> = newSized(0)
+			const values: Raw<T> = newSized(0)
 			local valueCount = 0
 			for _, value in next, iter do
 				valueCount += 1
@@ -2678,7 +2745,7 @@ const function FromIter<T>(iter: any, state: any?, control: any?): Arr<T>
 			return values
 		end
 	end
-	const result: Arr<T> = newSized(0)
+	const result: Raw<T> = newSized(0)
 	local count = 0
 	local key = control
 	-- 값이 둘 이상이면 둘째가 값, 하나면 그것이 값입니다. **둘째의 nil 이 아니라 반환
@@ -2803,7 +2870,7 @@ const function Range(from: number, to: number, step: number?): Arr<number>
 	if span + 1 > MAX_LENGTH then
 		Common.raise(`Arr: Range is too long ({span + 1} > {MAX_LENGTH})`)
 	end
-	const result = newSized(span + 1) :: Arr<number>
+	const result = newSized(span + 1) :: Raw<number>
 	for idx = 0, span do
 		result[idx + 1] = from + idx * by
 	end
@@ -2832,7 +2899,7 @@ const ArrModule = Kind.Seal({
 	-- ⭐ 모든 연산은 여기 네임스페이스 함수입니다(`Arr.X(v, …)`) — 콜론 호출은
 	-- 없습니다(질문 AB). `local Map = Arr.Map` 처럼 받아 부르면 더 빠릅니다
 	-- (`.claude/base/perf-measurements.md` 14·16절).
-	At = At, Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join, Equal = Equal, Count = Count,
+	At = At, Set = Set, Len = Len, Empty = Empty, Iter = Iter, Unpack = Unpack, Join = Join, Equal = Equal, Count = Count,
 	Find = Find, Some = Some, Every = Every, Max = Max, Min = Min, Sum = Sum, Prod = Prod,
 	SumUnchecked = SumUnchecked, ProdUnchecked = ProdUnchecked, MaxUnchecked = MaxUnchecked,
 	MinUnchecked = MinUnchecked, FillHoles = FillHoles, FillHolesInplace = FillHolesInplace, Compact = Compact,

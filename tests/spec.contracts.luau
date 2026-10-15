@@ -2856,7 +2856,7 @@ do
 		end
 		const arr = stl.Arr.Sized<<number?>>(count, nil)
 		for at = 1, count do
-			arr[at] = values[at]
+			stl.Arr.Set(arr, at, values[at])
 		end
 		-- 덱은 뒤 절반을 먼저 넣고 앞 절반을 PushFront 로 — 감긴 상태가 되게
 		const dq = stl.CircularDeque.New<<number?>>()

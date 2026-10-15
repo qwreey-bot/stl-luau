@@ -342,6 +342,23 @@ do
 			end, stl.FlatMap.New(stl.Common.compareNumber) :: any)
 		end)
 	)
+	-- 2026-10-15(질문 BB) — Arr.Set 의 raise 자리 둘: NaN, 범위 밖(공개 타입의 칸이 읽기 전용이라 쓰기는 이것으로)
+	atUserLine(
+		"Arr.Set NaN",
+		expectLine("Arr.Set NaN", "Arr: Set index is NaN", function()
+			const a = Arr.Of(10, 20)
+			where = debug.info(1, "l") + 1
+			Arr.Set(a, 0 / 0, 5)
+		end)
+	)
+	atUserLine(
+		"Arr.Set 범위 밖",
+		expectLine("Arr.Set 범위 밖", "Arr: Set index 3 is out of range [1, 2] (use PushBack to append)", function()
+			const a = Arr.Of(10, 20)
+			where = debug.info(1, "l") + 1
+			Arr.Set(a, 3, 5)
+		end)
+	)
 	-- M5(2026-10-07) — CircularDeque 의 raise 자리 둘
 	atUserLine(
 		"CircularDeque.At NaN",

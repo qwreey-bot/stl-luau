@@ -224,7 +224,7 @@ end
 -- 무작위 입력에서는 `Push` 의 평균 밀어올림 깊이가 상수라서 그렇습니다
 -- (새 원소는 거의 항상 아래쪽에 자리잡습니다). **그래도 1.7배는 1.7배이니
 -- 한 번에 담을 수 있으면 이쪽을 쓰세요.**
-const function FromList<T>(list: { T }, less: LessThan<T>): Heap<T>
+const function FromList<T>(list: { read [number]: T }, less: LessThan<T>): Heap<T>
 	Common.expectComparator(less, "Heap: FromList")
 	-- 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀, M0 3라운드). 조밀한
 	-- 사본이 곧 힙 저장소입니다.

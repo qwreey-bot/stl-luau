@@ -483,7 +483,7 @@ end
 
 -- 평범한 Lua 배열의 원소로 만듭니다. 정렬해서 한 번에 짓고(O(n log n) 정렬 + O(n) 짓기) 중복은 하나로
 -- 접힙니다. 길이는 `Common.listLength` 규약(`n` 우선, 구멍은 건너뜀), NaN 은 에러.
-const function FromList<T>(source: { T }, compare: Comparator<T>, balance: Scheme?): TreeSet<T>
+const function FromList<T>(source: { read [number]: T }, compare: Comparator<T>, balance: Scheme?): TreeSet<T>
 	Common.expectComparator(compare, "TreeSet: FromList")
 	Balance.Expect(balance, RedBlack, "TreeSet: FromList")
 	const list, count = Common.denseList(source)

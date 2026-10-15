@@ -30,5 +30,17 @@ local wide: stl.CircularDequeRead<number?> = d -- 공변(원소는 레코드에�
 local negWrite = stl.CircularDeque.PushBack(borrowed, 1) -- NEG: 빌린 참조로 쓰기
 local negElem: stl.CircularDequeRead<string> = d -- NEG: 원소 타입
 
+-- 3. Arr 의 칸과 n 은 읽기만 공개(질문 BB (나) ②): 읽기는 직접, 쓰기는 함수로
+local arr = stl.Arr.Of(1, 2, 3)
+local firstArr: number = arr[1]
+local lenArr: number = arr.n
+stl.Arr.Set(arr, 1, 5)
+local fromArr = stl.HashSet.FromList(arr) -- 리스트를 읽기만 하는 생성자는 Arr 를 받음
+arr[1] = 9 -- NEG: 칸에 바로 씀
+arr.n = 0 -- NEG: 길이를 바로 고침
+stl.Arr.Set(arr, 1, "x") -- NEG: 원소 타입
+local negConcat = table.concat(arr, ",") -- NEG(대가): 내장 함수는 읽고 쓰는 리스트를 요구 — Arr.Join 이나 캐스트
+local wideArr: stl.ArrRead<number?> = arr -- 읽기 타입으로는 공변 그대로
+
 local canary: string = 1
-return { back, negBack, size, first, negIndex, negHead, wide, negWrite, negElem, canary }
+return { back, negBack, size, first, negIndex, negHead, wide, negWrite, negElem, firstArr, lenArr, fromArr, negConcat, wideArr, canary }

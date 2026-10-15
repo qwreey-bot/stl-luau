@@ -80,7 +80,7 @@ end
 
 -- 위 규칙의 길이까지 돌며 **구멍을 건너뛴** 조밀한 사본(메타테이블 없는 평범한
 -- 배열)과 그 개수.
-function exports.denseList<T>(list: { T }): ({ T }, number)
+function exports.denseList<T>(list: { read [number]: T }): ({ T }, number)
 	const len = exports.listLength(list)
 	const out = table.create(len) :: { T }
 	local count = 0

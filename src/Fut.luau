@@ -446,7 +446,7 @@ end
 --
 -- 결과가 `Arr` 인 게 이 모듈을 컨테이너 저장소 안에 두는 값어치입니다 —
 -- 받은 뒤 바로 `Arr.Map` / `Arr.Sum` 으로 이어집니다.
-const function All<T>(futs: { Fut<T> }): Fut<Arr<T>>
+const function All<T>(futs: { read [number]: Fut<T> }): Fut<Arr<T>>
 	-- `n` 을 먼저 봅니다 — `Arr` 를 넘기면 `for … in` 이 `n` 과 태그 키까지 돌아
 	-- 터졌습니다(타입 검사는 통과했음, 2026-09-30 리뷰). 그리고 숫자 루프로
 	-- 돕니다 — `#` 와 `for … in` 이 구멍에서 서로 다른 걸 셌습니다.
@@ -481,7 +481,7 @@ const function All<T>(futs: { Fut<T> }): Fut<Arr<T>>
 				return -- 이미 다른 하나가 실패시켰음
 			end
 			if source.status == "Resolved" then
-				results[idx] = (source.values :: Packed)[1]
+				(results :: any)[idx] = (source.values :: Packed)[1]
 				remaining -= 1
 				if remaining == 0 then
 					settle(target, "Resolved", table.pack(results), nil)
