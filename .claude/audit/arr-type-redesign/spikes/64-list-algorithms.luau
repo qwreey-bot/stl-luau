@@ -167,7 +167,7 @@ local negMissing: stl.ListProvided<stl.CircularDeque<string>, string, number> = 
 -- POS: 완성 표 타입(`ListFull` — 꼬리 없는 서명)으로 적은 표도 구현 표로 들어감 / 구간이 선택인 Some
 local asFull: stl.ListFull<stl.CircularDeque<string>, string, number> = nil :: any
 local fullAsImpl: stl.ListProvided<stl.CircularDeque<string>, string, number> = asFull
-stl.Trait.Impl(stl.List, stl.Trait.NewToken("FromFull"), asFull)
+stl.List.ImplFor(stl.Trait.NewToken("Spike64.FromFull"), asFull)
 local function someOptional(
 	list: stl.CircularDeque<string>,
 	pred: (item: string, idx: number) -> boolean,
@@ -183,7 +183,7 @@ local optionalRange: stl.ListProvided<stl.CircularDeque<string>, string, number>
 	PrevIndex = CircularDeque.PrevIndex,
 	Some = someOptional,
 }
--- NEG: 셋째 인자를 **꼭** 받는 Some(진입점은 둘만 넘김) / `Trait.Impl(stl.List, …)` 호출 자체가 재정의 자리를 봄
+-- NEG: 셋째 인자를 **꼭** 받는 Some(진입점은 둘만 넘김) / 재정의 자리에 함수가 아닌 값(주석 단 지역 — 표 리터럴을 `ImplFor` 에 바로 넘기면 검사 안 됨)
 local function someRequired(
 	list: stl.CircularDeque<string>,
 	pred: (item: string, idx: number) -> boolean,
@@ -199,14 +199,14 @@ local negRequiredRange: stl.ListProvided<stl.CircularDeque<string>, string, numb
 	PrevIndex = CircularDeque.PrevIndex,
 	Some = someRequired,
 }
-stl.Trait.Impl(stl.List, stl.Trait.NewToken("BadFold"), {
+local negBadFold: stl.ListProvided<stl.CircularDeque<string>, string, number> = {
 	Get = CircularDeque.Get,
 	FirstIndex = CircularDeque.FirstIndex,
 	LastIndex = CircularDeque.LastIndex,
 	NextIndex = CircularDeque.NextIndex,
 	PrevIndex = CircularDeque.PrevIndex,
 	Fold = "not a function",
-})
+}
 
 --[[ 재정의 `Fold` 의 서명(4라운드 리뷰) — 누적 타입이 제네릭이라 뜻이 다른 함수는 등록 표에 안 들어감 ]]
 local arrCore = { Get = stl.Arr.Get, FirstIndex = stl.Arr.FirstIndex, LastIndex = stl.Arr.LastIndex, NextIndex = stl.Arr.NextIndex, PrevIndex = stl.Arr.PrevIndex }

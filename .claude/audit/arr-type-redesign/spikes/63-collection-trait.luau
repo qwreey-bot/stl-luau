@@ -65,8 +65,8 @@ local function borrowedLen(list: stl.ArrRead<number?>, queue: stl.CircularDequeR
 	return stl.Collection.Len(list) + stl.Collection.Len(queue)
 end
 -- 모듈 테이블이 계약을 만족
-local colOps: stl.CollectionCore<stl.HashMap<string, number>> = HashMap
-local mapOps: stl.MapCore<stl.FlatMap<string, number>, string, number> = FlatMap
+local colOps: stl.CollectionFull<stl.HashMap<string, number>> = HashMap
+local mapOps: stl.MapFull<stl.FlatMap<string, number>, string, number> = FlatMap
 -- 레코드 목록은 계약이 아니라 알고리즘으로(2026-10-13 — `Records` 를 계약에서 뺌)
 local recs: { Record<string, number> } = stl.Map.Records(tm)
 local has: boolean = mapOps.Has(tm, "x")
@@ -118,24 +118,24 @@ local negLenLiteral = stl.Collection.Len({ size = 0 })
 local negLenOptional = stl.Collection.Len(stl.Optional.Present(1))
 
 --[[ NEG — 계약 ]]
-local negColOps: stl.CollectionCore<stl.Arr<number>> = HashMap
+local negColOps: stl.CollectionFull<stl.Arr<number>> = HashMap
 -- 맵이 아닌 모듈·함수가 빠진 **모듈**(리터럴 아님)도 계약 자리에 못 들어감. 키·값 타입은 그 모듈에
 -- 맞게 적어 "빠진 함수" 만 이유가 되게(리뷰: `Iter` 의 타입에 `(...any) -> …` 가 있던 때는 `Iter` 필드만
 -- 있으면 **나머지가 없어도 0건**이었고, 예전 줄은 `Remove` 반환 타입이 우연히 어긋나서 에러였음)
-local negMapOps: stl.MapCore<stl.HashSet<number>, number, boolean> = HashSet
-local negMapOpsList: stl.MapCore<stl.Arr<number>, number, number> = Arr
+local negMapOps: stl.MapFull<stl.HashSet<number>, number, boolean> = HashSet
+local negMapOpsList: stl.MapFull<stl.Arr<number>, number, number> = Arr
 local noRemove = {
 	Get = HashMap.Get,
 	Set = HashMap.Set,
 	Has = HashMap.Has,
 	Iter = HashMap.Iter,
 }
-local negNoRemove: stl.MapCore<stl.HashMap<string, number>, string, number> = noRemove
-local function putVia<C, K, V>(ops: stl.MapCore<C, K, V>, map: C, key: K, value: V)
+local negNoRemove: stl.MapFull<stl.HashMap<string, number>, string, number> = noRemove
+local function putVia<C, K, V>(ops: stl.MapFull<C, K, V>, map: C, key: K, value: V)
 	ops.Set(map, key, value)
 end
 putVia<<stl.HashSet<number>, number, boolean>>(HashSet, hs, 3, true)
-local negPartial: stl.MapCore<stl.HashMap<string, number>, string, number> = {
+local negPartial: stl.MapFull<stl.HashMap<string, number>, string, number> = {
 	Get = HashMap.Get,
 	Set = HashMap.Set,
 	Iter = HashMap.Iter,
@@ -164,9 +164,9 @@ for _, value in mapOps.Iter(tm) do
 	local _untyped: string = value
 end
 --[[ 알려진 경계 — 타입 인자가 any 인 계약 자리는 헐거움(런타임의 필수 함수 검사가 그물) ]]
-local looseOps: stl.MapCore<any, any, any> = FlatSet
+local looseOps: stl.MapFull<any, any, any> = FlatSet
 local function looseImpl()
-	stl.Trait.Impl(stl.Map, stl.Trait.NewToken("Loose"), FlatSet)
+	stl.Map.ImplFor(stl.Trait.NewToken("Spike63.Loose"), FlatSet)
 end
 --[[ 알려진 경계 — Iter 가 이름 붙은 필드가 섞인 테이블(Arr)을 돌려줘도 계약 타입은 받음 ]]
 type VecMap = { read __type: stl.TraitToken<string>, items: stl.Arr<number> }
@@ -185,7 +185,7 @@ local vecIter = {
 		return m.items
 	end,
 }
-local vecOps: stl.MapCore<VecMap, number, number> = vecIter
+local vecOps: stl.MapFull<VecMap, number, number> = vecIter
 --[[ 알려진 경계 — 읽기 전용 테이블을 받는 내장으로는 쓰기가 됨 ]]
 local function builtinWrites()
 	table.clear(HashMap.Iter(hm))
