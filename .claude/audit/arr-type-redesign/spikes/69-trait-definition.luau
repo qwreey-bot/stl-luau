@@ -1,11 +1,12 @@
 --!strict
 --[[
 	트레이트 시스템(2026-10-15, 질문 AY — `src/Trait/`)의 타입 — 정의·등록·쓰기 세 자리와, 판정자 둘이 들일 조건으로 건 것.
+	같은 날 정의를 한 번만 넘기는 레코드 안(타입 함수 `Trait.View` — `.claude/research/trait-udtf`)으로 바꿈.
 
-	- 같은 모듈의 기본 구현 반환: 모드를 추론에 맡기는 정의는 정의한 모듈 안에서 기본 구현 칸의 반환이 `never` 가 되어
-	  검사가 사라졌음(덜 줄어든 `index<>` — `.claude/research/luau-source/README.md`). 모드를 **값**으로 넘기는 지금 모양에서
-	  잡히는지 — 이 배터리가 그 동작의 유일한 경보입니다(상류가 줄이는 방식을 바꾸면 여기서 드러남).
-	- 정의자의 실수(모드 맞바꿈·글자 리터럴·부르지 않고 넘김)는 **에러여야** 함(조용하면 안 됨).
+	- 같은 모듈의 기본 구현 반환: D3(모드를 값으로 두 번)에서 모드를 추론에 맡기면 정의한 모듈 안에서 기본 구현 칸의 반환이
+	  `never` 가 되어 검사가 사라졌음(덜 줄어든 `index<>`). 지금 모양에선 그 길이 없지만 같은 자리를 계속 지킵니다.
+	- 정의자의 실수(정의가 함수가 아님·표를 안 돌려줌·칸이 `Fn`/`Default` 가 아님)는 **에러여야** 함(조용하면 안 됨),
+	  `Of` 의 인자 수(정의의 가변 꼬리를 `View` 가 뗌 — 남기면 0건이었음).
 	- 성장: 기본 구현을 더해도 필수만 적은 등록 표가 그대로 통과(POS — 바깥 구현이 깨지지 않음).
 	- 등록 표의 탐침 타입 검사, 뭉텅이 몸통의 탐침 타입 검사, 빌린 참조는 읽기 트레이트만.
 
@@ -73,19 +74,16 @@ end
 
 --[[ 정의하는 자리 — 이 모듈에서 정의하고 이 모듈에서 씀 ]]
 type Box = { read __type: stl.TraitToken<string>, read __generics: { read Item: (number) -> number }, value: number }
-local function sizedDef<M>(mode: M)
-	return function<Self>(of: Self | stl.TraitToken<string>)
-		return table.freeze({
-			Len = Trait.Fn<<(v: Self) -> number>>(),
-			IsEmpty = Trait.Default(mode, function(ops: any): (v: Self) -> boolean
-				return function(v: Self): boolean
-					return ops.Len(v) == 0
-				end
-			end),
-		})
-	end
-end
-local Sized = Trait.Trait("Spike69.Sized", sizedDef(Trait.FULL), sizedDef(Trait.IMPL))
+local Sized = Trait.Trait("Spike69.Sized", function<Self>(of: Self | stl.TraitToken<string>)
+	return table.freeze({
+		Len = Trait.Fn<<(v: Self) -> number>>(),
+		IsEmpty = Trait.Default(function(ops: any): (v: Self) -> boolean
+			return function(v: Self): boolean
+				return ops.Len(v) == 0
+			end
+		end),
+	})
+end)
 type SizedImpl = typeof(Sized.ImplOf<<Box>>(nil :: any))
 -- 성장 POS: 기본 구현(IsEmpty)이 있어도 필수만 적은 등록 표가 통과
 local boxSized: SizedImpl = {
@@ -106,10 +104,14 @@ local negOverride: SizedImpl = {
 	end,
 }
 -- 정의자의 실수 — 전부 에러여야 함
-local Swapped = Trait.Trait("Spike69.Swapped", sizedDef(Trait.IMPL), sizedDef(Trait.FULL))
-local negSwapped: boolean = Swapped.Of(box).IsEmpty(box) -- NEG: 맞바꾸면 완성 보기의 칸이 선택(nil 가능)
-local negLiteral = Trait.Trait("Spike69.Literal2", sizedDef("full"), sizedDef("impl")) -- NEG: 글자(넓어져 string)
-type UncalledFull = typeof(Trait.Trait("Spike69.Uncalled", sizedDef, sizedDef).Of<<Box>>(nil :: any)) -- NEG: 부르지 않고 넘김
+local negNotFn = Trait.Trait("Spike69.NotFn", 42) -- NEG: 정의가 함수가 아님
+local negNotTable = Trait.Trait("Spike69.NotTable", function<Self>(of: Self | stl.TraitToken<string>) -- NEG: 표가 아님
+	return 1
+end)
+local negBadSlot = Trait.Trait("Spike69.BadSlot", function<Self>(of: Self | stl.TraitToken<string>) -- NEG: 칸이 Fn/Default 아님
+	return table.freeze({ Len = Trait.Fn<<(v: Self) -> number>>(), Raw = function() end })
+end)
+local negArity = Sized.Of(box, 1) -- NEG: 인자 수
 
 --[[ 뭉텅이 구현의 몸통 — 탐침 타입으로 짜면 원소를 못박은 함수까지 잡힘 ]]
 local function okBody(deque: stl.DequeFull<A, B>): stl.StackProvided<A, B>
@@ -152,8 +154,7 @@ return {
 	empty,
 	negSameModule,
 	negOverride,
-	negSwapped,
-	negLiteral,
+	negArity,
 	okBody,
 	negBody,
 	canary,

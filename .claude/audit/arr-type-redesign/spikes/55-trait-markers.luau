@@ -119,21 +119,18 @@ local neg12 = itemOf((nil :: any) :: { read __setItem: number })
 
 --[[ 기본 구현을 가진 트레이트(2026-10-13, papers/07 1단계) — 완성 표의 타입과 구현이 넘기는 표의 타입 ]]
 type Shape = { read __type: stl.TraitToken<string>, side: number }
--- 기본 구현이 있는 트레이트는 정의 함수를 모드 **값**으로 두 번(질문 AY). 등록 표 타입(`ShapeImpl`)은 필수(`Area`) + 재정의할
--- 수 있는 것은 **선택 칸**(`Describe?`) — 재정의 자리도 검사됩니다(필수만 적은 타입이던 때는 `Describe = "문자열"` 이 0건).
-local function shapeDef<M>(mode: M)
-	return function<Self>(of: Self | stl.TraitToken<string>)
-		return table.freeze({
-			Area = Trait.Fn<<(s: Self) -> number>>(),
-			Describe = Trait.Default(mode, function(ops: any): (s: Self) -> string
-				return function(s: Self): string
-					return `area {ops.Area(s)}`
-				end
-			end),
-		})
-	end
-end
-local ShapeTrait = Trait.Trait("Spike55.Shape", shapeDef(Trait.FULL), shapeDef(Trait.IMPL))
+-- 기본 구현이 있는 트레이트도 정의는 한 번(타입 함수 `Trait.View` 가 두 보기로 — 질문 AY). 등록 표 타입(`ShapeImpl`)은 필수(`Area`) +
+-- 재정의할 수 있는 것은 **선택 칸**(`Describe?`) — 재정의 자리도 검사됩니다(필수만 적은 타입이던 때는 `Describe = "문자열"` 이 0건).
+local ShapeTrait = Trait.Trait("Spike55.Shape", function<Self>(of: Self | stl.TraitToken<string>)
+	return table.freeze({
+		Area = Trait.Fn<<(s: Self) -> number>>(),
+		Describe = Trait.Default(function(ops: any): (s: Self) -> string
+			return function(s: Self): string
+				return `area {ops.Area(s)}`
+			end
+		end),
+	})
+end)
 type ShapeImpl = typeof(ShapeTrait.ImplOf<<Shape>>(nil :: any))
 local SquareType = Trait.NewToken("Spike55.Square")
 -- 구현은 필수 함수만 — 완성 표의 Describe 는 기본 구현이 채움
