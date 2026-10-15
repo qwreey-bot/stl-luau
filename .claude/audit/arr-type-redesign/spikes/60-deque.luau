@@ -122,7 +122,7 @@ local function borrowed(list: stl.CircularDequeRead<number?>, base: stl.Circular
 	CircularDeque.PushBack(state, nil)
 end
 -- 쓰는 제네릭(불변 마커)에도 못 들어감 — 읽는 알고리즘(`IndexOf`)은 받음
-local function touch<E>(_list: stl.ListMarkerMut<E, number>, _item: E) end
+local function touch<E>(_list: stl.List<E, number>, _item: E) end
 local function borrowedGeneric(list: stl.CircularDequeRead<number>): number?
 	touch(list, 3)
 	return stl.List.IndexOf(list, 3)

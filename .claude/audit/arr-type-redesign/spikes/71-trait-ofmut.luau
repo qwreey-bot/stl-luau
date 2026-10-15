@@ -64,8 +64,8 @@ do
 	Bag = Trait.Trait(
 		"Spike71.Bag",
 		function<Self, T>(
-			of: (Self & stl.DequeMarker<T>) | stl.TraitToken<string>,
-			ofMut: (Self & stl.DequeMarkerMut<T>) | stl.TraitToken<string>
+			of: (Self & stl.DequeRead<T>) | stl.TraitToken<string>,
+			ofMut: (Self & stl.Deque<T>) | stl.TraitToken<string>
 		)
 			return table.freeze({
 				Peek = Trait.Fn<<(bag: Self) -> T?>>(),

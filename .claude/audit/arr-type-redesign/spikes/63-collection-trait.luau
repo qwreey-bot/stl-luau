@@ -3,7 +3,7 @@
 	컬렉션 트레이트와 넓힌 맵 계약 (2026-10-12, 질문 AO — AM 다를 앞당김).
 
 	지키는 성질:
-	- `Collection.Clear` 는 **넣은 타입 그대로** 돌려주고(`<C>(c: C & CollectionMarkerMut): C`),
+	- `Collection.Clear` 는 **넣은 타입 그대로** 돌려주고(`<C>(c: C & Collection): C`),
 	  **읽기 전용으로 빌린 참조**(`ArrRead`·`CircularDequeRead`)는 못 받습니다 — 마커가 토큰만 요구하던 시제품에선
 	  빌린 참조가 진단 0건으로 지워졌습니다(AC 의 "빌린 참조가 쓰기를 얻음" 과 같은 결).
 	- `Collection.Len` 은 읽기라 빌린 참조도 받고, 토큰 없는 것(리터럴·숫자·`Optional`)은 막습니다.
@@ -86,7 +86,7 @@ for key: string, value: number in mapOps.Iter(tm) do
 	local _value: number = value
 end
 -- 종류를 모르는 사용자 제네릭: 비우고 다시 채우기
-local function refill<K, V>(m: stl.MapMarkerMut<K, V> & stl.CollectionMarkerMut, records: { Record<K, V> })
+local function refill<K, V>(m: stl.Map<K, V> & stl.Collection, records: { Record<K, V> })
 	stl.Collection.Clear(m)
 	const ops = stl.Trait.ImplOf(stl.Map, m)
 	if ops then
@@ -112,7 +112,7 @@ end
 stl.Collection.Clear({ n = 0 })
 stl.Collection.Clear(5)
 -- 팬텀은 있고 **토큰만 없는** 꼴 — 이 줄만 토큰 때문에 에러(리뷰: 위 둘은 팬텀 때문에도 에러라
--- `CollectionMarkerMut` 에서 토큰을 빼도 통과했음 — spikes/60 의 같은 교훈)
+-- `Collection` 에서 토큰을 빼도 통과했음 — spikes/60 의 같은 교훈)
 stl.Collection.Clear({ __traits = { Collection = { Mut = true :: true } } })
 local negLenLiteral = stl.Collection.Len({ size = 0 })
 local negLenOptional = stl.Collection.Len(stl.Optional.Present(1))

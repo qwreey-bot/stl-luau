@@ -35,17 +35,17 @@ const Fn, Default, Sig = Trait.Fn, Trait.Default, Trait.Sig
 -- 약속, 질문 AG 3).
 
 -- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read List: List.Assoc<원소, 위치> }`(빌린 읽기 타입은 `AssocRead`).
--- 원소·위치는 공변(`() -> E`), `Mut` 은 원소·위치를 **입력으로 받아 넘기는** 제네릭용 불변 팬텀(질문 AM — `MarkerMut`).
+-- 원소·위치는 공변(`() -> E`), `Mut` 은 원소·위치를 **입력으로 받아 넘기는** 제네릭용 불변 팬텀(질문 AM — `Value`).
 export type AssocRead<E, I> = { read Item: () -> E, read Index: () -> I }
 export type Assoc<E, I> = { read Item: () -> E, read Index: () -> I, read Mut: (E, I) -> (E, I) }
--- 마커 — 꺼내기만 하는 알고리즘(`Marker`, 빌린 참조도)과 원소·위치를 넘기는 제네릭(`MarkerMut`, 질문 AM).
-export type Marker<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: AssocRead<E, I> } }
-export type MarkerMut<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: Assoc<E, I> } }
+-- 마커 — 꺼내기만 하는 알고리즘(`ValueRead`, 빌린 참조도)과 원소·위치를 넘기는 제네릭(`Value`, 질문 AM).
+export type ValueRead<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: AssocRead<E, I> } }
+export type Value<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: Assoc<E, I> } }
 
 --[[ 정의 ]]
 -- 필수 다섯 — 위치 프리미티브. `Self` 는 컨테이너 자신의 타입, `E` 는 원소, `I` 는 **위치**. 배열 기반은 I = number, 연결 기반은
 -- I = 노드 — 그래서 "연결 리스트에서 정수 인덱스로 접근" 이 애초에 **표현 불가능**합니다(.claude/base/container-design-notes.md 2절).
--- 읽기만 하는 트레이트라 조건(`of`)은 공변 레코드(`Marker` — `AssocRead`) 하나 — 읽기 전용으로 빌린 참조도 `List.Of` 를 얻습니다.
+-- 읽기만 하는 트레이트라 조건(`of`)은 공변 레코드(`ValueRead` — `AssocRead`) 하나 — 읽기 전용으로 빌린 참조도 `List.Of` 를 얻습니다.
 --
 -- 기본 구현 일곱(완성 표의 나머지). 콜백은 원소와 **위치**를 받습니다(`Arr` 의 콜백은 셋째로 읽기 뷰도 받지만 계약은 둘까지).
 -- - `Fold` 앞에서부터 접기. `Find` 는 처음 맞는 원소와 그 위치(없으면 `nil, nil`).
@@ -63,7 +63,7 @@ type SomeEvery<Self, E, I> =
 	((list: Self, pred: Pred<E, I>) -> boolean)
 	| ((list: Self, pred: Pred<E, I>, ...nil) -> boolean)
 
-const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & Marker<E, I>) | AnyToken)
+const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ValueRead<E, I>) | AnyToken)
 	return table.freeze({
 		Get = Fn<<(list: Self, idx: I) -> E?>>(),
 		FirstIndex = Fn<<(list: Self) -> I?>>(),

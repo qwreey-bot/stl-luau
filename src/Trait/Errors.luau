@@ -127,5 +127,15 @@ function Errors.entryMiss(trait: string, who: string, value: any): never
 	end
 	return raise(`{trait}: {who} needs a {trait} (got {typeof(value)} without a type token)`)
 end
+-- 변환자(`Trait.Converter`)가 받은 값이 그 종류가 아님
+function Errors.convertMismatch(trait: string, kind: string?, value: any): never
+	const raw: any = if type(value) == "table" then rawget(value, "__type") else nil
+	const name: any = if type(raw) == "table" then rawget(raw, "name") else nil
+	const got = if type(name) == "string" then name else typeof(value)
+	if kind == nil then
+		return raise(`{trait}: the converter needs a {trait} — got {got}`)
+	end
+	return raise(`{trait}: the converter for {kind} got {got}`)
+end
 
 return Errors

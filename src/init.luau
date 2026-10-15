@@ -59,44 +59,59 @@ export type Comparator<T> = Types.Comparator<T>
 export type LessThan<T> = Types.LessThan<T>
 export type Hasher<T> = Types.Hasher<T>
 export type Record<K, V> = Types.Record<K, V>
+-- ⭐ 트레이트마다(질문 BA — 사용자: *"값은 Trait, 타입은 런타임 데이터에 붙이는 표식"*):
+-- - `X<…>` — 그 트레이트를 구현한 **바꿀 수 있는** 값의 타입(완성 표 `X.OfMut` 의 조건). `XRead<…>` — 읽기로 빌린 값도(읽기 보기 `X.Of`).
+--   바깥 컨테이너는 자기 타입에 교집합으로 붙입니다(`type MyBag<T> = { … } & stl.Deque<T>`), 바깥에서 붙인 트레이트는 `Trait.Converter`.
+-- - `XFull<C, …>` 완성 표, `XReadFull<C, …>` 읽기 보기, `XProvided<C, …>` 등록 표.
+export type List<E, I> = List.Value<E, I>
+export type ListRead<E, I> = List.ValueRead<E, I>
 export type ListFull<C, E, I> = List.Full<C, E, I>
 export type ListProvided<C, E, I> = List.Provided<C, E, I>
+export type Map<K, V> = Map.Value<K, V>
+export type MapRead<K, V> = Map.ValueRead<K, V>
 export type MapFull<C, K, V> = Map.Full<C, K, V>
-export type MapReadFull<C, K, V> = Map.Read<C, K, V> -- 읽기 보기(`X.Of`) — 이름은 질문 BA (다)
+export type MapReadFull<C, K, V> = Map.ReadFull<C, K, V>
 export type MapProvided<C, K, V> = Map.Provided<C, K, V>
+export type Set<T> = Set.Value<T>
+export type SetRead<T> = Set.ValueRead<T>
 export type SetFull<C, T> = Set.Full<C, T>
-export type SetReadFull<C, T> = Set.Read<C, T> -- 읽기 보기(`X.Of`) — 이름은 질문 BA (다)
+export type SetReadFull<C, T> = Set.ReadFull<C, T>
 export type SetProvided<C, T> = Set.Provided<C, T>
-export type ListMarker<E, I> = List.Marker<E, I>
-export type MapMarker<K, V> = Map.Marker<K, V>
-export type SetMarker<T> = Set.Marker<T>
-export type ListMarkerMut<E, I> = List.MarkerMut<E, I>
-export type MapMarkerMut<K, V> = Map.MarkerMut<K, V>
-export type SetMarkerMut<T> = Set.MarkerMut<T>
+export type Collection = Collection.Value
+export type CollectionRead = Collection.ValueRead
 export type CollectionFull<C> = Collection.Full<C>
-export type CollectionReadFull<C> = Collection.Read<C> -- 읽기 보기(`X.Of`) — 이름은 질문 BA (다)
+export type CollectionReadFull<C> = Collection.ReadFull<C>
 export type CollectionProvided<C> = Collection.Provided<C>
-export type CollectionMarker = Collection.Marker
-export type CollectionMarkerMut = Collection.MarkerMut
+export type Deque<T> = Deque.Value<T>
+export type DequeRead<T> = Deque.ValueRead<T>
 export type DequeFull<C, T> = Deque.Full<C, T>
-export type DequeReadFull<C, T> = Deque.Read<C, T> -- 읽기 보기(`X.Of`) — 이름은 질문 BA (다)
+export type DequeReadFull<C, T> = Deque.ReadFull<C, T>
 export type DequeProvided<C, T> = Deque.Provided<C, T>
-export type DequeMarker<T> = Deque.Marker<T>
+export type Stack<T> = Stack.Value<T>
+export type StackRead<T> = Stack.ValueRead<T>
 export type StackFull<C, T> = Stack.Full<C, T>
-export type StackReadFull<C, T> = Stack.Read<C, T> -- 읽기 보기(`X.Of`) — 이름은 질문 BA (다)
+export type StackReadFull<C, T> = Stack.ReadFull<C, T>
 export type StackProvided<C, T> = Stack.Provided<C, T>
+export type Queue<T> = Queue.Value<T>
+export type QueueRead<T> = Queue.ValueRead<T>
 export type QueueFull<C, T> = Queue.Full<C, T>
-export type QueueReadFull<C, T> = Queue.Read<C, T> -- 읽기 보기(`X.Of`) — 이름은 질문 BA (다)
+export type QueueReadFull<C, T> = Queue.ReadFull<C, T>
 export type QueueProvided<C, T> = Queue.Provided<C, T>
-export type DequeMarkerMut<T> = Deque.MarkerMut<T>
--- 트레이트마다의 연관 타입 레코드(질문 BA) — 바깥 컨테이너가 `read __traits: { read List: stl.ListAssoc<…>, … }` 로 적음
+-- 연관 타입 레코드 — **바깥 컨테이너를 만드는 쪽**이 자기 타입의 `__traits` 필드에 나열합니다(Rust 의 `impl` 자리):
+--   `type MyMap<K, V> = { …, read __type: stl.TraitToken<"My.Map">, read __traits: { read Map: stl.MapAssoc<K, V>, read Collection: stl.CollectionAssoc } }`
+-- (빌린 읽기 타입은 `…AssocRead`). ⚠️ `{ … } & stl.Map<K, V>` 처럼 **교집합으로 적지 마세요** — `GroupBy` 처럼 `C & Map<K, V>` 를 받아 `C` 를
+-- 돌려주는 제네릭을 거치면 `C` 가 유니온으로 풀려 필드를 잃습니다(상류 결함 후보, `research/trait-ofmut/intersection-generic-repro.luau`).
 export type ListAssoc<E, I> = List.Assoc<E, I>
 export type ListAssocRead<E, I> = List.AssocRead<E, I>
-export type DequeAssoc<T> = Deque.Assoc<T>
-export type DequeAssocRead<T> = Deque.AssocRead<T>
 export type MapAssoc<K, V> = Map.Assoc<K, V>
 export type SetAssoc<T> = Set.Assoc<T>
 export type CollectionAssoc = Collection.Assoc
+export type DequeAssoc<T> = Deque.Assoc<T>
+export type DequeAssocRead<T> = Deque.AssocRead<T>
+export type StackAssoc<T> = Stack.Assoc<T>
+export type StackAssocRead<T> = Stack.AssocRead<T>
+export type QueueAssoc<T> = Queue.Assoc<T>
+export type QueueAssocRead<T> = Queue.AssocRead<T>
 -- 노드(종류별 불투명 핸들 — `src/Node/` 머리). 읽기 타입은 컨테이너가 밖으로 내주는 위치.
 export type SingleNode<T> = NodeSingle.Node<T>
 export type SingleNodeRead<T> = NodeSingle.NodeRead<T>

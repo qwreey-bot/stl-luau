@@ -92,7 +92,7 @@ type Optional<T> = Optional.Optional<T>
 -- 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr` 자리에 들어가는 것을
 -- 막습니다(M0 리뷰). `__traits` 는 **타입에만 있는** 트레이트 레코드(질문 BA)입니다 — `List.IndexOf(a, x)` 가 원소 타입을
 -- 여기서 추론합니다(런타임엔 없음). `ArrData` 는 `List.Assoc`(불변 팬텀 `Mut` 포함)와 `Collection.Assoc` 을, 읽기 전용으로 빌린
--- `ArrRead` 는 `List.AssocRead` 만 적어 쓰는 제네릭(`List.MarkerMut`)·`Collection.OfMut` 에 못 들어갑니다.
+-- `ArrRead` 는 `List.AssocRead` 만 적어 쓰는 제네릭(`List.Value`)·`Collection.OfMut` 에 못 들어갑니다.
 export type ArrData<T> = {
 	n: number,
 	read __type: Trait.Token<"Stl.Arr">,
@@ -2330,7 +2330,7 @@ end
 
 -- 키가 같은 원소끼리 `into` 에 모읍니다(값은 `Arr<T>` — 무리마다 하나). 무리 안은 **입력 순서**, 무리끼리의
 -- 순서는 목적지 맵의 것입니다. 이미 있는 키의 무리에는 뒤에 붙입니다.
-const function GroupBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.MarkerMut<K, Arr<T>>): C
+const function GroupBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.Value<K, Arr<T>>): C
 	if isHashMap(into) then
 		const groups = into :: any
 		const data = groups.data
@@ -2369,7 +2369,7 @@ const function GroupBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: 
 end
 
 -- 키마다 원소 수를 `into` 에 셉니다. 구멍도 셉니다(`key(nil)` 의 키로). 이미 있는 키는 그 값에 더합니다.
-const function CountBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.MarkerMut<K, number>): C
+const function CountBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.Value<K, number>): C
 	if isHashMap(into) then
 		const counts = into :: any
 		const data = counts.data
@@ -2401,7 +2401,7 @@ end
 -- `associateBy` — 이미 있던 키도 덮어씀). ⚠️ **구멍은 건너뜁니다**(`key` 도 안 부름) — 맵은 `nil` 값을 담을
 -- 수 없습니다. 예전엔 `Set` 의 "nil 은 삭제" 를 따라 그 키를 지웠는데, 결과가 구멍의 위치에 좌우돼
 -- 놀라웠습니다(M4 리뷰 1라운드 설계 의견).
-const function KeyBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.MarkerMut<K, T>): C
+const function KeyBy<T, K, C>(self: ArrRead<T>, key: (element: T) -> K, into: C & MapTrait.Value<K, T>): C
 	if isHashMap(into) then
 		const out = into :: any
 		const data = out.data

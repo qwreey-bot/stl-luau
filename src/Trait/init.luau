@@ -16,16 +16,16 @@
 	```lua
 	export type AssocRead<T> = { read Item: () -> T }                       -- 트레이트가 가진 연관 타입 레코드(공변 칸)
 	export type Assoc<T> = { read Item: () -> T, read Mut: (T) -> T }       -- + 불변 팬텀(바꿀 수 있는 참조만 적음)
-	export type Marker<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: AssocRead<T> } }
-	export type MarkerMut<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: Assoc<T> } }
-	const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & Marker<T>) | AnyToken, ofMut: (Self & MarkerMut<T>) | AnyToken)
+	export type ValueRead<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: AssocRead<T> } } -- 배럴의 stl.DequeRead<T>
+	export type Value<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: Assoc<T> } }        -- 배럴의 stl.Deque<T>
+	const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & ValueRead<T>) | AnyToken, ofMut: (Self & Value<T>) | AnyToken)
 		return table.freeze({
 			PushBack = Trait.FnMut<<(deque: Self, item: T) -> Self>>(),   -- 필수·쓰기
 			Front = Trait.Fn<<(deque: Self) -> T?>>(),                   -- 필수·읽기
 			Count = Trait.Default(function(ops: any): (deque: Self) -> number … end), -- 기본 구현(빌더)·읽기 (쓰기는 DefaultMut)
 		})
 	end)
-	export type Read<Self, T> = typeof(DequeBase.Of<<Self, T>>(nil :: any))        -- 읽기 보기(쓰기 칸 없음)
+	export type ReadFull<Self, T> = typeof(DequeBase.Of<<Self, T>>(nil :: any))    -- 읽기 보기(쓰기 칸 없음)
 	export type Full<Self, T> = typeof(DequeBase.OfMut<<Self, T>>(nil :: any))     -- 완성 표
 	export type Provided<Self, T> = typeof(DequeBase.ImplOf<<Self, T>>(nil :: any)) -- 등록 표(기본 구현 칸은 선택)
 	```
@@ -77,7 +77,7 @@ local Errors = require("@self/Errors")
 -- 타입 토큰. `N` 은 이름의 리터럴 타입.
 export type Token<N> = { read name: N }
 -- ⚠️ `name` 은 `string` 으로 — `any`·`unknown` 이면 그 필드가 **없는** 테이블도 만족해(빠진 읽기 필드를 `nil` 로 봄 — 상류의
--- 의도된 동작), 팩토리의 `(Self & Marker<T>) | AnyToken` 의 토큰 갈래가 아무 값이나 받았음.
+-- 의도된 동작), 팩토리의 `(Self & ValueRead<T>) | AnyToken` 의 토큰 갈래가 아무 값이나 받았음.
 export type AnyToken = Token<string>
 -- "모든 종류" 표식(`X.ImplWhere(Trait.Any, …)`)의 타입 — 빈 목록 `{}` 은 에러입니다(아래 `Any`).
 export type AnyKind = { read __anyKind: true }
@@ -178,12 +178,31 @@ export type function Entries(def)
 	end
 	local head = def:parameters().head
 	local params: { type } = if head == nil then {} else head
+	-- 조건에서 토큰 갈래(`AnyToken` = `{ read name: string }` — `X.Of(토큰)` 을 받으려고 둔 것)를 뺀 나머지. 갈래가 여럿이면(스택: 덱 레코드
+	-- **또는** 스택 레코드) 그 합.
+	local NAME = types.singleton("name")
+	local function isTokenBranch(t: type): boolean
+		if not t:is("table") then
+			return false
+		end
+		local count = 0
+		for _ in t:properties() do
+			count += 1
+		end
+		return count == 1 and t:readproperty(NAME) ~= nil
+	end
 	local function subject(p: type?): type?
 		if p == nil then
 			return nil
 		end
 		if p:is("union") then
-			return p:components()[1]
+			local rest: { type } = {}
+			for _, c in p:components() do
+				if not isTokenBranch(c) then
+					table.insert(rest, c)
+				end
+			end
+			return if #rest == 0 then nil elseif #rest == 1 then rest[1] else types.unionof(table.unpack(rest))
 		end
 		return p
 	end
@@ -259,7 +278,7 @@ export type function Entries(def)
 			for i, p in fhead do
 				newHead[i] = if i == 1 then (if isMut then mutSubject else readSubject) or p else p
 			end
-			-- `Self`(정의의 첫 제네릭)가 첫 인자에만 나오면 빼서 손으로 쓰던 서명(`<E, I>(list: Marker<E, I>, …)`)과 제네릭 순서를 맞춤 —
+			-- `Self`(정의의 첫 제네릭)가 첫 인자에만 나오면 빼서 손으로 쓰던 서명(`<E, I>(list: ValueRead<E, I>, …)`)과 제네릭 순서를 맞춤 —
 			-- 명시적 타입 인자를 일부만 주면 솔버 내부 에러라(`f<<A>>` 에 `<A, B>`) 순서가 곧 공개 표면입니다.
 			local selfG = defGenerics[1]
 			local usesSelf = false
@@ -314,25 +333,41 @@ export type function Entries(def)
 					usesSelf = true
 				end
 			end
-			local canDrop = false
-			if newHead[1] ~= nil and newHead[1]:is("intersection") then
-				for _, c in newHead[1]:components() do
-					if c == selfG then
-						canDrop = true
+			-- `Self & 조건` 에서 `Self` 를 뺌 — 조건이 갈래 여럿이면(`(Self & A) | (Self & B)` 로 펼쳐졌을 수도) 갈래마다. 못 빼는 모양이면 `Self` 를 둠.
+			local function dropSelf(t: type): type?
+				if t:is("union") then
+					local parts: { type } = {}
+					for _, c in t:components() do
+						local d = dropSelf(c)
+						if d == nil then
+							return nil
+						end
+						table.insert(parts, d)
 					end
+					return types.unionof(table.unpack(parts))
 				end
-			end
-			if not canDrop then
-				usesSelf = true
-			end
-			if not usesSelf and newHead[1] ~= nil and newHead[1]:is("intersection") then
+				if not t:is("intersection") then
+					return nil
+				end
+				local found = false
 				local rest: { type } = {}
-				for _, c in newHead[1]:components() do
-					if c ~= selfG then
+				for _, c in t:components() do
+					if c == selfG then
+						found = true
+					else
 						table.insert(rest, c)
 					end
 				end
-				newHead[1] = if #rest == 1 then rest[1] else types.intersectionof(table.unpack(rest))
+				if not found or #rest == 0 then
+					return nil
+				end
+				return if #rest == 1 then rest[1] else types.intersectionof(table.unpack(rest))
+			end
+			local dropped = if usesSelf or newHead[1] == nil then nil else dropSelf(newHead[1])
+			if dropped == nil then
+				usesSelf = true
+			else
+				newHead[1] = dropped
 			end
 			local generics: { type } = {}
 			local map: { [type]: type } = {}
@@ -674,6 +709,46 @@ const function ExpectImpl(trait: any, value: any, who: string): any
 	return impl
 end
 
+-- ⭐ **중간자**(질문 BA — 사용자: *"a to b 계약자가 두 점이 확실한지 보게 하는게 나을듯"*): 바깥에서 등록한 트레이트를 타입에 붙이는 변환자.
+-- 등록(런타임)은 타입을 못 바꾸니, 그 쌍을 아는 쪽이 **타입을 적어** 씁니다 — 위로(종류 → 트레이트)와 아래로(트레이트 → 종류) 둘 다 같은 함수:
+--   const asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, Arr.Token)
+--   const asArr: <T>(s: stl.Stack<T>) -> Arr<T> = Trait.Converter(stl.Stack, Arr.Token)
+-- 두 점을 봅니다: **`token` 이 `trait` 를 구현하는가는 만들 때 한 번**(등록은 되돌릴 수 없음 — 그러니 등록 뒤에 만드세요), **값이 `token` 의
+-- 종류인가는 부를 때마다**(아니면 사용자 줄 에러). 값을 그대로 돌려줍니다(감싸지 않음 — 데이터는 엔티티). 호출당 13~20ns(perf 55절) — 값
+-- 하나에 한 번이면 됩니다(바꾼 변수를 쥐고 쓰기). ⚠️ 타입 주석의 원소 대응(`Arr<T>` ↔ `Stack<T>` 의 `T`)은 적는 쪽의 책임입니다 — 시스템은
+-- 종류와 등록만 봅니다.
+-- 토큰을 빼면(`Trait.Converter(Stack)`) **그 트레이트를 구현한 종류면 무엇이든** — 부를 때마다 등록을 봅니다(트레이트에서 트레이트로:
+-- `Deque.AsStack` — 덱이면 스택이지만 스택은 덱을 모르니, 덱 쪽이 이것으로 내줌).
+const function Converter(trait: any, token: any?): (value: any) -> any
+	const rec = records[trait]
+	if rec == nil then
+		Errors.notTrait("Converter", trait)
+	end
+	const traitName: string = rec.name
+	if token == nil then
+		const impls = rec.impls
+		return function(value: any): any
+			if type(value) ~= "table" or impls[rawget(value, TYPE_KEY)] == nil then
+				return Errors.convertMismatch(traitName, nil, value)
+			end
+			return value
+		end
+	end
+	if not isToken[token] then
+		Errors.notToken(`{traitName}.Converter`, token)
+	end
+	if rec.impls[token] == nil then
+		Errors.notImplemented(traitName, token)
+	end
+	const kindName: string = (token :: any).name
+	return function(value: any): any
+		if type(value) ~= "table" or rawget(value, TYPE_KEY) ~= token then
+			return Errors.convertMismatch(traitName, kindName, value)
+		end
+		return value
+	end
+end
+
 -- 그 트레이트의 `[토큰] = 완성 표` 표 — 트레이트 파일의 알고리즘 진입점이 구현 찾기를 펼칠 때(`impls[rawget(v, "__type")] or
 -- ExpectImpl(…)` — perf 51절). 키는 토큰뿐이라 문자열 `__type` 은 "없음". ⚠️ 읽기만 — 고치면 시스템이 지은 표가 어긋납니다.
 const function Impls(trait: any): { [any]: { [any]: any } }
@@ -710,5 +785,5 @@ return {
 	TYPE_KEY = TYPE_KEY,
 	NewToken = NewToken, TokenOf = TokenOf, Stamp = Stamp, Restore = Restore,
 	Trait = Trait, Fn = Fn, FnMut = FnMut, Default = Default, DefaultMut = DefaultMut, Sig = Sig, Any = Any,
-	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose, Impls = Impls,
+	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose, Impls = Impls, Converter = Converter,
 }

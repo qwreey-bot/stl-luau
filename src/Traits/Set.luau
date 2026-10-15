@@ -13,15 +13,15 @@ local Trait = require("../Trait")
 
 -- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read Set: Set.Assoc<T> }`. 원소는 공변 칸 + 불변 `Mut`(맵과 같음), 조건은 불변.
 export type Assoc<T> = { read Item: () -> T, read Mut: (T) -> T }
-export type Marker<T> = { read __type: Trait.Token<any>, read __traits: { read Set: { read Item: () -> T } } }
-export type MarkerMut<T> = { read __type: Trait.Token<any>, read __traits: { read Set: Assoc<T> } }
+export type ValueRead<T> = { read __type: Trait.Token<any>, read __traits: { read Set: { read Item: () -> T } } }
+export type Value<T> = { read __type: Trait.Token<any>, read __traits: { read Set: Assoc<T> } }
 
 type AnyToken = Trait.AnyToken
 const Fn, FnMut = Trait.Fn, Trait.FnMut
 
 --[[ 정의 ]]
 -- `Add`·`Remove` 는 바뀌었는가(새로 들어갔나 / 있어서 지웠나), `Items` 는 원소들의 새 배열.
-const Set = Trait.Trait("Set", function<Self, T>(of: (Self & MarkerMut<T>) | AnyToken)
+const Set = Trait.Trait("Set", function<Self, T>(of: (Self & Value<T>) | AnyToken)
 	return table.freeze({
 		Add = FnMut<<(set: Self, item: T) -> boolean>>(),
 		Has = Fn<<(set: Self, item: T) -> boolean>>(),
@@ -29,9 +29,9 @@ const Set = Trait.Trait("Set", function<Self, T>(of: (Self & MarkerMut<T>) | Any
 		Items = Fn<<(set: Self) -> { T }>>(),
 	})
 end)
--- 완성 표(= 등록 표 — 기본 구현이 없음). 진입점(`Set.Add` …)은 시스템이 만들지만 서명을 입히지 않습니다(부르는 곳이 생기면 `MarkerMut` 로).
+-- 완성 표(= 등록 표 — 기본 구현이 없음). 진입점(`Set.Add` …)은 시스템이 만들지만 서명을 입히지 않습니다(부르는 곳이 생기면 `Value` 로).
 export type Full<Self, T> = typeof(Set.OfMut<<Self, T>>(nil :: any))
-export type Read<Self, T> = typeof(Set.Of<<Self, T>>(nil :: any))
+export type ReadFull<Self, T> = typeof(Set.Of<<Self, T>>(nil :: any))
 export type Provided<Self, T> = typeof(Set.ImplOf<<Self, T>>(nil :: any))
 
 return Set

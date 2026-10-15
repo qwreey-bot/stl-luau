@@ -412,7 +412,7 @@ do
 	assert(stl.Collection.Len(d) == 4 and stl.Collection.Clear(d) == d and LinkedDeque.Len(d) == 0, "Collection")
 
 	-- ⭐ 종류를 모르는 코드: 같은 함수가 두 구현에서 같은 답
-	const function drain<C>(deque: C & stl.DequeMarkerMut<number>): string
+	const function drain<C>(deque: C & stl.Deque<number>): string
 		Deque.PushBack(deque, 30)
 		Deque.PushFront(Deque.PushFront(deque, 20), 10)
 		const parts = { tostring(Deque.Front(deque)), tostring(Deque.Back(deque)) }

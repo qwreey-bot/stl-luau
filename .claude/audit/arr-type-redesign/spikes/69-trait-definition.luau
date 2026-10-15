@@ -22,14 +22,15 @@ type CircularDeque<T> = stl.CircularDeque<T>
 --[[ 쓰는 자리 ]]
 local d = stl.CircularDeque.Of(1, 2, 3)
 -- 값으로 꺼낸 완성 표: 원소 타입이 섬
-local s = stl.Stack.OfMut(d) -- 시제품(trait-ofmut): 쓰는 칸은 완성 표에만
-local pushed: CircularDeque<number> = s.Push(d, 4)
-local popped: number? = s.Pop(d)
-local negPush = s.Push(d, "x") -- NEG
-local negPop: string? = s.Pop(d) -- NEG
--- 진입점(서명은 트레이트 파일이 입힘)
-local entryPushed: CircularDeque<number> = stl.Stack.Push(d, 5)
-local negEntry = stl.Stack.Push(d, "x") -- NEG
+local sd = stl.Deque.AsStack(d) -- 덱을 스택으로(질문 BA — 스택은 덱을 모름)
+local s = stl.Stack.OfMut(sd) -- 쓰는 칸은 완성 표에만
+local pushed: stl.Stack<number> = s.Push(sd, 4)
+local popped: number? = s.Pop(sd)
+local negPush = s.Push(sd, "x") -- NEG
+local negPop: string? = s.Pop(sd) -- NEG
+-- 진입점(서명은 정의에서 지어짐)
+local entryPushed: stl.Stack<number> = stl.Stack.Push(sd, 5)
+local negEntry = stl.Stack.Push(sd, "x") -- NEG
 -- 리스트: 위치 타입도 값에서, 기본 구현 칸의 반환도
 local l = stl.List.Of(d)
 local where: number? = l.IndexOf(d, 2)

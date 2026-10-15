@@ -14,11 +14,11 @@ const Fn, FnMut = Trait.Fn, Trait.FnMut
 
 --[[ 마커 — 타입에만 있는 필드 ]]
 -- 읽기(크기): 토큰만 — 읽기 전용으로 빌린 참조(`ArrRead`·`CircularDequeRead`)도 받습니다.
-export type Marker = { read __type: Trait.Token<any> }
+export type ValueRead = { read __type: Trait.Token<any> }
 -- 바꾸는 쪽(비우기): 바꿀 수 있는 참조만 적는 레코드 `read __traits: { read Collection: Collection.Assoc }` 를 요구(빌린 읽기 타입은 안 적음) —
 -- 토큰만 요구했더니 읽기 전용으로 빌린 참조가 진단 0건으로 지워졌습니다(질문 AO, `spikes/63`).
 export type Assoc = { read Mut: true }
-export type MarkerMut = { read __type: Trait.Token<any>, read __traits: { read Collection: Assoc } }
+export type Value = { read __type: Trait.Token<any>, read __traits: { read Collection: Assoc } }
 
 --[[ 정의 ]]
 -- 원소 타입이 없는 트레이트라 연관 타입 없이 `Self` 만. `Clear` 는 자기 자신을 돌려줌.
@@ -26,7 +26,7 @@ export type MarkerMut = { read __type: Trait.Token<any>, read __traits: { read C
 -- 완성 표를 거쳐 `Clear` 를 얻었습니다(질문 BA, `spikes/71`).
 const CollectionBase = Trait.Trait(
 	"Collection",
-	function<Self>(of: (Self & Marker) | AnyToken, ofMut: (Self & MarkerMut) | AnyToken)
+	function<Self>(of: (Self & ValueRead) | AnyToken, ofMut: (Self & Value) | AnyToken)
 		return table.freeze({
 			Len = Fn<<(collection: Self) -> number>>(),
 			Clear = FnMut<<(collection: Self) -> Self>>(),
@@ -35,7 +35,7 @@ const CollectionBase = Trait.Trait(
 )
 -- 완성 표(= 등록 표 — 기본 구현이 없음)
 export type Full<Self> = typeof(CollectionBase.OfMut<<Self>>(nil :: any))
-export type Read<Self> = typeof(CollectionBase.Of<<Self>>(nil :: any))
+export type ReadFull<Self> = typeof(CollectionBase.Of<<Self>>(nil :: any))
 export type Provided<Self> = typeof(CollectionBase.ImplOf<<Self>>(nil :: any))
 
 --[[ 진입점 서명 — 종류를 모르는 코드가 부릅니다(진입점 자체는 시스템이 만든 것) ]]

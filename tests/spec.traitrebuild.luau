@@ -460,7 +460,7 @@ print("PASS")
 print("=== 7. 진입점·Of·조회 — 값이나 토큰, 못 찾으면 사용자 줄 에러(셋으로 가름) ===")
 do
 	const d = stl.CircularDeque.Of(1, 2)
-	assert(stl.Stack.OfMut(d).Push == stl.CircularDeque.PushBack, "값으로 Of")
+	assert(stl.Stack.OfMut(stl.Deque.AsStack(d)).Push == stl.CircularDeque.PushBack, "값으로 Of")
 	const plain = T.NewToken("Test.Rebuild.NoStack")
 	fails(function()
 		where = debug.info(1, "l") + 1
@@ -1098,6 +1098,89 @@ do
 	coroutine.close(hung)
 	const _, nanErr2 = pcall(stl.Arr.At, stl.Arr.Of(1), 0 / 0)
 	assert(type(nanErr2) == "string", "버린 뒤에도 문자열")
+end
+print("PASS")
+
+print(
+	"=== 9. 중간자 Trait.Converter — 등록은 만들 때 한 번, 종류는 부를 때마다, 값은 그대로(질문 BA) ==="
+)
+do
+	const kind = T.NewToken("Test.Rebuild.ConvKind")
+	const other = T.NewToken("Test.Rebuild.ConvOther")
+	const pushed = {}
+	stl.Stack.ImplFor(kind, {
+		Push = function(self: any, item: any): any
+			table.insert(pushed, item)
+			return self
+		end,
+		Pop = function(_self: any): any
+			return table.remove(pushed)
+		end,
+		Peek = function(_self: any): any
+			return pushed[#pushed]
+		end,
+	})
+	-- (a) 만들 때: 트레이트가 아님 / 토큰이 아님 / 등록 안 됨 — 사용자 줄
+	fails(function()
+		where = debug.info(1, "l") + 1
+		T.Converter({}, kind)
+	end, "Trait: Converter", "트레이트가 아님")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		T.Converter(stl.Stack, "Test.Rebuild.ConvKind")
+	end, "Stack.Converter", "토큰이 아님")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		T.Converter(stl.Stack, other)
+	end, "Stack: Test.Rebuild.ConvOther does not implement Stack", "등록 안 된 종류")
+	-- (b) 같은 테이블을 돌려주고, 위로·아래로 같은 함수
+	const convert = T.Converter(stl.Stack, kind)
+	const value = T.Stamp({}, kind)
+	assert(rawequal(convert(value), value), "그대로 돌려줌")
+	stl.Stack.Push(convert(value) :: any, 10)
+	assert(pushed[1] == 10 and stl.Stack.Peek(convert(value) :: any) == 10, "바꾼 값으로 진입점")
+	-- (c) 부를 때: 다른 종류·토큰 없는 테이블·테이블 아님 — 사용자 줄, 받은 것의 이름
+	fails(function()
+		where = debug.info(1, "l") + 1
+		convert(stl.Arr.Of(1))
+	end, "Stack: the converter for Test.Rebuild.ConvKind got Stl.Arr", "다른 종류")
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			convert({ __type = { name = "Test.Rebuild.ConvKind" } })
+		end,
+		"Stack: the converter for Test.Rebuild.ConvKind got Test.Rebuild.ConvKind",
+		"이름만 같은 가짜 토큰(되읽은 값 — Restore 를 거쳐야 함)"
+	)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		convert(42)
+	end, "Stack: the converter for Test.Rebuild.ConvKind got number", "테이블 아님")
+	-- (d) 뭉텅이로 따라온 구현도 등록으로 침(덱이면 스택)
+	const fromDeque = T.Converter(stl.Stack, stl.CircularDeque.Token)
+	const d = stl.CircularDeque.Of(1, 2)
+	assert(rawequal(fromDeque(d), d), "뭉텅이 구현")
+	-- (e) 토큰 없이 — 그 트레이트를 구현한 종류면 무엇이든(덱 쪽이 내주는 `Deque.AsStack`·`AsQueue` — 스택·큐는 덱을 모름)
+	const ld = stl.LinkedDeque.Of(5)
+	assert(rawequal(stl.Deque.AsStack(d), d) and rawequal(stl.Deque.AsQueue(ld), ld), "덱 두 종류")
+	assert(rawequal(stl.Deque.AsStackRead(d), d) and rawequal(stl.Deque.AsQueueRead(ld), ld), "읽기 판")
+	assert(
+		stl.Stack.Pop(stl.Deque.AsStack(d)) == 2 and stl.Queue.Pop(stl.Deque.AsQueue(ld)) == 5,
+		"바꾼 값으로 진입점"
+	)
+	const stamped = T.Stamp({}, kind)
+	assert(
+		rawequal(stl.Deque.AsStack(stamped :: any), stamped),
+		"스택을 직접 구현한 종류도 받음(덱이 아니어도 — 보는 것은 스택 구현)"
+	)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Deque.AsStack(stl.Arr.Of(1) :: any)
+	end, "Stack: the converter needs a Stack — got Stl.Arr", "스택이 아닌 종류")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Deque.AsQueue(nil :: any)
+	end, "Queue: the converter needs a Queue — got nil", "테이블 아님")
 end
 print("PASS")
 

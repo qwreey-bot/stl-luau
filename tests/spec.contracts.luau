@@ -1114,7 +1114,7 @@ do
 	-- 넣은 순서를 지키는 연결 목록 맵으로, 순회자가 **함수 하나**(상태를 클로저에)인 모양을 봅니다.
 	type MyMap = {
 		read __type: stl.TraitToken<string>,
-		read __traits: { read Map: stl.MapAssoc<string, number> },
+		read __traits: { read Map: stl.MapAssoc<string, number> }, -- 구현하는 트레이트를 나열(질문 BA)
 		keys: { string },
 		values: { number },
 	}
@@ -1451,12 +1451,12 @@ print("=== 9. 쓰는 제네릭은 불변 마커로 — 맵·셋 종류와 무관
 do
 	-- 타입 쪽(값 타입이 넓어지지 않음)은 spikes/61 이 지킵니다. 여기는 불변 마커를 받는 제네릭이
 	-- 런타임에 HashMap·FlatMap, HashSet·FlatSet 양쪽에서 같은 답을 내는지.
-	local function put<K, V>(m: stl.MapMarkerMut<K, V>, k: K, v: V)
+	local function put<K, V>(m: stl.Map<K, V>, k: K, v: V)
 		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
 		ops.Set(m, k, v)
 	end
-	local function add<T>(s: stl.SetMarkerMut<T>, item: T): boolean
+	local function add<T>(s: stl.Set<T>, item: T): boolean
 		const ops = stl.Trait.ImplOf(stl.Set, s)
 		assert(ops ~= nil, "Set 구현")
 		return ops.Add(s, item)
@@ -1470,7 +1470,7 @@ do
 	assert(stl.HashMap.Len(hm) == 2 and stl.FlatMap.Len(tm) == 2, "두 맵 모두 키 둘")
 	assert(stl.HashMap.Get(hm, "a") == 10 and stl.FlatMap.Get(tm, "a") == 10, "같은 값")
 	-- 불변 마커로 받은 값은 읽는 알고리즘에도 그대로 들어감
-	local function keysOf<K, V>(m: stl.MapMarkerMut<K, V>): { K }
+	local function keysOf<K, V>(m: stl.Map<K, V>): { K }
 		return stl.Map.Keys(m)
 	end
 	assert(table.concat(keysOf(tm), ",") == "a,b" and #keysOf(hm) == 2, "Mut 마커 → Keys")
@@ -1585,7 +1585,7 @@ do
 		)
 	end
 	-- Clear 뒤에도 쓸 수 있음(비우고 다시 채우기) — 맵 종류를 모르는 제네릭으로
-	local function refill<K, V>(m: stl.MapMarkerMut<K, V> & stl.CollectionMarkerMut, records: { stl.Record<K, V> })
+	local function refill<K, V>(m: stl.Map<K, V> & stl.Collection, records: { stl.Record<K, V> })
 		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
 		stl.Collection.Clear(m)
@@ -1633,7 +1633,7 @@ do
 	end
 
 	-- ⭐ 넓힌 MapFull — 종류를 모르는 코드가 Has·Remove·Iter 까지. 두 맵이 같은 답
-	local function exercise<K, V>(m: stl.MapMarkerMut<K, V>, present: K, absent: K): (boolean, boolean, V?, V?, number)
+	local function exercise<K, V>(m: stl.Map<K, V>, present: K, absent: K): (boolean, boolean, V?, V?, number)
 		const ops = stl.Trait.ImplOf(stl.Map, m)
 		assert(ops ~= nil, "Map 구현")
 		const hadPresent, hadAbsent = ops.Has(m, present), ops.Has(m, absent)

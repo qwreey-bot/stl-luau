@@ -76,34 +76,34 @@ local neg6: number = shown.Show(nums) -- Of 가 완성 표 타입을 돌려줌
 -- (2026-10-13 리뷰가 토큰 필드를 지워 확인) — 채웠습니다. 데이터 타입에 필드를 더하면 여기도.
 type ArrLike = {
 	n: number,
-	read __traits: { read List: stl.ListAssoc<number, number>, read Collection: stl.CollectionAssoc },
+	read __traits: { read List: { read Item: () -> number, read Index: () -> number, read Mut: (number, number) -> (number, number) }, read Collection: { read Mut: true } },
 	[number]: number,
 }
 type MapLike = {
 	data: { [string]: number },
 	size: number,
-	read __traits: { read Map: stl.MapAssoc<string, number>, read Collection: stl.CollectionAssoc },
+	read __traits: { read Map: { read Key: () -> string, read Value: () -> number, read Mut: (string, number) -> (string, number) }, read Collection: { read Mut: true } },
 }
 type SetLike = {
 	map: stl.HashMap<number, number>,
-	read __traits: { read Set: stl.SetAssoc<number>, read Collection: stl.CollectionAssoc },
+	read __traits: { read Set: { read Item: () -> number, read Mut: (number) -> number }, read Collection: { read Mut: true } },
 }
 local neg7: Arr<number> = (nil :: any) :: ArrLike
 local neg8: stl.HashMap<string, number> = (nil :: any) :: MapLike
 local neg9: stl.HashSet<number> = (nil :: any) :: SetLike
 -- 마커만 흉내 내고 토큰이 없는 평범한 테이블은 공용 알고리즘에 못 들어감(Gemini 트레이트 검토
 -- Case 1 — 마커가 토큰을 요구하기 전엔 타입은 통과하고 런타임에 터졌음)
-type MarkerOnly = { read __traits: { read List: stl.ListAssocRead<number, number> } }
+type MarkerOnly = { read __traits: { read List: { read Item: () -> number, read Index: () -> number } } }
 local neg10 = stl.List.IndexOf((nil :: any) :: MarkerOnly, 1)
--- 맵·셋 마커도 토큰을 요구(2라운드 — ListMarker 만 대조돼 Map/SetMarker 의 `__type` 을 빼도 통과)
-local function keyOf<K, V>(map: stl.MapMarker<K, V>): K?
+-- 맵·셋 마커도 토큰을 요구(2라운드 — ListRead 만 대조돼 Map/SetRead 의 `__type` 을 빼도 통과)
+local function keyOf<K, V>(map: stl.MapRead<K, V>): K?
 	return nil
 end
-local function itemOf<T>(set: stl.SetMarker<T>): T?
+local function itemOf<T>(set: stl.SetRead<T>): T?
 	return nil
 end
-local neg11 = keyOf((nil :: any) :: { read __traits: { read Map: stl.MapAssoc<string, number> } })
-local neg12 = itemOf((nil :: any) :: { read __traits: { read Set: stl.SetAssoc<number> } })
+local neg11 = keyOf((nil :: any) :: { read __traits: { read Map: { read Key: () -> string, read Value: () -> number, read Mut: (string, number) -> (string, number) } } })
+local neg12 = itemOf((nil :: any) :: { read __traits: { read Set: { read Item: () -> number, read Mut: (number) -> number } } })
 
 --[[ 기본 구현을 가진 트레이트(2026-10-13, papers/07 1단계) — 완성 표의 타입과 구현이 넘기는 표의 타입 ]]
 type Shape = { read __type: stl.TraitToken<string>, side: number }

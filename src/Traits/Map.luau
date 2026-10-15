@@ -34,18 +34,18 @@ local Collection = require("./Collection")
 
 -- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read Map: Map.Assoc<K, V> }`. 키·값은 공변 칸(`() -> K`)과 불변
 -- 팬텀 `Mut` 을 같이 둡니다(`(K) -> K` 는 `() -> K` 의 서브타입이 아니라 하나로는 두 쓰임을 못 덮음). 트레이트의 조건(`of`)은 불변 —
--- 조회도 키가 입력이라(질문 AM). `Marker` 는 꺼내기만 하는 알고리즘(`Keys`)용으로 공변.
+-- 조회도 키가 입력이라(질문 AM). `ValueRead` 는 꺼내기만 하는 알고리즘(`Keys`)용으로 공변.
 export type Assoc<K, V> = { read Key: () -> K, read Value: () -> V, read Mut: (K, V) -> (K, V) }
-export type Marker<K, V> = {
+export type ValueRead<K, V> = {
 	read __type: Trait.Token<any>,
 	read __traits: { read Map: { read Key: () -> K, read Value: () -> V } },
 }
-export type MarkerMut<K, V> = { read __type: Trait.Token<any>, read __traits: { read Map: Assoc<K, V> } }
+export type Value<K, V> = { read __type: Trait.Token<any>, read __traits: { read Map: Assoc<K, V> } }
 type AnyToken = Trait.AnyToken
 const Fn, FnMut = Trait.Fn, Trait.FnMut
 
 --[[ 정의 ]]
-const MapBase = Trait.Trait("Map", function<Self, K, V>(of: (Self & MarkerMut<K, V>) | AnyToken)
+const MapBase = Trait.Trait("Map", function<Self, K, V>(of: (Self & Value<K, V>) | AnyToken)
 	return table.freeze({
 		Get = Fn<<(map: Self, key: K) -> V?>>(),
 		Set = FnMut<<(map: Self, key: K, value: V) -> ()>>(),
@@ -56,7 +56,7 @@ const MapBase = Trait.Trait("Map", function<Self, K, V>(of: (Self & MarkerMut<K,
 end)
 -- 완성 표(= 등록 표 — 기본 구현이 없음)
 export type Full<Self, K, V> = typeof(MapBase.OfMut<<Self, K, V>>(nil :: any))
-export type Read<Self, K, V> = typeof(MapBase.Of<<Self, K, V>>(nil :: any))
+export type ReadFull<Self, K, V> = typeof(MapBase.Of<<Self, K, V>>(nil :: any))
 export type Provided<Self, K, V> = typeof(MapBase.ImplOf<<Self, K, V>>(nil :: any))
 const expectImpl = Trait.ExpectImpl
 -- 구현 찾기를 펼칠 표(키가 토큰뿐 — 트레이트 객체를 바로 읽으면 `__type = "Get"` 같은 문자열이 진입점을 꺼냄, 리뷰 1라운드)
@@ -87,7 +87,7 @@ const function sizedList(map: any): { any }
 	return {}
 end
 
-const function Keys<K, V>(map: Marker<K, V>): { K }
+const function Keys<K, V>(map: ValueRead<K, V>): { K }
 	const ops: any = (if type(map) == "table" then mapImpls[rawget(map :: any, "__type")] else nil)
 		or expectImpl(MapBase, map, "Keys")
 	const out: { K } = sizedList(map)
@@ -99,7 +99,7 @@ const function Keys<K, V>(map: Marker<K, V>): { K }
 	return out
 end
 
-const function Values<K, V>(map: Marker<K, V>): { V }
+const function Values<K, V>(map: ValueRead<K, V>): { V }
 	const ops: any = (if type(map) == "table" then mapImpls[rawget(map :: any, "__type")] else nil)
 		or expectImpl(MapBase, map, "Values")
 	const out: { V } = sizedList(map)
@@ -113,7 +113,7 @@ end
 
 -- 키-값 레코드의 목록(`{ { key, value } }`). 레코드는 **새로 만든 것**이라 받은 쪽이 고쳐도 맵은
 -- 그대로입니다. 종류를 아는 코드는 `HashMap.Records`/`FlatMap.Records` 를 직접 쓰세요.
-const function Records<K, V>(map: Marker<K, V>): { Types.Record<K, V> }
+const function Records<K, V>(map: ValueRead<K, V>): { Types.Record<K, V> }
 	const ops: any = (if type(map) == "table" then mapImpls[rawget(map :: any, "__type")] else nil)
 		or expectImpl(MapBase, map, "Records")
 	const out: { Types.Record<K, V> } = sizedList(map)
@@ -126,7 +126,7 @@ const function Records<K, V>(map: Marker<K, V>): { Types.Record<K, V> }
 end
 
 -- stylua: ignore
--- 트레이트 함수의 진입점(`Map.Get` …)은 시스템이 만들지만 서명을 입히지 않습니다(아직 부르는 곳이 없음 — 넣을 땐 `MarkerMut` 로).
+-- 트레이트 함수의 진입점(`Map.Get` …)은 시스템이 만들지만 서명을 입히지 않습니다(아직 부르는 곳이 없음 — 넣을 땐 `Value` 로).
 return Trait.Expose(MapBase, {
 	Keys = Keys, Values = Values, Records = Records,
 })

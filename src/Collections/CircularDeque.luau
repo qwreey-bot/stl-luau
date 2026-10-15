@@ -65,7 +65,7 @@ export type CircularDeque<T> = CircularDequeData<T>
 -- 덱을 상위 레코드 자리에 넘길 수 있습니다(읽기·쓰기 인덱서인 `CircularDequeData` 는 불변이라 안 됐음). 쓰는
 -- 함수(`Push*`·`Pop*`·`Clear`)는 `CircularDequeData` 를 받습니다 — 넓어진 원소로 쓰면 건전하지 않으니까요.
 -- `head`·`size`·`cap` 도 `read` 라 빌린 참조로는 길이를 못 바꾸고, 읽기 레코드(`AssocRead`)만 있어 쓰는
--- 제네릭(`List.MarkerMut`)에도 못 들어갑니다. 사용자 함수도 같은 규칙으로 쓰라고 공개합니다.
+-- 제네릭(`List.Value`)에도 못 들어갑니다. 사용자 함수도 같은 규칙으로 쓰라고 공개합니다.
 export type CircularDequeRead<T> = {
 	read head: number,
 	read size: number,

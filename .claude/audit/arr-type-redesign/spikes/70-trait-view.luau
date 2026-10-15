@@ -82,8 +82,9 @@ local function drain<C, T>(st: stl.StackFull<C, T>, c: C): { T }
 	end
 	return out
 end
-local all: { number } = drain(stl.Stack.OfMut(d), d)
-local negAll: { string } = drain(stl.Stack.OfMut(d), d) -- NEG
+local sd = stl.Deque.AsStack(d)
+local all: { number } = drain(stl.Stack.OfMut(sd), sd)
+local negAll: { string } = drain(stl.Stack.OfMut(sd), sd) -- NEG
 
 --[[ 같은 모듈의 경계(질문 AZ — 2026-10-15 사용자: (가) 유지) — 트레이트를 **이 파일 꼭대기에서** 정의하고 여기서 등록하면 칸 자체가
      제네릭인 함수(`Fold<U>`)의 실수가 0건(다시 지은 `<U>` 가 모듈 스코프를 받고 상류 `Subtyping.cpp:830` 이 통과시킴). 규약: 같은 파일에서

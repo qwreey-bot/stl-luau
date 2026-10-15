@@ -96,7 +96,7 @@ local typedPred: NumberPred = function(v: number, _at: number): boolean
 	return v % 2 == 0
 end
 local viaTypedVar: number = stl.List.Count(nums, typedPred)
-local function countWhere<E, I>(list: stl.ListMarker<E, I>, pred: (E, I) -> boolean): number
+local function countWhere<E, I>(list: stl.ListRead<E, I>, pred: (E, I) -> boolean): number
 	return stl.List.Count(list, pred)
 end
 local function negate<E, I>(pred: (E, I) -> boolean): (E, I) -> boolean

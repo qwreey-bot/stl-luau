@@ -110,14 +110,14 @@ end
 local holes = LinkedDeque.New<<number?>>()
 local knownCovariant = LinkedDeque.InsertAfter(holes, head :: NodeRead<number>, nil)
 
---[[ Stack·Queue — 덱이면 타입으로도 스택·큐(마커가 `Deque` 의 것 그대로) ]]
-local okStackPush: stl.LinkedDeque<number> = stl.Stack.Push(d, 5)
-local okQueuePop: number? = stl.Queue.Pop(d)
-local okPeekBorrowed: number? = stl.Stack.Peek(borrowed)
+--[[ Stack·Queue — 덱은 `Deque.AsStack`·`AsQueue` 로 스택·큐가 됨(질문 BA — 스택·큐는 덱을 모름) ]]
+local okStackPush: stl.Stack<number> = stl.Stack.Push(stl.Deque.AsStack(d), 5)
+local okQueuePop: number? = stl.Queue.Pop(stl.Deque.AsQueue(d))
+local okPeekBorrowed: number? = stl.Stack.Peek(stl.Deque.AsStackRead(borrowed))
 -- NEG: 원소 타입 / 꺼낸 것은 옵셔널 / 읽기로 빌린 참조는 꺼낼 수 없음 / 덱이 아닌 것(`Arr`)은 큐가 아님
-stl.Stack.Push(d, "five")
-local negStackPop: number = stl.Stack.Pop(d)
-stl.Queue.Pop(borrowed)
+stl.Stack.Push(stl.Deque.AsStack(d), "five")
+local negStackPop: number = stl.Stack.Pop(stl.Deque.AsStack(d))
+stl.Queue.Pop(stl.Deque.AsQueueRead(borrowed))
 stl.Queue.Push(stl.Arr.Of(1), 2)
 
 local canary: string = 42
