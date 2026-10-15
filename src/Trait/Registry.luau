@@ -7,13 +7,15 @@
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 
--- 트레이트 하나의 기록. 트레이트 객체(사용자가 쥐는 것)에는 진입점과 `[토큰] = 완성 표`, `FnTok` 만 두고
--- 나머지는 여기에 — 진입점 이름이 시스템 필드와 겹치지 않게.
+-- 트레이트 하나의 기록. 트레이트 객체(사용자가 쥐는 것)에는 진입점과 시스템 필드(`Of`·`FnTok` …)만 두고 나머지는 여기에.
+-- 완성 표도 여기(`impls`) — 트레이트 객체에 `[토큰] = 완성 표` 로 두었더니 값의 `__type` 이 문자열이고 진입점 이름과 같으면
+-- (`__type = "Get"`) 진입점 함수를 완성 표로 읽어 라이브러리 줄에서 죽었습니다(2026-10-15 리뷰 1라운드).
 export type Blanket = { deps: { any }, build: (deps: { [any]: any }) -> { [string]: any } }
 export type Record = {
 	name: string,
 	fnNames: { string }, -- 정렬한 이름(함수 번호 = 위치)
 	fnTok: { [string]: number },
+	impls: { [any]: { [any]: any } }, -- [토큰] = 완성 표(`{ [함수 번호] = f, 이름 = f }`). 키는 토큰뿐
 	required: { [string]: true }, -- 필수 이름
 	builders: { [string]: (ops: any) -> any }, -- [기본 구현 이름] = 빌더(그 종류의 완성 표를 받아 함수를 돌려줌)
 	explicit: { [any]: { [string]: any } }, -- [토큰] = For 로 넘긴 표의 사본

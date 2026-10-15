@@ -11,10 +11,11 @@ local Errors = require("./Errors")
 
 const Entry = {}
 
-function Entry.make(trait: any, traitName: string, fnName: string, fnNum: number): (...any) -> ...any
+-- `impls` 는 그 트레이트의 `[토큰] = 완성 표`(키가 토큰뿐 — 문자열 `__type` 은 그냥 "없음").
+function Entry.make(impls: { [any]: any }, traitName: string, fnName: string, fnNum: number): (...any) -> ...any
 	const entryMiss = Errors.entryMiss
 	return function(self: any, ...: any): ...any
-		const impl = if type(self) == "table" then trait[rawget(self, "__type")] else nil
+		const impl = if type(self) == "table" then impls[rawget(self, "__type")] else nil
 		if impl == nil then
 			return entryMiss(traitName, fnName, self)
 		end

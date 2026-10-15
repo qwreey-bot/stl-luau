@@ -35,7 +35,7 @@ const function depsOf(deps: { any }, token: any): { [any]: any }?
 	const out: { [any]: any } = {}
 	for at = 1, #deps do
 		const dep = deps[at]
-		const full = dep[token]
+		const full = records[dep].impls[token]
 		if full == nil then
 			return nil
 		end
@@ -77,14 +77,14 @@ Build.sourceOf = sourceOf
 -- 기본 구현은 이름마다 **빌더**(`(ops) -> 함수`)이고, 넘긴 표에 없는 이름만 짓습니다. 빌더가
 -- `ops`(지금 짓는 표)에서 아직 안 지은 형제 기본 구현을 읽으면 그 자리에서 먼저 짓습니다 — 그래서 형제를 지역으로
 -- 붙잡아도 순서와 무관합니다. 그동안만 `fresh` 에 메타테이블을 걸고 끝나면 뗍니다(완성 표는 평범한 테이블).
-const function assemble(rec: Record, token: any, given: { [string]: any }): { [any]: any }
+const function assemble(rec: Record, token: any, given: { [string]: any }, blanket: boolean?): { [any]: any }
 	const fresh: { [any]: any } = {}
 	const builders = rec.builders
 	for fnName, fn in given do
 		if rec.fnTok[fnName] == nil then
-			Errors.unknownName(rec.name, token.name, fnName)
+			Errors.unknownName(rec.name, token.name, fnName, blanket)
 		elseif type(fn) ~= "function" then
-			Errors.notFunction(rec.name, token.name, fnName, fn)
+			Errors.notFunction(rec.name, token.name, fnName, fn, blanket)
 		end
 		fresh[fnName] = fn
 	end
@@ -125,7 +125,7 @@ const function assemble(rec: Record, token: any, given: { [string]: any }): { [a
 		const fnName = fnNames[at]
 		const fn = fresh[fnName]
 		if fn == nil then
-			Errors.missing(rec.name, token.name, fnName)
+			Errors.missing(rec.name, token.name, fnName, blanket)
 		end
 		fresh[at] = fn
 	end
@@ -136,14 +136,14 @@ Build.assemble = assemble
 -- 지은 표를 놓고(처음이면 그 표, 아니면 **같은 테이블을 비우고 다시 채움**) 위로 번짐.
 local refresh: (trait: any, token: any) -> ()
 const function commit(trait: any, rec: Record, token: any, full: { [any]: any })
-	const existing = rawget(trait, token)
+	const existing = rec.impls[token]
 	if existing ~= nil then
 		table.clear(existing)
 		for key, fn in full do
 			existing[key] = fn
 		end
 	else
-		rawset(trait, token, full)
+		rec.impls[token] = full
 	end
 	const dependents = rec.dependents
 	for at = 1, #dependents do
@@ -158,7 +158,7 @@ function refresh(trait: any, token: any)
 	if given == nil then
 		return
 	end
-	commit(trait, rec, token, assemble(rec, token, given))
+	commit(trait, rec, token, assemble(rec, token, given, rec.explicit[token] == nil))
 end
 Build.refresh = refresh
 
@@ -262,7 +262,7 @@ function Build.onWhere(trait: any, blanket: Registry.Blanket)
 				if type(given) ~= "table" then
 					Errors.builderNotTable(rec.name, given)
 				end
-				assemble(rec, token, given)
+				assemble(rec, token, given, true)
 			end
 		end
 	end

@@ -494,6 +494,240 @@ do
 	end, "Expose got an entry named ImplFor", "시스템 이름과 겹침")
 	T.Expose(E, { Extra = print })
 	assert(E.Extra == print, "얹음")
+	-- `Trait.Impls`: 완성 표가 든 표(키는 토큰뿐), 트레이트가 아니면 에러
+	assert(T.Impls(stl.Deque)[stl.CircularDeque.Token] == stl.Deque.Of(d), "Impls")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		T.Impls({} :: any)
+	end, "Trait: Impls needs a trait (from Trait.Trait)", "Impls 에 트레이트가 아님")
+end
+print("PASS")
+
+print(
+	"=== 8. 리뷰 1라운드(2026-10-15) — 문자열 __type, 의존 고리, 깊은 Restore, 겹침·사본·준 쪽 ==="
+)
+do
+	-- (1) 문자열 `__type` 이 트레이트 객체의 필드 이름과 같아도 "토큰 없음"(예전엔 진입점 함수를 완성 표로 읽어 라이브러리 줄 에러)
+	const bad = { __type = "Get" } :: any
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Map.Keys(bad)
+	end, "Map: Keys needs a Map (got table without a type token)", "__type = Get 의 Keys")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Map.Of(bad)
+	end, "Map: Of needs a Map (got table without a type token)", "__type = Get 의 Of")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		(stl.Map :: any).Get(bad, 1)
+	end, "Map: Get needs a Map (got table without a type token)", "__type = Get 의 진입점")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Arr.GroupBy(stl.Arr.Of(1), tostring, bad)
+	end, "Map: Arr.GroupBy needs a Map (got table without a type token)", "__type = Get 인 목적지")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Collection.Len({ __type = "Len" } :: any)
+	end, "Collection: Len needs a Collection (got table without a type token)", "__type = Len")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Map.Values({ __type = "FnTok" } :: any)
+	end, "Map: Values needs a Map (got table without a type token)", "__type = FnTok")
+	assert(not T.Implements(stl.Map, bad) and T.ImplOf(stl.Map, bad) == nil, "Implements·ImplOf")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		T.ExpectImpl(stl.Map, { __type = "ImplFor" }, "Test.Rebuild.Expect")
+	end, "Map: Test.Rebuild.Expect needs a Map (got table without a type token)", "__type = ImplFor 의 ExpectImpl")
+
+	-- (2) 뭉텅이 의존의 고리는 등록 줄 에러(예전엔 다음 명시 등록에서 stack overflow, 반쯤 반영된 채)
+	const LibA: any = T.Trait("Test.Rebuild.CycleA", factory({ Size = T.Fn() }))
+	const LibB: any = T.Trait("Test.Rebuild.CycleB", factory({ Count = T.Fn() }))
+	LibB.ImplWhere({ LibA }, function(deps: any)
+		return { Count = deps[LibA].Size }
+	end)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			LibA.ImplWhere({ LibB }, function(deps: any)
+				return { Size = deps[LibB].Count }
+			end)
+		end,
+		"Trait: Test.Rebuild.CycleA.ImplWhere on Test.Rebuild.CycleB makes a cycle — Test.Rebuild.CycleB already comes from Test.Rebuild.CycleA",
+		"서로 의존"
+	)
+	const cyc = T.NewToken("Test.Rebuild.CycleKind")
+	LibA.ImplFor(cyc, {
+		Size = function()
+			return 3
+		end,
+	})
+	assert(LibB.Count(T.Stamp({}, cyc)) == 3, "거절된 뭉텅이는 남지 않음 — B 는 A 에서 따라옴")
+	-- 세 단계 고리(C ← B ← A 인데 A 가 C 에 기대려 함)
+	const LibC: any = T.Trait("Test.Rebuild.CycleC", factory({ Total = T.Fn() }))
+	LibC.ImplWhere({ LibB }, function(deps: any)
+		return { Total = deps[LibB].Count }
+	end)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		LibA.ImplWhere({ LibC }, function(deps: any)
+			return { Size = deps[LibC].Total }
+		end)
+	end, "Trait: Test.Rebuild.CycleA.ImplWhere on Test.Rebuild.CycleC makes a cycle", "세 단계 고리")
+	-- 자기 자신
+	const Self: any = T.Trait("Test.Rebuild.SelfDep", factory({ Run = T.Fn() }))
+	fails(function()
+		where = debug.info(1, "l") + 1
+		Self.ImplWhere({ Self }, function(deps: any)
+			return { Run = deps[Self].Run }
+		end)
+	end, "Trait: Test.Rebuild.SelfDep.ImplWhere cannot depend on Test.Rebuild.SelfDep itself", "자기 자신")
+	Self.ImplFor(T.NewToken("Test.Rebuild.SelfKind"), { Run = print })
+
+	-- (3) Restore 는 깊은 사슬도(예전엔 재귀라 5만 단계에서 stack overflow)
+	const head = { __type = { name = "Stl.Arr" }, n = 0 } :: any
+	local tail = head
+	for _ = 1, 200000 do
+		const node = { __type = { name = "Stl.Arr" }, n = 0, next = nil :: any }
+		tail.next = node
+		tail = node
+	end
+	T.Restore(head)
+	assert(
+		T.TokenOf(head) == stl.Arr.Token and T.TokenOf(tail) == stl.Arr.Token,
+		"깊은 사슬의 끝까지 되찾음"
+	)
+	-- 얼린 표는 건드리지 않음(에러 없이), 그 안은 그대로 걸음
+	const frozenInner = { __type = { name = "Stl.Arr" }, n = 0 }
+	const frozen = table.freeze({ __type = { name = "Stl.Arr" }, n = 0, inner = frozenInner }) :: any
+	T.Restore({ frozen })
+	assert(
+		T.TokenOf(frozen) == nil and T.TokenOf(frozenInner) == stl.Arr.Token,
+		"얼린 표는 건너뛰고 안쪽은 되찾음"
+	)
+
+	-- (4) 겹침이 **의존 등록 뒤에** 생김: 뭉텅이 둘을 먼저 걸고, 종류가 두 의존을 차례로 얻음
+	const Z: any = T.Trait("Test.Rebuild.LateOverlap", factory({ Get = T.Fn() }))
+	const W1: any = T.Trait("Test.Rebuild.LateW1", factory({ A = T.Fn() }))
+	const W2: any = T.Trait("Test.Rebuild.LateW2", factory({ B = T.Fn() }))
+	Z.ImplWhere({ W1 }, function(deps: any)
+		return { Get = deps[W1].A }
+	end)
+	Z.ImplWhere({ W2 }, function(deps: any)
+		return { Get = deps[W2].B }
+	end)
+	const both = T.NewToken("Test.Rebuild.LateBoth")
+	W1.ImplFor(both, { A = print })
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			W2.ImplFor(both, { B = print })
+		end,
+		"Trait: two blanket implementations of Test.Rebuild.LateOverlap apply to Test.Rebuild.LateBoth",
+		"늦게 생긴 겹침"
+	)
+	-- 겹치는 뭉텅이 등록이 실패하면 아무것도 남지 않음 — 다른 종류(한쪽 의존만)에 그대로
+	const Z2: any = T.Trait("Test.Rebuild.Overlap2", factory({ Get = T.Fn() }))
+	const V1: any = T.Trait("Test.Rebuild.Overlap2V1", factory({ A = T.Fn() }))
+	const V2: any = T.Trait("Test.Rebuild.Overlap2V2", factory({ B = T.Fn() }))
+	Z2.ImplWhere({ V1 }, function(deps: any)
+		return { Get = deps[V1].A }
+	end)
+	const both2 = T.NewToken("Test.Rebuild.Overlap2Both")
+	V1.ImplFor(both2, { A = print })
+	V2.ImplFor(both2, { B = print })
+	fails(function()
+		where = debug.info(1, "l") + 1
+		Z2.ImplWhere({ V2 }, function(deps: any)
+			return { Get = deps[V2].B }
+		end)
+	end, "Trait: two blanket implementations of Test.Rebuild.Overlap2 apply to", "겹치는 뭉텅이")
+	const only2 = T.NewToken("Test.Rebuild.Overlap2Only")
+	V2.ImplFor(only2, { B = print })
+	assert(not T.Implements(Z2, T.Stamp({}, only2)), "거절된 뭉텅이는 남지 않음")
+	-- 메시지가 권하는 길: 겹치는 종류에 명시 구현을 주면 두 번째 뭉텅이를 걸 수 있음
+	const Z3: any = T.Trait("Test.Rebuild.Overlap3", factory({ Get = T.Fn() }))
+	const U1: any = T.Trait("Test.Rebuild.Overlap3U1", factory({ A = T.Fn() }))
+	const U2: any = T.Trait("Test.Rebuild.Overlap3U2", factory({ B = T.Fn() }))
+	const both3 = T.NewToken("Test.Rebuild.Overlap3Both")
+	U1.ImplFor(both3, { A = print })
+	U2.ImplFor(both3, { B = print })
+	Z3.ImplFor(both3, {
+		Get = function()
+			return "own"
+		end,
+	})
+	Z3.ImplWhere({ U1 }, function(deps: any)
+		return { Get = deps[U1].A }
+	end)
+	Z3.ImplWhere({ U2 }, function(deps: any)
+		return { Get = deps[U2].B }
+	end)
+	assert(Z3.Get(T.Stamp({}, both3)) == "own", "명시 구현이 겹침을 풂")
+
+	-- (5) 다시 지을 때는 넘긴 표의 **사본**(물려받은 함수 포함) — 넘긴 뒤 고친 표는 무시
+	const base = {
+		Push = function(s: any)
+			return s
+		end,
+		Pop = function()
+			return "base"
+		end,
+		Peek = print,
+	}
+	const inheritTok = T.NewToken("Test.Rebuild.InheritRebuild")
+	const given = setmetatable({}, { __index = base }) :: any
+	stl.Stack.ImplFor(inheritTok, given)
+	given.Pop = 5
+	stl.Deque.ImplFor(inheritTok, fnsOf(DEQUE6, "D")) -- 덱이 됨 → 스택의 표를 다시 지음(명시 사본으로)
+	assert(stl.Stack.Pop(T.Stamp({}, inheritTok) :: any) == "base", "다시 지어도 사본의 물려받은 함수")
+
+	-- (6) 칸이 Fn/Default 가 아닌 정의(맨 표)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			T.Trait("Test.Rebuild.PlainSlot", factory({ Len = T.Fn(), Sub = {} }))
+		end,
+		"Trait: Test.Rebuild.PlainSlot needs a definition function returning a table of Trait.Fn / Trait.Default",
+		"맨 표 칸"
+	)
+
+	-- (7) 뭉텅이 구현이 준 표의 잘못은 "뭉텅이" 를 탓함(종류가 아니라)
+	const Y: any = T.Trait("Test.Rebuild.BlanketGiver", factory({ Run = T.Fn() }))
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			Y.ImplWhere({ stl.Map }, function(deps: any)
+				return { Run = deps[stl.Map].Get, Extra = print }
+			end)
+		end,
+		"Trait: a blanket implementation of Test.Rebuild.BlanketGiver (ImplWhere) for Stl.HashMap gave Extra",
+		"뭉텅이가 모르는 이름"
+	)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			Y.ImplWhere({ stl.Map }, function(_deps: any)
+				return {}
+			end)
+		end,
+		"Trait: a blanket implementation of Test.Rebuild.BlanketGiver (ImplWhere) for Stl.HashMap is missing Run",
+		"뭉텅이가 빠뜨림"
+	)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			Y.ImplWhere({ stl.Map }, function(_deps: any)
+				return { Run = 5 }
+			end)
+		end,
+		"Trait: a blanket implementation of Test.Rebuild.BlanketGiver (ImplWhere) for Stl.HashMap gave a number as Run",
+		"뭉텅이가 함수 아닌 값"
+	)
+	-- 명시 구현은 그대로 종류를 댐
+	fails(function()
+		where = debug.info(1, "l") + 1
+		Y.ImplFor(T.NewToken("Test.Rebuild.GiverKind"), { Run = print, Extra = print })
+	end, "Trait: Test.Rebuild.GiverKind gave Extra to Test.Rebuild.BlanketGiver", "명시 구현이 모르는 이름")
 end
 print("PASS")
 

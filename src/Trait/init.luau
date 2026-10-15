@@ -183,28 +183,33 @@ end
 
 -- 직렬화로 복사된 값(과 그 안의 테이블들)의 `__type` 을 **이름으로** 이 사본의 진짜 토큰으로 되돌립니다. 이름이 이 사본에 없는
 -- 것은 그대로 둡니다. 돌아 물린 테이블도 됩니다.
+-- 걷기는 명시적 스택으로 — 재귀로 걸었더니 되읽은 LinkedDeque 5만 개(노드가 사슬)에서 stack overflow 였습니다(리뷰 1라운드).
 const function Restore<T>(value: T): T
 	const seen: { [any]: true } = {}
-	local function walk(node: any)
-		if type(node) ~= "table" or seen[node] then
-			return
-		end
-		seen[node] = true
-		const raw = rawget(node, TYPE_KEY)
-		if type(raw) == "table" and not isToken[raw] then
-			const tokenName = rawget(raw :: any, "name")
-			const real = if type(tokenName) == "string" then Registry.byName[tokenName] else nil
-			if real ~= nil and not table.isfrozen(node) then
-				rawset(node, TYPE_KEY, real)
+	const stack: { any } = { value }
+	local top = 1
+	while top > 0 do
+		const node = stack[top]
+		stack[top] = nil
+		top -= 1
+		if type(node) == "table" and not seen[node] then
+			seen[node] = true
+			const raw = rawget(node, TYPE_KEY)
+			if type(raw) == "table" and not isToken[raw] then
+				const tokenName = rawget(raw :: any, "name")
+				const real = if type(tokenName) == "string" then Registry.byName[tokenName] else nil
+				if real ~= nil and not table.isfrozen(node) then
+					rawset(node, TYPE_KEY, real)
+				end
 			end
-		end
-		for key, child in node do
-			if key ~= TYPE_KEY then
-				walk(child)
+			for key, child in node do
+				if key ~= TYPE_KEY and type(child) == "table" and not seen[child] then
+					top += 1
+					stack[top] = child
+				end
 			end
 		end
 	end
-	walk(value)
 	return value
 end
 
@@ -262,14 +267,12 @@ const function newTrait(name: string, def: any): any
 		fnTok[fnName] = at
 	end
 	const trait: any = { FnTok = table.freeze(fnTok) }
+	const impls: { [any]: any } = {}
 	for at, fnName in fnNames do
-		trait[fnName] = Entry.make(trait, name, fnName, at)
+		trait[fnName] = Entry.make(impls, name, fnName, at)
 	end
 	trait.Of = function(x: any): any
-		const full = if isToken[x]
-			then rawget(trait, x)
-			elseif type(x) == "table" then rawget(trait, rawget(x, TYPE_KEY))
-			else nil
+		const full = if isToken[x] then impls[x] elseif type(x) == "table" then impls[rawget(x, TYPE_KEY)] else nil
 		if full == nil then
 			return if isToken[x] then Errors.notImplemented(name, x) else Errors.entryMiss(name, "Of", x)
 		end
@@ -286,6 +289,7 @@ const function newTrait(name: string, def: any): any
 		name = name,
 		fnNames = fnNames,
 		fnTok = fnTok,
+		impls = impls,
 		required = required,
 		builders = builders,
 		explicit = {},
@@ -327,6 +331,33 @@ function implWhere(trait: any, deps: any, build: any)
 		end
 		list[at] = dep
 	end
+	-- 의존 고리는 등록 줄에서 거절: 의존 중 하나가 뭉텅이 구현을 따라 이 트레이트에 닿으면(자기 자신 포함) 명시 구현이 뭉텅이를
+	-- 덮을 때마다 다시 짓기가 서로를 끝없이 불러 라이브러리 줄의 stack overflow 였습니다(2026-10-15 리뷰 1라운드).
+	const seen: { [any]: true } = {}
+	local function reaches(from: any): boolean
+		if from == trait then
+			return true
+		end
+		if seen[from] then
+			return false
+		end
+		seen[from] = true
+		const blankets = records[from].blankets
+		for b = 1, #blankets do
+			const bdeps = blankets[b].deps
+			for at = 1, #bdeps do
+				if reaches(bdeps[at]) then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	for at = 1, #list do
+		if reaches(list[at]) then
+			Errors.whereCycle(rec.name, records[list[at]].name)
+		end
+	end
 	Build.onWhere(trait, { deps = list, build = build })
 end
 
@@ -341,7 +372,7 @@ const function ImplOf(trait: any, value: any): any
 		Errors.notTrait("ImplOf", trait)
 	end
 	const token = TokenOf(value)
-	return if token == nil then nil else rawget(trait, token)
+	return if token == nil then nil else records[trait].impls[token]
 end
 
 const function Implements(trait: any, value: any): boolean
@@ -349,17 +380,28 @@ const function Implements(trait: any, value: any): boolean
 		Errors.notTrait("Implements", trait)
 	end
 	const token = TokenOf(value)
-	return token ~= nil and rawget(trait, token) ~= nil
+	return token ~= nil and records[trait].impls[token] ~= nil
 end
 
 -- 값의 종류가 구현한 `trait` 의 완성 표. 없으면 **사용자 줄 에러**(`"Map: Arr.GroupBy needs a Map — …"`). 트레이트 인자를 검사하지
 -- 않습니다(라이브러리 안에서 자기 트레이트를 넘기는 자리 — 호출당 조회 하나).
 const function ExpectImpl(trait: any, value: any, who: string): any
-	const impl = if type(value) == "table" then rawget(trait, rawget(value, TYPE_KEY)) else nil
+	const rec = records[trait]
+	const impl = if type(value) == "table" then rec.impls[rawget(value, TYPE_KEY)] else nil
 	if impl == nil then
-		return Errors.entryMiss(records[trait].name, who, value)
+		return Errors.entryMiss(rec.name, who, value)
 	end
 	return impl
+end
+
+-- 그 트레이트의 `[토큰] = 완성 표` 표 — 트레이트 파일의 알고리즘 진입점이 구현 찾기를 펼칠 때(`impls[rawget(v, "__type")] or
+-- ExpectImpl(…)` — perf 51절). 키는 토큰뿐이라 문자열 `__type` 은 "없음". ⚠️ 읽기만 — 고치면 시스템이 지은 표가 어긋납니다.
+const function Impls(trait: any): { [any]: { [any]: any } }
+	const rec = records[trait]
+	if rec == nil then
+		Errors.notTrait("Impls", trait)
+	end
+	return rec.impls
 end
 
 -- 트레이트 객체에 **알고리즘 진입점**(트레이트 함수가 아닌 것 — `Map.Keys` 처럼 구현을 써서 도는 함수)을 얹어 돌려줍니다.
@@ -388,5 +430,5 @@ return {
 	TYPE_KEY = TYPE_KEY,
 	NewToken = NewToken, TokenOf = TokenOf, Stamp = Stamp, Restore = Restore,
 	Trait = Trait, Fn = Fn, Default = Default,
-	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose,
+	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose, Impls = Impls,
 }

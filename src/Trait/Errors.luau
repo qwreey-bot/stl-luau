@@ -29,19 +29,25 @@ function Errors.badFns(name: string): never
 		`Trait: {name} needs a definition function returning a table of Trait.Fn / Trait.Default (Trait.Trait(name, function(of) return table.freeze(...) end))`
 	)
 end
-function Errors.unknownName(trait: string, token: string, fnName: any): never
+-- 표를 준 쪽: 명시 구현이면 그 종류, 뭉텅이 구현이면 그 뭉텅이(종류 탓을 하지 않게 — 리뷰 1라운드 참고 11).
+local function giver(trait: string, token: string, blanket: boolean?): string
+	return if blanket then `a blanket implementation of {trait} (ImplWhere) for {token}` else token
+end
+function Errors.unknownName(trait: string, token: string, fnName: any, blanket: boolean?): never
 	return raise(
-		`Trait: {token} gave {tostring(fnName)} to {trait}, which {trait} does not have — pass a table of only that trait's functions (not a whole module)`
+		`Trait: {giver(trait, token, blanket)} gave {tostring(fnName)} to {trait}, which {trait} does not have — pass a table of only that trait's functions (not a whole module)`
 	)
 end
-function Errors.notFunction(trait: string, token: string, fnName: any, value: any): never
-	return raise(`Trait: {token} gave a {typeof(value)} as {tostring(fnName)} for {trait} — it must be a function`)
+function Errors.notFunction(trait: string, token: string, fnName: any, value: any, blanket: boolean?): never
+	return raise(
+		`Trait: {giver(trait, token, blanket)} gave a {typeof(value)} as {tostring(fnName)} for {trait} — it must be a function`
+	)
 end
 function Errors.implNotTable(trait: string, value: any): never
 	return raise(`Trait: {trait}.ImplFor needs a table of functions, got {typeof(value)}`)
 end
-function Errors.missing(trait: string, token: string, fnName: string): never
-	return raise(`Trait: {token} is missing {fnName} for {trait}`)
+function Errors.missing(trait: string, token: string, fnName: string, blanket: boolean?): never
+	return raise(`Trait: {giver(trait, token, blanket)} is missing {fnName} for {trait}`)
 end
 function Errors.already(trait: string, token: string): never
 	return raise(`Trait: {token} already implements {trait}`)
@@ -60,6 +66,14 @@ end
 function Errors.emptyWhere(trait: string): never
 	return raise(
 		`Trait: {trait}.ImplWhere needs a list of traits (a misspelled trait name reads as nil) — use {"{}"} for every kind`
+	)
+end
+function Errors.whereCycle(trait: string, dep: string): never
+	if trait == dep then
+		return raise(`Trait: {trait}.ImplWhere cannot depend on {trait} itself`)
+	end
+	return raise(
+		`Trait: {trait}.ImplWhere on {dep} makes a cycle — {dep} already comes from {trait} through blanket implementations`
 	)
 end
 function Errors.notImplemented(trait: string, token: any): never

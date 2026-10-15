@@ -67,6 +67,8 @@ end)
 export type Full<Self, K, V> = typeof(MapBase.Of<<Self, K, V>>(nil :: any))
 export type Provided<Self, K, V> = typeof(MapBase.ImplOf<<Self, K, V>>(nil :: any))
 const expectImpl = Trait.ExpectImpl
+-- 구현 찾기를 펼칠 표(키가 토큰뿐 — 트레이트 객체를 바로 읽으면 `__type = "Get"` 같은 문자열이 진입점을 꺼냄, 리뷰 1라운드)
+const mapImpls = Trait.Impls(MapBase)
 -- 진입점은 구현 찾기를 **안에 펼쳐** 둡니다 — `expectImpl(…)` 을 부르는 것만으로 호출당 9~10ns 였습니다(perf 51절).
 -- 못 찾았을 때만 `expectImpl` 로 갑니다(에러 메시지).
 
@@ -94,7 +96,7 @@ const function sizedList(map: any): { any }
 end
 
 const function Keys<K, V>(map: Marker<K, V>): { K }
-	const ops: any = (if type(map) == "table" then rawget(MapBase :: any, rawget(map :: any, "__type")) else nil)
+	const ops: any = (if type(map) == "table" then mapImpls[rawget(map :: any, "__type")] else nil)
 		or expectImpl(MapBase, map, "Keys")
 	const out: { K } = sizedList(map)
 	local count = 0
@@ -106,7 +108,7 @@ const function Keys<K, V>(map: Marker<K, V>): { K }
 end
 
 const function Values<K, V>(map: Marker<K, V>): { V }
-	const ops: any = (if type(map) == "table" then rawget(MapBase :: any, rawget(map :: any, "__type")) else nil)
+	const ops: any = (if type(map) == "table" then mapImpls[rawget(map :: any, "__type")] else nil)
 		or expectImpl(MapBase, map, "Values")
 	const out: { V } = sizedList(map)
 	local count = 0
@@ -120,7 +122,7 @@ end
 -- 키-값 레코드의 목록(`{ { key, value } }`). 레코드는 **새로 만든 것**이라 받은 쪽이 고쳐도 맵은
 -- 그대로입니다. 종류를 아는 코드는 `HashMap.Records`/`FlatMap.Records` 를 직접 쓰세요.
 const function Records<K, V>(map: Marker<K, V>): { Types.Record<K, V> }
-	const ops: any = (if type(map) == "table" then rawget(MapBase :: any, rawget(map :: any, "__type")) else nil)
+	const ops: any = (if type(map) == "table" then mapImpls[rawget(map :: any, "__type")] else nil)
 		or expectImpl(MapBase, map, "Records")
 	const out: { Types.Record<K, V> } = sizedList(map)
 	local count = 0

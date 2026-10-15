@@ -1253,7 +1253,7 @@ do
 			and string.find(tostring(errPartial), `spec.contracts.luau:{partialLine}:`, 1, true),
 		`빠진 함수: {errPartial}`
 	)
-	assert(rawget(stl.Map :: any, PartialType) == nil, "거절된 등록은 남지 않음")
+	assert(stl.Trait.Impls(stl.Map)[PartialType] == nil, "거절된 등록은 남지 않음")
 	assert(stl.Trait.ImplOf(stl.Map, { __type = PartialType }) == nil, "거절된 등록은 조회되지 않음")
 	-- 함수가 아닌 값·테이블이 아닌 구현도. (2026-10-15) 함수가 아닌 값은 "빠짐" 이 아니라 "함수가 아님" 으로 알립니다.
 	local badLine = 0
@@ -1275,7 +1275,7 @@ do
 		end)
 		assert(not okBad and string.find(tostring(errBad), bad.needle, 1, true), `잘못된 구현: {errBad}`)
 		assert(string.find(tostring(errBad), `spec.contracts.luau:{badLine}:`, 1, true), `사용자 줄: {errBad}`)
-		assert(rawget(stl.Collection :: any, BadType) == nil, "거절된 등록은 남지 않음")
+		assert(stl.Trait.Impls(stl.Collection)[BadType] == nil, "거절된 등록은 남지 않음")
 	end
 	-- 함수가 없는 사용자 트레이트는 빈 구현을 받고, 함수 목록은 **정의가 돌려준 표를 한 번 읽은 것**
 	-- (2026-10-15 — 옛 `New(name, { required = 목록 })` 의 자리는 정의 팩토리가 돌려주는 표)
@@ -2054,7 +2054,7 @@ do
 		`{errDep}`
 	)
 	assert(string.find(tostring(errDep), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errDep}`)
-	assert(rawget(ShowTrait, Lonely) == nil, "거절된 등록은 남지 않음")
+	assert(stl.Trait.Impls(ShowTrait)[Lonely] == nil, "거절된 등록은 남지 않음")
 	ShowTrait.ImplFor(Lonely, {
 		Show = function(): string
 			return "lonely"
@@ -3884,7 +3884,7 @@ do
 				),
 			`하나 더: {err}`
 		)
-		assert(rawget(stl.Collection :: any, kind) == nil, "실패한 등록은 남지 않음")
+		assert(stl.Trait.Impls(stl.Collection)[kind] == nil, "실패한 등록은 남지 않음")
 		assert(string.find(tostring(err), `spec.contracts.luau:{where}:`, 1, true), `하나 더 사용자 줄: {err}`)
 	end
 
@@ -4022,7 +4022,7 @@ do
 	}
 	for _, wiring in wirings do
 		const module = (stl :: any)[wiring.kind]
-		const impl = rawget(wiring.trait, module.Token)
+		const impl = stl.Trait.Impls(wiring.trait)[module.Token]
 		const label = `{wiring.kind} 의 {wiring.traitName}`
 		assert(impl ~= nil, `{label}: 등록이 없음`)
 		local expected = 0
