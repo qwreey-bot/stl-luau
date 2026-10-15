@@ -127,6 +127,33 @@ local function negBody(deque: stl.DequeFull<A, B>): stl.StackProvided<A, B>
 	}
 end
 
+--[[ 진입점·등록 서명 하나씩(2026-10-15 리뷰 1라운드 — 서명을 틀리게 바꾼 돌연변이 여섯이 배터리를 통과했던 자리) ]]
+local borrowedQ: stl.CircularDequeRead<number> = d
+local negQueueBorrow = stl.Queue.Of(borrowedQ) -- NEG: 읽기로 빌린 참조는 큐를 못 얻음
+local negQueuePush = stl.Queue.Push(d, "x") -- NEG: 원소 타입
+local negStackPopBorrow = stl.Stack.Pop(borrowedQ) -- NEG: 빌린 참조에서 꺼냄
+local function noRet(_s: CircularDeque<A>, _x: A) end
+local negDequeNoRet: stl.DequeProvided<CircularDeque<A>, A> = {
+	PushFront = stl.CircularDeque.PushFront,
+	PushBack = noRet, -- NEG: 자기 자신을 안 돌려줌
+	PopFront = stl.CircularDeque.PopFront,
+	PopBack = stl.CircularDeque.PopBack,
+	Front = stl.CircularDeque.Front,
+	Back = stl.CircularDeque.Back,
+}
+local function clearNoRet(_s: CircularDeque<A>) end
+local negClearNoRet: stl.CollectionProvided<CircularDeque<A>> = { Len = stl.CircularDeque.Len, Clear = clearNoRet } -- NEG
+local function strGet(_s: Arr<A>, _i: string): A?
+	return nil
+end
+local negListGet: stl.ListProvided<Arr<A>, A, number> = {
+	Get = strGet, -- NEG: 위치 타입
+	FirstIndex = stl.Arr.FirstIndex,
+	LastIndex = stl.Arr.LastIndex,
+	NextIndex = stl.Arr.NextIndex,
+	PrevIndex = stl.Arr.PrevIndex,
+}
+
 local canary: string = 42
 
 return {
@@ -157,5 +184,11 @@ return {
 	negArity,
 	okBody,
 	negBody,
+	negQueueBorrow,
+	negQueuePush,
+	negStackPopBorrow,
+	negDequeNoRet,
+	negClearNoRet,
+	negListGet,
 	canary,
 }
