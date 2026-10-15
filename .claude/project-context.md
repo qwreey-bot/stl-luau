@@ -58,7 +58,7 @@ src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
   Types.luau       작은 공용 타입(비교자, 레코드). **말단 모듈** — 아무것도 require 안 함
   Common.luau      에러 규약(raise), 비교자 어댑터와 기본 3방향 비교자, 리스트 길이 규약
-  Trait/           ⭐ 트레이트 **시스템만**(2026-10-15 갈아 끼움 — 질문 AY, 계속 바뀔 수 있음): init(토큰 NewToken·Restore, 정의 Trait·Fn·Default + 타입 함수 View,
+  Trait/           ⭐ 트레이트 **시스템만**(2026-10-15 갈아 끼움 — 질문 AY, 계속 바뀔 수 있음): init(토큰 NewToken·Restore, 정의 Trait·Fn·FnMut·Default·DefaultMut·Sig + 타입 함수 View·Entries — 읽기 보기 Of·완성 표 OfMut(질문 BA),
                    조회 ImplOf·Implements·ExpectImpl·Expose·Impls), Registry(강한 등록부), Build(짓기·사건 셋·위로 번짐), Entry(시스템이 만드는 진입점), Errors
   Traits/          ⭐ 트레이트 하나하나 — 계약 타입·마커·기본 구현·종류를 모르는 코드의 진입점이 한 파일에.
                    모듈이 곧 트레이트 객체(`Trait.Impl(List, …)` 와 `List.IndexOf(v, x)` 가 같은 이름)
@@ -103,7 +103,8 @@ src/
   ⭐ src 전체가 --!strict 이고 예외가 없습니다. type function 을 쓰던
      Tuple/TypeUtil 은 2026-09-22 에 내렸습니다
      (.claude/research/type-function-experiment/). 지금의 사용자 타입 함수는
-     Trait.View 하나(2026-10-15 — 트레이트 정의를 한 번만, 질문 AY).
+     Trait.View(2026-10-15 — 트레이트 정의를 한 번만, 질문 AY)와 Trait.Entries
+     (같은 날 — 진입점 서명을 정의에서, 질문 BA) 둘.
 tests/
   run.luau         전체 엔트리 (luau tests/run.luau)
   spec.arr.luau    이하 컨테이너별 테스트. assert + print, 프레임워크 없음
@@ -155,7 +156,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
-| `Types` / `Common` / `Trait` / `Traits/*` | 트레이트 2026-10-06, 불변 마커·`Collection` 10-12, 기본 구현·의존·저절로 따라오기 10-13(옛 시스템), 구조 재배치 10-13, ⭐ **2026-10-15 새 시스템으로 갈아 끼움**(질문 AY — 정의 팩토리를 한 번(레코드 + 타입 함수 `View`), 뭉텅이 구현, 시스템이 만드는 진입점) — 리뷰 전 | `spikes/55`, `61`, `63`, `64`, `69`, `70` |
+| `Types` / `Common` / `Trait` / `Traits/*` | 트레이트 2026-10-06, 불변 마커·`Collection` 10-12, 기본 구현·의존·저절로 따라오기 10-13(옛 시스템), 구조 재배치 10-13, ⭐ **2026-10-15 새 시스템으로 갈아 끼움**(질문 AY — 정의 팩토리를 한 번(레코드 + 타입 함수 `View`), 뭉텅이 구현, 시스템이 만드는 진입점) — 리뷰 소진(AY). ⭐ 같은 날 **읽기·쓰기를 칸에(`Of`/`OfMut`), 진입점 서명을 정의에서(`Entries`), 트레이트마다 연관 타입 레코드(`__traits`)**(질문 BA) — 리뷰 전 | `spikes/55`, `61`, `63`, `64`, `69`, `70`, `71`, `72` |
 | `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
 | `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |

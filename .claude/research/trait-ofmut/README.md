@@ -1,7 +1,7 @@
 # `Of`/`OfMut` + 트레이트를 타입에 드러내기 — 시제품 (2026-10-15)
 
 > 브랜치 **`proto/trait-ofmut`**(worktree `/code/Projects/stl-luau-proto/trait-ofmut`)에 통째로 있습니다 — 이 폴더는 그 기록.
-> 본 저장소(main)에는 들이지 않았습니다(질문 BA).
+> ⭐ **2026-10-15 main 에 들임**(사용자: *"가 나 들여보고. 생각하자"* — 질문 BA 의 (가)·(나)). 이름(다)은 임시 그대로.
 
 ## 어떻게 여기까지 왔나
 
@@ -94,5 +94,5 @@ read __traits: { read List: List.Assoc<T, number>, read Deque: Deque.Assoc<T>, r
 - `entries-probe.luau` — `Entries` 의 첫 프로브(빌린 참조에 쓰기·원소·다른 종류·칸의 제네릭 `U`·제네릭 몸통 안 호출).
 - `shared-generics-minimal.luau` — 상류 후보의 최소화 시도(재현 안 됨).
 - `spike-diff.py` — 스파이크의 기대 줄과 실측 줄을 줄마다 견주는 도구(시제품에서 씀).
-- 새 음성 대조군 `spikes/71-trait-ofmut.luau`(브랜치에만 — 여기 `spike-71-trait-ofmut.luau` 는 사본, require 경로가 브랜치 기준이라 여기선 안 돎).
-- `entries-probe.luau` 도 require 가 `../../../src/Trait` — 브랜치의 src 기준(main 의 src 엔 `Entries`·`FnMut` 이 없음).
+- 음성 대조군 `spikes/71-trait-ofmut.luau`(읽기·쓰기 보기, 사용자 트레이트), `spikes/72-trait-adapter.luau`(바깥에서 트레이트를 덧붙이는 중간자 —
+  사용자: *"<T>(Arr<T>) -> Stack<T> 를 주는 뭔가"*).

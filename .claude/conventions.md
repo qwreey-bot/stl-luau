@@ -76,22 +76,43 @@
     `List.ImplFor(TOKEN, …)` 과 `List.IndexOf(값, x)` 가 같은 이름. 컨테이너는 `src/Collections/`, 컨테이너를 모르는 알고리즘(`BSearch`,
     곧 정렬들)은 `src/Algorithms/`. **확장할 수 있게만** 하고 조각마다 따로 떼어 쓸 수 있게까지는 만들지 않습니다. 진입점의 에러 머리는
     트레이트 이름(`List: IndexOf needs a List — …`).
-  - ⭐ **트레이트 = 정의(팩토리) 한 번** — 정의가 이름 목록(런타임)이자 트레이트의 제네릭 타입이자 `X.Of`·`X.ImplOf` 의 타입입니다:
+  - ⭐ **트레이트 = 정의(팩토리) 한 번** — 정의가 이름 목록(런타임)이자 트레이트의 제네릭 타입이자 `X.Of`·`X.OfMut`·`X.ImplOf`·진입점의 타입입니다:
     ```lua
-    const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+    -- 트레이트가 자기 연관 타입 레코드와 조건(마커)을 가짐(질문 BA)
+    export type AssocRead<T> = { read Item: () -> T }
+    export type Assoc<T> = { read Item: () -> T, read Mut: (T) -> T }
+    export type Marker<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: AssocRead<T> } }
+    export type MarkerMut<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: Assoc<T> } }
+    const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & Marker<T>) | AnyToken, ofMut: (Self & MarkerMut<T>) | AnyToken)
     	return table.freeze({
-    		Get = Trait.Fn<<(list: Self, idx: I) -> E?>>(),                                  -- 필수
-    		IndexOf = Trait.Default(function(ops: any): (list: Self, item: E) -> I? … end), -- 기본 구현(빌더)
+    		PushBack = Trait.FnMut<<(deque: Self, item: T) -> Self>>(), -- 필수·쓰기
+    		Front = Trait.Fn<<(deque: Self) -> T?>>(),                 -- 필수·읽기
+    		-- 기본 구현은 Trait.Default(빌더)·Trait.DefaultMut(빌더)
     	})
     end)
-    export type Full<Self, E, I> = typeof(ListBase.Of<<Self, E, I>>(nil :: any))        -- 완성 표
-    export type Provided<Self, E, I> = typeof(ListBase.ImplOf<<Self, E, I>>(nil :: any)) -- 등록 표(기본 구현 칸은 선택)
+    export type Read<Self, T> = typeof(DequeBase.Of<<Self, T>>(nil :: any))        -- 읽기 보기(쓰기 칸 없음)
+    export type Full<Self, T> = typeof(DequeBase.OfMut<<Self, T>>(nil :: any))     -- 완성 표
+    export type Provided<Self, T> = typeof(DequeBase.ImplOf<<Self, T>>(nil :: any)) -- 등록 표(기본 구현 칸은 선택)
     ```
-    - ⭐ **칸은 타입으로 레코드**(`Fn` = `{ required: true, fn: F }`, `Default` = `{ required: false, fn: F }`)이고, 사용자 타입 함수
-      **`Trait.View<정의, "full"|"impl">`** 이 정의 함수의 타입을 받아 두 보기(완성 = 칸마다 `fn`, 등록 = 기본 구현 칸만 `fn?`)로 다시
-      짓습니다 — 매개변수와 **제네릭 목록은 정의의 것 그대로**(`f:generics()`), 가변 꼬리는 뗌(`X.Of(d, 1)` 이 인자 수 에러). 정의가 함수가
-      아님·표를 안 돌려줌·칸이 `Fn`/`Default` 가 아님은 정의 줄의 타입 에러(`'View' type function errored at runtime: Trait.Trait: …`,
-      보기 둘이라 두 번씩). 정의나 반환이 `any` 면 보기도 `any`(검사를 끄는 관용구 — 런타임만 보는 테스트가 씀).
+    - ⭐ **칸은 타입으로 레코드**(`{ required, mut, fn }` — `Fn`·`FnMut`·`Default`·`DefaultMut`)이고, 사용자 타입 함수
+      **`Trait.View<정의, "read"|"full"|"impl">`** 이 정의 함수의 타입을 받아 세 보기(읽기 = 쓰기 칸을 뺌, 완성 = 칸마다 `fn`, 등록 = 기본 구현
+      칸만 `fn?`)로 다시 짓습니다 — **제네릭 목록은 정의의 것 그대로**(`f:generics()`), 가변 꼬리는 뗌(`X.Of(d, 1)` 이 인자 수 에러). 정의가
+      함수가 아님·표를 안 돌려줌·칸이 넷 중 하나가 아님·매개변수가 셋 이상은 정의 줄의 타입 에러(`'View' type function errored at runtime:
+      Trait.Trait: …`, 보기 셋이라 세 번씩). 정의나 반환이 `any` 면 보기도 `any`(검사를 끄는 관용구 — 런타임만 보는 테스트가 씀).
+    - ⭐ **읽기·쓰기는 칸에**(2026-10-15 질문 BA — 사용자: *"MarkerMut Marker 나누는거 너무 애매모호 … Mut/NonMut 을 한 곳에 모아둔게 문제"*,
+      Rust 의 `&self`/`&mut self` 를 칸에): `X.Of(v)` 는 **읽기 보기**(정의의 첫 매개변수 조건 — 빌린 읽기 참조도 받음), `X.OfMut(v)` 는 **완성 표**
+      (둘째 매개변수 조건 — 바꿀 수 있는 참조만, 둘째가 없으면 첫째). 런타임은 같은 표. 예전엔 읽기·쓰기를 트레이트 통째의 `of` 와 진입점마다의
+      마커 두 곳에서 정해 어긋났습니다 — 빌린 참조가 `Collection.Of` 를 거쳐 `Clear` 를 얻었고(구멍), `Deque.Of` 는 아예 못 얻었음(과잉). `spikes/71`.
+    - ⭐ **트레이트마다 자기 연관 타입 레코드, 컨테이너는 `__traits` 한 줄**(질문 BA — 사용자: *"Trait 를 아예 드러내는게 나아보이겠다"*):
+      `read __traits: { read List: List.Assoc<T, number>, read Deque: Deque.Assoc<T>, read Collection: Collection.Assoc }`(빌린 읽기 타입은
+      `AssocRead` 들 — `Collection` 은 안 적음). 레코드의 이름·위치·변성은 **그 트레이트 안의 일**이라 트레이트끼리 이름에 합의할 필요가 없고 뜻이
+      부딪히지 않습니다(예전의 공용 `__generics: { Item, Index }` 는 전역 어휘였음). 공변 칸은 `() -> T`, 바꿀 수 있는 참조의 표시는 불변 팬텀
+      `Mut`(`(T) -> T` 는 `() -> T` 의 서브타입이 아니라 칸 하나로는 두 쓰임을 못 덮음). 맵·셋의 조건(`of`)은 불변(조회도 키가 입력 — 질문 AM).
+      새 컨테이너·새 트레이트도 이 모양. 컨테이너 타입의 팬텀 줄이 63 → 14 였습니다.
+    - ⚠️ **등록(런타임)은 타입을 못 바꿉니다**(사용자: *"Impl 자체가 타입을 변경 못 시키기 때문에 생긴다는 큰 제약을 돌고 돌고 돌았을 뿐"*) —
+      바깥에서 등록·뭉텅이로 만족시킨 트레이트는 그 종류의 타입에 안 붙습니다. 쓰는 쪽이 **교집합 별칭과 중간자 함수**로 덧붙입니다:
+      `type StackArr<T> = Arr<T> & { read __traits: { read Deque: stl.DequeAssoc<T> } }`, `local function asStack<T>(a: Arr<T>): StackArr<T> return a :: any end`
+      (사용자: *"<T>(Arr<T>) -> Stack<T> 를 주는 뭔가"* — 원소 타입이 이어지고 변환 안 한 값·빌린 참조는 막힘, `spikes/72`). 런타임 등록이 짝.
     - 왜 이 모양인가(D3 대비): D3 는 기본 구현이 있으면 정의를 모드 **값**으로 두 번(`def(FULL), def(IMPL)`) 넘겼고, 모드를 추론에 맡기면
       같은 모듈에서 덜 줄어든 `index<>` 가 `never` 가 돼 검사가 사라졌습니다. 레코드 안에선 정의자가 모드를 틀릴 자리 자체가 없습니다.
       쓰는 사람·구현하는 사람이 보는 타입과 에러 문구는 D3 와 **글자 하나까지 같았습니다**(편집기 luau-lsp 1.70.1 + Studio 플래그로도 —
@@ -103,19 +124,19 @@
       등록 표에서 **칸 자체가 제네릭인 함수**(`Fold<U>`)의 못박기·반환·인자 수가 0건입니다 — `View` 가 다시 지은 `<U>` 가 모듈 스코프를 받고
       상류 `Subtyping.cpp:830` 이 그런 제네릭을 통과시킴. 쓰는 쪽·제네릭이 아닌 칸·다른 파일은 그대로 잡힘. 라이브러리의 트레이트는 늘
       `src/Traits/` 의 다른 파일이라 해당 없음. `spikes/70` 의 `-- 경계` 줄이 지금의 0건을 고정(상류가 고치면 알림).
-    - **`of` 가 연관 타입을 고릅니다**: 쓰는 함수가 있는 트레이트(Deque·Stack·Queue·Map·Set)는 `Item<T>`(불변 — 읽기 전용으로 빌린 참조는
-      그 트레이트를 **아예 못 얻음**), 읽기만 하는 트레이트(List)는 `ItemRead`/`ItemIndexRead`(공변 — 빌린 참조도 얻음). 원소가 없는 트레이트
-      (Collection)는 `Self` 만. 컨테이너는 자기 데이터 타입에 `read __generics: { read Item: (T) -> T, … }`(불변 — 맵은 `Key`·`Value`)와 읽기
-      타입이 있으면 `read __readGenerics: { read Item: () -> T, … }`(공변, 전체 타입과 읽기 타입 둘 다)를 적습니다. 새 컨테이너도.
     - 팩토리는 런타임에 **한 번**(of = nil) 불려 이름을 줍니다(`Fn` = 필수, `Default` = 기본 구현 빌더). **`table.freeze({ … })` 로 돌려줍니다** —
       트레이트 타입의 필드가 `read` 가 됩니다(사용자: *"팩토리에 걸리는거임? 그럼 괜찮을듯"* — 한 줄 등록의 길이 열려 있음).
     - 기본 구현 빌더 `Default(function(ops) return function(…) … end end)` 의 `ops` 는 그 종류의 완성 표 — 형제(재정의됐으면 그것)를
       읽으면 그 자리에서 먼저 지어지고(고리는 에러), 지역으로 붙잡아도 됩니다(다시 지어질 때 다시 불림). ⚠️ 계약: 던지지 않고 부작용 없이
       함수만 돌려줌. ⚠️ 기본 구현 타입에 오버로드(`&`)를 쓰지 마세요 — 등록 보기의 `(A & B)?` 에 한쪽 갈래만 든 재정의가 0건(상류 결함).
-    - 진입점(`X.이름(값, …)`)은 **시스템이 만듭니다**(함수 번호로 꺼냄 — 호출당 옛 손 진입점보다 +2~5ns, perf 54절). 트레이트 파일은 서명만
-      **교집합으로 입힙니다**(`const List = ListBase :: typeof(ListBase) & { read IndexOf: <E, I>(list: Marker<E, I>, item: E) -> I?, … }`) —
-      트레이트 객체 타입에 인덱서가 없어야 `X.Of<<…>>` 가 됩니다(`[string]: any` 와 교집합이면 함수가 아니게 됨). 서명을 안 입힌 진입점은
-      런타임엔 있지만 타입에는 없습니다(`Map.Get` 등 — 부르는 곳이 생기면 `MarkerMut` 로 입힘). 트레이트 함수가 아닌 **알고리즘 진입점**
+    - 진입점(`X.이름(값, …)`)은 **시스템이 만듭니다**(함수 번호로 꺼냄 — 호출당 옛 손 진입점보다 +2~5ns, perf 54절). ⭐ **서명도 정의에서
+      지어집니다**(타입 함수 `Trait.Entries` — 트레이트 객체 타입에 자동으로, 질문 BA): 쓰기 칸은 `ofMut` 조건(`MarkerMut`), 읽기 칸은 `of`
+      조건(`Marker`)을 첫 인자로 — **마커를 손으로 고르지 않습니다**. 부르는 쪽 서명이 칸 타입과 다르면(`List.Some` 의 술어 — 구현은
+      `(E, I, ...any)` 를 받아야, 부르는 쪽은 꼬리 없는 술어 변수를 넘길 수 있어야 — `spikes/64`) `Default(build, Trait.Sig<<서명>>())`.
+      `Self` 가 첫 인자에만 나오면 빼서 제네릭 순서가 예전 손 서명과 같습니다(명시적 타입 인자를 일부만 주면 솔버 내부 에러라 순서가 곧
+      공개 표면 — `IndexOf<<number?, number>>`). ⚠️ 진입점마다 제네릭을 **새로** 만들어 바꿔 끼웁니다 — 나눠 쓰면 `List.IndexOf(a, 20)` 이
+      `Expected 'E', got 'number'` 였습니다(원인은 모름, 손으로 줄인 재현은 0건 — `research/trait-ofmut`). 트레이트 객체 타입에 인덱서가 없어야
+      `X.Of<<…>>` 가 됩니다(`[string]: any` 와 교집합이면 함수가 아니게 됨). 트레이트 함수가 아닌 **알고리즘 진입점**
       (`Map.Keys` — 구현을 써서 도는 것)은 `Trait.Expose(트레이트, { … })` 로 얹고, 구현 찾기를 안에 펼칩니다(`rawget(T, rawget(v, "__type"))
       or expectImpl(T, v, "이름")` — perf 51절).
   - ⭐ **등록**: `X.ImplFor(토큰, 표)` — 컨테이너 모듈의 끝:
@@ -222,14 +243,16 @@
   비교자가 라이브러리 줄에서 터졌습니다(진단 0건 — AC 의 "공변으로 빌린 참조가 쓰기를 얻음" 과 같은
   메커니즘). 그런 제네릭은 **`MapMarkerMut<K, V>`/`SetMarkerMut<T>`/`ListMarkerMut<E, I>`** 을 받습니다 — 데이터 타입의 함수 타입
   팬텀(`read __mapMut: (K, V) -> (K, V)`, 리스트는 `(E, I) -> (E, I)`)을 요구해 불변이고, 읽기 마커의 서브타입이라 읽는 알고리즘에도
-  그대로 넘어갑니다. `ArrRead`(빌린 참조)에는 그 팬텀이 없습니다. 새 컨테이너의 데이터 타입에도 같이
-  넣으세요. ⚠️ 읽기 마커로 쓰는 코드를 타입이 막지는 못합니다(구현은 `any` 를 거침) — 규약입니다.
+  그대로 넘어갑니다. `ArrRead`(빌린 참조)에는 그 팬텀이 없습니다. (2026-10-15 질문 BA 부터 팬텀은 트레이트 레코드의 `Mut` 칸
+  — `read __traits: { read Map: Map.Assoc<K, V> }` — 이고, **트레이트 함수의 진입점은 칸의 읽기·쓰기로 마커가 저절로 정해집니다**. 이 규칙이
+  남는 곳은 사용자가 마커를 받아 직접 짜는 제네릭과 `Trait.Expose` 의 알고리즘 진입점.) ⚠️ 읽기 마커로 쓰는 코드를 타입이 막지는 못합니다
+  (구현은 `any` 를 거침) — 규약입니다.
   **경계**: 넓어지는 것은 **타입 변수로 받아 컨테이너에 넘기는** 키·위치·값입니다. `==` 비교만 하는 값
   (`List.IndexOf(list, item)` — 넓어져도 그냥 "없음")과, 위치를 타입 변수로 두지 않은 조회
   (`ListMarker<E, number>` + `idx: number`)는 읽기 마커로 건전하고 `ArrRead`(빌린 참조)도 받습니다.
   트레이트 파일의 진입점에 그런 함수(쓰기, 키를 넘기는 조회)를 더할 때도 `Mut` 마커로.
   ⭐ **원소 타입이 흘러들지 않아도, 컨테이너를 바꾸는 제네릭은 "바꿔도 되는 참조" 를 요구합니다**(2026-10-12,
-  질문 AO — `spikes/63`): `Collection.Clear` 는 `Collection.MarkerMut`(팬텀 `__collectionMut`)을 받습니다. 토큰만
+  질문 AO — `spikes/63`): `Collection.Clear` 는 `Collection.MarkerMut`(레코드 `__traits.Collection` — 바꿀 수 있는 참조만 적음)을 받습니다. 토큰만
   요구했더니 읽기 전용으로 빌린 `ArrRead`·`CircularDequeRead` 가 진단 0건으로 지워졌습니다. 읽기만 하는 것(`Collection.Len`)은
   토큰만(`CollectionMarker`) — 빌린 참조도 받습니다.
 
@@ -327,8 +350,8 @@
 - ⭐ **덱은 둘이고 `Deque` 는 트레이트입니다**(2026-10-13 사용자 결정): `CircularDeque`(링 버퍼 — 예전 `Deque`)와
   `LinkedDeque`(노드를 양방향으로 이음). 종류를 모르는 코드는 `Deque.PushBack(d, v)`·`Deque.PopFront(d)`
   (`src/Traits/Deque.luau`). 양끝만 쓰면 원형이 1.13~1.41배 빠르고(perf 38-3절), 가운데의 위치(노드)를 쥐고 O(1) 로 넣고 빼야 하면
-  연결입니다. 새 덱 구현은 데이터 타입에 `read __dequeItem: T` 와 팬텀 `read __dequeMut: (T) -> T` 를
-  넣고(읽기 타입에는 앞의 것만), 연관 타입 팬텀 `read __generics: { read Item: (T) -> T, … }` 도, 그리고 `const dequeImpl: Deque.Provided<새덱<A>, A> = { PushFront = …, … 여섯 }` 뒤 `Deque.ImplFor(TOKEN, dequeImpl)`.
+  연결입니다. 새 덱 구현은 데이터 타입의 `__traits` 에 `read Deque: Deque.Assoc<T>`(읽기 타입에는 `Deque.AssocRead<T>`)를 적고, 그리고
+  `const dequeImpl: Deque.Provided<새덱<A>, A> = { PushFront = …, … 여섯 }` 뒤 `Deque.ImplFor(TOKEN, dequeImpl)`.
   ⭐ **`Stack`·`Queue` 는 덱이면 따라오는 트레이트입니다**(2026-10-14 사용자 결정, 질문 AV: *"트레이트로 두는거 동의.
   stack 으로 무엇을 쓸지, queue 로 무엇을 쓸 지는 유저가 선택 가능"*) — 필수 `Push`·`Pop`·`Peek`, `Deque` 의 뭉텅이 구현(`ImplWhere`): `Stack.Push`·`Pop`·`Peek`
   (= `PushBack`·`PopBack`·`Back`), `Queue.Push`·`Pop`·`Peek`(= `PushBack`·`PopFront`·`Front`). 새 컨테이너도, 바깥의 덱도
@@ -574,9 +597,13 @@
 보고싶음."*). 쓸 만한 자리가 보이면 시제품으로 만들어 **무슨 부작용을 내는지 재서** 보여 드리고 정합니다 — 첫 사례는
 트레이트 v5 의 내장 `index<>`(`.claude/research/trait-v5/`).
 
-⭐ **지금 src 의 사용자 타입 함수는 하나 — `Trait.View`**(2026-10-15, 질문 AY — 트레이트 정의를 한 번만 넘기는 레코드 안, 위 트레이트 절).
-들이기 전에 잰 부작용: 다시 지은 제네릭이 적용한 자리의 스코프를 받고 기본값·바운드를 잃음(지금 정의엔 없음), 제네릭 소비자·제네릭
-재정의는 그대로 검사됨(`spikes/70`), 쓰는 쪽 에러 문구는 D3 와 같음. 새 타입 함수를 더하면 같은 식으로 재서 보여 드립니다.
+⭐ **지금 src 의 사용자 타입 함수는 둘 — `Trait.View`·`Trait.Entries`**(위 트레이트 절).
+- `View`(2026-10-15, 질문 AY — 트레이트 정의를 한 번만 넘기는 레코드 안): 들이기 전에 잰 부작용 — 다시 지은 제네릭이 적용한 자리의 스코프를
+  받고 기본값·바운드를 잃음(지금 정의엔 없음), 제네릭 소비자·제네릭 재정의는 그대로 검사됨(`spikes/70`), 쓰는 쪽 에러 문구는 D3 와 같음.
+- `Entries`(2026-10-15, 질문 BA (나) — 사용자: *"가 나 들여보고"*, 진입점 서명을 정의에서): 잰 부작용 — 에러 문구가 길어짐(별칭이 풀림, 대신
+  그 타입이 구현하는 트레이트가 메시지에 나옴), **원인을 모르는 우회 하나**(진입점마다 제네릭을 새로 만들어 바꿔 끼움 — 안 하면
+  `Expected 'E', got 'number'`, `research/trait-ofmut`). 배터리 `spikes/55`·`60`·`61`·`64`·`65`·`71`·`72` 가 지킴.
+새 타입 함수를 더하면 같은 식으로 재서 보여 드립니다.
 게이트의 에러 규약은 최상위 `type function … end` 몸통을 건너뜁니다(거기의 `error` 는 타입 에러를 내는 길). `src/` 는 여전히
 **전부 `--!strict`** 이고 예외가 없습니다. 예전에 쓰던 `Tuple`/`TypeUtil` 은 내린 채입니다.
 
