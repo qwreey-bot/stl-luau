@@ -22,16 +22,13 @@
 
 (2026-10-13 에 확인 끝: AJ·AK·AN·AO — 바뀐 것은 `MapOps` 에서 `Records` 를 뺀 것과 AR.)
 
-## ⭐ 지금 하는 일 — 트레이트 D3 를 src 에 들이기 (2026-10-15 사용자 결정, 질문 AY)
+## ⭐ 지금 하는 일 — 트레이트 새 시스템을 src 에 들이기 (2026-10-15 사용자 결정, 질문 AY)
 
 | 단계 | 무엇 | 상태 |
 |---|---|---|
-| 1 | 시스템 `src/Trait/`(폴더): `research/trait-v9` 런타임(토큰 이름 유일·`Restore`, 강한 등록부, 사건 셋, 뭉텅이 `ImplWhere`, 기본 구현 빌더, 시스템이 만드는 진입점) + 지금 src 가 리뷰로 굳힌 성질(`__index` 사슬로 물려받은 구현, 모르는 이름·함수 아닌 값 에러, `TokenOf`·`Stamp`·`Implements`) + 알고리즘 진입점을 얹는 `Expose`. 트레이트 객체 타입은 인덱서 없음(진입점 서명은 트레이트 파일이 교집합으로 — `research/trait-v10/overlay.luau`) | 진행 중 |
-| 2 | 트레이트 일곱(`src/Traits/`) D3 모양 — 기본 구현 있는 `List` 만 `def(FULL), def(IMPL)`, 정의 팩토리는 `table.freeze`, 진입점 서명은 지금 것 그대로 입힘. `Stack`·`Queue` 는 `Deque` 의 뭉텅이 구현 | |
-| 3 | 컨테이너 열의 등록(`XImpl` 주석 단 지역 + `X.ImplFor`), `init.luau` | |
-| 4 | 테스트(`spec.contracts`·`spec.traitrebuild` — 리뷰 2라운드 작업분 흡수), 음성 대조군(55·61·63·64·68 + 같은 모듈 반환·정의자 실수·성장 POS — 판정 조건) | |
-| 5 | 진입점 성능 재기(perf), 문서(conventions 트레이트 절·project-context·architecture), check.sh | |
-| 6 | 리뷰 소진 | |
+| 1~5 | D3 를 들임 — 시스템 `src/Trait/`, 트레이트 일곱, 등록 21곳, 테스트, 음성 대조군, perf 54절, 문서 | ✅ `b8bb887`~`b0fa1ba` |
+| 5′ | ⭐ **레코드 안으로 바꿈**(같은 날 사용자 제안 → *"확인. 해보자"*): `Fn`/`Default` 는 타입으로 `{ required, fn }`, 타입 함수 `Trait.View` 가 두 보기로 — 정의 한 번, 모드 없음. 조건 둘(편집기 luau-lsp 1.70.1 + Studio FFlag, 에러 문구) 통과. 꼬리를 떼어 `Of` 인자 수 검사, 정의자 실수 메시지, `spikes/70`, 게이트가 타입 함수 몸통을 건너뜀, `scripts/editor-check.sh`(편집기 조건 배터리 — 게이트 아님) | ✅ |
+| 6 | 리뷰 소진(D3 이관분 + 레코드 안). Opus 가 이관 중 짚은 것: 진입점이 구현의 반환을 그대로 돌려줌(계약: `Push`·`Clear` 는 자기 자신), `ImplWhere({ 오타 })` 가 `{}` 와 같음(`--!strict` 에 기댐), 위로 번지는 다시 짓기의 실패 원자성(UB 로 문서화) | |
 | 따로 | ⭐ **타입 검사 한도 넓히기는 조건**(2026-10-15 사용자: *"quad쪽도 넓혔는데 여기도 넓히는게 조건이 되어도 될 것 같아"*). 편집기는 `.vscode/settings.json` 에 넓힘(quad 와 같은 셋 + `LuauSolverConstraintLimit`). 게이트의 `luau-analyze` 는 CLI 가 참/거짓 플래그만 받아(`CLI/src/Flags.cpp`) 정수 한도를 못 넓힘 → 지금은 `spec.contracts` 의 `assert` 별칭. **`luau-lsp` 가 Luau 0.742 이상을 싣으면**(1.70.1 = 0.740) 게이트를 `luau-lsp analyze --flag:…` 로 옮길지 볼 것(실행기와 검사기 버전이 같아야 배터리가 재현됨 — mise.toml 머리) | 대기 |
 
 ## 🌅 돌아오시면 볼 것 (2026-10-15 새벽 — 트레이트 타입 토론, 주무시는 동안)

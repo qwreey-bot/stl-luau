@@ -60,10 +60,11 @@
 - **모듈 패턴**: 이름 붙은 top-level 함수들(첫 인자가 데이터) + **순수 테이블
   네임스페이스** `return { … }` + 판별용 **타입 토큰**(`__type`). ⭐ **트레이트**
   (2026-10-06 사용자 결정, 질문 AG — `papers/06`, `src/Trait.luau`):
-  - ⭐ **트레이트 시스템은 2026-10-15 에 갈아 끼웠습니다**(질문 AY — 토론·판정이 모은 D3, 정본 설명은 `src/Trait/init.luau` 머리, 설계 기록
-    `.claude/research/trait-v4`~`v9`·`trait-debate`·`luau-source`). ⚠️ **이 시스템은 계속 바뀔 수 있습니다**(사용자: *"trait 시스템 자체는
-    계속 변화할 수 있는걸로 둬야겠어. 타입 시스템이 변경됨에 따라서 영향을 받는지라"*) — 타입 모양이 새 솔버의 동작(내장 `index<>`,
-    명시적 타입 인자, 표 리터럴의 양방향 추론)에 기댑니다. 음성 대조군 `spikes/69` 가 그 동작의 경보입니다.
+  - ⭐ **트레이트 시스템은 2026-10-15 에 갈아 끼웠습니다**(질문 AY — 토론·판정이 모은 D3, 같은 날 **정의를 한 번만 넘기는 레코드 안**으로
+    — 사용자 제안, `.claude/research/trait-udtf`. 정본 설명은 `src/Trait/init.luau` 머리, 설계 기록 `.claude/research/trait-v4`~`v10`·
+    `trait-debate`·`luau-source`·`trait-udtf`). ⚠️ **이 시스템은 계속 바뀔 수 있습니다**(사용자: *"trait 시스템 자체는 계속 변화할 수
+    있는걸로 둬야겠어. 타입 시스템이 변경됨에 따라서 영향을 받는지라"*) — 타입 모양이 새 솔버의 동작(**사용자 타입 함수 `Trait.View`**,
+    명시적 타입 인자, 표 리터럴의 양방향 추론)에 기댑니다. 음성 대조군 `spikes/69`·`70` 이 그 동작의 경보입니다.
   - **값에는 타입 토큰 하나**: 생성자가 `__type = TOKEN`(그 종류의 모듈이 `Trait.NewToken("Stl.Arr")` 로 만든 얼린 공유 테이블 — 밖에서는
     `Arr.Token`)을 붙입니다. **모든 생성·반환 경로**가 붙여야 합니다(`spec.contracts` 5절이 전수로 지킴). 토큰 **이름은 유일**합니다(라이브러리
     것은 `Stl.` 접두, 바깥 것은 자기 이름공간 — 같은 이름 두 번은 에러). 직렬화했다 되읽은 값은 `Trait.Restore(값)` 이 이름으로 이 사본의
@@ -75,33 +76,35 @@
     `List.ImplFor(TOKEN, …)` 과 `List.IndexOf(값, x)` 가 같은 이름. 컨테이너는 `src/Collections/`, 컨테이너를 모르는 알고리즘(`BSearch`,
     곧 정렬들)은 `src/Algorithms/`. **확장할 수 있게만** 하고 조각마다 따로 떼어 쓸 수 있게까지는 만들지 않습니다. 진입점의 에러 머리는
     트레이트 이름(`List: IndexOf needs a List — …`).
-  - ⭐ **트레이트 = 정의(팩토리)** — 팩토리가 이름 목록(런타임)이자 트레이트의 제네릭 타입이자 `X.Of` 의 타입입니다:
+  - ⭐ **트레이트 = 정의(팩토리) 한 번** — 정의가 이름 목록(런타임)이자 트레이트의 제네릭 타입이자 `X.Of`·`X.ImplOf` 의 타입입니다:
     ```lua
-    -- 기본 구현 없음(지금 일곱 중 여섯): 한 겹
-    const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & Trait.Item<T>) | Trait.AnyToken)
-    	return table.freeze({ PushBack = Trait.Fn<<(deque: Self, item: T) -> Self>>(), … })
+    const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+    	return table.freeze({
+    		Get = Trait.Fn<<(list: Self, idx: I) -> E?>>(),                                  -- 필수
+    		IndexOf = Trait.Default(function(ops: any): (list: Self, item: E) -> I? … end), -- 기본 구현(빌더)
+    	})
     end)
-    -- 기본 구현 있음(List): 정의 함수 하나를 모드 **값**으로 두 번
-    local function listDef<M>(mode: M)
-    	return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
-    		return table.freeze({ Get = Trait.Fn<<…>>(), …, IndexOf = Trait.Default(mode, function(ops: any): (list: Self, item: E) -> I? … end) })
-    	end
-    end
-    const ListBase = Trait.Trait("List", listDef(Trait.FULL), listDef(Trait.IMPL))
     export type Full<Self, E, I> = typeof(ListBase.Of<<Self, E, I>>(nil :: any))        -- 완성 표
     export type Provided<Self, E, I> = typeof(ListBase.ImplOf<<Self, E, I>>(nil :: any)) -- 등록 표(기본 구현 칸은 선택)
     ```
-    - ⚠️ **모드는 값(`Trait.FULL`·`Trait.IMPL`)으로만** — 모드를 추론에 맡기면(인라인 정의를 한 번 넘기기) **정의와 같은 모듈에서** 기본 구현
-      칸의 반환이 `never` 가 되어 검사가 사라졌고, `def<<"full">>` 처럼 타입 인자로 적으면 잊었을 때 조용히 같은 구멍이 열렸습니다. 값으로
-      넘기면 정의자의 실수(모드 맞바꿈·글자 리터럴·부르지 않고 넘김)가 전부 에러입니다(`spikes/69`). `Default` 의 타입이 이 시스템의
-      유일한 타입 함수(내장 `index<>`)입니다.
+    - ⭐ **칸은 타입으로 레코드**(`Fn` = `{ required: true, fn: F }`, `Default` = `{ required: false, fn: F }`)이고, 사용자 타입 함수
+      **`Trait.View<정의, "full"|"impl">`** 이 정의 함수의 타입을 받아 두 보기(완성 = 칸마다 `fn`, 등록 = 기본 구현 칸만 `fn?`)로 다시
+      짓습니다 — 매개변수와 **제네릭 목록은 정의의 것 그대로**(`f:generics()`), 가변 꼬리는 뗌(`X.Of(d, 1)` 이 인자 수 에러). 정의가 함수가
+      아님·표를 안 돌려줌·칸이 `Fn`/`Default` 가 아님은 정의 줄의 타입 에러(`'View' type function errored at runtime: Trait.Trait: …`,
+      보기 둘이라 두 번씩). 정의나 반환이 `any` 면 보기도 `any`(검사를 끄는 관용구 — 런타임만 보는 테스트가 씀).
+    - 왜 이 모양인가(D3 대비): D3 는 기본 구현이 있으면 정의를 모드 **값**으로 두 번(`def(FULL), def(IMPL)`) 넘겼고, 모드를 추론에 맡기면
+      같은 모듈에서 덜 줄어든 `index<>` 가 `never` 가 돼 검사가 사라졌습니다. 레코드 안에선 정의자가 모드를 틀릴 자리 자체가 없습니다.
+      쓰는 사람·구현하는 사람이 보는 타입과 에러 문구는 D3 와 **글자 하나까지 같았습니다**(편집기 luau-lsp 1.70.1 + Studio 플래그로도 —
+      `research/trait-udtf/README.md`). 대가: 사용자 타입 함수에 기댐(다시 지은 제네릭은 적용한 자리의 스코프, 제네릭 기본값·바운드는
+      사라짐 — 지금 정의엔 없음). ⚠️ 함수 타입 **전체**에 걸어야 합니다 — 바깥 제네릭이 든 별칭(`type S<C, T> = View<…<C, T>>`)에 걸면
+      줄어들지 않습니다(상류 `outer_generics_irreducible`, Gemini 시제품).
     - **`of` 가 연관 타입을 고릅니다**: 쓰는 함수가 있는 트레이트(Deque·Stack·Queue·Map·Set)는 `Item<T>`(불변 — 읽기 전용으로 빌린 참조는
       그 트레이트를 **아예 못 얻음**), 읽기만 하는 트레이트(List)는 `ItemRead`/`ItemIndexRead`(공변 — 빌린 참조도 얻음). 원소가 없는 트레이트
       (Collection)는 `Self` 만. 컨테이너는 자기 데이터 타입에 `read __generics: { read Item: (T) -> T, … }`(불변 — 맵은 `Key`·`Value`)와 읽기
       타입이 있으면 `read __readGenerics: { read Item: () -> T, … }`(공변, 전체 타입과 읽기 타입 둘 다)를 적습니다. 새 컨테이너도.
     - 팩토리는 런타임에 **한 번**(of = nil) 불려 이름을 줍니다(`Fn` = 필수, `Default` = 기본 구현 빌더). **`table.freeze({ … })` 로 돌려줍니다** —
       트레이트 타입의 필드가 `read` 가 됩니다(사용자: *"팩토리에 걸리는거임? 그럼 괜찮을듯"* — 한 줄 등록의 길이 열려 있음).
-    - 기본 구현 빌더 `Default(mode, function(ops) return function(…) … end end)` 의 `ops` 는 그 종류의 완성 표 — 형제(재정의됐으면 그것)를
+    - 기본 구현 빌더 `Default(function(ops) return function(…) … end end)` 의 `ops` 는 그 종류의 완성 표 — 형제(재정의됐으면 그것)를
       읽으면 그 자리에서 먼저 지어지고(고리는 에러), 지역으로 붙잡아도 됩니다(다시 지어질 때 다시 불림). ⚠️ 계약: 던지지 않고 부작용 없이
       함수만 돌려줌. ⚠️ 기본 구현 타입에 오버로드(`&`)를 쓰지 마세요 — 등록 보기의 `(A & B)?` 에 한쪽 갈래만 든 재정의가 0건(상류 결함).
     - 진입점(`X.이름(값, …)`)은 **시스템이 만듭니다**(함수 번호로 꺼냄 — 호출당 옛 손 진입점보다 +2~5ns, perf 54절). 트레이트 파일은 서명만
@@ -543,7 +546,7 @@
   **(b) `table.move`/`table.create` 가 원소 루프보다 빠릅니다** — 벌크로 할 수
   있는 일을 원소 루프로 쓰지 마세요.
 
-## ⭐ `type function` 을 쓰지 않습니다 (2026-09-22 사용자 확정)
+## ⭐ `type function` 은 주의해서 씁니다 (2026-09-22 사용자 확정, 10-14 "주의" 로 정정)
 
 *"타입 함수는 문제가 너무 많기 때문에, 가급적 사용을 피할거야."* quad 이
 같은 길을 먼저 갔고 부작용으로 대부분 폐기했습니다.
@@ -553,13 +556,17 @@
 보고싶음."*). 쓸 만한 자리가 보이면 시제품으로 만들어 **무슨 부작용을 내는지 재서** 보여 드리고 정합니다 — 첫 사례는
 트레이트 v5 의 내장 `index<>`(`.claude/research/trait-v5/`).
 
-**이 저장소에서 `type function` 을 쓰던 코드는 전부 내렸습니다.** 지금
-`src/` 는 **전부 `--!strict`** 이고 예외가 없습니다.
+⭐ **지금 src 의 사용자 타입 함수는 하나 — `Trait.View`**(2026-10-15, 질문 AY — 트레이트 정의를 한 번만 넘기는 레코드 안, 위 트레이트 절).
+들이기 전에 잰 부작용: 다시 지은 제네릭이 적용한 자리의 스코프를 받고 기본값·바운드를 잃음(지금 정의엔 없음), 제네릭 소비자·제네릭
+재정의는 그대로 검사됨(`spikes/70`), 쓰는 쪽 에러 문구는 D3 와 같음. 새 타입 함수를 더하면 같은 식으로 재서 보여 드립니다.
+게이트의 에러 규약은 최상위 `type function … end` 몸통을 건너뜁니다(거기의 `error` 는 타입 에러를 내는 길). `src/` 는 여전히
+**전부 `--!strict`** 이고 예외가 없습니다. 예전에 쓰던 `Tuple`/`TypeUtil` 은 내린 채입니다.
 
-왜 쓰지 않는지, 세 함정:
+세 함정(2026-09-22 기록):
 
 1. `type function` 안에서 같은 파일의 바깥 로컬을 참조하면 **컴파일 실패**
-2. `error()` 대신 `print()` + `types.never` 를 써야 진단이 노출됨
+2. `error()` 대신 `print()` + `types.never` 를 써야 진단이 노출됨 — ⚠️ **0.742·0.740 에선 아님**: `Trait.View` 의 `error("…")` 는
+   `'View' type function errored at runtime: View:줄: …` 로 쓰는 자리에 뜹니다(2026-10-15 실측)
 3. ⭐ 어떤 타입이 `type function` 을 **한 번 통과하면**(그냥 `return t` 라도)
    그 뒤 제네릭 `self` 메소드 체이닝이 **조용히 깨짐**
 

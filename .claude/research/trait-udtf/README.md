@@ -3,6 +3,11 @@
 사용자: *"`{ required: true|false, fn: ... }` 식으로 Trait.Fn Trait.Default 가 나오게 하고, 내부적으로 입력 받자 마자 두 테이블 만들어 두면 안 돼? …
 필드를 훑는건 … types 라이브러리로 될텐데 … 제네릭 재 구성은 어떤 영향을 미치는지 봐야할 필요가 있겠다"*. Sonnet 과 Gemini 가 독립적으로 봄.
 
+> ⭐ **들임(2026-10-15 낮, 사용자: *"확인. 해보자"*)** — Sonnet 모양을 `src/Trait/init.luau` 의 `View` 로(이름만 바꿈 — `RebuildFactory` →
+> `View`), 더한 것: 가변 꼬리 떼기(`Of` 인자 수), 정의자 실수 메시지, `any` 정의는 `any` 보기. 들이기 전 조건 — 편집기(luau-lsp 1.70.1 +
+> Studio FFlag)에서 같은 결과, 구현자·쓰는 사람의 에러 문구가 D3 와 같음 — 은 `question.md` AY 머리. 아래 `sonnet/repoB-spikes` 의 69·70·72 는
+> require 경로가 `../src`(시제품의 자리)라 이 폴더에선 돌지 않습니다 — 들인 판은 `spikes/69`·`70`.
+
 ## 메인 검증 — 결론: **거는 자리에 따라 갈림**
 
 | 모양 | 결과 |
