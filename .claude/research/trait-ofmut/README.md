@@ -96,3 +96,15 @@ read __traits: { read List: List.Assoc<T, number>, read Deque: Deque.Assoc<T>, r
 - `spike-diff.py` — 스파이크의 기대 줄과 실측 줄을 줄마다 견주는 도구(시제품에서 씀).
 - 음성 대조군 `spikes/71-trait-ofmut.luau`(읽기·쓰기 보기, 사용자 트레이트), `spikes/72-trait-adapter.luau`(바깥에서 트레이트를 덧붙이는 중간자 —
   사용자: *"<T>(Arr<T>) -> Stack<T> 를 주는 뭔가"*).
+
+## 들인 뒤 같은 날 더 정한 것 (2026-10-15)
+
+| 사용자 | 반영 |
+|---|---|
+| *"a to b 계약자가 두 점이 확실한지 보게 하는게 나을듯? 런타임 비용이 얼마인지"* | `Trait.Converter(트레이트, 토큰?)` — 등록은 만들 때 한 번, 값의 종류는 부를 때마다(사용자 줄 에러), 같은 테이블을 돌려줌. 호출당 13~20ns(perf 55절), 값 하나에 한 번 |
+| *"깔끔하게 다운케스트 … Stack<T> 와 Arr<T> 를 두고 진짜 변환. __traits 가 보이는건 좀 아닌것 같은"*, *"값은 Trait, 타입은 런타임 데이터에 붙이는 표식"* | 트레이트마다 값 타입 `stl.Stack<T>`·`stl.StackRead<T>`(트레이트 파일의 `Value`/`ValueRead` — 예전 `MarkerMut`/`Marker`). 바꾼 값은 그 트레이트로만 보임(`spikes/72`) |
+| *"Deque 또한 Stack 으로 가는데 있어서 asStack 모양이 필요 … Stack 은 Deque 가 뭔지 알 필요가 있을까?"* | 스택·큐는 자기 레코드만, 뭉텅이 구현과 변환자 `Deque.AsStack`·`AsQueue`(+ 읽기 판)는 `Traits/Deque` 에. 토큰을 뺀 `Trait.Converter(Stack)` 은 "스택을 구현한 종류면 무엇이든" |
+
+재 본 것: 스택의 조건을 "덱 레코드 **또는** 스택 레코드"(유니온)로 둔 판 — 손으로 쓴 서명에선 추론이 섰지만 `View` 가 다시 지은 보기(`Stack.OfMut(d)`)
+에선 원소 타입이 `unknown` 이라 접음(위의 사용자 방향과도 맞음). **상류 결함 후보 하나 더**: 교집합 `A & B` 를 `C & X` 자리에 넘기면 `C` 가 `A | B`
+로 풀림(`intersection-generic-repro.luau`) — 그래서 바깥 컨테이너 타입은 트레이트를 `__traits` 필드로 나열합니다(교집합 별칭은 안 됨).

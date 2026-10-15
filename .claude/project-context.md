@@ -66,8 +66,8 @@ src/
     Map.luau         Get·Set·Has·Remove·Iter + Keys·Values·Records
     Set.luau         Add·Has·Remove·Items
     Collection.luau  Len·Clear (컨테이너 전부)
-    Deque.luau       양끝 큐 — PushFront·PushBack·PopFront·PopBack·Front·Back (원형·연결 둘이 구현)
-    Stack.luau       스택(LIFO) — Push·Pop·Peek. Deque 의 뭉텅이 구현(ImplWhere): 덱이면 따라옴, 덱이 아닌 종류는 ImplFor
+    Deque.luau       양끝 큐 — PushFront·PushBack·PopFront·PopBack·Front·Back (원형·연결 둘이 구현). 덱이면 스택·큐(뭉텅이 구현), 변환자 AsStack·AsQueue
+    Stack.luau       스택(LIFO) — Push·Pop·Peek. 덱을 모름(질문 BA): 덱이면 따라오는 뭉텅이 구현과 변환자 AsStack 은 Deque.luau 에, 덱이 아닌 종류는 ImplFor
     Queue.luau       큐(FIFO) — Push·Pop·Peek. 같은 모양
   Collections/     컨테이너
     Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 목적지 맵을 인자로 받음) + 생성자 8

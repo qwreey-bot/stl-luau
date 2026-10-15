@@ -1357,6 +1357,12 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 > (다) 이름은 임시 그대로 — 남은 질문. (라)는 들였으니 해당 없음. 같은 날 사용자가 짚은 **중간자**(*"<T>(Arr<T>) -> Stack<T> 를 주는 뭔가"*,
 > *"traits 나열 같은 경우 바깥에서 못할 이유를 잘 모르겠는"*)는 됩니다 — 교집합 별칭 + 그것을 돌려주는 제네릭 함수 값(`spikes/72`). 시스템이
 > 그 중간자를 만들어 줄지(등록과 짝지어)는 생각 중.
+>
+> **같은 날 이어서 정함**(사용자): *"a to b 계약자가 두 점이 확실한지 보게"* → `Trait.Converter(트레이트, 토큰?)`(등록은 만들 때, 종류는 부를 때 —
+> perf 55절), *"깔끔하게 … Stack<T> 와 Arr<T> 를 두고 진짜 변환"*·*"값은 Trait, 타입은 런타임 데이터에 붙이는 표식"* → 값 타입 `stl.Stack<T>`·
+> `stl.StackRead<T>`(예전 `MarkerMut`/`Marker` 의 이름), *"Stack 은 Deque 가 뭔지 알 필요가 있을까?"* → 스택·큐는 덱을 모르고, 뭉텅이 구현과
+> 변환자(`Deque.AsStack`·`AsQueue`)는 덱 쪽에. 바깥 컨테이너의 타입은 트레이트를 `__traits` **필드로** 나열(교집합으로 적으면 상류 결함으로
+> 필드를 잃음 — `research/trait-ofmut/intersection-generic-repro.luau`).
 
 기록: `.claude/research/trait-ofmut/README.md`(브랜치 `proto/trait-ofmut`, worktree `/code/Projects/stl-luau-proto/trait-ofmut`).
 

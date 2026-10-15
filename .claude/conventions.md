@@ -81,9 +81,9 @@
     -- 트레이트가 자기 연관 타입 레코드와 조건(마커)을 가짐(질문 BA)
     export type AssocRead<T> = { read Item: () -> T }
     export type Assoc<T> = { read Item: () -> T, read Mut: (T) -> T }
-    export type Marker<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: AssocRead<T> } }
-    export type MarkerMut<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: Assoc<T> } }
-    const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & Marker<T>) | AnyToken, ofMut: (Self & MarkerMut<T>) | AnyToken)
+    export type ValueRead<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: AssocRead<T> } } -- 배럴의 stl.DequeRead<T>
+    export type Value<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: Assoc<T> } }        -- 배럴의 stl.Deque<T>
+    const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & ValueRead<T>) | AnyToken, ofMut: (Self & Value<T>) | AnyToken)
     	return table.freeze({
     		PushBack = Trait.FnMut<<(deque: Self, item: T) -> Self>>(), -- 필수·쓰기
     		Front = Trait.Fn<<(deque: Self) -> T?>>(),                 -- 필수·읽기
@@ -110,9 +110,18 @@
       `Mut`(`(T) -> T` 는 `() -> T` 의 서브타입이 아니라 칸 하나로는 두 쓰임을 못 덮음). 맵·셋의 조건(`of`)은 불변(조회도 키가 입력 — 질문 AM).
       새 컨테이너·새 트레이트도 이 모양. 컨테이너 타입의 팬텀 줄이 63 → 14 였습니다.
     - ⚠️ **등록(런타임)은 타입을 못 바꿉니다**(사용자: *"Impl 자체가 타입을 변경 못 시키기 때문에 생긴다는 큰 제약을 돌고 돌고 돌았을 뿐"*) —
-      바깥에서 등록·뭉텅이로 만족시킨 트레이트는 그 종류의 타입에 안 붙습니다. 쓰는 쪽이 **교집합 별칭과 중간자 함수**로 덧붙입니다:
-      `type StackArr<T> = Arr<T> & { read __traits: { read Deque: stl.DequeAssoc<T> } }`, `local function asStack<T>(a: Arr<T>): StackArr<T> return a :: any end`
-      (사용자: *"<T>(Arr<T>) -> Stack<T> 를 주는 뭔가"* — 원소 타입이 이어지고 변환 안 한 값·빌린 참조는 막힘, `spikes/72`). 런타임 등록이 짝.
+      바깥에서 등록·뭉텅이로 만족시킨 트레이트는 그 종류의 타입에 안 붙습니다. ⭐ **값은 트레이트, 타입은 데이터에 붙는 표식**(사용자):
+      트레이트마다 값 타입 `stl.Stack<T>`(바꿀 수 있는 값 — 지금의 `X.Value`)·`stl.StackRead<T>`(읽기 — `X.ValueRead`)이 있고, 다른 종류를 그
+      트레이트로 쓰려면 **중간자** `Trait.Converter` 에 그 쌍을 아는 쪽이 타입을 적어 **진짜로 바꿉니다**(사용자: *"<T>(Arr<T>) -> Stack<T> 를 주는
+      뭔가"*, *"a to b 계약자가 두 점이 확실한지"*, *"깔끔하게 … 진짜 변환"*):
+      `const asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, Arr.Token)`(아래로는 같은 함수에 `<T>(s: stl.Stack<T>) -> Arr<T>`).
+      등록은 **만들 때 한 번**, 값의 종류는 **부를 때마다** 보고(사용자 줄 에러) 같은 테이블을 돌려줍니다(호출당 13~20ns — perf 55절, 값 하나에
+      한 번). 바꾼 값은 그 트레이트로만 보입니다(`Arr.Len(s)`·`Deque.PushFront(s)` 는 에러 — `spikes/72`). 토큰을 빼면(`Trait.Converter(Stack)`)
+      그 트레이트를 구현한 종류면 무엇이든 — 트레이트에서 트레이트로(`Deque.AsStack`). ⚠️ 바깥 컨테이너 **타입을 정의할 땐** 트레이트를
+      `read __traits: { read Map: stl.MapAssoc<K, V>, … }` **필드로** 나열합니다(Rust 의 `impl` 자리) — `{ … } & stl.Map<K, V>` 처럼 교집합으로
+      적으면 `GroupBy` 처럼 `C & Map<K, V>` 를 받아 `C` 를 돌려주는 제네릭에서 `C` 가 유니온으로 풀려 필드를 잃습니다(상류 결함 후보,
+      `research/trait-ofmut/intersection-generic-repro.luau`). 그래서 `__traits` 는 컨테이너를 **만드는** 쪽만 보고, **쓰는** 쪽은 값 타입과
+      변환자만 봅니다.
     - 왜 이 모양인가(D3 대비): D3 는 기본 구현이 있으면 정의를 모드 **값**으로 두 번(`def(FULL), def(IMPL)`) 넘겼고, 모드를 추론에 맡기면
       같은 모듈에서 덜 줄어든 `index<>` 가 `never` 가 돼 검사가 사라졌습니다. 레코드 안에선 정의자가 모드를 틀릴 자리 자체가 없습니다.
       쓰는 사람·구현하는 사람이 보는 타입과 에러 문구는 D3 와 **글자 하나까지 같았습니다**(편집기 luau-lsp 1.70.1 + Studio 플래그로도 —
@@ -130,8 +139,8 @@
       읽으면 그 자리에서 먼저 지어지고(고리는 에러), 지역으로 붙잡아도 됩니다(다시 지어질 때 다시 불림). ⚠️ 계약: 던지지 않고 부작용 없이
       함수만 돌려줌. ⚠️ 기본 구현 타입에 오버로드(`&`)를 쓰지 마세요 — 등록 보기의 `(A & B)?` 에 한쪽 갈래만 든 재정의가 0건(상류 결함).
     - 진입점(`X.이름(값, …)`)은 **시스템이 만듭니다**(함수 번호로 꺼냄 — 호출당 옛 손 진입점보다 +2~5ns, perf 54절). ⭐ **서명도 정의에서
-      지어집니다**(타입 함수 `Trait.Entries` — 트레이트 객체 타입에 자동으로, 질문 BA): 쓰기 칸은 `ofMut` 조건(`MarkerMut`), 읽기 칸은 `of`
-      조건(`Marker`)을 첫 인자로 — **마커를 손으로 고르지 않습니다**. 부르는 쪽 서명이 칸 타입과 다르면(`List.Some` 의 술어 — 구현은
+      지어집니다**(타입 함수 `Trait.Entries` — 트레이트 객체 타입에 자동으로, 질문 BA): 쓰기 칸은 `ofMut` 조건(`Value`), 읽기 칸은 `of`
+      조건(`ValueRead`)을 첫 인자로 — **마커를 손으로 고르지 않습니다**. 부르는 쪽 서명이 칸 타입과 다르면(`List.Some` 의 술어 — 구현은
       `(E, I, ...any)` 를 받아야, 부르는 쪽은 꼬리 없는 술어 변수를 넘길 수 있어야 — `spikes/64`) `Default(build, Trait.Sig<<서명>>())`.
       `Self` 가 첫 인자에만 나오면 빼서 제네릭 순서가 예전 손 서명과 같습니다(명시적 타입 인자를 일부만 주면 솔버 내부 에러라 순서가 곧
       공개 표면 — `IndexOf<<number?, number>>`). ⚠️ 진입점마다 제네릭을 **새로** 만들어 바꿔 끼웁니다 — 나눠 쓰면 `List.IndexOf(a, 20)` 이
@@ -159,6 +168,7 @@
     두는거 확인"*. 끝의 오타 `{ Deque, Typo }` 는 길이에 안 잡혀 런타임이 못 봄 — strict 의 타입이 잡음). Any 뭉텅이와 다른 뭉텅이는 같은
     트레이트에 함께 둘 수 없음(어느 순서든 등록 줄 에러 — 다른 쪽의 조건을 갖춘 종류마다 반드시 겹침, 리뷰 3라운드). `Stack`·`Queue` 가 `Deque` 의 뭉텅이 구현입니다(사용자: *"A가 된다면 이게 된다가 자연히
     따라오는 방식"* — 바깥 덱도 등록 없이 스택·큐). 표에 **덱의 함수 그 자체**를 돌려줘 진입점이 덱 진입점과 같은 값입니다(질문 AW, perf 52절).
+    ⭐ 그 뭉텅이 구현은 **덱 쪽**(`Traits/Deque`)에 있습니다 — 스택·큐는 덱을 모릅니다(2026-10-15 사용자: *"Stack 은 Deque 가 뭔지 알 필요가 있을까?"*).
     - **명시 구현(`ImplFor`)이 뭉텅이를 덮습니다** — 빠른 판을 나중에 얹는 길(사용자가 지킨 늦은 확장). ⚠️ 명시 구현은 **필수 함수를 다** 줘야
       합니다(예전 시스템에선 일부만 재정의할 수 있었음 — 나머지는 덱의 함수를 그대로 넘기면 됨). 덱이 아닌 종류도 `Stack.ImplFor` 로 스택이 됩니다.
     - 뭉텅이끼리 한 종류에 겹치면 에러(그 종류에 명시 구현을 주거나 조건을 좁히라고). 그 겹침이 **위로 번지는 다시 짓기**에서야
@@ -197,10 +207,10 @@
     베껴 넣으면 그 종류입니다. 우연(모양만 같음, 옛 문자열 태그, 직렬화했다 되읽음)은
     막힙니다. 라이브러리 사본이 둘이면 서로의 값을 그 종류로 보지 않습니다(사용자: *"오히려
     호환 안 되고, 소스 구현은 하나가 되도록 유도하는게 이로워보임"*).
-  - **타입**: 데이터부에 `read __type: Trait.Token<"Stl.Arr">` 와 **트레이트 마커**(`read
-    __list: T` 등 — **타입에만 있는 필드**, 런타임엔 없음, quad `StateMarker` 와 같은 결).
-    토큰은 생성자를 거치지 않은 리터럴(`{ n = 3 }`)을 막고(`spikes/53`·`55`), 마커는
-    공용 알고리즘의 추론 재료입니다. 읽기 전용 self(`ArrRead`)에도 둡니다(M0 2라운드).
+  - **타입**: 데이터부에 `read __type: Trait.Token<"Stl.Arr">` 와 **트레이트 레코드**(`read
+    __traits: { read List: List.Assoc<T, number>, … }` — **타입에만 있는 필드**, 런타임엔 없음, quad `StateMarker` 와 같은 결 — 질문 BA).
+    토큰은 생성자를 거치지 않은 리터럴(`{ n = 3 }`)을 막고(`spikes/53`·`55`), 레코드는
+    공용 알고리즘의 추론 재료입니다. 읽기 전용 self(`ArrRead`)에도 둡니다(읽기 레코드 `AssocRead` — M0 2라운드).
   - (예전 M0 의 "태그 세 겹 + 위조의 경계" 는 이 결정으로 내렸습니다 — git 히스토리와
     `question.md` AF/AG.) 콜러블 네임스페이스(`Arr(...)`)는
   **쓰지 않습니다** — 제네릭 생성자가 `__call` 경유에서 타입 인자를 잃고 모듈
@@ -237,11 +247,11 @@
   ⚠️ 함수 묶음을 **직접** 받는 사용자 제네릭 함수(`put<C, V>(ops: MapFull<C, string, V>,
   …)`)는 여전히 타입 인자가 필요합니다 — 트레이트 마커를 받는 모양으로 쓰세요.
   ⭐ **키·위치·값을 입력으로 받는 제네릭은 불변 마커**(2026-10-12 사용자 결정, 질문 AM — `spikes/61`):
-  `MapMarker`/`SetMarker`/`ListMarker` 는 `read`(공변)라 **꺼내기만 하는** 알고리즘용입니다(`Keys`·`Count`).
+  `stl.MapRead`/`SetRead`/`ListRead`(2026-10-15 전엔 `MapMarker` …)는 `read`(공변)라 **꺼내기만 하는** 알고리즘용입니다(`Keys`·`Count`).
   마커와 함께 값·키·위치를 받아 넘기는 제네릭에 쓰면 그 타입이 조용히 넓어집니다 — `Set`/`Add` 하면
   `HashMap<string, number>` 에 문자열이 들어가고, 조회만 해도 `TreeMap<string, …>` 에 숫자 키가 넘어가
   비교자가 라이브러리 줄에서 터졌습니다(진단 0건 — AC 의 "공변으로 빌린 참조가 쓰기를 얻음" 과 같은
-  메커니즘). 그런 제네릭은 **`MapMarkerMut<K, V>`/`SetMarkerMut<T>`/`ListMarkerMut<E, I>`** 을 받습니다 — 데이터 타입의 함수 타입
+  메커니즘). 그런 제네릭은 **`stl.Map<K, V>`/`stl.Set<T>`/`stl.List<E, I>`**(전엔 `MapMarkerMut` …)를 받습니다 — 데이터 타입의 함수 타입
   팬텀(`read __mapMut: (K, V) -> (K, V)`, 리스트는 `(E, I) -> (E, I)`)을 요구해 불변이고, 읽기 마커의 서브타입이라 읽는 알고리즘에도
   그대로 넘어갑니다. `ArrRead`(빌린 참조)에는 그 팬텀이 없습니다. (2026-10-15 질문 BA 부터 팬텀은 트레이트 레코드의 `Mut` 칸
   — `read __traits: { read Map: Map.Assoc<K, V> }` — 이고, **트레이트 함수의 진입점은 칸의 읽기·쓰기로 마커가 저절로 정해집니다**. 이 규칙이
@@ -249,12 +259,12 @@
   (구현은 `any` 를 거침) — 규약입니다.
   **경계**: 넓어지는 것은 **타입 변수로 받아 컨테이너에 넘기는** 키·위치·값입니다. `==` 비교만 하는 값
   (`List.IndexOf(list, item)` — 넓어져도 그냥 "없음")과, 위치를 타입 변수로 두지 않은 조회
-  (`ListMarker<E, number>` + `idx: number`)는 읽기 마커로 건전하고 `ArrRead`(빌린 참조)도 받습니다.
+  (`stl.ListRead<E, number>` + `idx: number`)는 읽기 마커로 건전하고 `ArrRead`(빌린 참조)도 받습니다.
   트레이트 파일의 진입점에 그런 함수(쓰기, 키를 넘기는 조회)를 더할 때도 `Mut` 마커로.
   ⭐ **원소 타입이 흘러들지 않아도, 컨테이너를 바꾸는 제네릭은 "바꿔도 되는 참조" 를 요구합니다**(2026-10-12,
-  질문 AO — `spikes/63`): `Collection.Clear` 는 `Collection.MarkerMut`(레코드 `__traits.Collection` — 바꿀 수 있는 참조만 적음)을 받습니다. 토큰만
+  질문 AO — `spikes/63`): `Collection.Clear` 는 `stl.Collection`(레코드 `__traits.Collection` — 바꿀 수 있는 참조만 적음)을 받습니다. 토큰만
   요구했더니 읽기 전용으로 빌린 `ArrRead`·`CircularDequeRead` 가 진단 0건으로 지워졌습니다. 읽기만 하는 것(`Collection.Len`)은
-  토큰만(`CollectionMarker`) — 빌린 참조도 받습니다.
+  토큰만(`stl.CollectionRead`) — 빌린 참조도 받습니다.
 
 - **제네릭이 안 풀릴 땐 명시적 타입 인자** `f<<T>>(...)` 를 씁니다 —
   `Arr.Of<<number>>()`, `HashMap.New<<string, number>>()`,
@@ -355,7 +365,11 @@
   ⭐ **`Stack`·`Queue` 는 덱이면 따라오는 트레이트입니다**(2026-10-14 사용자 결정, 질문 AV: *"트레이트로 두는거 동의.
   stack 으로 무엇을 쓸지, queue 로 무엇을 쓸 지는 유저가 선택 가능"*) — 필수 `Push`·`Pop`·`Peek`, `Deque` 의 뭉텅이 구현(`ImplWhere`): `Stack.Push`·`Pop`·`Peek`
   (= `PushBack`·`PopBack`·`Back`), `Queue.Push`·`Pop`·`Peek`(= `PushBack`·`PopFront`·`Front`). 새 컨테이너도, 바깥의 덱도
-  등록 없이 됩니다. 타입 마커는 `Deque` 의 것 그대로(새 팬텀 없음). 큐의 동사는 `Push`/`Pop`(제가 정함 — 검토가 2:2,
+  런타임에는 등록 없이 됩니다. ⭐ **스택·큐는 덱을 모릅니다**(2026-10-15 질문 BA — 사용자: *"Deque 또한 Stack 으로 가는데 있어서 asStack 모양이
+  필요하다고 생각해. Stack 은 Deque 가 뭔지 알 필요가 있을까?"*): 자기 레코드·값 타입(`stl.Stack<T>`)만 갖고, 뭉텅이 구현과 변환자는 덱 쪽
+  (`Traits/Deque`)에 — 타입으로 덱을 스택으로 쓰려면 `Stack.Push(Deque.AsStack(d), x)`(`AsQueue`·읽기 판 `AsStackRead`·`AsQueueRead`). 바꾼 값은
+  스택으로만 보입니다(`Push` 는 `stl.Stack<T>` 를 돌려줌). (조건을 "덱 레코드 또는 스택 레코드" 유니온으로 둔 판은 `View` 가 다시 지은 보기에서
+  원소 타입이 `unknown` 이 돼 접었습니다.) 큐의 동사는 `Push`/`Pop`(제가 정함 — 검토가 2:2,
   `Dequeue` 는 `Deque` 와 한 글자 차이). 표에 든 것이 **덱의 함수 그 자체**라(질문 AW) 진입점은 덱 진입점과 같은 값이고,
   완성 표에서 꺼내 둔 함수는 직접 호출과 같습니다(perf 52절).
 - ⭐ **층은 셋입니다**(2026-10-13 사용자 결정 — `papers/07` 9-4): **1층 노드단 도구**(`src/Node/` — 연결 방식별 노드와
