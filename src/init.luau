@@ -97,6 +97,7 @@ export type AvlNodeRead<K, V> = Avl.AvlNodeRead<K, V>
 export type TreeBalance = Balance.Scheme
 export type KeyNodeRead<K, V> = Search.KeyNodeRead<K, V>
 export type TraitToken<N> = Trait.Token<N>
+export type TraitEveryKind = Trait.EveryKind
 export type TraitObject<F, G> = Trait.Object<F, G>
 export type TraitItem<T> = Trait.Item<T>
 export type TraitItemRead<T> = Trait.ItemRead<T>

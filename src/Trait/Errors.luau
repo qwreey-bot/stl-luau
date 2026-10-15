@@ -65,7 +65,7 @@ function Errors.builderNotTable(trait: string, got: any): never
 end
 function Errors.emptyWhere(trait: string): never
 	return raise(
-		`Trait: {trait}.ImplWhere needs a list of traits (a misspelled trait name reads as nil) — use {"{}"} for every kind`
+		`Trait: {trait}.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Every for every kind`
 	)
 end
 function Errors.whereCycle(trait: string, dep: string): never

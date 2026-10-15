@@ -2132,7 +2132,7 @@ do
 			{
 				deps = 5,
 				build = print,
-				needle = "Trait: Bare.ImplWhere needs a list of traits (a misspelled trait name reads as nil)",
+				needle = "Trait: Bare.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Every for every kind",
 			},
 			{
 				deps = { {} },
@@ -2140,7 +2140,7 @@ do
 				needle = "Trait: Bare.ImplWhere needs a trait (from Trait.Trait), got table",
 			},
 			{
-				deps = {},
+				deps = T.Every,
 				build = {},
 				needle = "Trait: Bare.ImplWhere needs a function that builds the implementation, got table",
 			},
@@ -2516,7 +2516,7 @@ do
 		"두 단 위에서 물려받은 필수·재정의"
 	)
 	-- (d) 뭉텅이로 따라온 표 위의 명시 구현(제자리 경로): 엄격한 모듈이어도 됨, 모르는 이름은 에러, 반쯤 적용되지 않음.
-	-- `Auto2` 는 필수 `Hello` + 기본 구현 `Bye`, 모든 종류에(`ImplWhere({})` — 옛 "기본 구현만 있는 트레이트")
+	-- `Auto2` 는 필수 `Hello` + 기본 구현 `Bye`, 모든 종류에(`ImplWhere(Trait.Every)` — 옛 "기본 구현만 있는 트레이트")
 	const Auto2: any = T.Trait(
 		"Auto2",
 		defOf({
@@ -2528,7 +2528,7 @@ do
 			end),
 		})
 	)
-	Auto2.ImplWhere({}, function()
+	Auto2.ImplWhere(stl.Trait.Every, function()
 		return {
 			Hello = function(): string
 				return "auto-hello"
@@ -2682,10 +2682,10 @@ do
 	)
 	assert(string.find(tostring(errNum), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errNum}`)
 
-	-- **모든 종류**의 뭉텅이 구현(`ImplWhere({})` — 옛 "기본 구현만 있는 트레이트"): 토큰 있는 모든 종류(나중에 생긴 것도)에
+	-- **모든 종류**의 뭉텅이 구현(`ImplWhere(Trait.Every)` — 옛 "기본 구현만 있는 트레이트"): 토큰 있는 모든 종류(나중에 생긴 것도)에
 	-- 따라오고, 토큰 없는 값에는 안 따라옴
 	const Anyone: any = T.Trait("Anyone", defOf({ Name = Fn() }))
-	Anyone.ImplWhere({}, function()
+	Anyone.ImplWhere(stl.Trait.Every, function()
 		return {
 			Name = function(v: any): string
 				return (T.TokenOf(v) :: any).name

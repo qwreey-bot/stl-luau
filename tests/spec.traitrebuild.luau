@@ -387,7 +387,7 @@ do
 			end),
 		})
 	)
-	Named.ImplWhere({}, function()
+	Named.ImplWhere(T.Every, function()
 		return {}
 	end)
 	assert(Named.Describe(stl.Arr.Of(1)) == "kind Stl.Arr", "이미 있던 종류")
@@ -420,7 +420,26 @@ do
 		Bad.ImplWhere(nil :: any, function()
 			return {}
 		end)
-	end, "Test.Rebuild.BadWhere.ImplWhere needs a list of traits", "목록이 아님")
+	end, "Test.Rebuild.BadWhere.ImplWhere needs a non-empty list of traits", "목록이 아님")
+	-- 빈 목록과 오타(= `{ nil }`, 길이 0)는 에러 — "모든 종류" 는 `Trait.Every` 로만(2026-10-15 사용자: 런타임 검사로)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			Bad.ImplWhere({}, function()
+				return {}
+			end)
+		end,
+		"Trait: Test.Rebuild.BadWhere.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Every for every kind",
+		"빈 목록"
+	)
+	const traitsByName = { Deque = stl.Deque } :: any
+	fails(function()
+		where = debug.info(1, "l") + 1
+		Bad.ImplWhere({ traitsByName.Dequ }, function()
+			return {}
+		end)
+	end, "use Trait.Every for every kind", "의존 이름의 오타")
+	assert(not T.Implements(Bad, stl.HashMap.New()), "오타 난 뭉텅이는 모든 종류에 붙지 않음")
 	-- 실패한 뭉텅이 등록은 아무것도 남기지 않음: 그 뒤 조건(덱)을 채우는 무관한 등록이 멀쩡히 되고, 실패한 트레이트엔 표가 없음
 	-- (기록부터 하고 짓던 때는 남은 뭉텅이가 뒤의 덱 등록마다 엉뚱한 줄에서 던졌음 — 이관 중 재현)
 	const laterDeque = T.NewToken("Test.Rebuild.AfterBadWhere")
