@@ -363,6 +363,15 @@ function implWhere(trait: any, deps: any, build: any)
 		end
 		return false
 	end
+	-- "모든 종류" 뭉텅이와 다른 뭉텅이는 같은 트레이트에 함께 둘 수 없음: 다른 뭉텅이의 조건을 갖춘 종류마다 **반드시** 겹치니(명시
+	-- 구현이 이기면 그 뭉텅이는 결코 안 쓰임) 등록 줄에서 거절. 예전엔 조건을 갖춘 첫 종류가 생길 때 무관한 줄에서 겹침 에러가 났고,
+	-- Every 의 번짐에서 드러나면 그 뒤 모든 `NewToken` 이 던졌습니다(2026-10-15 리뷰 3라운드).
+	const blankets = rec.blankets
+	for b = 1, #blankets do
+		if #list == 0 or #blankets[b].deps == 0 then
+			Errors.everyOverlap(rec.name, #list == 0)
+		end
+	end
 	for at = 1, #list do
 		if reaches(list[at]) then
 			Errors.whereCycle(rec.name, records[list[at]].name)

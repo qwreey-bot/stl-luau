@@ -376,7 +376,7 @@ do
 			return { Len = print }
 		end)
 	end, "two blanket implementations of Test.Rebuild.Len apply to Test.Rebuild.Both", "겹침")
-	-- `{}` 는 모든 종류(기본 구현만 있는 트레이트를 모든 종류에)
+	-- `Trait.Every` 는 모든 종류(기본 구현만 있는 트레이트를 모든 종류에)
 	const Named: any = T.Trait(
 		"Test.Rebuild.Named",
 		factory({
@@ -863,6 +863,57 @@ do
 		end,
 	})
 	assert(T.Impls(stl.Collection) == liveImpls and liveImpls[liveTok] ~= nil, "살아 있는 표")
+
+	-- (12) Every 뭉텅이와 다른 뭉텅이는 같은 트레이트에 함께 못 둠 — 어느 순서든 등록 줄 에러, 아무것도 남지 않음(3라운드: 예전엔 조건을
+	-- 갖춘 첫 종류가 생길 때 무관한 줄에서 겹침이 났고, Every 의 번짐에서 드러나면 그 뒤 모든 NewToken 이 던졌음)
+	const Printable: any = T.Trait("Test.Rebuild.Printable", factory({ Text = T.Fn() }))
+	const ShowA: any = T.Trait("Test.Rebuild.ShowA", factory({ Show = T.Fn() }))
+	ShowA.ImplWhere(T.Every, function(_deps: any)
+		return {
+			Show = function()
+				return "default"
+			end,
+		}
+	end)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			ShowA.ImplWhere({ Printable }, function(deps: any)
+				return { Show = deps[Printable].Text }
+			end)
+		end,
+		"Trait: Test.Rebuild.ShowA already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it",
+		"Every 뒤의 뭉텅이"
+	)
+	const doc = T.NewToken("Test.Rebuild.Doc")
+	Printable.ImplFor(doc, {
+		Text = function()
+			return "printable"
+		end,
+	})
+	assert(
+		ShowA.Show(T.Stamp({}, doc)) == "default",
+		"거절된 뭉텅이는 남지 않음 — 나중의 등록이 멀쩡함"
+	)
+	const ShowB: any = T.Trait("Test.Rebuild.ShowB", factory({ Show = T.Fn() }))
+	ShowB.ImplWhere({ Printable }, function(deps: any)
+		return { Show = deps[Printable].Text }
+	end)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			ShowB.ImplWhere(T.Every, function(_deps: any)
+				return { Show = print }
+			end)
+		end,
+		"Trait: Test.Rebuild.ShowB.ImplWhere(Trait.Every) would overlap the blanket implementations Test.Rebuild.ShowB already has",
+		"뭉텅이 뒤의 Every"
+	)
+	T.NewToken("Test.Rebuild.AfterEvery") -- 거절된 Every 는 남지 않음 — 새 토큰이 던지지 않음
+	assert(
+		not T.Implements(ShowB, stl.HashMap.New()) and ShowB.Show(T.Stamp({}, doc)) == "printable",
+		"Every 가 남지 않음"
+	)
 end
 print("PASS")
 

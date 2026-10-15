@@ -68,6 +68,16 @@ function Errors.emptyWhere(trait: string): never
 		`Trait: {trait}.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Every for every kind`
 	)
 end
+function Errors.everyOverlap(trait: string, addingEvery: boolean): never
+	if addingEvery then
+		return raise(
+			`Trait: {trait}.ImplWhere(Trait.Every) would overlap the blanket implementations {trait} already has on every kind they cover — implement those kinds directly ({trait}.ImplFor)`
+		)
+	end
+	return raise(
+		`Trait: {trait} already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it on every kind it covers; implement those kinds directly ({trait}.ImplFor)`
+	)
+end
 function Errors.whereCycle(trait: string, dep: string): never
 	if trait == dep then
 		return raise(`Trait: {trait}.ImplWhere cannot depend on {trait} itself`)

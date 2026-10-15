@@ -3,7 +3,7 @@
 	Build — 완성 표를 짓고, 놓고, 사건마다 다시 짓습니다.
 
 	**사건은 셋**이고 각각 함수 하나입니다:
-	- `onToken(token)`       토큰이 생김 → 의존이 없는 뭉텅이 구현(`Where = {}`)이 있는 트레이트를 그 종류에 지음.
+	- `onToken(token)`       토큰이 생김 → "모든 종류" 뭉텅이 구현(`ImplWhere(Trait.Every, …)`)이 있는 트레이트를 그 종류에 지음.
 	- `onFor(trait, token)`  그 종류의 명시 구현이 들어옴 → 그 표를 (다시) 지음.
 	- `onWhere(trait)`       뭉텅이 구현이 들어옴 → 조건을 갖춘 종류마다 지음.
 	셋 다 결국 `refresh(trait, token)` 하나로 모이고, 표가 놓이면(`commit`) 그 트레이트를 `Where` 에 적은 트레이트들
