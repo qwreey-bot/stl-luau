@@ -1,0 +1,40 @@
+M01 onWhere: 먼저 지어 보기 생략	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M02 commit: 제자리 대신 새 표	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M03 commit: 위로 번짐 생략	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M04 sourceOf: 겹침 검사 생략	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M05 onWhere: 겹침 선검사 생략	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M06 snapshot: 물려받은 것 안 봄	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M07 snapshot: 물려받은 비함수 검사 생략	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M08 assemble: 모르는 이름 검사 생략	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:1299: 함수 목록은 정의를 읽은 때의 것: ./tests/spec.contracts.luau:1297: Trait: Test.Contracts.StrictKind is missing Show for Strict
+M09 assemble: 비함수 검사 생략	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:1276: 잘못된 구현: nil
+M10 assemble: 기본 구현이 재정의를 덮음	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:567: Arr 은 List 도 그대로
+M11 assemble: 메타테이블 안 뗌	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M12 assemble: 기본 구현이 함수인지 안 봄	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M13 assemble: 빠진 필수 검사 생략	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:1250: 빠진 함수: nil
+M14 onFor: 이중 명시 등록 허용	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:758: 같은 토큰을 두 번(내장 덮어쓰기): ./tests/spec.contracts.luau:733: Trait: Stl.Arr is missing FirstIndex for List
+M15 onFor: 기록을 짓기 전에	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:1303: Trait: Test.Contracts.StrictKind already implements Strict
+M16 onFor: 사본 대신 넘긴 표	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M17 onToken: 아무것도 안 함	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M18 lookup: 함수 __index 도 부름	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M19 lookup: 사슬 한 단계만	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M20 NewToken: 이름 중복 허용	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:527: Arr: 같은 이름의 토큰: nil
+M21 NewToken: onToken 생략	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M22 TokenOf: 진짜 토큰 확인 생략	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:656: 토큰 아닌 __type: 5
+M23 Restore: 얼린 표에도 씀 시도 생략 조건 제거	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M24 Restore: 재귀 안 함	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M25 Restore: 모르는 이름이면 nil 로	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M26 Stamp: 얼린 표 검사 생략	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:1039: Trait 경계: ./src/Trait/init.luau:180: attempt to modify a readonly table
+M27 implWhere: 의존 목록을 복사 안 함	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M28 implWhere: 의존이 트레이트인지 안 봄	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:758: 트레이트가 아님(ImplWhere 의 의존): ./src/Trait/Build.luau:272: attempt to index nil with 'dependentSet'
+M29 Expose: 선검사 생략(겹쳐도 덮어씀)	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M30 Of: 토큰 갈래 없음	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M31 newTrait: 예약 이름 허용	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M32 newTrait: 이름 정렬 안 함	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:1250: 빠진 함수: ./tests/spec.contracts.luau:1248: Trait: Test.Contracts.PartialMap is missing Remove for Map
+M33 ImplOf: 트레이트 검사 생략	caught(rc=1)	./tests/run.luau:22: error while running module: ./tests/spec.contracts.luau:758: 트레이트가 아님(ImplOf): ./src/Trait/init.luau:344: invalid argument #1 to 'rawget' (table expected, got nil)
+M34 Implements: 언제나 rawget(값의 __type)	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M35 Entry: 추가 인자 하나만	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M36 Entry: 반환 하나만	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M37 newTrait: 기본 구현 빌더 표식 대신 아무 표	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M38 onWhere: 명시 구현 있는 종류도 검사	SURVIVED	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M39 sourceOf: 명시보다 뭉텅이 먼저	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===
+M40 ExpectImpl: who 대신 고정	caught(rc=1)	=== 12. ⭐ 기본 구현·뭉텅이 구현(옛 의존·저절로 따라오는 구현) (2026-10-13 papers/07 1단계 → 2026-10-15 새 시스템) ===

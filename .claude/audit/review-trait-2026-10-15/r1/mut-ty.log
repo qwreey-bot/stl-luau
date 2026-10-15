@@ -1,0 +1,30 @@
+TM01 View: 가변 꼬리 남김	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM02 View: 완성 보기의 기본 구현도 선택	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM03 View: 등록 보기도 전부 선택	caught(rc=1)	tests/spec.contracts.luau(1162,2): TypeError: Value of type '((MyMap, string, number) -> ())?' could be nil
+TM04 View: required 판정이 존재만	caught(rc=1)	src/Collections/CircularDeque.luau(394,62): TypeError: Table type '{ FirstIndex: <T>(CircularDequeRead<T>) -> number?, Get: <T>(CircularDequeRead<T>, number) -> T?, LastIndex: <T>(CircularDequeRead<T>
+TM05 Fn 타입: required 가 boolean	caught(rc=1)	tests/spec.contracts.luau(1162,2): TypeError: Value of type '((MyMap, string, number) -> ())?' could be nil
+TM06 Default 타입: required 가 true	caught(rc=1)	src/Collections/CircularDeque.luau(394,62): TypeError: Table type '{ FirstIndex: <T>(CircularDequeRead<T>) -> number?, Get: <T>(CircularDequeRead<T>, number) -> T?, LastIndex: <T>(CircularDequeRead<T>
+TM07 View: 칸 검사 실패를 any 로	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM08 View: 반환이 표가 아니면 any	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM09 View: 정의가 함수가 아니면 any	caught(runaway rc=1)		'{ read: *error-type* }'
+TM10 Stack.of 공변	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM11 Queue.of 공변	SURVIVED	=== 타입 진단 요약 (파일별 TypeError)
+TM12 Deque.of 공변	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM13 Set.of 공변	caught(rc=1)	tests/spec.contracts.luau(162,32): TypeError: Expected this to be
+TM14 Map.of 맨 Self	caught(rc=1)	tests/spec.contracts.luau(132,22): TypeError: Expected this to be
+TM15 Queue.Pop 진입점 읽기 마커	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM16 Queue.Push 진입점 읽기 마커	SURVIVED	=== 타입 진단 요약 (파일별 TypeError)
+TM17 Deque.PopFront 읽기 마커	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM18 Deque.PushFront 읽기 마커	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM19 Stack.Pop 읽기 마커	SURVIVED	=== 타입 진단 요약 (파일별 TypeError)
+TM20 Stack 정의 Pop 반환 T	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM21 Deque 정의 PushBack 반환 any	SURVIVED	=== 타입 진단 요약 (파일별 TypeError)
+TM22 Collection 정의 Clear 반환 any	SURVIVED	=== 타입 진단 요약 (파일별 TypeError)
+TM23 Map 정의 Set 키 any	caught(rc=1)	src/Collections/FlatMap.luau(608,8): TypeError: Expected this to be
+TM24 Set 정의 Add 원소 any	caught(rc=1)	src/Traits/Set.luau(25,13): TypeError: 'View' type function errored at runtime: View:126: Trait.Trait: 'Add' must be Trait.Fn<<…>>() or Trait.Default(…)
+TM25 List 정의 Get 위치 any	SURVIVED	=== 타입 진단 요약 (파일별 TypeError)
+TM26 List IndexOf 기본 반환 any	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM27 Object.Of 를 any	caught(rc=1)	src/Traits/Collection.luau(31,33): TypeError: Cannot instantiate type parameters on something without type parameters.
+TM28 Object.ImplOf 를 any	caught(rc=1)	src/Traits/Collection.luau(32,37): TypeError: Cannot instantiate type parameters on something without type parameters.
+TM29 AnyToken 이 any 이름	caught(rc=1)	=== 타입 진단 요약 (파일별 TypeError)
+TM30 Item 공변화	caught(rc=1)	tests/spec.contracts.luau(162,32): TypeError: Expected this to be

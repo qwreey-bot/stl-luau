@@ -59,7 +59,7 @@ src/
   Types.luau       작은 공용 타입(비교자, 레코드). **말단 모듈** — 아무것도 require 안 함
   Common.luau      에러 규약(raise), 비교자 어댑터와 기본 3방향 비교자, 리스트 길이 규약
   Trait/           ⭐ 트레이트 **시스템만**(2026-10-15 갈아 끼움 — 질문 AY, 계속 바뀔 수 있음): init(토큰 NewToken·Restore, 정의 Trait·Fn·Default + 타입 함수 View,
-                   조회 ImplOf·Implements·ExpectImpl·Expose), Registry(강한 등록부), Build(짓기·사건 셋·위로 번짐), Entry(시스템이 만드는 진입점), Errors
+                   조회 ImplOf·Implements·ExpectImpl·Expose·Impls), Registry(강한 등록부), Build(짓기·사건 셋·위로 번짐), Entry(시스템이 만드는 진입점), Errors
   Traits/          ⭐ 트레이트 하나하나 — 계약 타입·마커·기본 구현·종류를 모르는 코드의 진입점이 한 파일에.
                    모듈이 곧 트레이트 객체(`Trait.Impl(List, …)` 와 `List.IndexOf(v, x)` 가 같은 이름)
     List.luau        위치 프리미티브 다섯 + 읽기 알고리즘의 기본 구현 일곱
