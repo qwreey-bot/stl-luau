@@ -84,5 +84,41 @@ end
 local all: { number } = drain(stl.Stack.Of(d), d)
 local negAll: { string } = drain(stl.Stack.Of(d), d) -- NEG
 
+--[[ 같은 모듈의 경계(질문 AZ — 2026-10-15 사용자: (가) 유지) — 트레이트를 **이 파일 꼭대기에서** 정의하고 여기서 등록하면 칸 자체가
+     제네릭인 함수(`Fold<U>`)의 실수가 0건(다시 지은 `<U>` 가 모듈 스코프를 받고 상류 `Subtyping.cpp:830` 이 통과시킴). 규약: 같은 파일에서
+     등록하려면 정의를 `do … end` 에. 아래 `-- 경계` 줄은 **지금 0건이 기대값** — 상류가 고치면 건수가 바뀌어 배터리가 알립니다. ]]
+type Bag<T> = { read __type: stl.TraitToken<string>, read __generics: { read Item: (T) -> T }, items: { T } }
+local Top = stl.Trait.Trait("Spike70.Top", function<Self, T>(of: (Self & stl.TraitItem<T>) | stl.TraitToken<string>)
+	return table.freeze({
+		Fold = stl.Trait.Default(function(_ops: any): <U>(bag: Self, init: U, fn: (U, T) -> U) -> U
+			return function<U>(_bag: Self, init: U, _fn: (U, T) -> U): U
+				return init
+			end
+		end),
+	})
+end)
+local topPinned: typeof(Top.ImplOf<<Bag<A>, A>>(nil :: any)) = {
+	Fold = function(_b: Bag<A>, init: number, _fn: (number, A) -> number): number -- 경계: 같은 모듈이라 0건(규약으로 피함)
+		return init
+	end,
+}
+local Boxed
+do
+	Boxed = stl.Trait.Trait("Spike70.Boxed", function<Self, T>(of: (Self & stl.TraitItem<T>) | stl.TraitToken<string>)
+		return table.freeze({
+			Fold = stl.Trait.Default(function(_ops: any): <U>(bag: Self, init: U, fn: (U, T) -> U) -> U
+				return function<U>(_bag: Self, init: U, _fn: (U, T) -> U): U
+					return init
+				end
+			end),
+		})
+	end)
+end
+local boxedPinned: typeof(Boxed.ImplOf<<Bag<A>, A>>(nil :: any)) = {
+	Fold = function(_b: Bag<A>, init: number, _fn: (number, A) -> number): number -- NEG: 정의를 do 블록에 두면 잡힘
+		return init
+	end,
+}
+
 local canary: string = 1
-return { okGeneric, negPinU, negPinE, negRetU, negFind, okArrFold, sum, joined, negFoldRet, c, got, negGot, all, negAll, canary }
+return { okGeneric, negPinU, negPinE, negRetU, negFind, okArrFold, sum, joined, negFoldRet, c, got, negGot, all, negAll, topPinned, boxedPinned, canary }
