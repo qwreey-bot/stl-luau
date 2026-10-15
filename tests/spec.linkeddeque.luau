@@ -66,7 +66,7 @@ do
 	const d = LinkedDeque.New<<number>>()
 	assert(stl.isLinkedDeque(d) and not stl.isCircularDeque(d) and not stl.isArr(d), "술어")
 	assert(getmetatable(d :: any) == nil, "메타테이블 없음")
-	assert(stl.Trait.TokenOf(d) == LinkedDeque.Token, "토큰")
+	assert(stl.Trait.TokenOf(d) == stl.Trait.TokenOf(LinkedDeque), "토큰")
 	same(d, {}, 0, "빈 덱")
 	assert(LinkedDeque.PopFront(d) == nil and LinkedDeque.PopBack(d) == nil, "빈 덱에서 꺼내기")
 	same(d, {}, 0, "빈 덱에서 꺼낸 뒤")
@@ -591,7 +591,7 @@ do
 			make = function(): any
 				return LinkedDeque.New()
 			end,
-			token = LinkedDeque.Token,
+			token = stl.Trait.TokenOf(LinkedDeque),
 		},
 	}
 	for _, kind in kinds do

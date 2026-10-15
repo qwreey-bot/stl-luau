@@ -72,7 +72,9 @@ export type TreeMap<K, V> = TreeMapData<K, V>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewToken("Stl.TreeMap") :: Trait.Token<"Stl.TreeMap">
+-- 이 종류 = 닫힌 트레이트(질문 BB): 맨 위에서 만들고 맨 끝에서 모듈 표를 봉인 — 그 표가 곧 `stl.TreeMap`(종류의 정체).
+const Kind = Trait.Struct("Stl.TreeMap")
+const TOKEN = Kind.Token -- 안쪽에서만(생성자가 `__type` 에 찍는 상수)
 
 -- 노드의 칸 배치(`Trees/Search` 머리 — `1` = 값, `2` = 왼쪽, `3` = 오른쪽, `5` = 키. 지역 상수라 접힘)와 도구.
 -- 이 모듈 안에서는 노드를 칸으로 직접 읽으니 도구를 느슨한 타입으로 받습니다.
@@ -552,13 +554,11 @@ end
 --#endregion
 
 -- stylua: ignore
-const TreeMapModule = {
+const TreeMapModule = Kind.Seal({
 	New = New,
 	FromRecords = FromRecords,
 	FromSorted = FromSorted,
 	isTreeMap = isTreeMap,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `MyTrait.ImplFor(TreeMap.Token, impl)`
-	Token = TOKEN,
 
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
 	First = First, Last = Last, FloorKey = FloorKey, CeilingKey = CeilingKey,
@@ -566,7 +566,7 @@ const TreeMapModule = {
 	Records = Records,
 	LowerKey = LowerKey, HigherKey = HigherKey, PopFirst = PopFirst, PopLast = PopLast, Retain = Retain,
 	SplitOff = SplitOff, Join = Join,
-}
+})
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
 -- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
@@ -582,7 +582,7 @@ const mapImpl: Map.Provided<TreeMap<A, B>, A, B> = {
 	Iter = TreeMapModule.Iter,
 }
 const collectionImpl: Collection.Provided<TreeMap<A, B>> = { Len = TreeMapModule.Len, Clear = TreeMapModule.Clear }
-Map.ImplFor(TOKEN, mapImpl)
-Collection.ImplFor(TOKEN, collectionImpl)
+Map.ImplFor(TreeMapModule, mapImpl)
+Collection.ImplFor(TreeMapModule, collectionImpl)
 
 return TreeMapModule

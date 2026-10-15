@@ -44,7 +44,9 @@ export type TreeSet<T> = TreeSetData<T>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewToken("Stl.TreeSet") :: Trait.Token<"Stl.TreeSet">
+-- 이 종류 = 닫힌 트레이트(질문 BB): 맨 위에서 만들고 맨 끝에서 모듈 표를 봉인 — 그 표가 곧 `stl.TreeSet`(종류의 정체).
+const Kind = Trait.Struct("Stl.TreeSet")
+const TOKEN = Kind.Token -- 안쪽에서만(생성자가 `__type` 에 찍는 상수)
 
 -- 노드의 칸 배치(`Trees/Search` 머리 — `5` = 키. 지역 상수라 접힘)와 도구(이 모듈 안에서는 칸으로 직접 읽음).
 const KEY = 5
@@ -514,12 +516,10 @@ end
 --#endregion
 
 -- stylua: ignore
-const TreeSetModule = {
+const TreeSetModule = Kind.Seal({
 	New = New,
 	FromList = FromList,
 	isTreeSet = isTreeSet,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `MyTrait.ImplFor(TreeSet.Token, impl)`
-	Token = TOKEN,
 
 	Add = Add, Has = Has, Remove = Remove, Items = Items,
 	Len = Len, Empty = Empty, Iter = Iter, First = First, Last = Last,
@@ -528,7 +528,7 @@ const TreeSetModule = {
 	SplitOff = SplitOff, Join = Join,
 	Union = Union, Intersect = Intersect, Difference = Difference, SymmetricDifference = SymmetricDifference,
 	IsSubsetOf = IsSubsetOf, IsDisjointFrom = IsDisjointFrom, Equal = Equal,
-}
+})
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
 -- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
@@ -539,7 +539,7 @@ const TreeSetModule = {
 const setImpl: Set.Provided<TreeSet<A>, A> =
 	{ Add = TreeSetModule.Add, Has = TreeSetModule.Has, Remove = TreeSetModule.Remove, Items = TreeSetModule.Items }
 const collectionImpl: Collection.Provided<TreeSet<A>> = { Len = TreeSetModule.Len, Clear = TreeSetModule.Clear }
-Set.ImplFor(TOKEN, setImpl)
-Collection.ImplFor(TOKEN, collectionImpl)
+Set.ImplFor(TreeSetModule, setImpl)
+Collection.ImplFor(TreeSetModule, collectionImpl)
 
 return TreeSetModule

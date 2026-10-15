@@ -484,16 +484,16 @@ do
 	-- (토큰의 정체성을 잃음)은 그 종류가 아닙니다.
 	const predicates: { { name: string, is: (any) -> boolean, token: any } } = {
 		{ name = "Arr", is = stl.isArr, token = stl.Trait.TokenOf(stl.Arr) },
-		{ name = "HashMap", is = stl.isHashMap, token = stl.HashMap.Token },
-		{ name = "HashSet", is = stl.isHashSet, token = stl.HashSet.Token },
-		{ name = "FlatMap", is = stl.isFlatMap, token = stl.FlatMap.Token },
-		{ name = "FlatSet", is = stl.isFlatSet, token = stl.FlatSet.Token },
-		{ name = "Heap", is = stl.isHeap, token = stl.Heap.Token },
-		{ name = "Fut", is = stl.isFut, token = stl.Fut.Token },
+		{ name = "HashMap", is = stl.isHashMap, token = stl.Trait.TokenOf(stl.HashMap) },
+		{ name = "HashSet", is = stl.isHashSet, token = stl.Trait.TokenOf(stl.HashSet) },
+		{ name = "FlatMap", is = stl.isFlatMap, token = stl.Trait.TokenOf(stl.FlatMap) },
+		{ name = "FlatSet", is = stl.isFlatSet, token = stl.Trait.TokenOf(stl.FlatSet) },
+		{ name = "Heap", is = stl.isHeap, token = stl.Trait.TokenOf(stl.Heap) },
+		{ name = "Fut", is = stl.isFut, token = stl.Trait.TokenOf(stl.Fut) },
 		{ name = "CircularDeque", is = stl.isCircularDeque, token = stl.Trait.TokenOf(stl.CircularDeque) },
-		{ name = "LinkedDeque", is = stl.isLinkedDeque, token = stl.LinkedDeque.Token },
-		{ name = "TreeMap", is = stl.isTreeMap, token = stl.TreeMap.Token },
-		{ name = "TreeSet", is = stl.isTreeSet, token = stl.TreeSet.Token },
+		{ name = "LinkedDeque", is = stl.isLinkedDeque, token = stl.Trait.TokenOf(stl.LinkedDeque) },
+		{ name = "TreeMap", is = stl.isTreeMap, token = stl.Trait.TokenOf(stl.TreeMap) },
+		{ name = "TreeSet", is = stl.isTreeSet, token = stl.Trait.TokenOf(stl.TreeSet) },
 	}
 	const oldTags = {
 		"__arr__",
@@ -650,7 +650,7 @@ do
 		end
 		assert(T.Implements(stl.List, case.value) == (case.list ~= nil), `{case.name} Implements List`)
 		const module = (stl :: any)[case.name]
-		assert(T.TokenOf(case.value) == (T.TokenOf(module) or module.Token), `{case.name} 의 TokenOf`) -- 봉인한 종류(질문 BB)는 TokenOf(모듈)
+		assert(T.TokenOf(case.value) == T.TokenOf(module), `{case.name} 의 TokenOf`) -- 봉인한 종류(질문 BB)는 TokenOf(모듈)
 	end
 	-- TokenOf 는 토큰이 아닌 `__type`(숫자·문자열·아무 테이블)을 토큰으로 돌려주지 않음
 	for _, bogus in { 5, true, "Player", 0 / 0, {}, table.freeze({ name = "Arr" }) } :: { any } do
@@ -4026,7 +4026,7 @@ do
 	}
 	for _, wiring in wirings do
 		const module = (stl :: any)[wiring.kind]
-		const impl = stl.Trait.Impls(wiring.trait)[stl.Trait.TokenOf(module) or module.Token] -- 봉인한 종류(질문 BB)는 TokenOf(모듈)
+		const impl = stl.Trait.Impls(wiring.trait)[stl.Trait.TokenOf(module)] -- 봉인한 종류(질문 BB)는 TokenOf(모듈)
 		const label = `{wiring.kind} 의 {wiring.traitName}`
 		assert(impl ~= nil, `{label}: 등록이 없음`)
 		local expected = 0

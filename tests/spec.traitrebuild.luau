@@ -824,7 +824,7 @@ do
 	mapCopy.data.k.__type = { name = "Stl.Arr" }
 	T.Restore(mapCopy)
 	assert(
-		T.TokenOf(mapCopy) == stl.HashMap.Token and T.TokenOf(mapCopy.data.k) == stl.Trait.TokenOf(stl.Arr),
+		T.TokenOf(mapCopy) == stl.Trait.TokenOf(stl.HashMap) and T.TokenOf(mapCopy.data.k) == stl.Trait.TokenOf(stl.Arr),
 		"맵 안의 data 를 지나 안쪽 Arr 까지"
 	)
 	const hidden = { __type = { name = "Stl.Arr" }, n = 0 }
