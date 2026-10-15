@@ -1,0 +1,5 @@
+(1) Show.ImplWhere({ B }) — B 종류 아직 없음	true	
+(2) B.ImplWhere(T.Every)	false	./p02-indirect-every.luau:24: Trait: two blanket implementations of P02.Show apply to Stl.HashMap — implement P02.Show for Stl.HashMap directly (P02.Show.ImplFor) or narrow an ImplWhere
+(3) 무관한 NewToken	false	./p02-indirect-every.luau:26: Trait: two blanket implementations of P02.Show apply to P02.Unrelated — implement P02.Show for P02.Unrelated directly (P02.Show.ImplFor) or narrow an ImplWhere
+(4) 또 다른 NewToken	false	./p02-indirect-every.luau:27: Trait: two blanket implementations of P02.Show apply to P02.Other — implement P02.Show for P02.Other directly (P02.Show.ImplFor) or narrow an ImplWhere
+(5) NewToken 도 여기서 던짐(독)	false	./p02-indirect-every.luau:33: Trait: two blanket implementations of P02.Show apply to P02.K — implement P02.Show for P02.K directly (P02.Show.ImplFor) or narrow an ImplWhere

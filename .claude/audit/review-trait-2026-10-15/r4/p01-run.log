@@ -1,0 +1,18 @@
+A Every→list	ok=false	userLine=false	./p01-every-orders.luau:29: Trait: P01.2.Show already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it on every kind it covers; implement those kinds directly (P01.2.Show.ImplFor)
+A after: show	default	blankets survive?	-
+B list→Every	ok=false	userLine=true	./p01-every-orders.luau:38: Trait: P01.4.Show.ImplWhere(Trait.Every) would overlap the blanket implementations P01.4.Show already has on every kind they cover — implement those kinds directly (P01.4.Show.ImplFor)
+B after NewToken: S2 implemented on fresh kind?	false	Arr?	false
+B list blanket still works:	p2
+C Every→Every	ok=false	userLine=true	./p01-every-orders.luau:47: Trait: P01.5.Show.ImplWhere(Trait.Every) would overlap the blanket implementations P01.5.Show already has on every kind they cover — implement those kinds directly (P01.5.Show.ImplFor)
+C after: show	first	first
+D explicit+Every→list	ok=false	userLine=true	./p01-every-orders.luau:58: Trait: P01.7.Show already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it on every kind it covers; implement those kinds directly (P01.7.Show.ImplFor)
+D d1 explicit wins	explicit	Arr default	default4
+D explicit+list→Every	ok=false	userLine=true	./p01-every-orders.luau:63: Trait: P01.8.Show.ImplWhere(Trait.Every) would overlap the blanket implementations P01.8.Show already has on every kind they cover — implement those kinds directly (P01.8.Show.ImplFor)
+E explicit over Every	fast	def5
+F Loud via Show(Every)	s6!
+F Loud list→Every	ok=false	userLine=true	./p01-every-orders.luau:79: Trait: P01.11.Loud.ImplWhere(Trait.Every) would overlap the blanket implementations P01.11.Loud already has on every kind they cover — implement those kinds directly (P01.11.Loud.ImplFor)
+F ok
+G Every then {self}	ok=false	userLine=true	./p01-every-orders.luau:89: Trait: P01.13.Show already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it on every kind it covers; implement those kinds directly (P01.13.Show.ImplFor)
+H blankets	1	P8 dependents	0
+H blankets S9	1	P8 dependents	1
+H NewToken x3 ok
