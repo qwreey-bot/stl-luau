@@ -728,6 +728,122 @@ do
 		where = debug.info(1, "l") + 1
 		Y.ImplFor(T.NewToken("Test.Rebuild.GiverKind"), { Run = print, Extra = print })
 	end, "Trait: Test.Rebuild.GiverKind gave Extra to Test.Rebuild.BlanketGiver", "명시 구현이 모르는 이름")
+	-- 뭉텅이를 걸 때 조건을 갖춘 종류가 없으면, 그 잘못은 **나중의 다시 짓기**(첫 종류의 등록 줄)에서 드러남 — 그때도 뭉텅이를 탓함(2라운드)
+	const LateSrc: any = T.Trait("Test.Rebuild.LateSrc", factory({ A = T.Fn() }))
+	const LateDst: any = T.Trait("Test.Rebuild.LateDst", factory({ Run = T.Fn(), Stop = T.Fn() }))
+	LateDst.ImplWhere({ LateSrc }, function(deps: any)
+		return { Run = deps[LateSrc].A }
+	end)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			LateSrc.ImplFor(T.NewToken("Test.Rebuild.LateKind"), { A = print })
+		end,
+		"Trait: a blanket implementation of Test.Rebuild.LateDst (ImplWhere) for Test.Rebuild.LateKind is missing Stop",
+		"다시 짓기에서 드러난 빠뜨림"
+	)
+
+	-- (8) 고리 검사의 갈래(2라운드): 의존 목록의 둘째, 의존 트레이트의 둘째 뭉텅이, 한 뭉텅이의 둘째 의존 — 그리고 다이아몬드는 고리가 아님
+	const bA: any = T.Trait("Test.Rebuild.CycleB.A", factory({ A = T.Fn() }))
+	const bB: any = T.Trait("Test.Rebuild.CycleB.B", factory({ B = T.Fn() }))
+	const bX: any = T.Trait("Test.Rebuild.CycleB.X", factory({ X = T.Fn() }))
+	bB.ImplWhere({ bA }, function(deps: any)
+		return { B = deps[bA].A }
+	end)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		bA.ImplWhere({ bX, bB }, function(deps: any)
+			return { A = deps[bX].X }
+		end)
+	end, "Trait: Test.Rebuild.CycleB.A.ImplWhere on Test.Rebuild.CycleB.B makes a cycle", "의존 목록의 둘째")
+	const cA: any = T.Trait("Test.Rebuild.CycleC.A", factory({ A = T.Fn() }))
+	const cE: any = T.Trait("Test.Rebuild.CycleC.E", factory({ E = T.Fn() }))
+	const cY: any = T.Trait("Test.Rebuild.CycleC.Y", factory({ Y = T.Fn() }))
+	cE.ImplWhere({ cY }, function(deps: any)
+		return { E = deps[cY].Y }
+	end)
+	cE.ImplWhere({ cA }, function(deps: any)
+		return { E = deps[cA].A }
+	end)
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			cA.ImplWhere({ cE }, function(deps: any)
+				return { A = deps[cE].E }
+			end)
+		end,
+		"Trait: Test.Rebuild.CycleC.A.ImplWhere on Test.Rebuild.CycleC.E makes a cycle",
+		"의존 트레이트의 둘째 뭉텅이"
+	)
+	const dA: any = T.Trait("Test.Rebuild.CycleD.A", factory({ A = T.Fn() }))
+	const dE: any = T.Trait("Test.Rebuild.CycleD.E", factory({ E = T.Fn() }))
+	const dY: any = T.Trait("Test.Rebuild.CycleD.Y", factory({ Y = T.Fn() }))
+	dE.ImplWhere({ dY, dA }, function(deps: any)
+		return { E = deps[dA].A }
+	end)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		dA.ImplWhere({ dE }, function(deps: any)
+			return { A = deps[dE].E }
+		end)
+	end, "Trait: Test.Rebuild.CycleD.A.ImplWhere on Test.Rebuild.CycleD.E makes a cycle", "뭉텅이의 둘째 의존")
+	-- 다이아몬드: 스택이면서 큐인 것(둘 다 덱에서 따라옴) — 고리가 아님
+	const Both: any = T.Trait("Test.Rebuild.StackQueue", factory({ Size = T.Fn() }))
+	Both.ImplWhere({ stl.Stack, stl.Queue }, function(_deps: any)
+		return {
+			Size = function(x: any)
+				return stl.Collection.Len(x)
+			end,
+		}
+	end)
+	assert(Both.Size(stl.CircularDeque.Of(1, 2, 3)) == 3, "다이아몬드")
+
+	-- (9) Restore 는 토큰 없는 중간 표(HashMap 의 data, 연결 노드)를 지나 안쪽 값까지(2라운드), 걷기는 raw(`__iter` 를 부르지 않음)
+	const m = stl.HashMap.New()
+	stl.HashMap.Set(m, "k", stl.Arr.Of(10, 20))
+	const mapCopy = { __type = { name = "Stl.HashMap" }, size = 1, data = { k = table.clone(m.data.k) :: any } } :: any
+	mapCopy.data.k.__type = { name = "Stl.Arr" }
+	T.Restore(mapCopy)
+	assert(
+		T.TokenOf(mapCopy) == stl.HashMap.Token and T.TokenOf(mapCopy.data.k) == stl.Arr.Token,
+		"맵 안의 data 를 지나 안쪽 Arr 까지"
+	)
+	const hidden = { __type = { name = "Stl.Arr" }, n = 0 }
+	local iterCalls = 0
+	const withIter = setmetatable({ inner = hidden }, {
+		__iter = function(_t: any)
+			iterCalls += 1
+			return next, {}
+		end,
+	}) :: any
+	T.Restore(withIter)
+	assert(
+		iterCalls == 0 and T.TokenOf(hidden) == stl.Arr.Token,
+		"raw 로 걸음(__iter 를 안 부르고 숨긴 자식까지)"
+	)
+
+	-- (10) 진입점은 값 **자신의** `__type` 만 — 메타테이블로 물려받은 토큰은 종류가 아님(TokenOf 와 같게, 2라운드)
+	const proto = { __type = stl.CircularDeque.Token } :: any
+	proto.__index = proto
+	const obj = setmetatable({}, proto) :: any
+	assert(T.TokenOf(obj) == nil, "TokenOf 는 raw")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Stack.Push(obj, 1)
+	end, "Stack: Push needs a Stack (got table without a type token)", "물려받은 __type 의 진입점")
+
+	-- (11) `Trait.Impls` 는 살아 있는 표 — 나중의 등록이 같은 표에 들어옴(`Map.luau` 가 로드 때 붙잡아 둠)
+	const liveImpls = T.Impls(stl.Collection)
+	const liveTok = T.NewToken("Test.Rebuild.LiveImpls")
+	stl.Collection.ImplFor(liveTok, {
+		Len = function()
+			return 0
+		end,
+		Clear = function(c: any)
+			return c
+		end,
+	})
+	assert(T.Impls(stl.Collection) == liveImpls and liveImpls[liveTok] ~= nil, "살아 있는 표")
 end
 print("PASS")
 

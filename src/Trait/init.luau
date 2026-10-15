@@ -202,7 +202,8 @@ const function Restore<T>(value: T): T
 					rawset(node, TYPE_KEY, real)
 				end
 			end
-			for key, child in node do
+			-- raw 로 걸음(`rawget` 으로 읽는 `__type` 과 같게 — 사용자 `__iter` 를 부르지 않음, 2라운드 참고)
+			for key, child in next, node do
 				if key ~= TYPE_KEY and type(child) == "table" and not seen[child] then
 					top += 1
 					stack[top] = child
