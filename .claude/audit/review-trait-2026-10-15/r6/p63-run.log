@@ -1,0 +1,20 @@
+== -O1
+ImplFor (기대 25행):	false	./p63-nested-lines.luau:28: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+ImplWhere (기대 28행):	false	./p63-nested-lines.luau:31: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+NewToken (기대 31행):	false	./p63-nested-lines.luau:34: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+기본 구현 빌더 (기대 42행):	false	./p63-nested-lines.luau:44: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+뒤의 등록 정상:	true	table: 0x000062ed76c77c20
+P63.Inner 이름은 빔:	true	table: 0x000062ed76cac8f0
+P63.FromDefault 이름은 빔:	true	table: 0x000062ed76cac890
+P63.DKind 이름은 빔(바깥 토큰 등록은 따로 성공):	false	Trait: a token named P63.DKind already exists — token names are unique (namespace yours, like "MyLib.P63.DKind")
+rc=0
+== -O2
+ImplFor (기대 25행):	false	./p63-nested-lines.luau:28: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+ImplWhere (기대 28행):	false	./p63-nested-lines.luau:31: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+NewToken (기대 31행):	false	./p63-nested-lines.luau:34: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+기본 구현 빌더 (기대 42행):	false	./p63-nested-lines.luau:44: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+뒤의 등록 정상:	true	table: 0x0000559aa6641cf0
+P63.Inner 이름은 빔:	true	table: 0x0000559aa6641c90
+P63.FromDefault 이름은 빔:	true	table: 0x0000559aa6641c30
+P63.DKind 이름은 빔(바깥 토큰 등록은 따로 성공):	false	Trait: a token named P63.DKind already exists — token names are unique (namespace yours, like "MyLib.P63.DKind")
+rc=0

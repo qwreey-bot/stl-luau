@@ -1,0 +1,3 @@
+ok collect:	true
+매달린 스레드 수 before/after GC:	88	0
+메인 스레드 등록:	true	table: 0x0000573184806560

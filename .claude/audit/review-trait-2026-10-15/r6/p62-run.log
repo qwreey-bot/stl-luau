@@ -1,0 +1,12 @@
+== -O1
+바깥 등록:	false	./p62-require-in-builder.luau:21: Trait: a blanket implementation of P62.A (ImplWhere) for P62.K2 is missing Run for P62.A
+K3 는 Q:	true
+뭉텅이가 되돌려졌는데 K3 는 A:	true	run
+K1 은 A(되돌려짐 → false 여야):	false
+rc=0
+== -O2
+바깥 등록:	false	./p62-require-in-builder.luau:21: Trait: a blanket implementation of P62.A (ImplWhere) for P62.K2 is missing Run for P62.A
+K3 는 Q:	true
+뭉텅이가 되돌려졌는데 K3 는 A:	true	run
+K1 은 A(되돌려짐 → false 여야):	false
+rc=0

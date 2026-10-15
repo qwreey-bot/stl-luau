@@ -1,0 +1,22 @@
+== -O1
+(a) lazy require 안의 NewToken:	true	nil
+    A 등록이 남았나:	true
+    다시 require:	true	P61.UserKind
+(b) 돌려준 함수가 나중에 등록:	true	P61.LaterToken
+(c) 삼킨 안쪽 에러:	./p61-nested-legit.luau:43: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+    바깥 등록 됨:	true	c
+    그 뒤 같은 스레드의 등록:	true	table: 0x000063fa1829c2f0
+    안쪽 토큰 이름은 비어 있음:	true	table: 0x000063fa1829c290
+(d) require 본문 스레드 == 부른 스레드:	false
+rc=0
+== -O2
+(a) lazy require 안의 NewToken:	true	nil
+    A 등록이 남았나:	true
+    다시 require:	true	P61.UserKind
+(b) 돌려준 함수가 나중에 등록:	true	P61.LaterToken
+(c) 삼킨 안쪽 에러:	./p61-nested-legit.luau:43: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table
+    바깥 등록 됨:	true	c
+    그 뒤 같은 스레드의 등록:	true	table: 0x00005a99e0165750
+    안쪽 토큰 이름은 비어 있음:	true	table: 0x00005a99e01656f0
+(d) require 본문 스레드 == 부른 스레드:	false
+rc=0
