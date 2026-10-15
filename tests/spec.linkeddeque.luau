@@ -494,7 +494,7 @@ do
 			not ok
 				and string.find(
 					tostring(err),
-					`Deque: {entry.name} needs a Deque — Arr does not implement Deque`,
+					`Deque: {entry.name} needs a Deque — Stl.Arr does not implement Deque`,
 					1,
 					true
 				),
@@ -621,11 +621,11 @@ do
 		Stack.Push(both, 1)
 		Stack.Push(both, 2)
 		assert(Queue.Pop(both) == 1 and Stack.Pop(both) == 2, `{kind.name} 같은 값을 두 트레이트로`)
-		-- 등록한 적이 없는데 구현함(저절로 따라옴)
+		-- 등록한 적이 없는데 구현함(덱의 뭉텅이 구현) — 표에 든 것은 덱의 함수 그 자체
 		assert(T.Implements(Stack, stack) and T.Implements(Queue, queue), `{kind.name} Implements`)
 		assert(
-			(Stack :: any).derived[kind.token] and (Queue :: any).derived[kind.token],
-			`{kind.name}: 저절로 만든 것`
+			Stack.Of(stack).Push == stl.Deque.Of(stack).PushBack and Queue.Of(queue).Pop == stl.Deque.Of(queue).PopFront,
+			`{kind.name}: 뭉텅이 구현이 덱 함수를 그대로`
 		)
 	end
 
@@ -642,7 +642,12 @@ do
 	end)
 	assert(
 		not okStack
-			and string.find(tostring(errStack), "Stack: Push needs a Stack — Arr does not implement Stack", 1, true),
+			and string.find(
+				tostring(errStack),
+				"Stack: Push needs a Stack — Stl.Arr does not implement Stack",
+				1,
+				true
+			),
 		`덱이 아닌 것: {errStack}`
 	)
 	assert(string.find(tostring(errStack), `spec.linkeddeque.luau:{where}:`, 1, true), `사용자 줄: {errStack}`)
@@ -657,8 +662,8 @@ do
 	assert(string.find(tostring(errQueue), `spec.linkeddeque.luau:{where}:`, 1, true), `사용자 줄: {errQueue}`)
 
 	-- ⭐ 바깥에서 만든 덱도 따라옴: `Deque` 만 등록하면 `Stack`·`Queue` 는 등록 없이
-	const PileToken = T.NewToken("Pile")
-	T.Impl(Deque, PileToken, {
+	const PileToken = T.NewToken("Test.LinkedDeque.Pile")
+	Deque.ImplFor(PileToken, {
 		PushFront = function(pile: any, item: any): any
 			table.insert(pile.items, 1, item)
 			return pile
@@ -687,25 +692,40 @@ do
 	assert(Stack.Peek(pile) == "c" and Queue.Peek(pile) == "a", "바깥 덱: Peek")
 	assert(Stack.Pop(pile) == "c" and Queue.Pop(pile) == "a" and Stack.Pop(pile) == "b", "바깥 덱: 스택·큐")
 
-	-- 재정의: 저절로 따라온 것 위에 빠른 판을 얹음(일부만 — 나머지는 기본 구현 그대로)
+	-- 재정의: 뭉텅이로 따라온 것 위에 빠른 판을 얹음(명시 등록이 뭉텅이 구현을 덮음 — 셋 다 줘야 함, 나머지는 덱의 함수 그대로)
 	local fastPushes = 0
-	T.Impl(Stack, PileToken, {
+	const pileDeque = Deque.Of(PileToken)
+	Stack.ImplFor(PileToken, {
 		Push = function(target: any, item: any): any
 			fastPushes += 1
 			table.insert(target.items, item)
 			return target
 		end,
+		Pop = pileDeque.PopBack,
+		Peek = pileDeque.Back,
 	})
 	Stack.Push(pile, "x")
-	assert(fastPushes == 1 and Stack.Pop(pile) == "x", "재정의한 Push, 기본 구현의 Pop")
-	assert(not (Stack :: any).derived[PileToken], "명시 등록이 됨")
+	assert(fastPushes == 1 and Stack.Pop(pile) == "x", "재정의한 Push, 덱의 Pop")
+	-- 일부만 넘기면 빠진 것이 에러(필수 함수 — 예전엔 기본 구현이 채웠음)
+	const okPart, errPart = pcall(function()
+		Queue.ImplFor(PileToken, { Push = print } :: any)
+	end)
+	assert(
+		not okPart and string.find(tostring(errPart), "Trait: Test.LinkedDeque.Pile is missing Peek for Queue", 1, true),
+		`일부만: {errPart}`
+	)
 	-- 스택이 모르는 이름은 넘길 수 없음(질문 AS) — 덱의 이름 `PushBack` 은 스택의 이름이 아님
 	const okName, errName = pcall(function()
-		T.Impl(Queue, PileToken, { PushBack = print } :: any)
+		Queue.ImplFor(PileToken, { PushBack = print } :: any)
 	end)
 	assert(
 		not okName
-			and string.find(tostring(errName), "Trait: Pile gave PushBack to Queue, which Queue does not have", 1, true),
+			and string.find(
+				tostring(errName),
+				"Trait: Test.LinkedDeque.Pile gave PushBack to Queue, which Queue does not have",
+				1,
+				true
+			),
 		`모르는 이름: {errName}`
 	)
 

@@ -370,7 +370,7 @@ do
 		)
 	end
 	assert(
-		string.find(tostring(select(2, pcall(FlatSet.Union, s, other))), "got TreeSet", 1, true),
+		string.find(tostring(select(2, pcall(FlatSet.Union, s, other))), "got Stl.TreeSet", 1, true),
 		"메시지에 상대의 종류 이름"
 	)
 	assert(table.concat(FlatSet.Items(s), ",") == "10,20,30", "거절된 연산은 셋을 안 바꿈")
