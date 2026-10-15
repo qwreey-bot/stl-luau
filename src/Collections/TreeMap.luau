@@ -64,14 +64,8 @@ export type TreeMapData<K, V> = {
 	-- 자가 균형(`Balance.Scheme` — `RedBlack`·`Avl` 모듈이 그 모양). 노드를 만든 방식과 같아야 합니다.
 	balance: Scheme,
 	read __type: Trait.Token<"Stl.TreeMap">,
-	read __mapKey: K,
-	read __mapValue: V,
-	-- 쓰는 제네릭용 불변 팬텀(`Map.MarkerMut`, 질문 AM) — 타입에만 있습니다.
-	read __mapMut: (K, V) -> (K, V),
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`) — 타입에만 있습니다.
-	read __collectionMut: true,
-	-- 연관 타입(트레이트 `Map` 의 정의가 `of` 로 읽음 — 2026-10-15, 질문 AY): 키·값. 불변 팬텀, 타입에만 있습니다.
-	read __generics: { read Key: (K) -> K, read Value: (V) -> V },
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read Map: Map.Assoc<K, V>, read Collection: Collection.Assoc },
 }
 -- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
 export type TreeMap<K, V> = TreeMapData<K, V>

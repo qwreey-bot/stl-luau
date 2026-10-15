@@ -60,14 +60,8 @@ export type FlatMapData<K, V> = {
 	-- 타입에만 드러난 태그(생성자가 붙이는 실제 필드) — 리터럴이 맵 자리에 들어가는
 	-- 것을 막습니다(M0 리뷰).
 	read __type: Trait.Token<"Stl.FlatMap">,
-	read __mapKey: K,
-	read __mapValue: V,
-	-- 쓰는 제네릭용 불변 팬텀(`Map.MarkerMut`, 질문 AM) — 타입에만 있습니다.
-	read __mapMut: (K, V) -> (K, V),
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
-	read __collectionMut: true,
-	-- 연관 타입(트레이트 `Map` 의 정의가 `of` 로 읽음 — 2026-10-15, 질문 AY): 키·값. 불변 팬텀, 타입에만 있습니다.
-	read __generics: { read Key: (K) -> K, read Value: (V) -> V },
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read Map: Map.Assoc<K, V>, read Collection: Collection.Assoc },
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한

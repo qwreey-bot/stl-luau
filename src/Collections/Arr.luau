@@ -90,22 +90,14 @@ type Optional<T> = Optional.Optional<T>
 
 -- `read __type: Token<"Stl.Arr">` 는 생성자가 붙이는 실제 필드(타입 토큰, `Trait.luau`)이고,
 -- 타입에 두면 생성자를 거치지 않은 리터럴(`{ n = 3 }`)이 `Arr` 자리에 들어가는 것을
--- 막습니다(M0 리뷰). `__list`/`__listIndex` 는 **타입에만 있는** 리스트 트레이트 마커입니다
--- — `List.IndexOf(a, x)` 가 원소 타입을 여기서 추론합니다(런타임엔 없음).
--- `__listMut` 는 쓰는 제네릭용 불변 팬텀(`List.MarkerMut`, 질문 AM) — **`ArrData` 에만** 있어
--- 읽기 전용으로 빌린 `ArrRead` 는 쓰는 제네릭에 못 들어갑니다.
+-- 막습니다(M0 리뷰). `__traits` 는 **타입에만 있는** 트레이트 레코드(질문 BA)입니다 — `List.IndexOf(a, x)` 가 원소 타입을
+-- 여기서 추론합니다(런타임엔 없음). `ArrData` 는 `List.Assoc`(불변 팬텀 `Mut` 포함)와 `Collection.Assoc` 을, 읽기 전용으로 빌린
+-- `ArrRead` 는 `List.AssocRead` 만 적어 쓰는 제네릭(`List.MarkerMut`)·`Collection.OfMut` 에 못 들어갑니다.
 export type ArrData<T> = {
 	n: number,
 	read __type: Trait.Token<"Stl.Arr">,
-	read __list: T,
-	read __listIndex: number,
-	read __listMut: (T, number) -> (T, number),
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
-	read __collectionMut: true,
-	-- 연관 타입(새 트레이트 시제품 `research/trait-v2` — 2026-10-14): 이 종류의 원소·위치. 불변 팬텀, 타입에만 있습니다.
-	read __generics: { read Item: (T) -> T, read Index: (number) -> number },
-	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
-	read __readGenerics: { read Item: () -> T, read Index: () -> number },
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read List: List.Assoc<T, number>, read Collection: Collection.Assoc },
 	[number]: T,
 }
 
@@ -117,10 +109,8 @@ export type ArrData<T> = {
 export type ArrRead<T> = {
 	read n: number,
 	read __type: Trait.Token<"Stl.Arr">,
-	read __list: T,
-	read __listIndex: number,
-	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
-	read __readGenerics: { read Item: () -> T, read Index: () -> number },
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read List: List.AssocRead<T, number> },
 	read [number]: T,
 }
 
@@ -131,8 +121,8 @@ export type ArrRead<T> = {
 type ArrConsumed<T> = {
 	n: number,
 	read __type: Trait.Token<"Stl.Arr">,
-	read __list: T,
-	read __listIndex: number,
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read List: List.AssocRead<T, number> },
 	read [number]: T,
 }
 

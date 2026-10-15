@@ -32,39 +32,31 @@ local Collection = require("./Collection")
 
 --[[ 마커 — 타입에만 있는 필드(읽으면 nil — 읽는 코드를 쓰지 마세요) ]]
 
--- 읽기 마커(공변). `K` 는 키, `V` 는 값. 컨테이너에서 **꺼내기만 하는** 알고리즘용입니다(`Keys`).
-export type Marker<K, V> = { read __type: Trait.Token<any>, read __mapKey: K, read __mapValue: V }
--- ⭐ **키·값을 입력으로 받는 제네릭을 위한 불변 마커**(2026-10-12, 질문 AM). 위 읽기 마커는 `read` 라
--- **공변**입니다 — 마커와 함께 **값·키를 받아 넘기는** 제네릭에서는 그 타입이 조용히 넓어집니다: `Set` 으로
--- 쓰면 `HashMap<string, number>` 에 문자열이 들어가고, 조회만 해도 `FlatMap<string, …>` 에 숫자 키를 넘겨
--- 비교자가 라이브러리 줄에서 터졌습니다(진단 0건, `spikes/61`). 그런 제네릭은 이쪽을 받으세요. 팬텀이
--- **함수 타입**이라(인자·반환 양쪽에 타입 변수) 불변이고, 읽기 마커의 필드도 다 있어 읽는 알고리즘에
--- 그대로 넘어갑니다. (팬텀을 읽기·쓰기 필드로 선언하는 길도 불변이 되지만 사용자가 팬텀에 쓰는 코드가
--- 통과했습니다.)
-export type MarkerMut<K, V> = {
+-- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read Map: Map.Assoc<K, V> }`. 키·값은 공변 칸(`() -> K`)과 불변
+-- 팬텀 `Mut` 을 같이 둡니다(`(K) -> K` 는 `() -> K` 의 서브타입이 아니라 하나로는 두 쓰임을 못 덮음). 트레이트의 조건(`of`)은 불변 —
+-- 조회도 키가 입력이라(질문 AM). `Marker` 는 꺼내기만 하는 알고리즘(`Keys`)용으로 공변.
+export type Assoc<K, V> = { read Key: () -> K, read Value: () -> V, read Mut: (K, V) -> (K, V) }
+export type Marker<K, V> = {
 	read __type: Trait.Token<any>,
-	read __mapKey: K,
-	read __mapValue: V,
-	read __mapMut: (K, V) -> (K, V),
+	read __traits: { read Map: { read Key: () -> K, read Value: () -> V } },
 }
-
--- 맵의 연관 타입(키·값 — 컨테이너가 자기 데이터 타입의 `__generics` 에 같은 이름으로 적음). 쓰는 함수가 있어 불변.
-export type KeyValue<K, V> = { read __generics: { read Key: (K) -> K, read Value: (V) -> V } }
+export type MarkerMut<K, V> = { read __type: Trait.Token<any>, read __traits: { read Map: Assoc<K, V> } }
 type AnyToken = Trait.AnyToken
-const Fn = Trait.Fn
+const Fn, FnMut = Trait.Fn, Trait.FnMut
 
 --[[ 정의 ]]
-const MapBase = Trait.Trait("Map", function<Self, K, V>(of: (Self & KeyValue<K, V>) | AnyToken)
+const MapBase = Trait.Trait("Map", function<Self, K, V>(of: (Self & MarkerMut<K, V>) | AnyToken)
 	return table.freeze({
 		Get = Fn<<(map: Self, key: K) -> V?>>(),
-		Set = Fn<<(map: Self, key: K, value: V) -> ()>>(),
+		Set = FnMut<<(map: Self, key: K, value: V) -> ()>>(),
 		Has = Fn<<(map: Self, key: K) -> boolean>>(),
-		Remove = Fn<<(map: Self, key: K) -> V?>>(),
+		Remove = FnMut<<(map: Self, key: K) -> V?>>(),
 		Iter = Fn<<(map: Self) -> { read [K]: V } | (() -> (K, V))>>(),
 	})
 end)
 -- 완성 표(= 등록 표 — 기본 구현이 없음)
-export type Full<Self, K, V> = typeof(MapBase.Of<<Self, K, V>>(nil :: any))
+export type Full<Self, K, V> = typeof(MapBase.OfMut<<Self, K, V>>(nil :: any))
+export type Read<Self, K, V> = typeof(MapBase.Of<<Self, K, V>>(nil :: any))
 export type Provided<Self, K, V> = typeof(MapBase.ImplOf<<Self, K, V>>(nil :: any))
 const expectImpl = Trait.ExpectImpl
 -- 구현 찾기를 펼칠 표(키가 토큰뿐 — 트레이트 객체를 바로 읽으면 `__type = "Get"` 같은 문자열이 진입점을 꺼냄, 리뷰 1라운드)

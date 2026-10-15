@@ -2217,9 +2217,7 @@ do
 	-- ⭐ 사용자 맵(Map 트레이트만 구현 — Collection 도 아님)도 목적지가 됨
 	type Bag<V> = {
 		read __type: stl.TraitToken<any>,
-		read __mapKey: string,
-		read __mapValue: V,
-		read __mapMut: (string, V) -> (string, V),
+		read __traits: { read Map: stl.MapAssoc<string, V> },
 		slots: { [string]: V },
 		sets: number,
 	}

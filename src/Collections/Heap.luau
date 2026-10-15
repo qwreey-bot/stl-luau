@@ -49,8 +49,8 @@ export type HeapData<T> = {
 	size: number,
 	less: LessThan<T>,
 	read __type: Trait.Token<"Stl.Heap">,
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
-	read __collectionMut: true,
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read Collection: Collection.Assoc },
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한

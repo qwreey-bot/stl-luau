@@ -14,43 +14,39 @@
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
-type Item<T> = Trait.Item<T>
 type AnyToken = Trait.AnyToken
-const Fn = Trait.Fn
+const Fn, FnMut = Trait.Fn, Trait.FnMut
 
---[[ 마커 — 타입에만 있는 필드 ]]
--- 읽기(공변): 꺼내 보기만 하는 진입점(`Front`·`Back`)용 — 빌린 참조(`CircularDequeRead`)도 받습니다.
-export type Marker<T> = { read __type: Trait.Token<any>, read __dequeItem: T }
--- 넣고 빼는 진입점용 불변 마커(질문 AM — 읽기 마커로 받으면 원소 타입이 조용히 넓어짐).
-export type MarkerMut<T> = { read __type: Trait.Token<any>, read __dequeItem: T, read __dequeMut: (T) -> T }
+--[[ 연관 타입 레코드와 마커 — 타입에만 있는 필드(질문 BA) ]]
+-- 컨테이너가 `read __traits: { read Deque: Deque.Assoc<T> }`(빌린 읽기 타입은 `AssocRead<T>`). `Item` 공변, `Mut` 불변 팬텀.
+export type AssocRead<T> = { read Item: () -> T }
+export type Assoc<T> = { read Item: () -> T, read Mut: (T) -> T }
+-- 조건(정의의 `of`·`ofMut`, 진입점의 첫 인자) — 스택·큐도 이것을 씁니다(덱이면 따라옴).
+export type Marker<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: AssocRead<T> } }
+export type MarkerMut<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: Assoc<T> } }
 
 --[[ 정의 ]]
--- 쓰는 함수가 있는 트레이트 — `of` 는 불변 연관 타입 `Item<T>`(읽기 전용으로 빌린 참조는 `Deque.Of` 를 못 얻음).
-const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & Item<T>) | AnyToken)
-	return table.freeze({
-		PushFront = Fn<<(deque: Self, item: T) -> Self>>(),
-		PushBack = Fn<<(deque: Self, item: T) -> Self>>(),
-		PopFront = Fn<<(deque: Self) -> T?>>(),
-		PopBack = Fn<<(deque: Self) -> T?>>(),
-		Front = Fn<<(deque: Self) -> T?>>(),
-		Back = Fn<<(deque: Self) -> T?>>(),
-	})
-end)
+-- 칸은 읽기(`Fn` — `Front`·`Back`)와 쓰기(`FnMut` — 넣기·빼기). 읽기 보기 `Deque.Of` 는 공변 `Marker`(빌린 참조도 `Front`·`Back`), 완성 표
+-- `Deque.OfMut` 은 불변 `MarkerMut`(질문 BA — 예전엔 빌린 참조가 `Deque.Of` 를 아예 못 얻었음).
+const DequeBase = Trait.Trait(
+	"Deque",
+	function<Self, T>(of: (Self & Marker<T>) | AnyToken, ofMut: (Self & MarkerMut<T>) | AnyToken)
+		return table.freeze({
+			PushFront = FnMut<<(deque: Self, item: T) -> Self>>(),
+			PushBack = FnMut<<(deque: Self, item: T) -> Self>>(),
+			PopFront = FnMut<<(deque: Self) -> T?>>(),
+			PopBack = FnMut<<(deque: Self) -> T?>>(),
+			Front = Fn<<(deque: Self) -> T?>>(),
+			Back = Fn<<(deque: Self) -> T?>>(),
+		})
+	end
+)
 -- 완성 표(= 등록 표 — 기본 구현이 없음)
-export type Full<Self, T> = typeof(DequeBase.Of<<Self, T>>(nil :: any))
+export type Full<Self, T> = typeof(DequeBase.OfMut<<Self, T>>(nil :: any))
+export type Read<Self, T> = typeof(DequeBase.Of<<Self, T>>(nil :: any))
 export type Provided<Self, T> = typeof(DequeBase.ImplOf<<Self, T>>(nil :: any))
 
---[[ 진입점 서명 ]]
-const Deque = DequeBase :: typeof(DequeBase) & {
-	-- 앞·뒤에 넣고 넣은 타입 그대로 돌려줍니다.
-	read PushFront: <C, T>(deque: C & MarkerMut<T>, item: T) -> C,
-	read PushBack: <C, T>(deque: C & MarkerMut<T>, item: T) -> C,
-	-- 앞·뒤를 꺼냅니다. 비었으면 nil.
-	read PopFront: <T>(deque: MarkerMut<T>) -> T?,
-	read PopBack: <T>(deque: MarkerMut<T>) -> T?,
-	-- 앞·뒤를 봅니다(꺼내지 않음). 비었으면 nil. 읽기라 빌린 참조도 받습니다.
-	read Front: <T>(deque: Marker<T>) -> T?,
-	read Back: <T>(deque: Marker<T>) -> T?,
-}
+--[[ 진입점 서명 — 정의에서 지어짐(`Trait.Entries`): 쓰기 칸은 `MarkerMut`, 읽기 칸은 `Marker` 를 받음 ]]
+const Deque = DequeBase
 
 return Deque

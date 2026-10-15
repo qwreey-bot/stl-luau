@@ -13,6 +13,7 @@
 ]]
 local stl = require("../../../../src")
 type A = { read __probeA: true }
+type BagAssoc<T> = { read Item: (T) -> T }
 type Arr<T> = stl.Arr<T>
 local d = stl.CircularDeque.Of(1, 2, 3)
 local l = stl.List.Of(d)
@@ -81,14 +82,14 @@ local function drain<C, T>(st: stl.StackFull<C, T>, c: C): { T }
 	end
 	return out
 end
-local all: { number } = drain(stl.Stack.Of(d), d)
-local negAll: { string } = drain(stl.Stack.Of(d), d) -- NEG
+local all: { number } = drain(stl.Stack.OfMut(d), d)
+local negAll: { string } = drain(stl.Stack.OfMut(d), d) -- NEG
 
 --[[ 같은 모듈의 경계(질문 AZ — 2026-10-15 사용자: (가) 유지) — 트레이트를 **이 파일 꼭대기에서** 정의하고 여기서 등록하면 칸 자체가
      제네릭인 함수(`Fold<U>`)의 실수가 0건(다시 지은 `<U>` 가 모듈 스코프를 받고 상류 `Subtyping.cpp:830` 이 통과시킴). 규약: 같은 파일에서
      등록하려면 정의를 `do … end` 에. 아래 `-- 경계` 줄은 **지금 0건이 기대값** — 상류가 고치면 건수가 바뀌어 배터리가 알립니다. ]]
-type Bag<T> = { read __type: stl.TraitToken<string>, read __generics: { read Item: (T) -> T }, items: { T } }
-local Top = stl.Trait.Trait("Spike70.Top", function<Self, T>(of: (Self & stl.TraitItem<T>) | stl.TraitToken<string>)
+type Bag<T> = { read __type: stl.TraitToken<string>, read __traits: { read Bag: BagAssoc<T> }, items: { T } } -- 시제품(trait-ofmut): 사용자 트레이트의 연관 타입 레코드
+local Top = stl.Trait.Trait("Spike70.Top", function<Self, T>(of: (Self & { read __traits: { read Bag: BagAssoc<T> } }) | stl.TraitToken<string>)
 	return table.freeze({
 		Fold = stl.Trait.Default(function(_ops: any): <U>(bag: Self, init: U, fn: (U, T) -> U) -> U
 			return function<U>(_bag: Self, init: U, _fn: (U, T) -> U): U
@@ -104,7 +105,7 @@ local topPinned: typeof(Top.ImplOf<<Bag<A>, A>>(nil :: any)) = {
 }
 local Boxed
 do
-	Boxed = stl.Trait.Trait("Spike70.Boxed", function<Self, T>(of: (Self & stl.TraitItem<T>) | stl.TraitToken<string>)
+	Boxed = stl.Trait.Trait("Spike70.Boxed", function<Self, T>(of: (Self & { read __traits: { read Bag: BagAssoc<T> } }) | stl.TraitToken<string>)
 		return table.freeze({
 			Fold = stl.Trait.Default(function(_ops: any): <U>(bag: Self, init: U, fn: (U, T) -> U) -> U
 				return function<U>(_bag: Self, init: U, _fn: (U, T) -> U): U

@@ -113,7 +113,7 @@ stl.Collection.Clear({ n = 0 })
 stl.Collection.Clear(5)
 -- 팬텀은 있고 **토큰만 없는** 꼴 — 이 줄만 토큰 때문에 에러(리뷰: 위 둘은 팬텀 때문에도 에러라
 -- `CollectionMarkerMut` 에서 토큰을 빼도 통과했음 — spikes/60 의 같은 교훈)
-stl.Collection.Clear({ __collectionMut = true :: true })
+stl.Collection.Clear({ __traits = { Collection = { Mut = true :: true } } })
 local negLenLiteral = stl.Collection.Len({ size = 0 })
 local negLenOptional = stl.Collection.Len(stl.Optional.Present(1))
 

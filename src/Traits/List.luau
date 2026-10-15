@@ -26,34 +26,26 @@
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
-type ItemIndexRead<E, I> = Trait.ItemIndexRead<E, I>
 type AnyToken = Trait.AnyToken
-const Fn, Default = Trait.Fn, Trait.Default
+const Fn, Default, Sig = Trait.Fn, Trait.Default, Trait.Sig
 
 --[[ 마커 — 타입에만 있는 필드 ]]
--- ⚠️ 마커 필드(`__list` 등)는 **타입에만** 있습니다 — 읽으면 nil 입니다(타입은 `E` 라고 하지만).
+-- ⚠️ 트레이트 레코드(`__traits`)는 **타입에만** 있습니다 — 읽으면 nil 입니다(타입은 `E` 라고 하지만).
 -- 알고리즘이 원소 타입을 추론하는 재료일 뿐 읽는 코드를 쓰지 마세요(quad 의 `StateMarker` 와 같은
 -- 약속, 질문 AG 3).
 
--- 읽기 마커(공변). `E` 는 원소, `I` 는 위치. 꺼내기만 하는 알고리즘용 — 빌린 참조(`ArrRead`)도 받습니다.
-export type Marker<E, I> = { read __type: Trait.Token<any>, read __list: E, read __listIndex: I }
--- 원소·위치를 **입력으로 받아 컨테이너에 넘기는** 제네릭용 불변 마커(2026-10-12, 질문 AM — 읽기 마커로
--- 쓰면 그 타입이 조용히 넓어집니다. 자세한 것은 `Traits/Map` 의 `MarkerMut`). `==` 비교만 하는 값
--- (`IndexOf` 의 `item`)은 넓어져도 "없음" 일 뿐이라 읽기 마커로 됩니다. 읽기 전용으로 빌린 타입
--- (`ArrRead`)에는 이 팬텀이 없습니다.
-export type MarkerMut<E, I> = {
-	read __type: Trait.Token<any>,
-	read __list: E,
-	read __listIndex: I,
-	-- 위치 `I` 도 같이 — `(E) -> E` 뿐일 땐 위치를 받아 쓰는 제네릭이 `Arr` 에 문자열 키로 썼습니다
-	-- (진단 0건, AM 리뷰 1라운드).
-	read __listMut: (E, I) -> (E, I),
-}
+-- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read List: List.Assoc<원소, 위치> }`(빌린 읽기 타입은 `AssocRead`).
+-- 원소·위치는 공변(`() -> E`), `Mut` 은 원소·위치를 **입력으로 받아 넘기는** 제네릭용 불변 팬텀(질문 AM — `MarkerMut`).
+export type AssocRead<E, I> = { read Item: () -> E, read Index: () -> I }
+export type Assoc<E, I> = { read Item: () -> E, read Index: () -> I, read Mut: (E, I) -> (E, I) }
+-- 마커 — 꺼내기만 하는 알고리즘(`Marker`, 빌린 참조도)과 원소·위치를 넘기는 제네릭(`MarkerMut`, 질문 AM).
+export type Marker<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: AssocRead<E, I> } }
+export type MarkerMut<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: Assoc<E, I> } }
 
 --[[ 정의 ]]
 -- 필수 다섯 — 위치 프리미티브. `Self` 는 컨테이너 자신의 타입, `E` 는 원소, `I` 는 **위치**. 배열 기반은 I = number, 연결 기반은
 -- I = 노드 — 그래서 "연결 리스트에서 정수 인덱스로 접근" 이 애초에 **표현 불가능**합니다(.claude/base/container-design-notes.md 2절).
--- 읽기만 하는 트레이트라 `of` 는 공변 연관 타입(`ItemIndexRead`) — 읽기 전용으로 빌린 참조도 `List.Of` 를 얻습니다.
+-- 읽기만 하는 트레이트라 조건(`of`)은 공변 레코드(`Marker` — `AssocRead`) 하나 — 읽기 전용으로 빌린 참조도 `List.Of` 를 얻습니다.
 --
 -- 기본 구현 일곱(완성 표의 나머지). 콜백은 원소와 **위치**를 받습니다(`Arr` 의 콜백은 셋째로 읽기 뷰도 받지만 계약은 둘까지).
 -- - `Fold` 앞에서부터 접기. `Find` 는 처음 맞는 원소와 그 위치(없으면 `nil, nil`).
@@ -71,7 +63,7 @@ type SomeEvery<Self, E, I> =
 	((list: Self, pred: Pred<E, I>) -> boolean)
 	| ((list: Self, pred: Pred<E, I>, ...nil) -> boolean)
 
-const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ItemIndexRead<E, I>) | AnyToken)
+const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & Marker<E, I>) | AnyToken)
 	return table.freeze({
 		Get = Fn<<(list: Self, idx: I) -> E?>>(),
 		FirstIndex = Fn<<(list: Self) -> I?>>(),
@@ -88,7 +80,7 @@ const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ItemIndexR
 				end
 				return acc
 			end
-		end),
+		end, Sig<<<U>(list: Self, init: U, fn: (acc: U, element: E, idx: I) -> U) -> U>>()),
 		Find = Default(function(ops: any): (list: Self, pred: Pred<E, I>) -> (E?, I?)
 			return function(self: Self, pred: Pred<E, I>): (E?, I?)
 				const get, nextIndex = ops.Get, ops.NextIndex
@@ -102,7 +94,7 @@ const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ItemIndexR
 				end
 				return nil, nil
 			end
-		end),
+		end, Sig<<(list: Self, pred: (element: E, idx: I) -> boolean) -> (E?, I?)>>()),
 		IndexOf = Default(function(ops: any): (list: Self, item: E) -> I?
 			return function(self: Self, item: E): I?
 				const get, nextIndex = ops.Get, ops.NextIndex
@@ -140,7 +132,7 @@ const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ItemIndexR
 				end
 				return total
 			end
-		end),
+		end, Sig<<(list: Self, pred: ((element: E, idx: I) -> boolean)?) -> number>>()),
 		Some = Default(function(ops: any): SomeEvery<Self, E, I>
 			return function(self: Self, pred: Pred<E, I>): boolean
 				const get, nextIndex = ops.Get, ops.NextIndex
@@ -153,7 +145,7 @@ const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ItemIndexR
 				end
 				return false
 			end
-		end),
+		end, Sig<<(list: Self, pred: (element: E, idx: I) -> boolean) -> boolean>>()),
 		Every = Default(function(ops: any): SomeEvery<Self, E, I>
 			return function(self: Self, pred: Pred<E, I>): boolean
 				const get, nextIndex = ops.Get, ops.NextIndex
@@ -166,7 +158,7 @@ const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ItemIndexR
 				end
 				return true
 			end
-		end),
+		end, Sig<<(list: Self, pred: (element: E, idx: I) -> boolean) -> boolean>>()),
 	})
 end)
 -- 완성 표(`List.Of(v)`)와 등록 표(`List.ImplFor` 에 넘기는 표 — 필수 다섯 + 재정의할 것만, 기본 구현 칸은 선택)
@@ -185,24 +177,6 @@ export type Provided<Self, E, I> = typeof(ListBase.ImplOf<<Self, E, I>>(nil :: a
 -- 타입에 가변 꼬리(`...unknown`)를 두면 가변인자 함수는 잡히지만 **타입을 적은 평범한 콜백 변수·파라미터**
 -- (`pred: (E, I) -> boolean`)까지 거절돼, 종류를 모르는 코드가 술어를 받아 넘기는 흔한 모양이 막혔습니다
 -- (한 번 넣었다가 리뷰에서 회귀로 확인해 걷음 — `spikes/64` 가 두 쪽을 다 고정).
-const List = ListBase :: typeof(ListBase) & {
-	-- 같은 원소가 처음 나오는 위치. 없으면 nil. 비교는 `==` 입니다 — 값 동등성이 필요하면 호출자가 다른 걸
-	-- 써야 합니다. (원소 타입이 다른 `item` 은 타입 에러가 아닙니다 — `E` 가 둘의 합으로 넓어집니다.
-	-- 건전하고(그냥 nil), 예전 판도 같았습니다.)
-	read IndexOf: <E, I>(list: Marker<E, I>, item: E) -> I?,
-	-- 같은 원소가 있는가(`==` 비교).
-	read Contains: <E, I>(list: Marker<E, I>, item: E) -> boolean,
-	-- 세어서 구한 개수(AE, 2026-10-06 — `Len` 은 알고 있는 크기, `Count` 는 셈). 술어가 있으면 참인 원소만.
-	-- 길이를 아는 컨테이너는 자기 `Len` 이 빠릅니다(`Collection.Len`).
-	read Count: <E, I>(list: Marker<E, I>, pred: ((element: E, idx: I) -> boolean)?) -> number,
-	-- 앞에서부터 접기.
-	read Fold: <E, I, U>(list: Marker<E, I>, init: U, fn: (acc: U, element: E, idx: I) -> U) -> U,
-	-- 처음으로 조건을 만족하는 원소와 그 위치. 없으면 `nil, nil`.
-	read Find: <E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean) -> (E?, I?),
-	-- 하나라도 만족하는가.
-	read Some: <E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean) -> boolean,
-	-- 전부 만족하는가. 빈 리스트면 참.
-	read Every: <E, I>(list: Marker<E, I>, pred: (element: E, idx: I) -> boolean) -> boolean,
-}
+const List = ListBase -- 진입점 서명은 정의에서 지어짐(`Trait.Entries` — 콜백을 받는 칸은 `Sig` 의 부르는 쪽 서명)
 
 return List

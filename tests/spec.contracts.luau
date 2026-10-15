@@ -129,8 +129,8 @@ do
 	assert(fillAndCount<<T, number>>(stl.FlatMap, tree, 1) == 2, "FlatMap 을 계약으로")
 	assert(stl.HashMap.Len(hash) == stl.FlatMap.Len(tree), "둘의 크기가 같아야 합니다")
 	-- 값에서 꺼낸 완성 표로도(타입 인자 없이 — 키·값을 값의 연관 타입에서)
-	assert(fillAndCount(stl.Map.Of(hash), hash, 1) == 2, "HashMap 의 완성 표를 계약으로")
-	assert(fillAndCount(stl.Map.Of(tree), tree, 1) == 2, "FlatMap 의 완성 표를 계약으로")
+	assert(fillAndCount(stl.Map.OfMut(hash), hash, 1) == 2, "HashMap 의 완성 표를 계약으로")
+	assert(fillAndCount(stl.Map.OfMut(tree), tree, 1) == 2, "FlatMap 의 완성 표를 계약으로")
 
 	-- 공용 알고리즘도 양쪽에서 같아야 합니다
 	assert(#stl.Map.Keys(hash) == #stl.Map.Keys(tree), "Map.Keys")
@@ -159,8 +159,8 @@ do
 	-- 값에서 꺼낸 완성 표로도 같은 답(새 셋에)
 	const hash2 = stl.HashSet.New<<number>>()
 	const tree2 = stl.TreeSet.New<<number>>(Common.compareNumber)
-	assert(exerciseSet(stl.Set.Of(hash2), hash2, 10, 20) == hashResult, "HashSet 의 완성 표")
-	assert(exerciseSet(stl.Set.Of(tree2), tree2, 10, 20) == hashResult, "TreeSet 의 완성 표")
+	assert(exerciseSet(stl.Set.OfMut(hash2), hash2, 10, 20) == hashResult, "HashSet 의 완성 표")
+	assert(exerciseSet(stl.Set.OfMut(tree2), tree2, 10, 20) == hashResult, "TreeSet 의 완성 표")
 end
 print("PASS")
 
@@ -1114,9 +1114,7 @@ do
 	-- 넣은 순서를 지키는 연결 목록 맵으로, 순회자가 **함수 하나**(상태를 클로저에)인 모양을 봅니다.
 	type MyMap = {
 		read __type: stl.TraitToken<string>,
-		read __mapKey: string,
-		read __mapValue: number,
-		read __mapMut: (string, number) -> (string, number),
+		read __traits: { read Map: stl.MapAssoc<string, number> },
 		keys: { string },
 		values: { number },
 	}
@@ -1481,10 +1479,8 @@ do
 	assert(add(hs, 10) and add(ts, 10) and not add(hs, 10) and not add(ts, 10), "두 셋 모두 Add")
 	-- 팬텀은 타입에만 — 런타임 필드는 없음
 	for _, value in { hm, tm, hs, ts, stl.Arr.Of(1), stl.CircularDeque.Of(1) } :: { any } do
-		-- (2026-10-15) 트레이트 정의가 읽는 연관 타입 팬텀(`__generics`·`__readGenerics`)도 타입에만
-		for _, phantom in
-			{ "__mapMut", "__setMut", "__listMut", "__mapKey", "__setItem", "__list", "__generics", "__readGenerics" }
-		do
+		-- 트레이트 레코드 `__traits`(질문 BA)도 타입에만
+		for _, phantom in { "__traits" } do
 			assert(rawget(value, phantom) == nil, `팬텀 {phantom} 이 런타임에 있음`)
 		end
 	end
@@ -1773,7 +1769,11 @@ do
 	end
 
 	-- ⭐ 사용자 컬렉션(가방) — Len·Clear·(맵이면) 미리 잡기 경로를 사용자 구현으로
-	type Bag = { read __type: stl.TraitToken<string>, read __collectionMut: true, items: { number } }
+	type Bag = {
+		read __type: stl.TraitToken<string>,
+		read __traits: { read Collection: stl.CollectionAssoc },
+		items: { number },
+	}
 	const BagType = T.NewToken(tokenName("Bag"))
 	stl.Collection.ImplFor(
 		BagType,
@@ -1819,7 +1819,11 @@ do
 
 	-- 맵이면서 컬렉션인 사용자 구현: `Len` 이 엉터리여도(음수·NaN·너무 큼·숫자 아님) Keys/Values 는 됨
 	-- (리뷰: `table.create` 가 라이브러리 줄에서 죽었음). 실제보다 크거나 작아도 결과는 같음.
-	type Sized = { read __type: stl.TraitToken<string>, read __mapKey: string, read __mapValue: number, len: any }
+	type Sized = {
+		read __type: stl.TraitToken<string>,
+		read __traits: { read Map: stl.MapAssoc<string, number> },
+		len: any,
+	}
 	const SizedType = T.NewToken(tokenName("SizedMap"))
 	const pairsOf = { a = 10, b = 20, c = 30 }
 	stl.Map.ImplFor(
@@ -2767,8 +2771,7 @@ do
 		head: ChainNode?,
 		tail: ChainNode?,
 		read __type: stl.TraitToken<string>,
-		read __list: number?,
-		read __listIndex: ChainNode,
+		read __traits: { read List: stl.ListAssocRead<number?, ChainNode> },
 	}
 	const ChainType = T.NewToken(tokenName("Chain"))
 	stl.List.ImplFor(ChainType, {

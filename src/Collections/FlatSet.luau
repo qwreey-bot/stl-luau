@@ -59,16 +59,11 @@ type Record<K, V> = Types.Record<K, V>
 type Comparator<T> = Types.Comparator<T>
 type FlatMapType<K, V> = FlatMap.FlatMap<K, V>
 
--- `__setMut` 는 쓰는 제네릭용 불변 팬텀(`Set.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 export type FlatSetData<T> = {
 	map: FlatMapType<T, true>,
 	read __type: Trait.Token<"Stl.FlatSet">,
-	read __setItem: T,
-	read __setMut: (T) -> T,
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
-	read __collectionMut: true,
-	-- 연관 타입(트레이트 `Set` 의 정의가 `of` 로 읽음 — 2026-10-15, 질문 AY): 원소. 불변 팬텀, 타입에만 있습니다.
-	read __generics: { read Item: (T) -> T },
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read Set: Set.Assoc<T>, read Collection: Collection.Assoc },
 }
 
 -- 인스턴스 판별용 태그. **메타테이블은 없습니다**(질문 AB) — 데이터는 평범한

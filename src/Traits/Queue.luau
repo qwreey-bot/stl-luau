@@ -24,11 +24,10 @@ local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
 local Deque = require("./Deque")
-type Item<T> = Trait.Item<T>
 type AnyToken = Trait.AnyToken
 type A = Trait.A
 type B = Trait.B
-const Fn = Trait.Fn
+const Fn, FnMut = Trait.Fn, Trait.FnMut
 
 --[[ 마커 — `Deque` 의 것 그대로 ]]
 
@@ -37,15 +36,19 @@ export type MarkerMut<T> = Deque.MarkerMut<T>
 
 --[[ 정의 ]]
 -- `Push` 는 자기 자신을 돌려주고, `Pop`·`Peek` 은 비었으면 `nil`.
-const QueueBase = Trait.Trait("Queue", function<Self, T>(of: (Self & Item<T>) | AnyToken)
-	return table.freeze({
-		Push = Fn<<(queue: Self, item: T) -> Self>>(),
-		Pop = Fn<<(queue: Self) -> T?>>(),
-		Peek = Fn<<(queue: Self) -> T?>>(),
-	})
-end)
+const QueueBase = Trait.Trait(
+	"Queue",
+	function<Self, T>(of: (Self & Marker<T>) | AnyToken, ofMut: (Self & MarkerMut<T>) | AnyToken)
+		return table.freeze({
+			Push = FnMut<<(queue: Self, item: T) -> Self>>(),
+			Pop = FnMut<<(queue: Self) -> T?>>(),
+			Peek = Fn<<(queue: Self) -> T?>>(),
+		})
+	end
+)
 -- 완성 표(= 등록 표 — 기본 구현이 없음)
-export type Full<Self, T> = typeof(QueueBase.Of<<Self, T>>(nil :: any))
+export type Full<Self, T> = typeof(QueueBase.OfMut<<Self, T>>(nil :: any))
+export type Read<Self, T> = typeof(QueueBase.Of<<Self, T>>(nil :: any))
 export type Provided<Self, T> = typeof(QueueBase.ImplOf<<Self, T>>(nil :: any))
 
 --[[ 뭉텅이 구현 — 덱이면 큐 ]]
@@ -59,14 +62,7 @@ QueueBase.ImplWhere({ Deque }, function(deps)
 	return queueFromDeque(deps[Deque])
 end)
 
---[[ 진입점 서명 ]]
-const Queue = QueueBase :: typeof(QueueBase) & {
-	-- 맨 뒤에 넣고 넣은 타입 그대로 돌려줍니다.
-	read Push: <C, T>(queue: C & MarkerMut<T>, item: T) -> C,
-	-- 맨 앞(먼저 넣은 것)를 꺼냅니다. 비었으면 `nil`.
-	read Pop: <T>(queue: MarkerMut<T>) -> T?,
-	-- 맨 앞를 봅니다(꺼내지 않음). 비었으면 `nil`. 읽기라 빌린 참조도 받습니다.
-	read Peek: <T>(queue: Marker<T>) -> T?,
-}
+--[[ 진입점 서명 — 정의에서 지어짐(`Trait.Entries`): 쓰기 칸은 `MarkerMut`, 읽기 칸은 `Marker` 를 받음 ]]
+const Queue = QueueBase
 
 return Queue

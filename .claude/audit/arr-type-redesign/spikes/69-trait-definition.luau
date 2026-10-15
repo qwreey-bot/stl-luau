@@ -22,7 +22,7 @@ type CircularDeque<T> = stl.CircularDeque<T>
 --[[ 쓰는 자리 ]]
 local d = stl.CircularDeque.Of(1, 2, 3)
 -- 값으로 꺼낸 완성 표: 원소 타입이 섬
-local s = stl.Stack.Of(d)
+local s = stl.Stack.OfMut(d) -- 시제품(trait-ofmut): 쓰는 칸은 완성 표에만
 local pushed: CircularDeque<number> = s.Push(d, 4)
 local popped: number? = s.Pop(d)
 local negPush = s.Push(d, "x") -- NEG
@@ -39,11 +39,11 @@ local total: number = l.Fold(d, 0, function(acc: number, x: number, _i: number):
 end)
 local negWhere: string? = l.IndexOf(d, 2) -- NEG
 local negContains: string = l.Contains(d, 3) -- NEG
--- 빌린 참조: 읽기 트레이트(List)는 됨, 쓰는 트레이트(Stack·Deque)는 못 얻음
+-- 빌린 참조: 읽기 보기(`Of`)는 됨, 완성 표(`OfMut`)는 못 얻음 — 시제품(trait-ofmut)
 local borrowed: stl.CircularDequeRead<number> = d
 local found: number? = stl.List.Of(borrowed).IndexOf(borrowed, 2)
-local negBorrowStack = stl.Stack.Of(borrowed) -- NEG
-local negBorrowDeque = stl.Deque.Of(borrowed) -- NEG
+local negBorrowStack = stl.Stack.OfMut(borrowed) -- NEG
+local negBorrowDeque = stl.Deque.OfMut(borrowed) -- NEG
 -- 객체 타입에 인덱서가 없어 없는 이름은 에러
 local negNoSuch = stl.Stack.NoSuch -- NEG
 
@@ -73,7 +73,7 @@ local function literalRegistration()
 end
 
 --[[ 정의하는 자리 — 이 모듈에서 정의하고 이 모듈에서 씀 ]]
-type Box = { read __type: stl.TraitToken<string>, read __generics: { read Item: (number) -> number }, value: number }
+type Box = { read __type: stl.TraitToken<string>, read __traits: { read Sized: { read Item: (number) -> number } }, value: number }
 local Sized = Trait.Trait("Spike69.Sized", function<Self>(of: Self | stl.TraitToken<string>)
 	return table.freeze({
 		Len = Trait.Fn<<(v: Self) -> number>>(),
@@ -129,7 +129,7 @@ end
 
 --[[ 진입점·등록 서명 하나씩(2026-10-15 리뷰 1라운드 — 서명을 틀리게 바꾼 돌연변이 여섯이 배터리를 통과했던 자리) ]]
 local borrowedQ: stl.CircularDequeRead<number> = d
-local negQueueBorrow = stl.Queue.Of(borrowedQ) -- NEG: 읽기로 빌린 참조는 큐를 못 얻음
+local negQueueBorrow = stl.Queue.OfMut(borrowedQ) -- NEG: 읽기로 빌린 참조는 큐의 완성 표를 못 얻음
 local negQueuePush = stl.Queue.Push(d, "x") -- NEG: 원소 타입
 local negStackPopBorrow = stl.Stack.Pop(borrowedQ) -- NEG: 빌린 참조에서 꺼냄
 local function noRet(_s: CircularDeque<A>, _x: A) end

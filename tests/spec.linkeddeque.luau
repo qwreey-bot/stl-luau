@@ -624,7 +624,8 @@ do
 		-- 등록한 적이 없는데 구현함(덱의 뭉텅이 구현) — 표에 든 것은 덱의 함수 그 자체
 		assert(T.Implements(Stack, stack) and T.Implements(Queue, queue), `{kind.name} Implements`)
 		assert(
-			Stack.Of(stack).Push == stl.Deque.Of(stack).PushBack and Queue.Of(queue).Pop == stl.Deque.Of(queue).PopFront,
+			Stack.OfMut(stack).Push == stl.Deque.OfMut(stack).PushBack
+				and Queue.OfMut(queue).Pop == stl.Deque.OfMut(queue).PopFront,
 			`{kind.name}: 뭉텅이 구현이 덱 함수를 그대로`
 		)
 	end
@@ -694,7 +695,7 @@ do
 
 	-- 재정의: 뭉텅이로 따라온 것 위에 빠른 판을 얹음(명시 등록이 뭉텅이 구현을 덮음 — 셋 다 줘야 함, 나머지는 덱의 함수 그대로)
 	local fastPushes = 0
-	const pileDeque = Deque.Of(PileToken)
+	const pileDeque = Deque.OfMut(PileToken)
 	Stack.ImplFor(PileToken, {
 		Push = function(target: any, item: any): any
 			fastPushes += 1

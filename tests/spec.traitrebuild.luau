@@ -333,7 +333,7 @@ do
 	const lateFns = fnsOf(DEQUE6, "late")
 	stl.Deque.ImplFor(late, lateFns)
 	assert(
-		stl.Stack.Of(late).Push == lateFns.PushBack and stl.Queue.Of(late).Pop == lateFns.PopFront,
+		stl.Stack.OfMut(late).Push == lateFns.PushBack and stl.Queue.OfMut(late).Pop == lateFns.PopFront,
 		"나중에 생긴 덱"
 	)
 	-- 사용자 트레이트를 스택 위에 뭉텅이로: 스택이 다시 지어지면 위로 번짐
@@ -346,7 +346,7 @@ do
 	const tok = T.NewToken("Test.Rebuild.Pile")
 	const fns = fnsOf(DEQUE6, "pile")
 	stl.Deque.ImplFor(tok, fns)
-	const stackFull, undoFull = stl.Stack.Of(tok), Undo.Of(tok)
+	const stackFull, undoFull = stl.Stack.OfMut(tok), Undo.Of(tok)
 	assert(undoFull.Save == fns.PushBack, "덱 → 스택 → Undo")
 	const before = runs
 	const function fast(): string
@@ -354,7 +354,7 @@ do
 	end
 	-- 명시 구현이 뭉텅이를 덮음: 같은 표를 다시 채우고(쥔 쪽이 새 함수를 봄), 그것을 의존으로 쓰는 표도 다시 지음
 	stl.Stack.ImplFor(tok, { Push = fast, Pop = fns.PopBack, Peek = fns.Back })
-	assert(stl.Stack.Of(tok) == stackFull and stackFull.Push == fast, "같은 표를 다시 채움")
+	assert(stl.Stack.OfMut(tok) == stackFull and stackFull.Push == fast, "같은 표를 다시 채움")
 	assert(Undo.Of(tok) == undoFull and undoFull.Save == fast and runs == before + 1, "위로 번짐")
 	fails(function()
 		where = debug.info(1, "l") + 1
@@ -460,7 +460,7 @@ print("PASS")
 print("=== 7. 진입점·Of·조회 — 값이나 토큰, 못 찾으면 사용자 줄 에러(셋으로 가름) ===")
 do
 	const d = stl.CircularDeque.Of(1, 2)
-	assert(stl.Stack.Of(d).Push == stl.CircularDeque.PushBack, "값으로 Of")
+	assert(stl.Stack.OfMut(d).Push == stl.CircularDeque.PushBack, "값으로 Of")
 	const plain = T.NewToken("Test.Rebuild.NoStack")
 	fails(function()
 		where = debug.info(1, "l") + 1

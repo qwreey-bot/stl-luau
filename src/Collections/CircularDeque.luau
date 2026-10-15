@@ -54,19 +54,8 @@ export type CircularDequeData<T> = {
 	size: number,
 	cap: number,
 	read __type: Trait.Token<"Stl.CircularDeque">,
-	read __list: T,
-	read __listIndex: number,
-	-- 쓰는 제네릭용 불변 팬텀(`List.MarkerMut`, 질문 AM) — 타입에만 있습니다.
-	read __listMut: (T, number) -> (T, number),
-	-- 덱 트레이트 마커와 불변 팬텀(`Deque.MarkerMut`, 2026-10-13) — 타입에만 있습니다.
-	read __dequeItem: T,
-	read __dequeMut: (T) -> T,
-	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`, 2026-10-12) — 타입에만 있습니다.
-	read __collectionMut: true,
-	-- 연관 타입(새 트레이트 시제품 `research/trait-v2` — 2026-10-14): 이 종류의 원소·위치. 불변 팬텀, 타입에만 있습니다.
-	read __generics: { read Item: (T) -> T, read Index: (number) -> number },
-	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
-	read __readGenerics: { read Item: () -> T, read Index: () -> number },
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read List: List.Assoc<T, number>, read Deque: Deque.Assoc<T>, read Collection: Collection.Assoc },
 	[number]: T,
 }
 export type CircularDeque<T> = CircularDequeData<T>
@@ -75,18 +64,15 @@ export type CircularDeque<T> = CircularDequeData<T>
 -- `read` 인덱서라 원소에 **공변**입니다 — `CircularDeque<number>` 를 `CircularDequeRead<number?>` 자리에, 하위 레코드의
 -- 덱을 상위 레코드 자리에 넘길 수 있습니다(읽기·쓰기 인덱서인 `CircularDequeData` 는 불변이라 안 됐음). 쓰는
 -- 함수(`Push*`·`Pop*`·`Clear`)는 `CircularDequeData` 를 받습니다 — 넓어진 원소로 쓰면 건전하지 않으니까요.
--- `head`·`size`·`cap` 도 `read` 라 빌린 참조로는 길이를 못 바꾸고, 불변 팬텀(`__listMut`)이 없어 쓰는
+-- `head`·`size`·`cap` 도 `read` 라 빌린 참조로는 길이를 못 바꾸고, 읽기 레코드(`AssocRead`)만 있어 쓰는
 -- 제네릭(`List.MarkerMut`)에도 못 들어갑니다. 사용자 함수도 같은 규칙으로 쓰라고 공개합니다.
 export type CircularDequeRead<T> = {
 	read head: number,
 	read size: number,
 	read cap: number,
 	read __type: Trait.Token<"Stl.CircularDeque">,
-	read __list: T,
-	read __listIndex: number,
-	read __dequeItem: T,
-	-- 읽기 연관 타입(트레이트 시제품 `research/trait-v5` — 2026-10-14): 공변 팬텀(`() -> T` 꼴), 타입에만 있습니다. 빌린 참조도 원소·위치를 밝힘.
-	read __readGenerics: { read Item: () -> T, read Index: () -> number },
+	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
+	read __traits: { read List: List.AssocRead<T, number>, read Deque: Deque.AssocRead<T> },
 	read [number]: T,
 }
 type Arr<T> = Arr.Arr<T>

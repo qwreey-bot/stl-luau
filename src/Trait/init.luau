@@ -14,32 +14,46 @@
 
 	## 트레이트 = 정의(팩토리)
 	```lua
-	const List = Trait.Trait("List", function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+	export type AssocRead<T> = { read Item: () -> T }                       -- 트레이트가 가진 연관 타입 레코드(공변 칸)
+	export type Assoc<T> = { read Item: () -> T, read Mut: (T) -> T }       -- + 불변 팬텀(바꿀 수 있는 참조만 적음)
+	export type Marker<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: AssocRead<T> } }
+	export type MarkerMut<T> = { read __type: Trait.Token<any>, read __traits: { read Deque: Assoc<T> } }
+	const DequeBase = Trait.Trait("Deque", function<Self, T>(of: (Self & Marker<T>) | AnyToken, ofMut: (Self & MarkerMut<T>) | AnyToken)
 		return table.freeze({
-			Get = Trait.Fn<<(list: Self, index: I) -> E>>(),                         -- 필수
-			IndexOf = Trait.Default(function(ops: any): (list: Self, item: E) -> I? -- 기본 구현(빌더)
-				return function(list, item) … end
-			end),
+			PushBack = Trait.FnMut<<(deque: Self, item: T) -> Self>>(),   -- 필수·쓰기
+			Front = Trait.Fn<<(deque: Self) -> T?>>(),                   -- 필수·읽기
+			Count = Trait.Default(function(ops: any): (deque: Self) -> number … end), -- 기본 구현(빌더)·읽기 (쓰기는 DefaultMut)
 		})
 	end)
-	export type Full<Self, E, I> = typeof(List.Of<<Self, E, I>>(nil :: any))         -- 완성 표
-	export type Provided<Self, E, I> = typeof(List.ImplOf<<Self, E, I>>(nil :: any)) -- 등록 표(기본 구현 칸은 선택)
+	export type Read<Self, T> = typeof(DequeBase.Of<<Self, T>>(nil :: any))        -- 읽기 보기(쓰기 칸 없음)
+	export type Full<Self, T> = typeof(DequeBase.OfMut<<Self, T>>(nil :: any))     -- 완성 표
+	export type Provided<Self, T> = typeof(DequeBase.ImplOf<<Self, T>>(nil :: any)) -- 등록 표(기본 구현 칸은 선택)
 	```
-	- 정의는 **한 번** 넘깁니다. 칸은 타입으로 레코드(`Fn` = `{ required: true, fn: F }`, `Default` = `{ required: false, fn: F }`)이고,
-	  타입 함수 `View` 가 정의 함수의 타입을 받아 두 보기(완성 = 칸마다 `fn`, 등록 = 기본 구현 칸만 `fn?`)로 **다시 지어** `Of`·`ImplOf`
-	  의 타입으로 줍니다 — 매개변수와 제네릭 목록은 정의의 것 그대로. (D3 의 `def(FULL), def(IMPL)` 두 번 넘기기와 모드 값, 덜
-	  줄어든 `index<>` 의 `never` 함정이 없어졌습니다 — 정의자가 모드를 틀릴 자리 자체가 없음.)
+	- 정의는 **한 번** 넘깁니다. 칸은 타입으로 레코드(`{ required, mut, fn }`)이고, 타입 함수 `View` 가 정의 함수의 타입을 받아 세 보기
+	  (읽기 = 쓰기 칸을 뺌, 완성 = 칸마다 `fn`, 등록 = 기본 구현 칸만 `fn?`)로 **다시 지어** `Of`·`OfMut`·`ImplOf` 의 타입으로 줍니다 —
+	  제네릭 목록은 정의의 것 그대로.
+	- ⭐ **읽기·쓰기는 칸에 적습니다**(2026-10-15 질문 BA — Rust 의 `&self`/`&mut self` 를 칸에). `X.Of(v)` 는 읽기 보기(정의의 **첫 매개변수**
+	  조건 — 빌린 읽기 참조도), `X.OfMut(v)` 는 완성 표(**둘째 매개변수** 조건 — 바꿀 수 있는 참조만, 없으면 첫째). 런타임은 같은 표입니다.
+	  예전엔 읽기·쓰기를 트레이트 통째의 `of` 와 진입점마다의 마커 두 곳에서 정해 어긋났습니다(빌린 참조가 `Collection.Of` 를 거쳐 `Clear`).
+	- ⭐ **진입점 서명은 정의에서 지어집니다**(타입 함수 `Entries` — 트레이트 객체 타입에 자동으로 붙음): 쓰기 칸은 둘째 조건을, 읽기 칸은 첫째
+	  조건을 첫 인자로 받습니다. 마커를 손으로 고르지 않습니다. 부르는 쪽 서명이 칸 타입과 다르면 `Default(build, Trait.Sig<<서명>>())`
+	  (`List.Some` — 구현은 `(E, I, ...any)` 를 받아야, 부르는 쪽은 꼬리 없는 술어 변수를 넘길 수 있어야). `Self` 가 첫 인자에만 나오면
+	  빼서 손으로 쓰던 서명과 제네릭 순서가 같습니다 — 명시적 타입 인자를 일부만 주면 솔버 내부 에러라 순서가 곧 공개 표면.
+	  ⚠️ 진입점마다 제네릭을 **새로** 만들어 바꿔 끼웁니다(`subst`) — 정의의 것을 나눠 쓰면 `List.IndexOf(a, 20)` 이 `Expected 'E', got
+	  'number'` 였습니다(끄고 켜서 확인, 손으로 줄인 재현은 0건 — 원인 모름, `.claude/research/trait-ofmut`).
+	- ⭐ **트레이트마다 자기 연관 타입 레코드**(질문 BA — 사용자: *"Trait 를 아예 드러내는게 나아보이겠다"*): 컨테이너는 자기 타입에
+	  `read __traits: { read Deque: Deque.Assoc<T>, read List: List.Assoc<T, number>, … }` 한 줄로 "어느 트레이트를 무슨 인자로 구현하는가" 를
+	  적습니다(Rust 의 `impl Deque<T> for X`). 이름·위치·변성은 그 트레이트 안의 일이라 트레이트끼리 합의할 필요가 없고 뜻이 부딪히지
+	  않습니다. 빌린 읽기 타입은 `AssocRead` 를 적습니다. ⚠️ 등록(런타임)은 타입을 못 바꿉니다 — 바깥에서 뭉텅이로 만족시킨 트레이트는
+	  타입에 안 붙고, 쓰는 쪽이 교집합 별칭(`Arr<T> & { read __traits: { read X: … } }`)과 그것을 돌려주는 중간자 함수로 덧붙입니다.
 	- ⚠️ 같은 파일에서 정의하고 등록하려면 정의를 `do … end` 안에 — 파일 꼭대기에서 정의하면 그 파일의 등록 표에서 칸 자체가 제네릭인
 	  함수(`Fold<U>`)의 실수가 0건입니다(다시 지은 `<U>` 가 모듈 스코프를 받음 — 상류 `Subtyping.cpp:830`, 질문 AZ, `spikes/70`).
-	- 팩토리는 런타임에 **한 번**(of = nil) 불려 이름(`Fn` = 필수, `Default` = 기본 구현 빌더)을 줍니다. `table.freeze` 로 돌려주면
-	  트레이트 타입의 필드가 `read` 가 됩니다. 정의가 함수가 아니거나 표를 돌려주지 않거나 칸이 `Fn`/`Default` 가 아니면 `View` 가
-	  타입 에러로 알립니다(`'View' type function errored at runtime: Trait.Trait: …`).
-	- `of` 가 연관 타입을 고릅니다: 쓰는 함수가 있는 트레이트는 `Item<T>`(불변 — 읽기 전용으로 빌린 참조는 그 트레이트를 아예
-	  못 얻음), 읽기만 하는 트레이트는 `ItemRead<T>`/`ItemIndexRead<E, I>`(공변 — 빌린 참조도 얻음). 컨테이너는 자기 타입에
-	  `__generics`(불변)·`__readGenerics`(공변) 팬텀을 적습니다.
+	- 팩토리는 런타임에 **한 번**(of = nil) 불려 이름(`Fn`·`FnMut` = 필수, `Default`·`DefaultMut` = 기본 구현 빌더)을 줍니다. `table.freeze` 로
+	  돌려주면 트레이트 타입의 필드가 `read` 가 됩니다. 정의가 함수가 아니거나 표를 돌려주지 않거나 칸이 그 넷이 아니면 `View` 가 타입
+	  에러로 알립니다(`'View' type function errored at runtime: Trait.Trait: …` — 보기 셋이라 같은 줄에 세 번).
 	- `Default(build)` 의 `build(ops)` 는 그 종류의 완성 표를 받아 함수를 돌려줍니다(형제를 지역으로 붙잡아도 됨 — 다시
-	  지어질 때 다시 불림). ⚠️ 계약: 던지지 않고 부작용 없이 함수만 돌려줌. 기본 구현 타입에 오버로드(`&`)를 쓰지 마세요(등록
-	  보기의 `(A & B)?` 에 한쪽 갈래만 든 재정의가 0건 — 상류 결함).
+	  지어질 때 다시 불림). ⚠️ 계약: 던지지 않고 부작용 없이 함수만 돌려줌. `ops` 는 `any` 라 읽기 기본 구현이 쓰기 형제를 불러도 타입이
+	  못 막습니다. 기본 구현 타입에 오버로드(`&`)를 쓰지 마세요(등록 보기의 `(A & B)?` 에 한쪽 갈래만 든 재정의가 0건 — 상류 결함).
 
 	## 등록·조회
 	- `X.ImplFor(토큰, 표)` — 표는 **그 트레이트의 함수만**(모르는 이름은 에러), `X.Provided<종류<A>, A>` 주석을 단 **지역 변수**에 적어
@@ -63,18 +77,14 @@ local Errors = require("@self/Errors")
 -- 타입 토큰. `N` 은 이름의 리터럴 타입.
 export type Token<N> = { read name: N }
 -- ⚠️ `name` 은 `string` 으로 — `any`·`unknown` 이면 그 필드가 **없는** 테이블도 만족해(빠진 읽기 필드를 `nil` 로 봄 — 상류의
--- 의도된 동작), 팩토리의 `(Self & Item<T>) | AnyToken` 의 토큰 갈래가 아무 값이나 받았음.
+-- 의도된 동작), 팩토리의 `(Self & Marker<T>) | AnyToken` 의 토큰 갈래가 아무 값이나 받았음.
 export type AnyToken = Token<string>
 -- "모든 종류" 표식(`X.ImplWhere(Trait.Any, …)`)의 타입 — 빈 목록 `{}` 은 에러입니다(아래 `Any`).
 export type AnyKind = { read __anyKind: true }
--- 연관 타입(트레이트 팩토리의 `of` 가 씀). 컨테이너는 자기 타입에 같은 필드를 글자 그대로 적음. 함수 팬텀(`(T) -> T`)이라 불변 —
--- 맨 필드(`read Item: T`)는 `Self &` 와 섞이면 앞선 호출의 타입이 합으로 섞였음(`trait-typing-probes/assocfields.luau`).
-export type Item<T> = { read __generics: { read Item: (T) -> T } }
-export type ItemIndex<E, I> = { read __generics: { read Item: (E) -> E, read Index: (I) -> I } }
--- 읽기 연관 타입(공변 — `() -> T` 꼴): 전체 타입과 읽기 타입(`ArrRead` 등) 둘 다에 적혀 있어 빌린 참조도 받음.
--- ⚠️ 쓰는 함수가 있는 트레이트에 쓰면 넓혀 빌린 참조로 쓰기가 열림 — 그런 트레이트는 `Item`.
-export type ItemRead<T> = { read __readGenerics: { read Item: () -> T } }
-export type ItemIndexRead<E, I> = { read __readGenerics: { read Item: () -> E, read Index: () -> I } }
+-- ⭐ 공용 연관 타입(`Item`·`ItemIndexRead` …)은 없습니다(2026-10-15 질문 BA — 사용자: "Trait 를 아예 드러내는게 나아보이겠다").
+-- 트레이트마다 자기 연관 타입 레코드(`Deque.Assoc<T>`·`Deque.AssocRead<T>`)를 갖고, 컨테이너가 자기 타입에
+-- `read __traits: { read Deque: Deque.Assoc<T>, … }` 로 "어느 트레이트를 무슨 인자로 구현하는가" 를 적습니다(Rust 의 `impl Deque<T> for X`).
+-- 이름·위치·변성은 그 트레이트 안의 일 — 트레이트끼리 이름에 합의할 필요가 없고 뜻이 부딪히지 않습니다.
 -- 탐침 타입: 등록 표의 타입 주석과 뭉텅이 몸통에 — "모든 T 에 대해" 를 서로 다른 불투명 타입으로 흉내 냄. 구체 타입(`string`)으로
 -- 적으면 원소를 못박은 함수가 샙니다. 제네릭 함수의 **몸통 안**은 상류 결함(`Subtyping.cpp:830`)으로 검사가 거의 안 돼서, 몸통도
 -- 탐침 타입으로 짜는 것이 원리상 맞는 우회입니다(`.claude/research/luau-source/README.md`).
@@ -83,15 +93,16 @@ export type B = { read __probeB: true }
 export type C = { read __probeC: true }
 -- 트레이트 객체. `Of` 의 타입이 팩토리 그 자체(트레이트마다 손으로 적지 않음). ⚠️ 인덱서를 두지 않습니다 — `[string]: any` 와
 -- 교집합이면 `X.Of<<…>>` 가 함수가 아니게 돼(`T & any` → `T | error`) 진입점 서명을 교집합으로 입힐 수 없었습니다.
-export type Object<F, G> = {
-	read Of: F, -- 완성 표 꺼내기(값이나 토큰으로)
+export type Object<R, F, G> = {
+	read Of: R, -- 읽기 보기 꺼내기(값이나 토큰으로) — `FnMut` 칸이 없음. 읽기 전용으로 빌린 참조도 받음(정의의 첫 매개변수)
+	read OfMut: F, -- 완성 표 꺼내기 — 모든 칸. 바꿀 수 있는 참조만(정의의 둘째 매개변수 — 없으면 첫째). 런타임은 `Of` 와 같은 함수
 	read ImplOf: G, -- 타입 전용: `typeof(X.ImplOf<<…>>(nil :: any))` 로 등록 표 타입을 얻음(런타임은 `Of` 와 같은 함수)
 	read ImplFor: (token: AnyToken, impl: any) -> (),
 	read ImplWhere: (deps: { any } | AnyKind, build: (deps: { [any]: any }) -> any) -> (),
 	read FnTok: { [string]: number },
 }
 
--- 트레이트의 두 보기. `def` 는 정의 함수의 타입(`<Self, T>(of: …) -> { 이름: { required, fn } }`), `mode` 는 `"full"`(완성 표 — 칸마다
+-- 트레이트의 세 보기. `def` 는 정의 함수의 타입(`<Self, T>(of, ofMut?) -> { 이름: { required, mut, fn } }`), `mode` 는 `"read"`(읽기 보기 — 쓰기 칸을 뺌, 첫 매개변수), `"full"`(완성 표 — 칸마다
 -- `fn`) 또는 `"impl"`(등록 표 — 기본 구현 칸은 `fn?`). 반환 표만 다시 짓고 매개변수와 **제네릭 목록은 정의의 것 그대로** 되넘깁니다 —
 -- 그래서 `Of<<Self, T>>` 가 되고, 정의할 때 바로 줄어듭니다(제네릭이 함수 타입 안에 묶여 있어 바깥 제네릭이 정해지길 기다리지
 -- 않음 — 별칭에 걸면 `outer_generics_irreducible` 로 안 줄어듦, `.claude/research/trait-udtf`).
@@ -104,7 +115,8 @@ export type function View(def, mode)
 	if def:is("any") then
 		return types.any
 	end
-	local full = mode:value() == "full"
+	local m = mode:value()
+	local full, read = m == "full", m == "read"
 	if not def:is("function") then
 		error(
 			"Trait.Trait: the definition must be a function `function<Self, …>(of) return table.freeze({ … }) end`"
@@ -118,21 +130,228 @@ export type function View(def, mode)
 	if fns == nil or not fns:is("table") then
 		error("Trait.Trait: the definition must return a table of Trait.Fn / Trait.Default slots")
 	end
-	local REQUIRED, FN = types.singleton("required"), types.singleton("fn")
+	local REQUIRED, FN, MUT = types.singleton("required"), types.singleton("fn"), types.singleton("mut")
 	local out: { [type]: { read: type?, write: type? } } = {}
 	for key, prop in fns:properties() do
 		local slot = prop.read
 		local fnType = if slot ~= nil and slot:is("table") then slot:readproperty(FN) else nil
 		local required = if slot ~= nil and slot:is("table") then slot:readproperty(REQUIRED) else nil
-		if fnType == nil or required == nil then
+		local mut = if slot ~= nil and slot:is("table") then slot:readproperty(MUT) else nil
+		if fnType == nil or required == nil or mut == nil then
 			local value = if key:is("singleton") then key:value() else nil
 			local name = if type(value) == "string" then value else "?"
-			error(`Trait.Trait: '{name}' must be Trait.Fn<<…>>() or Trait.Default(…)`)
+			error(`Trait.Trait: '{name}' must be Trait.Fn / FnMut<<…>>() or Trait.Default / DefaultMut(…)`)
 		end
 		local isRequired = required:is("singleton") and required:value() == true
-		out[key] = { read = if full or isRequired then fnType else types.optional(fnType) }
+		local isMut = mut:is("singleton") and mut:value() == true
+		if not (read and isMut) then
+			out[key] = { read = if full or read or isRequired then fnType else types.optional(fnType) }
+		end
 	end
-	return types.newfunction({ head = def:parameters().head }, { head = { types.newtable(out) } }, def:generics())
+	-- 매개변수: 하나면 세 보기가 같이 씀, 둘이면 첫째(읽기 — 빌린 참조도 받는 조건)는 읽기 보기, 둘째(바꿀 수 있는 참조)는 완성·등록 보기
+	local head = def:parameters().head
+	local params: { type } = if head == nil then {} else head
+	if #params > 2 then
+		error("Trait.Trait: the definition takes `of` (read) and optionally `ofMut` — at most two parameters")
+	end
+	local param = if read or #params < 2 then params[1] else params[2]
+	return types.newfunction({ head = { param } }, { head = { types.newtable(out) } }, def:generics())
+end
+
+-- 진입점 서명을 정의에서 짓습니다(질문 BA). 칸마다 `<정의의 제네릭…, 칸의 제네릭…>(첫 인자: 조건, 나머지…) -> 반환` —
+-- 첫 인자의 조건은 읽기 칸이면 정의의 첫 매개변수(`of`), 쓰기 칸이면 둘째(`ofMut`)에서 토큰 갈래를 뺀 것(유니온의 첫 갈래).
+export type function Entries(def)
+	if def:is("any") then
+		return types.any
+	end
+	-- 정의자 실수는 `View` 가 알립니다 — 여기서는 조용히 빈 표(같은 줄에 에러가 겹쳐 뜨지 않게).
+	if not def:is("function") then
+		return types.newtable()
+	end
+	local returns = def:returns().head
+	local fns = if returns == nil then nil else returns[1]
+	if fns == nil or fns:is("any") then
+		return types.any
+	end
+	if not fns:is("table") then
+		return types.newtable()
+	end
+	local head = def:parameters().head
+	local params: { type } = if head == nil then {} else head
+	local function subject(p: type?): type?
+		if p == nil then
+			return nil
+		end
+		if p:is("union") then
+			return p:components()[1]
+		end
+		return p
+	end
+	local readSubject = subject(params[1])
+	local mutSubject = subject(params[2]) or readSubject
+	local MUT, FN, ENTRY = types.singleton("mut"), types.singleton("fn"), types.singleton("entry")
+	local defGenerics = def:generics()
+	-- 진입점마다 정의의 제네릭을 **새로** 만들어 바꿔 끼웁니다 — 여러 진입점이 같은 제네릭 객체를 나눠 쓰면 원소 인자에서 묶이지 않았습니다
+	-- (칸 하나면 됨 — `.claude/research/trait-ofmut`).
+	local function subst(t: type, map: { [type]: type }, memo: { [type]: type }): type
+		local hit = map[t] or memo[t]
+		if hit ~= nil then
+			return hit
+		end
+		if t:is("union") or t:is("intersection") then
+			local parts: { type } = {}
+			for i, c in t:components() do
+				parts[i] = subst(c, map, memo)
+			end
+			return if t:is("union")
+				then types.unionof(table.unpack(parts))
+				else types.intersectionof(table.unpack(parts))
+		elseif t:is("negation") then
+			return types.negationof(subst(t:inner(), map, memo))
+		elseif t:is("function") then
+			local function pack(p: { head: { type }?, tail: type? }): { head: { type }?, tail: type? }
+				local head: { type } = {}
+				for i, h in p.head or {} do
+					head[i] = subst(h, map, memo)
+				end
+				return { head = head, tail = if p.tail == nil then nil else subst(p.tail, map, memo) }
+			end
+			return types.newfunction(pack(t:parameters()), pack(t:returns()), t:generics())
+		elseif t:is("table") then
+			local out = types.newtable()
+			memo[t] = out
+			for key, prop in t:properties() do
+				local r = if prop.read == nil then nil else subst(prop.read, map, memo)
+				local w = if prop.write == nil then nil else subst(prop.write, map, memo)
+				if r ~= nil and w ~= nil and prop.read == prop.write then
+					out:setproperty(key, r)
+				else
+					if r ~= nil then
+						out:setreadproperty(key, r)
+					end
+					if w ~= nil then
+						out:setwriteproperty(key, w)
+					end
+				end
+			end
+			local idx = t:indexer()
+			if idx ~= nil then
+				out:setindexer(subst(idx.index, map, memo), subst(idx.readresult, map, memo))
+			end
+			return out
+		end
+		return t
+	end
+	local out: { [type]: { read: type?, write: type? } } = {}
+	for key, prop in fns:properties() do
+		local slot = prop.read
+		local fnType = if slot ~= nil and slot:is("table") then slot:readproperty(FN) else nil
+		local entry = if slot ~= nil and slot:is("table") then slot:readproperty(ENTRY) else nil
+		if entry ~= nil and entry:is("function") then
+			fnType = entry
+		end
+		local mut = if slot ~= nil and slot:is("table") then slot:readproperty(MUT) else nil
+		if fnType ~= nil and fnType:is("function") and mut ~= nil then
+			local isMut = mut:is("singleton") and mut:value() == true
+			local fp = fnType:parameters()
+			local fhead = if fp.head == nil then {} else fp.head
+			local newHead: { type } = {}
+			for i, p in fhead do
+				newHead[i] = if i == 1 then (if isMut then mutSubject else readSubject) or p else p
+			end
+			-- `Self`(정의의 첫 제네릭)가 첫 인자에만 나오면 빼서 손으로 쓰던 서명(`<E, I>(list: Marker<E, I>, …)`)과 제네릭 순서를 맞춤 —
+			-- 명시적 타입 인자를 일부만 주면 솔버 내부 에러라(`f<<A>>` 에 `<A, B>`) 순서가 곧 공개 표면입니다.
+			local selfG = defGenerics[1]
+			local usesSelf = false
+			local function occurs(t: type, seen: { [type]: boolean }): boolean
+				if t == selfG then
+					return true
+				end
+				if seen[t] then
+					return false
+				end
+				seen[t] = true
+				if t:is("union") or t:is("intersection") then
+					for _, c in t:components() do
+						if occurs(c, seen) then
+							return true
+						end
+					end
+				elseif t:is("function") then
+					for _, p in { t:parameters(), t:returns() } do
+						for _, h in p.head or {} do
+							if occurs(h, seen) then
+								return true
+							end
+						end
+						if p.tail ~= nil and occurs(p.tail, seen) then
+							return true
+						end
+					end
+				elseif t:is("table") then
+					for _, prop in t:properties() do
+						if
+							(prop.read ~= nil and occurs(prop.read, seen))
+							or (prop.write ~= nil and occurs(prop.write, seen))
+						then
+							return true
+						end
+					end
+				end
+				return false
+			end
+			for i, p in fhead do
+				if i > 1 and occurs(p, {}) then
+					usesSelf = true
+				end
+			end
+			if fp.tail ~= nil and occurs(fp.tail, {}) then
+				usesSelf = true
+			end
+			local fr = fnType:returns()
+			for _, r in fr.head or {} do
+				if occurs(r, {}) then
+					usesSelf = true
+				end
+			end
+			local canDrop = false
+			if newHead[1] ~= nil and newHead[1]:is("intersection") then
+				for _, c in newHead[1]:components() do
+					if c == selfG then
+						canDrop = true
+					end
+				end
+			end
+			if not canDrop then
+				usesSelf = true
+			end
+			if not usesSelf and newHead[1] ~= nil and newHead[1]:is("intersection") then
+				local rest: { type } = {}
+				for _, c in newHead[1]:components() do
+					if c ~= selfG then
+						table.insert(rest, c)
+					end
+				end
+				newHead[1] = if #rest == 1 then rest[1] else types.intersectionof(table.unpack(rest))
+			end
+			local generics: { type } = {}
+			local map: { [type]: type } = {}
+			for i, g in defGenerics do
+				local n = types.generic(g:name() or "T", g:ispack())
+				map[g] = n
+				if i > 1 or usesSelf then
+					table.insert(generics, n)
+				end
+			end
+			for _, g in fnType:generics() do
+				table.insert(generics, g)
+			end
+			local built = types.newfunction({ head = newHead, tail = fp.tail }, fnType:returns(), {})
+			local renamed = subst(built, map, {})
+			out[key] = { read = types.newfunction(renamed:parameters(), renamed:returns(), generics) }
+		end
+	end
+	return types.newtable(out)
 end
 
 -- 값에 타입 토큰을 싣는 필드 이름. 모듈들은 이 문자열을 **리터럴로** 다시 적습니다 — 이 값을 받아 쓰면 상수 접기가 안 돼
@@ -141,10 +360,13 @@ const TYPE_KEY = "__type"
 
 const records = Registry.records
 const isToken = Registry.isToken
-const RESERVED: { [string]: boolean } =
-	table.freeze({ Of = true, ImplOf = true, ImplFor = true, ImplWhere = true, FnTok = true } :: { [string]: boolean })
+const RESERVED: { [string]: boolean } = table.freeze(
+	{ Of = true, OfMut = true, ImplOf = true, ImplFor = true, ImplWhere = true, FnTok = true } :: { [string]: boolean }
+)
 const FN_MARK = table.freeze({})
+const FN_MUT_MARK = table.freeze({})
 const DEFAULT_MARK = table.freeze({})
+const MUT_MARK = table.freeze({})
 
 --[[ 토큰 ]]
 
@@ -231,14 +453,29 @@ end
 
 --[[ 트레이트 ]]
 
--- 필수 함수의 칸: 런타임엔 표식, 타입은 레코드(`View` 가 두 보기 모두 `fn` 으로).
-const function Fn<F>(): { required: true, fn: F }
+-- 필수 함수의 칸: 런타임엔 표식, 타입은 레코드(`View` 가 보기마다 `fn` 으로). `Fn` 은 읽기(Rust 의 `&self`), `FnMut` 은 쓰기
+-- (`&mut self` — 읽기 보기 `X.Of` 에 없음).
+const function Fn<F>(): { required: true, mut: false, fn: F }
 	return FN_MARK :: any
 end
+const function FnMut<F>(): { required: true, mut: true, fn: F }
+	return FN_MUT_MARK :: any
+end
 -- 기본 구현의 칸: 빌더(그 종류의 완성 표 `ops` 를 받아 함수를 돌려줌). 타입은 레코드 — `View` 가 완성 보기에서는 빌더가 돌려주는
--- 함수, 등록 보기에서는 그 함수의 선택 칸으로.
-const function Default<F>(build: (ops: any) -> F): { required: false, fn: F }
+-- 함수, 등록 보기에서는 그 함수의 선택 칸으로. `DefaultMut` 은 쓰기 칸.
+-- 둘째 인자(선택): **부르는 쪽 서명** `Trait.Sig<<…>>()` — 등록 표의 칸 타입(구현하는 쪽)과 진입점 서명(부르는 쪽)이 다를 때
+-- (`List.Some` 의 술어: 구현은 `(E, I, ...any)` 를 받을 수 있어야 하고, 부르는 쪽은 꼬리 없는 `(E, I) -> boolean` 변수를 넘길 수 있어야 함).
+const function Default<F, G>(build: (ops: any) -> F, sig: { read sig: G }?): { required: false, mut: false, fn: F, entry: G }
 	return table.freeze({ [DEFAULT_MARK] = build }) :: any
+end
+const function DefaultMut<F, G>(
+	build: (ops: any) -> F,
+	sig: { read sig: G }?
+): { required: false, mut: true, fn: F, entry: G }
+	return table.freeze({ [DEFAULT_MARK] = build, [MUT_MARK] = true }) :: any
+end
+const function Sig<G>(): { read sig: G }
+	return nil :: any
 end
 
 -- "모든 종류" 의 뭉텅이 구현을 밝혀 적는 표식. 빈 목록(`{}`)을 그 뜻으로 받았더니 의존 이름의 오타(`{ traits.Dequ }` = `{ nil }`, 길이 0)가
@@ -265,6 +502,7 @@ const function newTrait(name: string, def: any): any
 	const fnNames: { string } = {}
 	const required: { [string]: true } = {}
 	const builders: { [string]: (ops: any) -> any } = {}
+	const mutable: { [string]: true } = {}
 	for fnName, mark in fns :: any do
 		if type(fnName) ~= "string" then
 			Errors.badFns(name)
@@ -272,10 +510,16 @@ const function newTrait(name: string, def: any): any
 		if RESERVED[fnName] then
 			Errors.reserved(name, fnName)
 		end
-		if mark == FN_MARK then
+		if mark == FN_MARK or mark == FN_MUT_MARK then
 			required[fnName] = true
+			if mark == FN_MUT_MARK then
+				mutable[fnName] = true
+			end
 		elseif type(mark) == "table" and type(rawget(mark, DEFAULT_MARK)) == "function" then
 			builders[fnName] = rawget(mark, DEFAULT_MARK) :: any
+			if rawget(mark, MUT_MARK) == true then
+				mutable[fnName] = true
+			end
 		else
 			Errors.badFns(name)
 		end
@@ -298,6 +542,7 @@ const function newTrait(name: string, def: any): any
 		end
 		return full
 	end
+	trait.OfMut = trait.Of
 	trait.ImplOf = trait.Of
 	trait.ImplFor = function(token: any, impl: any)
 		implFor(trait, token, impl)
@@ -312,6 +557,7 @@ const function newTrait(name: string, def: any): any
 		impls = impls,
 		required = required,
 		builders = builders,
+		mutable = mutable,
 		explicit = {},
 		blankets = {},
 		dependents = {},
@@ -395,7 +641,7 @@ function implWhere(trait: any, deps: any, build: any)
 	end)
 end
 
-type TraitFn = <F>(name: string, def: F) -> Object<View<F, "full">, View<F, "impl">>
+type TraitFn = <F>(name: string, def: F) -> Object<View<F, "read">, View<F, "full">, View<F, "impl">> & Entries<F>
 const Trait: TraitFn = newTrait :: any
 
 --[[ 조회 — 종류를 모르는 코드, 트레이트 파일이 씀 ]]
@@ -463,6 +709,6 @@ end
 return {
 	TYPE_KEY = TYPE_KEY,
 	NewToken = NewToken, TokenOf = TokenOf, Stamp = Stamp, Restore = Restore,
-	Trait = Trait, Fn = Fn, Default = Default, Any = Any,
+	Trait = Trait, Fn = Fn, FnMut = FnMut, Default = Default, DefaultMut = DefaultMut, Sig = Sig, Any = Any,
 	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose, Impls = Impls,
 }
