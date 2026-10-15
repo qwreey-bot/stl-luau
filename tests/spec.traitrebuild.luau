@@ -995,6 +995,131 @@ do
 	boom = false
 	const flakyKind = T.NewToken("Test.Rebuild.FlakyKind")
 	assert(T.Implements(Flaky, T.Stamp({}, flakyKind)), "같은 이름으로 다시 만들고 Every 도 붙음")
+
+	-- (14) 묶음의 경계(리뷰 5라운드)
+	-- (a) 같은 표가 한 묶음에서 두 번 다시 지어진 뒤 실패해도 **가장 옛 내용**으로(일지를 거꾸로) — 마름모 A → B, A → C, {B, C} → D
+	const DZ: any = T.Trait("Test.Rebuild.DiamondZ", factory({ Z = T.Fn() }))
+	const DA: any = T.Trait("Test.Rebuild.DiamondA", factory({ A = T.Fn() }))
+	const DB: any = T.Trait("Test.Rebuild.DiamondB", factory({ B = T.Fn() }))
+	const DC: any = T.Trait("Test.Rebuild.DiamondC", factory({ C = T.Fn() }))
+	const DD: any = T.Trait("Test.Rebuild.DiamondD", factory({ D = T.Fn() }))
+	const DE: any = T.Trait("Test.Rebuild.DiamondE", factory({ E = T.Fn() }))
+	local function tag(text: string): () -> string
+		return function()
+			return text
+		end
+	end
+	DA.ImplWhere({ DZ }, function(_deps: any)
+		return { A = tag("a-blanket") }
+	end)
+	DB.ImplWhere({ DA }, function(deps: any)
+		return { B = tag("b<" .. deps[DA].A()) }
+	end)
+	DC.ImplWhere({ DA }, function(deps: any)
+		return { C = tag("c<" .. deps[DA].A()) }
+	end)
+	DD.ImplWhere({ DB, DC }, function(deps: any)
+		return { D = tag(`d<{deps[DB].B()},{deps[DC].C()}`) }
+	end)
+	DE.ImplWhere(
+		{ DA },
+		function(deps: any) -- A 가 뭉텅이일 때만 성공(B·C·D 를 다시 지은 다음에 실패)
+			return if deps[DA].A() == "a-blanket" then { E = tag("e") } else {}
+		end
+	)
+	const diamond = T.NewToken("Test.Rebuild.DiamondKind")
+	DZ.ImplFor(diamond, { Z = print })
+	const heldD = DD.Of(diamond)
+	const dBefore = heldD.D()
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			DA.ImplFor(diamond, { A = tag("a-explicit") })
+		end,
+		"Trait: a blanket implementation of Test.Rebuild.DiamondE (ImplWhere) for Test.Rebuild.DiamondKind is missing E",
+		"마름모 위에서 실패"
+	)
+	assert(
+		DD.Of(diamond) == heldD and heldD.D() == dBefore and dBefore == "d<b<a-blanket,c<a-blanket",
+		"두 번 고친 표도 가장 옛 내용으로"
+	)
+	-- (b) builder 가 던진 **테이블** 에러는 같은 값 그대로(표식으로 오인하지 않음), 토큰도 남지 않음
+	const errObject = { code = 7 }
+	local throwObject = false
+	const Obj: any = T.Trait("Test.Rebuild.ObjError", factory({ Run = T.Fn() }))
+	Obj.ImplWhere(T.Every, function(_deps: any)
+		if throwObject then
+			error(errObject)
+		end
+		return { Run = function() end }
+	end)
+	throwObject = true
+	const okObj, errObj = pcall(T.NewToken, "Test.Rebuild.ObjKind")
+	assert(not okObj and errObj == errObject, "테이블 에러는 같은 값")
+	throwObject = false
+	T.NewToken("Test.Rebuild.ObjKind")
+	-- (c) builder 안에서 라이브러리 함수를 `pcall` 로 부르면 평소처럼 문자열(예전엔 묶음의 표식 테이블이 샘)
+	local innerErr: any = nil
+	const Probe: any = T.Trait("Test.Rebuild.PcallInBuilder", factory({ Run = T.Fn() }))
+	Probe.ImplWhere({ stl.Map }, function(_deps: any)
+		local _ok
+		_ok, innerErr = pcall(stl.Arr.At, stl.Arr.Of(1), 0 / 0)
+		return { Run = function() end }
+	end)
+	assert(type(innerErr) == "string" and string.find(innerErr, "Arr: At index is NaN", 1, true), tostring(innerErr))
+	-- (d) builder 안에서 또 등록하면 그 줄의 에러, 바깥 등록은 남지 않음
+	local nestedLine = 0
+	const Nest: any = T.Trait("Test.Rebuild.Nested", factory({ Run = T.Fn() }))
+	const okNest, errNest = pcall(function()
+		Nest.ImplWhere({ stl.Map }, function(_deps: any)
+			nestedLine = debug.info(1, "l") + 1
+			T.NewToken("Test.Rebuild.NestedInner")
+			return { Run = function() end }
+		end)
+	end)
+	assert(
+		not okNest
+			and string.find(
+				tostring(errNest),
+				`spec.traitrebuild.luau:{nestedLine}: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table`,
+				1,
+				true
+			),
+		tostring(errNest)
+	)
+	assert(not T.Implements(Nest, stl.HashMap.New()), "바깥 등록은 남지 않음")
+	T.NewToken("Test.Rebuild.NestedInner") -- 안쪽 토큰도 남지 않음
+	-- (e) 일지는 스레드마다: 한 스레드의 등록이 builder 의 양보로 매달려 있어도(계약 밖 — 정의되지 않은 동작) 다른 스레드의 등록은 묶이고,
+	-- 매달린 스레드를 버려도 표식이 새지 않음
+	local yieldNow = false
+	const Slow: any = T.Trait("Test.Rebuild.Slow", factory({ Run = T.Fn() }))
+	Slow.ImplWhere(T.Every, function(_deps: any)
+		if yieldNow then
+			coroutine.yield()
+		end
+		return { Run = function() end }
+	end)
+	yieldNow = true
+	const hung = coroutine.create(function()
+		T.NewToken("Test.Rebuild.Hung")
+	end)
+	assert(coroutine.resume(hung) and coroutine.status(hung) == "suspended", "매달림")
+	yieldNow = false
+	const _, nanErr = pcall(stl.Arr.At, stl.Arr.Of(1), 0 / 0)
+	assert(type(nanErr) == "string", "다른 스레드의 pcall 은 문자열")
+	const otherHeld = TxP.Of(txKind)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		TxP.ImplFor(txKind, {
+			Name = function()
+				return "explicit"
+			end,
+		})
+	end, "is missing Run", "매달린 동안 다른 스레드의 등록도 묶음")
+	assert(TxP.Of(txKind) == otherHeld and otherHeld.Name == blanketName, "되돌림")
+	coroutine.close(hung)
+	const _, nanErr2 = pcall(stl.Arr.At, stl.Arr.Of(1), 0 / 0)
+	assert(type(nanErr2) == "string", "버린 뒤에도 문자열")
 end
 print("PASS")
 

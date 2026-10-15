@@ -190,9 +190,10 @@ function exports.raise(message: string): never
 			error(message, 0)
 		end
 		if not librarySources[source] then
-			-- 묶음(`transact`) 안에서 처음 만난 비라이브러리 프레임이 그 `pcall`(C)이면 위치를 미룸 — 사용자 코드(뭉텅이의 builder,
-			-- 기본 구현 빌더) 안이면 그 줄이 맞으니 그대로 던짐.
-			if deferring > 0 and source == "[C]" then
+			-- 처음 만난 비라이브러리 프레임이 **`transact` 가 부른** `pcall`(C)이면 위치를 미룸. 사용자 코드(뭉텅이의 builder, 기본 구현
+			-- 빌더) 안이면 그 줄이 맞으니 그대로 던지고, builder 가 스스로 부른 `pcall(Arr.At, …)` 같은 C 프레임도 그대로(예전엔 C 프레임이면
+			-- 다 미뤄 builder 가 문자열 대신 표식 테이블을 받았음 — 트레이트 리뷰 5라운드).
+			if deferring > 0 and source == "[C]" and debug.info(level + 1, "f") == exports.transact then
 				return exports.rethrow({ [DEFERRED] = message })
 			end
 			break

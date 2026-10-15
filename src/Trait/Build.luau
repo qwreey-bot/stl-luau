@@ -33,9 +33,12 @@ const records = Registry.records
 
 const Build = {}
 
--- 되돌리기 일지: 등록 하나(`transact`)가 도는 동안 바꾼 것마다 되돌리는 함수를 적고, 던지면 거꾸로 부릅니다.
-local journal: { () -> () }? = nil
+-- 되돌리기 일지: 등록 하나(`transact`)가 도는 동안 바꾼 것마다 되돌리는 함수를 적고, 던지면 거꾸로 부릅니다. **스레드마다**
+-- 하나(약한 키 — 만드는 함수가 양보한 채 버려진 스레드가 다른 스레드의 등록을 막거나 묶지 못하게 하지 않음, 트레이트 리뷰 5라운드).
+-- ⚠️ 계약: 만드는 함수는 양보하지 않음(양보한 사이 다른 스레드가 등록하면 서로의 되돌리기가 엇갈림 — 정의되지 않은 동작).
+const journals: { [thread]: { () -> () } } = setmetatable({}, { __mode = "k" }) :: any
 const function note(undo: () -> ())
+	const journal = journals[coroutine.running()]
 	if journal ~= nil then
 		table.insert(journal, undo)
 	end
@@ -43,21 +46,22 @@ end
 Build.note = note
 
 -- 등록 하나를 묶음으로: 던지면 그동안 바꾼 것(놓은 표·기록·토큰)을 전부 되돌리고 다시 던짐(`Common.transact` — 사용자 줄 유지).
--- 이미 묶음 안이면(만드는 함수 안에서 또 등록) 바깥 묶음이 되돌립니다.
+-- 만드는 함수 안에서 또 등록하는 것은 사용자 줄 에러(계약: 부작용 없이 표만 돌려줌 — 예전엔 바깥 묶음에 섞여, 안쪽 실패를 잡으면
+-- 반쯤 남거나 바깥 실패가 안에서 처음 require 된 모듈의 토큰까지 되돌렸음, 5라운드).
 function Build.transact(fn: () -> ())
-	if journal ~= nil then
-		fn()
-		return
+	const thread = coroutine.running()
+	if journals[thread] ~= nil then
+		Errors.nested()
 	end
-	journal = {}
+	journals[thread] = {}
 	Common.transact(fn, function()
-		const undo = journal :: { () -> () }
-		journal = nil
+		const undo = journals[thread]
+		journals[thread] = nil
 		for at = #undo, 1, -1 do
 			undo[at]()
 		end
 	end)
-	journal = nil
+	journals[thread] = nil
 end
 
 const function removeValue(list: { any }, value: any)

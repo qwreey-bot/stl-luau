@@ -78,6 +78,11 @@ function Errors.everyOverlap(trait: string, addingEvery: boolean): never
 		`Trait: {trait} already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it on every kind it covers; implement those kinds directly ({trait}.ImplFor)`
 	)
 end
+function Errors.nested(): never
+	return raise(
+		"Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table"
+	)
+end
 function Errors.whereCycle(trait: string, dep: string): never
 	if trait == dep then
 		return raise(`Trait: {trait}.ImplWhere cannot depend on {trait} itself`)
