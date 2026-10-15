@@ -1,0 +1,14 @@
+== -O1
+전:	d<b<a-blanket,c<a-blanket	b<a-blanket	c<a-blanket
+실패:	false	./p04-double-touch-undo.luau:34: Trait: a blanket implementation of P04.E (ImplWhere) for P04.Kind is missing e for P04.E
+후:	d<b<a-blanket,c<a-blanket	b<a-blanket	c<a-blanket	/ 같은 테이블:	true
+D 가 가장 옛 내용?	true
+D 진입점:	d<b<a-blanket,c<a-blanket
+rc=0
+== -O2
+전:	d<b<a-blanket,c<a-blanket	b<a-blanket	c<a-blanket
+실패:	false	./p04-double-touch-undo.luau:34: Trait: a blanket implementation of P04.E (ImplWhere) for P04.Kind is missing e for P04.E
+후:	d<b<a-blanket,c<a-blanket	b<a-blanket	c<a-blanket	/ 같은 테이블:	true
+D 가 가장 옛 내용?	true
+D 진입점:	d<b<a-blanket,c<a-blanket
+rc=0

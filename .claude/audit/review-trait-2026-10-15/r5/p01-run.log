@@ -1,0 +1,16 @@
+== -O1
+밖:	false	string	Arr: At index is NaN
+밖(클로저):	false	string	./p01-builder-pcall-marker.luau:16: Arr: At index is NaN
+builder 호출 수(행/3):	23
+builder 안:	false	table	table: 0x00005762ab166940	table: 0x00005762aaf63020
+builder 안:	false	table	table: 0x00005762ab1668e0
+builder 안:	string.find on err:	false	./p01-builder-pcall-marker.luau:29: invalid argument #1 to 'find' (string expected, got table)
+rc=0
+== -O2
+밖:	false	string	Arr: At index is NaN
+밖(클로저):	false	string	./p01-builder-pcall-marker.luau:16: Arr: At index is NaN
+builder 호출 수(행/3):	23
+builder 안:	false	table	table: 0x00005d0fb560b740	table: 0x00005d0fb5471020
+builder 안:	false	table	table: 0x00005d0fb560b6e0
+builder 안:	string.find on err:	false	./p01-builder-pcall-marker.luau:29: invalid argument #1 to 'find' (string expected, got table)
+rc=0

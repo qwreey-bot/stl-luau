@@ -1,0 +1,20 @@
+== -O1
+(a) 안쪽 에러:	./p03-nested-registration.luau:29: Trait: a blanket implementation of P03.X (ImplWhere) for P03.Kind is missing Run for P03.X
+    놓였던 표가 옛 내용?	false	/ 다시 등록:	false	./p03-nested-registration.luau:37: Trait: P03.Kind already implements P03.P
+(b0) 바깥 등록:	true	nil
+(b) 바깥 실패:	false	./p03-nested-registration.luau:60: Trait: a blanket implementation of P03.Broken (ImplWhere) for Stl.HashMap is missing Need for P03.Broken
+(b') 바깥 실패:	false	./p03-nested-registration.luau:77: Trait: a blanket implementation of P03.Broken2 (ImplWhere) for Stl.HashMap is missing Need for P03.Broken2
+    캐시된 모듈의 토큰이 아직 토큰인가:	false
+    그 토큰으로 Stamp:	false	./p03-nested-registration.luau:84: Trait: Stamp needs a type token (from Trait.NewToken), got table
+    같은 이름의 토큰을 또 만들 수 있음(이름 유일 깨짐):	true	true
+rc=0
+== -O2
+(a) 안쪽 에러:	./p03-nested-registration.luau:29: Trait: a blanket implementation of P03.X (ImplWhere) for P03.Kind is missing Run for P03.X
+    놓였던 표가 옛 내용?	false	/ 다시 등록:	false	./p03-nested-registration.luau:37: Trait: P03.Kind already implements P03.P
+(b0) 바깥 등록:	true	nil
+(b) 바깥 실패:	false	./p03-nested-registration.luau:60: Trait: a blanket implementation of P03.Broken (ImplWhere) for Stl.HashMap is missing Need for P03.Broken
+(b') 바깥 실패:	false	./p03-nested-registration.luau:77: Trait: a blanket implementation of P03.Broken2 (ImplWhere) for Stl.HashMap is missing Need for P03.Broken2
+    캐시된 모듈의 토큰이 아직 토큰인가:	false
+    그 토큰으로 Stamp:	false	./p03-nested-registration.luau:84: Trait: Stamp needs a type token (from Trait.NewToken), got table
+    같은 이름의 토큰을 또 만들 수 있음(이름 유일 깨짐):	true	true
+rc=0

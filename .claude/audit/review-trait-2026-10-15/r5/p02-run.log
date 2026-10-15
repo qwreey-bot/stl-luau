@@ -1,0 +1,22 @@
+== -O1
+resume:	true
+status:	suspended
+(1) 메인의 pcall(Arr.At, NaN):	false	table	table: 0x00005e35f22126d0
+(2) 번지다 실패:	false	./p02-yield-in-builder.luau:46: Trait: a blanket implementation of P02.X (ImplWhere) for P02.Kind is missing Run for P02.X
+    놓인 표가 옛 내용?	false	 (false 면 되돌려지지 않음)
+    다시 시도:	false	./p02-yield-in-builder.luau:51: Trait: P02.Kind already implements P02.P
+closed:	dead
+(3) 버린 뒤 pcall(Arr.At, NaN):	false	table	table: 0x00005e35f21efe40
+    매달렸던 토큰 이름으로 다시:	false	table: 0x00005e35f21efe10
+rc=0
+== -O2
+resume:	true
+status:	suspended
+(1) 메인의 pcall(Arr.At, NaN):	false	table	table: 0x0000593f5d015ad0
+(2) 번지다 실패:	false	./p02-yield-in-builder.luau:46: Trait: a blanket implementation of P02.X (ImplWhere) for P02.Kind is missing Run for P02.X
+    놓인 표가 옛 내용?	false	 (false 면 되돌려지지 않음)
+    다시 시도:	false	./p02-yield-in-builder.luau:51: Trait: P02.Kind already implements P02.P
+closed:	dead
+(3) 버린 뒤 pcall(Arr.At, NaN):	false	table	table: 0x0000593f5d014060
+    매달렸던 토큰 이름으로 다시:	false	table: 0x0000593f5d014030
+rc=0

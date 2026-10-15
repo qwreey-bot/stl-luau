@@ -1,0 +1,5 @@
+# 시험해 본 수정(사본에서만 — 저장소엔 적용 안 함): Common.raise 의 미룸 조건을 "그 C 프레임을 부른 것이 transact 일 때" 로 좁힘
+-			if deferring > 0 and source == "[C]" then
++			if deferring > 0 and source == "[C]" and debug.info(level + 1, "f") == exports.transact then
+# 결과: tests/run.luau -O1·-O2 통과, p01 의 표식 누출 사라짐(문자열 메시지), p02 (1)(3) 의 다른 스레드 누출 사라짐.
+#       p02 (2)(journal 이 스레드를 넘어 공유되어 다른 스레드의 등록이 묶이지 않음)는 그대로 — 따로 다뤄야 함. luau-analyze 0건.

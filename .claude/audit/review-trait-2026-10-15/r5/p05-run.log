@@ -1,0 +1,8 @@
+== -O1
+ok:	false	같은 값:	true	type:	table	table: 0x000063811ab27180
+다시 만들기:	true	true
+rc=0
+== -O2
+ok:	false	같은 값:	true	type:	table	table: 0x000059884d728480
+다시 만들기:	true	true
+rc=0
