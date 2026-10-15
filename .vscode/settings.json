@@ -2,5 +2,15 @@
 	// luau-lsp 는 기본값이 구 solver 라, CLI(`luau-lsp analyze`)와 편집기가
 	// 서로 다른 진단을 냅니다. 이 저장소는 new solver 기준입니다 — 끄지 마세요.
 	// (근거: qwreey/quad 의 .claude/base/typing-limits.md)
-	"luau-lsp.fflags.enableNewSolver": true
+	"luau-lsp.fflags.enableNewSolver": true,
+	// 타입 검사 한도를 넓힙니다(2026-10-15 사용자: *"타입 너무 복잡하다 뜨는건 인자로 최대치 확장 없이는 해결 못 하더라고 … quad쪽도
+	// 넓혔는데 여기도 넓히는게 조건이 되어도 될 것 같아"*). 앞의 셋은 quad 와 같은 값, `LuauSolverConstraintLimit`(모듈 하나의 제약 수 —
+	// 기본 1000)은 `spec.contracts` 가 닿았던 한도입니다. ⚠️ 게이트(`scripts/check.sh` 의 `luau-analyze`)는 정수 플래그를 받지 못해
+	// 이 값이 적용되지 않습니다 — 거기선 `spec.contracts` 의 `assert` 별칭이 제약 수를 줄입니다.
+	"luau-lsp.fflags.override": {
+		"LuauTarjanChildLimit": "160000",
+		"LuauSubtypingIterationLimit": "100000",
+		"LuauTypeInferIterationLimit": "1000000",
+		"LuauSolverConstraintLimit": "100000"
+	}
 }

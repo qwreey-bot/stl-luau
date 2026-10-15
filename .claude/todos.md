@@ -32,6 +32,7 @@
 | 4 | 테스트(`spec.contracts`·`spec.traitrebuild` — 리뷰 2라운드 작업분 흡수), 음성 대조군(55·61·63·64·68 + 같은 모듈 반환·정의자 실수·성장 POS — 판정 조건) | |
 | 5 | 진입점 성능 재기(perf), 문서(conventions 트레이트 절·project-context·architecture), check.sh | |
 | 6 | 리뷰 소진 | |
+| 따로 | ⭐ **타입 검사 한도 넓히기는 조건**(2026-10-15 사용자: *"quad쪽도 넓혔는데 여기도 넓히는게 조건이 되어도 될 것 같아"*). 편집기는 `.vscode/settings.json` 에 넓힘(quad 와 같은 셋 + `LuauSolverConstraintLimit`). 게이트의 `luau-analyze` 는 CLI 가 참/거짓 플래그만 받아(`CLI/src/Flags.cpp`) 정수 한도를 못 넓힘 → 지금은 `spec.contracts` 의 `assert` 별칭. **`luau-lsp` 가 Luau 0.742 이상을 싣으면**(1.70.1 = 0.740) 게이트를 `luau-lsp analyze --flag:…` 로 옮길지 볼 것(실행기와 검사기 버전이 같아야 배터리가 재현됨 — mise.toml 머리) | 대기 |
 
 ## 🌅 돌아오시면 볼 것 (2026-10-15 새벽 — 트레이트 타입 토론, 주무시는 동안)
 
