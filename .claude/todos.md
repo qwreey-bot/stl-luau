@@ -8,6 +8,7 @@
 | 무엇 | 어디 |
 |---|---|
 | ~~luau 0.742 로 올릴지~~ → **2026-10-14 올림**(사용자: *"올리자"*): 새 진단 12건 고침, 배터리 셋 갱신(spikes/40 의 `Arr.Equal` NEG 는 알려진 경계로, 53·57 은 솔버 결함이 고쳐져 더 잡힘), `-j1` 뗌. AA 초안의 2번은 뺄 것 | `mise.toml` 머리 |
+| ⭐ **BB. 종류 = 닫힌 트레이트(`Trait.Struct`), `Arr` 의 칸을 공개할지** — 시제품 끝(브랜치 `proto/trait-struct`). (가)·(나)·(다) | `question.md` BB, `research/trait-struct` |
 | ⭐ **BA. 읽기·쓰기를 칸에(`Of`/`OfMut`), 진입점 서명을 정의에서(`Entries`), 트레이트를 타입에(`__traits`)** — 2026-10-15 **들임**((가)·(나)). 같은 날 변환자 `Trait.Converter`·값 타입 `stl.Stack<T>`·스택은 덱을 모름(`Deque.AsStack`). 남은 것: **리뷰**(새 시스템 — 소진까지), (다) 이름, `Entries` 우회의 원인(최소 재현), 상류 후보 둘(`Entries` 우회, 교집합 → 유니온 — `research/trait-ofmut`) | `question.md` BA, `research/trait-ofmut` |
 | **AA. Luau 새 솔버 결함 보고** — 초안 정리 끝(이슈 **다섯** + 재현 파일 — 2026-10-13 에 5번 "재귀 별칭이 유니온의 갈래이면 타입 인자를 안 봄" 추가: 옵셔널 노드 자리가 원소 타입을 못 지킴). **올리는 것은 사용자가**(또는 지시하실 때) | `.claude/audit/luau-solver-issues/DRAFTS.md` |
 | 페이퍼 07 의 6번 — 일반 트리(자식 여럿)·연결 리스트의 표면을 어디까지(사용자: *"좀만 더 보자"*) | `papers/07` 8절 |

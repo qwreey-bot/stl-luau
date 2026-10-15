@@ -1351,6 +1351,23 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 
 ---
 
+### BB. 종류 = 닫힌 트레이트(`Trait.Struct`), 공개 타입이 칸을 보일지 — 시제품 `proto/trait-struct` (2026-10-15) — **[답 기다림]**
+
+기록: `.claude/research/trait-struct/README.md`. 사용자: *"Arr 조차 Trait 이여야 하는거 아닌가 … struct Arr impl Arr {}"*, *"read [number]: T 를 공개 해야할 까"*.
+
+**시제품**(게이트 exit 0·스파이크 55, 편집기 같은 줄): `Trait.Struct(이름)` → 맨 끝 `Kind.Seal(모듈 표)` 가 곧 종류의 정체이자 닫힌 트레이트 —
+`Stack.ImplFor(stl.Arr, …)`·`Trait.Converter(stl.Stack, stl.Arr)`·아래로 `Trait.Converter(stl.Arr)`, 토큰은 안쪽으로. `Arr`·`CircularDeque` 에 적용.
+`CircularDeque` 의 공개 타입은 칸(물리 칸이라 원래 틀렸음)·`head`·`cap` 을 숨기고 `size` 는 읽기만.
+
+**정해 주실 것**
+- (가) `Trait.Struct` 를 들여 모든 종류에 적용할지.
+- (나) **`Arr` 의 칸**: 숨기면 사용자의 원소 읽기가 `Arr.Get` 2.7배·`Arr.At` 5배·`Arr.Iter` 4.5배 느려집니다(직접 `a[i]` 5.5ns — 캐스트하면 그대로).
+  셋 중: ① 다 숨김(가장 안전), ② **읽기 전용 인덱서 `read [number]: T` + 읽기 전용 `n`** — 쓰기만 함수로(길이가 깨지는 길만 막고 읽기 속도는 그대로,
+  범위 밖 읽기가 `nil` 인데 타입은 `T` 인 것은 남음), ③ 지금대로. **제 의견은 ②**(성능이 1급이라 읽기 경로는 두고, 사용자가 짚은 "맨 뒤에 넣으면
+  길이가 깨짐" 은 막음).
+- (다) 컨테이너 타입의 `__traits` 에 자기 종류(`Arr`)를 적을지 — 지금 쓰는 곳이 없어(변환 대상은 구조체 타입 자체, 종류 가르기는 `__type`) 안 적는 쪽.
+- 알게 된 것: 인덱서가 있는 읽기 타입은 타입 함수로 못 뽑음(`setreadindexer` 미지원) — 손으로.
+
 ### BA. 읽기·쓰기를 칸에, 트레이트를 타입에 드러내기 — 시제품 `proto/trait-ofmut` (2026-10-15) — **[(가)·(나) 결정·반영 2026-10-15, (다) 남음]**
 
 > **결정**(사용자: *"가 나 들여보고. 생각하자"*): (가) 들임, (나) `Entries` 도 들임 — main 에 반영(규약 트레이트 절, `src/Trait/init.luau` 머리).
