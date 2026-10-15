@@ -71,112 +71,104 @@ type SomeEvery<Self, E, I> =
 	((list: Self, pred: Pred<E, I>) -> boolean)
 	| ((list: Self, pred: Pred<E, I>, ...nil) -> boolean)
 
-local function listDef<M>(mode: M)
-	return function<Self, E, I>(of: (Self & ItemIndexRead<E, I>) | AnyToken)
-		return table.freeze({
-			Get = Fn<<(list: Self, idx: I) -> E?>>(),
-			FirstIndex = Fn<<(list: Self) -> I?>>(),
-			LastIndex = Fn<<(list: Self) -> I?>>(),
-			NextIndex = Fn<<(list: Self, idx: I) -> I?>>(),
-			PrevIndex = Fn<<(list: Self, idx: I) -> I?>>(),
-			Fold = Default(
-				mode,
-				function(ops: any): <U>(list: Self, init: U, fn: (acc: U, item: E, idx: I, ...any) -> U) -> U
-					return function<U>(self: Self, init: U, fn: (acc: U, item: E, idx: I, ...any) -> U): U
-						const get, nextIndex = ops.Get, ops.NextIndex
-						local acc, idx = init, ops.FirstIndex(self)
-						while idx ~= nil do
-							acc = fn(acc, get(self, idx), idx)
-							idx = nextIndex(self, idx)
-						end
-						return acc
-					end
+const ListBase = Trait.Trait("List", function<Self, E, I>(of: (Self & ItemIndexRead<E, I>) | AnyToken)
+	return table.freeze({
+		Get = Fn<<(list: Self, idx: I) -> E?>>(),
+		FirstIndex = Fn<<(list: Self) -> I?>>(),
+		LastIndex = Fn<<(list: Self) -> I?>>(),
+		NextIndex = Fn<<(list: Self, idx: I) -> I?>>(),
+		PrevIndex = Fn<<(list: Self, idx: I) -> I?>>(),
+		Fold = Default(function(ops: any): <U>(list: Self, init: U, fn: (acc: U, item: E, idx: I, ...any) -> U) -> U
+			return function<U>(self: Self, init: U, fn: (acc: U, item: E, idx: I, ...any) -> U): U
+				const get, nextIndex = ops.Get, ops.NextIndex
+				local acc, idx = init, ops.FirstIndex(self)
+				while idx ~= nil do
+					acc = fn(acc, get(self, idx), idx)
+					idx = nextIndex(self, idx)
 				end
-			),
-			Find = Default(mode, function(ops: any): (list: Self, pred: Pred<E, I>) -> (E?, I?)
-				return function(self: Self, pred: Pred<E, I>): (E?, I?)
-					const get, nextIndex = ops.Get, ops.NextIndex
-					local idx = ops.FirstIndex(self)
+				return acc
+			end
+		end),
+		Find = Default(function(ops: any): (list: Self, pred: Pred<E, I>) -> (E?, I?)
+			return function(self: Self, pred: Pred<E, I>): (E?, I?)
+				const get, nextIndex = ops.Get, ops.NextIndex
+				local idx = ops.FirstIndex(self)
+				while idx ~= nil do
+					const item = get(self, idx)
+					if pred(item, idx) then
+						return item, idx
+					end
+					idx = nextIndex(self, idx)
+				end
+				return nil, nil
+			end
+		end),
+		IndexOf = Default(function(ops: any): (list: Self, item: E) -> I?
+			return function(self: Self, item: E): I?
+				const get, nextIndex = ops.Get, ops.NextIndex
+				local idx = ops.FirstIndex(self)
+				while idx ~= nil do
+					if get(self, idx) == item then
+						return idx
+					end
+					idx = nextIndex(self, idx)
+				end
+				return nil
+			end
+		end),
+		Contains = Default(function(ops: any): (list: Self, item: E) -> boolean
+			return function(self: Self, item: E): boolean
+				return ops.IndexOf(self, item) ~= nil
+			end
+		end),
+		Count = Default(function(ops: any): (list: Self, pred: Pred<E, I>?) -> number
+			return function(self: Self, pred: Pred<E, I>?): number
+				const get, nextIndex = ops.Get, ops.NextIndex
+				local total, idx = 0, ops.FirstIndex(self)
+				if pred == nil then
 					while idx ~= nil do
-						const item = get(self, idx)
-						if pred(item, idx) then
-							return item, idx
-						end
+						total += 1
 						idx = nextIndex(self, idx)
 					end
-					return nil, nil
-				end
-			end),
-			IndexOf = Default(mode, function(ops: any): (list: Self, item: E) -> I?
-				return function(self: Self, item: E): I?
-					const get, nextIndex = ops.Get, ops.NextIndex
-					local idx = ops.FirstIndex(self)
-					while idx ~= nil do
-						if get(self, idx) == item then
-							return idx
-						end
-						idx = nextIndex(self, idx)
-					end
-					return nil
-				end
-			end),
-			Contains = Default(mode, function(ops: any): (list: Self, item: E) -> boolean
-				return function(self: Self, item: E): boolean
-					return ops.IndexOf(self, item) ~= nil
-				end
-			end),
-			Count = Default(mode, function(ops: any): (list: Self, pred: Pred<E, I>?) -> number
-				return function(self: Self, pred: Pred<E, I>?): number
-					const get, nextIndex = ops.Get, ops.NextIndex
-					local total, idx = 0, ops.FirstIndex(self)
-					if pred == nil then
-						while idx ~= nil do
-							total += 1
-							idx = nextIndex(self, idx)
-						end
-					else
-						while idx ~= nil do
-							if pred(get(self, idx), idx) then
-								total += 1
-							end
-							idx = nextIndex(self, idx)
-						end
-					end
-					return total
-				end
-			end),
-			Some = Default(mode, function(ops: any): SomeEvery<Self, E, I>
-				return function(self: Self, pred: Pred<E, I>): boolean
-					const get, nextIndex = ops.Get, ops.NextIndex
-					local idx = ops.FirstIndex(self)
+				else
 					while idx ~= nil do
 						if pred(get(self, idx), idx) then
-							return true
+							total += 1
 						end
 						idx = nextIndex(self, idx)
 					end
-					return false
 				end
-			end),
-			Every = Default(mode, function(ops: any): SomeEvery<Self, E, I>
-				return function(self: Self, pred: Pred<E, I>): boolean
-					const get, nextIndex = ops.Get, ops.NextIndex
-					local idx = ops.FirstIndex(self)
-					while idx ~= nil do
-						if not pred(get(self, idx), idx) then
-							return false
-						end
-						idx = nextIndex(self, idx)
+				return total
+			end
+		end),
+		Some = Default(function(ops: any): SomeEvery<Self, E, I>
+			return function(self: Self, pred: Pred<E, I>): boolean
+				const get, nextIndex = ops.Get, ops.NextIndex
+				local idx = ops.FirstIndex(self)
+				while idx ~= nil do
+					if pred(get(self, idx), idx) then
+						return true
 					end
-					return true
+					idx = nextIndex(self, idx)
 				end
-			end),
-		})
-	end
-end
--- 기본 구현이 있는 트레이트: 정의 함수를 모드 **값**으로 두 번(타입 인자 `<<"full">>` 로 적으면 잊었을 때 같은 모듈에서 기본 구현
--- 반환 검사가 조용히 사라짐 — 질문 AY).
-const ListBase = Trait.Trait("List", listDef(Trait.FULL), listDef(Trait.IMPL))
+				return false
+			end
+		end),
+		Every = Default(function(ops: any): SomeEvery<Self, E, I>
+			return function(self: Self, pred: Pred<E, I>): boolean
+				const get, nextIndex = ops.Get, ops.NextIndex
+				local idx = ops.FirstIndex(self)
+				while idx ~= nil do
+					if not pred(get(self, idx), idx) then
+						return false
+					end
+					idx = nextIndex(self, idx)
+				end
+				return true
+			end
+		end),
+	})
+end)
 -- 완성 표(`List.Of(v)`)와 등록 표(`List.ImplFor` 에 넘기는 표 — 필수 다섯 + 재정의할 것만, 기본 구현 칸은 선택)
 export type Full<Self, E, I> = typeof(ListBase.Of<<Self, E, I>>(nil :: any))
 export type Provided<Self, E, I> = typeof(ListBase.ImplOf<<Self, E, I>>(nil :: any))

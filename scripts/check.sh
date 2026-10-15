@@ -226,6 +226,9 @@ if ! bad=$(find src -name "*.luau" -print0 | xargs -0 perl -0777 -ne '
 		push @pending, @more;
 	}
 	$_ = $text;
+	# 3) 최상위 `type function … end`(끝의 `end` 가 0열 — stylua) 는 빼고 봅니다: 그 몸통은 **타입 검사기 안에서** 도는
+	#    코드이고 `error` 가 타입 에러를 내는 유일한 길입니다(`Trait.View` — 2026-10-15). 런타임 에러 규약의 대상이 아님.
+	s/^(?:export[ \t]+)?type[ \t]+function\b.*?^end\b//gms;
 	print "$f: 문자열을 못 읽음(남은 따옴표) — 게이트의 문자열 문법을 고칠 것\n"
 		if (my $q = $_) =~ s/"S"//gr =~ /["`\x27]/;
 	my @calls;

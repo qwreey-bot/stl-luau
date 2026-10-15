@@ -1,10 +1,11 @@
 --!strict
 --[[
-	Trait — 타입 토큰과 트레이트 **시스템**(2026-10-15 들임 — 질문 AY, 정본 설계·실험은 `.claude/research/trait-v9`·`trait-debate`).
+	Trait — 타입 토큰과 트레이트 **시스템**(2026-10-15 들임 — 질문 AY, 정본 설계·실험은 `.claude/research/trait-v9`·`trait-debate`,
+	같은 날 정의를 한 번만 넘기는 레코드 안으로 — `.claude/research/trait-udtf`).
 	트레이트 하나하나(계약 타입·기본 구현·진입점 서명)는 `src/Traits/` 에 파일 하나씩.
 
 	⚠️ **이 시스템은 계속 바뀔 수 있습니다**(사용자: *"trait 시스템 자체는 계속 변화할 수 있는걸로 둬야겠어. 타입 시스템이
-	변경됨에 따라서 영향을 받는지라"*) — 타입 모양이 Luau 새 솔버의 동작(내장 `index<>`, 명시적 타입 인자)에 기댑니다.
+	변경됨에 따라서 영향을 받는지라"*) — 타입 모양이 Luau 새 솔버의 동작(사용자 타입 함수 `View`, 명시적 타입 인자)에 기댑니다.
 
 	## 값과 토큰
 	값에는 **타입 토큰 하나**(`__type` 필드 — 컨테이너 모듈이 `Trait.NewToken("Stl.Arr")` 로 만든 얼린 테이블). 토큰 이름은
@@ -13,31 +14,33 @@
 
 	## 트레이트 = 정의(팩토리)
 	```lua
-	-- 기본 구현 없음: 한 겹
-	const Stack = Trait.Trait("Stack", function<Self, T>(of: (Self & Trait.Item<T>) | Trait.AnyToken)
-		return table.freeze({ Push = Trait.Fn<<(stack: Self, item: T) -> Self>>(), … })
+	const List = Trait.Trait("List", function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
+		return table.freeze({
+			Get = Trait.Fn<<(list: Self, index: I) -> E>>(),                         -- 필수
+			IndexOf = Trait.Default(function(ops: any): (list: Self, item: E) -> I? -- 기본 구현(빌더)
+				return function(list, item) … end
+			end),
+		})
 	end)
-	-- 기본 구현 있음: 정의 함수 하나를 모드 **값**으로 두 번(타입 인자 `<<"full">>` 로 적으면 잊었을 때 조용히 검사가 사라짐)
-	local function listDef<M>(mode: M)
-		return function<Self, E, I>(of: (Self & Trait.ItemIndexRead<E, I>) | Trait.AnyToken)
-			return table.freeze({ Get = Trait.Fn<<…>>(), IndexOf = Trait.Default(mode, function(ops: List<Self, E, I>) … end) })
-		end
-	end
-	const List = Trait.Trait("List", listDef(Trait.FULL), listDef(Trait.IMPL))
-	export type List<Self, E, I> = typeof(List.Of<<Self, E, I>>(nil :: any))           -- 완성 표
-	export type ListImpl<Self, E, I> = typeof(List.ImplOf<<Self, E, I>>(nil :: any))   -- 등록 표(기본 구현 칸은 선택)
+	export type Full<Self, E, I> = typeof(List.Of<<Self, E, I>>(nil :: any))         -- 완성 표
+	export type Provided<Self, E, I> = typeof(List.ImplOf<<Self, E, I>>(nil :: any)) -- 등록 표(기본 구현 칸은 선택)
 	```
+	- 정의는 **한 번** 넘깁니다. 칸은 타입으로 레코드(`Fn` = `{ required: true, fn: F }`, `Default` = `{ required: false, fn: F }`)이고,
+	  타입 함수 `View` 가 정의 함수의 타입을 받아 두 보기(완성 = 칸마다 `fn`, 등록 = 기본 구현 칸만 `fn?`)로 **다시 지어** `Of`·`ImplOf`
+	  의 타입으로 줍니다 — 매개변수와 제네릭 목록은 정의의 것 그대로. (D3 의 `def(FULL), def(IMPL)` 두 번 넘기기와 모드 값, 덜
+	  줄어든 `index<>` 의 `never` 함정이 없어졌습니다 — 정의자가 모드를 틀릴 자리 자체가 없음.)
 	- 팩토리는 런타임에 **한 번**(of = nil) 불려 이름(`Fn` = 필수, `Default` = 기본 구현 빌더)을 줍니다. `table.freeze` 로 돌려주면
-	  트레이트 타입의 필드가 `read` 가 됩니다.
+	  트레이트 타입의 필드가 `read` 가 됩니다. 정의가 함수가 아니거나 표를 돌려주지 않거나 칸이 `Fn`/`Default` 가 아니면 `View` 가
+	  타입 에러로 알립니다(`'View' type function errored at runtime: Trait.Trait: …`).
 	- `of` 가 연관 타입을 고릅니다: 쓰는 함수가 있는 트레이트는 `Item<T>`(불변 — 읽기 전용으로 빌린 참조는 그 트레이트를 아예
 	  못 얻음), 읽기만 하는 트레이트는 `ItemRead<T>`/`ItemIndexRead<E, I>`(공변 — 빌린 참조도 얻음). 컨테이너는 자기 타입에
 	  `__generics`(불변)·`__readGenerics`(공변) 팬텀을 적습니다.
-	- `Default(mode, build)` 의 `build(ops)` 는 그 종류의 완성 표를 받아 함수를 돌려줍니다(형제를 지역으로 붙잡아도 됨 — 다시
+	- `Default(build)` 의 `build(ops)` 는 그 종류의 완성 표를 받아 함수를 돌려줍니다(형제를 지역으로 붙잡아도 됨 — 다시
 	  지어질 때 다시 불림). ⚠️ 계약: 던지지 않고 부작용 없이 함수만 돌려줌. 기본 구현 타입에 오버로드(`&`)를 쓰지 마세요(등록
 	  보기의 `(A & B)?` 에 한쪽 갈래만 든 재정의가 0건 — 상류 결함).
 
 	## 등록·조회
-	- `X.ImplFor(토큰, 표)` — 표는 **그 트레이트의 함수만**(모르는 이름은 에러), `XImpl<종류<A>, A>` 주석을 단 **지역 변수**에 적어
+	- `X.ImplFor(토큰, 표)` — 표는 **그 트레이트의 함수만**(모르는 이름은 에러), `X.Provided<종류<A>, A>` 주석을 단 **지역 변수**에 적어
 	  넘깁니다(타입 검사 — 표 리터럴을 바로 넘기면 검사가 안 됨). 기본 구현 칸은 안 적으면 기본 구현, 적으면 재정의.
 	  `__index` 가 테이블인 사슬로 물려받은 함수도 칩니다(등록 때 한 번 읽어 사본으로).
 	- `X.ImplWhere({ 의존 트레이트 }, function(deps) return { … } end)` — 뭉텅이 구현(의존을 다 구현한 모든 종류에. `{}` 면 모든
@@ -83,6 +86,50 @@ export type Object<F, G> = {
 	read ImplWhere: (deps: { any }, build: (deps: { [any]: any }) -> any) -> (),
 	read FnTok: { [string]: number },
 }
+
+-- 트레이트의 두 보기. `def` 는 정의 함수의 타입(`<Self, T>(of: …) -> { 이름: { required, fn } }`), `mode` 는 `"full"`(완성 표 — 칸마다
+-- `fn`) 또는 `"impl"`(등록 표 — 기본 구현 칸은 `fn?`). 반환 표만 다시 짓고 매개변수와 **제네릭 목록은 정의의 것 그대로** 되넘깁니다 —
+-- 그래서 `Of<<Self, T>>` 가 되고, 정의할 때 바로 줄어듭니다(제네릭이 함수 타입 안에 묶여 있어 바깥 제네릭이 정해지길 기다리지
+-- 않음 — 별칭에 걸면 `outer_generics_irreducible` 로 안 줄어듦, `.claude/research/trait-udtf`).
+-- - 정의의 가변 꼬리(`...any`)는 떼어 냅니다 — 남기면 `X.Of(d, 1, 2)` 가 0건이었습니다.
+-- - ⚠️ 다시 지은 제네릭은 적용한 자리의 스코프를 받고 제네릭 기본값·바운드는 사라집니다(지금 정의엔 없음).
+-- - 실수는 `error` 로 — 타입 에러 `'View' type function errored at runtime: …` 로 정의 줄에 뜹니다. 정의나 그 반환이 `any` 면
+--   보기도 `any`(검사를 끄는 관용구).
+export type function View(def, mode)
+	-- `any` 는 검사를 끄는 관용구 그대로(런타임만 보는 테스트·동적 정의) — 정의나 그 반환이 `any` 면 보기도 `any`.
+	if def:is("any") then
+		return types.any
+	end
+	local full = mode:value() == "full"
+	if not def:is("function") then
+		error(
+			"Trait.Trait: the definition must be a function `function<Self, …>(of) return table.freeze({ … }) end`"
+		)
+	end
+	local returns = def:returns().head
+	local fns = if returns == nil then nil else returns[1]
+	if fns ~= nil and fns:is("any") then
+		return types.any
+	end
+	if fns == nil or not fns:is("table") then
+		error("Trait.Trait: the definition must return a table of Trait.Fn / Trait.Default slots")
+	end
+	local REQUIRED, FN = types.singleton("required"), types.singleton("fn")
+	local out: { [type]: { read: type?, write: type? } } = {}
+	for key, prop in fns:properties() do
+		local slot = prop.read
+		local fnType = if slot ~= nil and slot:is("table") then slot:readproperty(FN) else nil
+		local required = if slot ~= nil and slot:is("table") then slot:readproperty(REQUIRED) else nil
+		if fnType == nil or required == nil then
+			local value = if key:is("singleton") then key:value() else nil
+			local name = if type(value) == "string" then value else "?"
+			error(`Trait.Trait: '{name}' must be Trait.Fn<<…>>() or Trait.Default(…)`)
+		end
+		local isRequired = required:is("singleton") and required:value() == true
+		out[key] = { read = if full or isRequired then fnType else types.optional(fnType) }
+	end
+	return types.newfunction({ head = def:parameters().head }, { head = { types.newtable(out) } }, def:generics())
+end
 
 -- 값에 타입 토큰을 싣는 필드 이름. 모듈들은 이 문자열을 **리터럴로** 다시 적습니다 — 이 값을 받아 쓰면 상수 접기가 안 돼
 -- 생성이 7~11% 느렸습니다(perf 21절).
@@ -163,14 +210,13 @@ end
 
 --[[ 트레이트 ]]
 
--- 필수 함수의 칸: 런타임엔 표식, 타입은 그 서명.
-const function Fn<F>(): F
+-- 필수 함수의 칸: 런타임엔 표식, 타입은 레코드(`View` 가 두 보기 모두 `fn` 으로).
+const function Fn<F>(): { required: true, fn: F }
 	return FN_MARK :: any
 end
--- 기본 구현의 칸: 빌더(그 종류의 완성 표 `ops` 를 받아 함수를 돌려줌). 타입은 완성 보기에서 빌더가 돌려주는 함수, 등록
--- 보기에서 그 함수의 선택 칸. `mode` 는 정의 함수가 받은 모드를 그대로(런타임은 안 봄). 이 시스템의 유일한 타입 함수(내장 `index<>`)
--- — 모드가 덜 정해진 채 쓰이면 `never` 가 되어 검사가 사라지니, 모드는 늘 `Trait.FULL`·`Trait.IMPL` 값으로 넘깁니다.
-const function Default<F, M>(mode: M, build: (ops: any) -> F): index<{ full: F, impl: F? }, M>
+-- 기본 구현의 칸: 빌더(그 종류의 완성 표 `ops` 를 받아 함수를 돌려줌). 타입은 레코드 — `View` 가 완성 보기에서는 빌더가 돌려주는
+-- 함수, 등록 보기에서는 그 함수의 선택 칸으로.
+const function Default<F>(build: (ops: any) -> F): { required: false, fn: F }
 	return table.freeze({ [DEFAULT_MARK] = build }) :: any
 end
 
@@ -178,11 +224,8 @@ end
 local implFor: (trait: any, token: any, impl: any) -> ()
 local implWhere: (trait: any, deps: any, build: any) -> ()
 
--- 트레이트. 두 모양(인자 수로 가름 — 같은 인자 수의 오버로드는 제네릭 앞에서 모호해서):
---   `Trait.Trait(이름, 팩토리)`                           기본 구현 없음: 완성 표 = 등록 표
---   `Trait.Trait(이름, def(Trait.FULL), def(Trait.IMPL))` 기본 구현 있음
--- 셋째 인자는 타입만 위한 것(런타임은 둘째의 팩토리를 한 번 부름).
-const function newTrait(name: string, def: any, _implDef: any?): any
+-- 트레이트 `Trait.Trait(이름, 정의)`. 런타임은 정의를 한 번(of = nil) 불러 칸 이름을 얻습니다.
+const function newTrait(name: string, def: any): any
 	if type(name) ~= "string" then
 		Errors.traitName(name)
 	end
@@ -287,12 +330,7 @@ function implWhere(trait: any, deps: any, build: any)
 	Build.onWhere(trait, { deps = list, build = build })
 end
 
--- 모드 값(정의 함수에 넘김 — 글자 그대로의 타입이라 부르는 자리에서 모드가 정해짐)
-const FULL: "full" = "full"
-const IMPL: "impl" = "impl"
-type TraitFn =
-	(<F>(name: string, factory: F) -> Object<F, F>)
-	& (<F, G>(name: string, full: F, impl: G) -> Object<F, G>)
+type TraitFn = <F>(name: string, def: F) -> Object<View<F, "full">, View<F, "impl">>
 const Trait: TraitFn = newTrait :: any
 
 --[[ 조회 — 종류를 모르는 코드, 트레이트 파일이 씀 ]]
@@ -349,6 +387,6 @@ end
 return {
 	TYPE_KEY = TYPE_KEY,
 	NewToken = NewToken, TokenOf = TokenOf, Stamp = Stamp, Restore = Restore,
-	Trait = Trait, Fn = Fn, Default = Default, FULL = FULL, IMPL = IMPL,
+	Trait = Trait, Fn = Fn, Default = Default,
 	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose,
 }

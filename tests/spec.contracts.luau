@@ -1326,7 +1326,7 @@ do
 			not okNew
 				and string.find(
 					tostring(errNew),
-					"Trait: BadFns needs a factory returning a table of Trait.Fn / Trait.Default",
+					"Trait: BadFns needs a definition function returning a table of Trait.Fn / Trait.Default",
 					1,
 					true
 				),
@@ -1884,7 +1884,7 @@ print(
 )
 do
 	const T = stl.Trait
-	const Fn, Default, FULL = T.Fn, T.Default, T.FULL
+	const Fn, Default = T.Fn, T.Default
 	-- 작은 계층: Counter(필수 Get·Inc) → 기본 구현 IncBy·Double / ShowCounter(필수 Show — Counter 면 뭉텅이 구현이 채움)
 	type Counter = { read __type: stl.TraitToken<string>, n: number }
 	const CounterTrait: any = T.Trait(
@@ -1893,7 +1893,7 @@ do
 			Get = Fn(),
 			Inc = Fn(),
 			-- 필수 함수는 부를 때 `ops` 에서 꺼냄
-			IncBy = Default(FULL, function(ops: any)
+			IncBy = Default(function(ops: any)
 				return function(c: Counter, by: number)
 					const inc = ops.Inc
 					for _ = 1, by do
@@ -1903,7 +1903,7 @@ do
 			end),
 			-- 다른 기본 구현을 부르는 기본 구현 — 재정의된 판을 써야 함. **만들 때** 형제를 붙잡음(아직 안 지은 형제는 그 자리에서
 			-- 먼저 지어짐 — 짓는 순서와 무관)
-			Double = Default(FULL, function(ops: any)
+			Double = Default(function(ops: any)
 				const incBy, get = ops.IncBy, ops.Get
 				return function(c: Counter)
 					incBy(c, get(c))
@@ -1981,7 +1981,7 @@ do
 		"ShowCounter",
 		defOf({
 			Show = Fn(),
-			Shout = Default(FULL, function(ops: any)
+			Shout = Default(function(ops: any)
 				const show = ops.Show -- 만들 때 붙잡음 — Show 가 재정의되면 이 표가 다시 지어져야 맞음
 				return function(c: Counter): string
 					return string.upper(show(c)) .. "!"
@@ -2180,7 +2180,7 @@ print(
 )
 do
 	const T = stl.Trait
-	const Fn, Default, FULL = T.Fn, T.Default, T.FULL
+	const Fn, Default = T.Fn, T.Default
 	local where = 0
 	const BaseTrait: any = T.Trait("ReviewBase", defOf({ Get = Fn() }))
 	const Kind = T.NewToken(tokenName("ReviewKind"))
@@ -2257,7 +2257,7 @@ do
 			`ForgotReq{at}`,
 			defOf({
 				Get = Fn(),
-				Extra = Default(FULL, function(_ops: any): any
+				Extra = Default(function(_ops: any): any
 					if returned == "nil" then
 						return nil
 					end
@@ -2304,12 +2304,12 @@ do
 		"Shaped",
 		defOf({
 			Get = Fn(),
-			Extra = Default(FULL, function(_ops: any)
+			Extra = Default(function(_ops: any)
 				return function(_v: any): string
 					return "default-extra"
 				end
 			end),
-			Show = Default(FULL, function(ops: any)
+			Show = Default(function(ops: any)
 				const get, extra = ops.Get, ops.Extra
 				return function(v: any): string
 					return `<{get(v)}/{extra(v)}>`
@@ -2364,7 +2364,7 @@ do
 		"AutoShape",
 		defOf({
 			Hello = Fn(),
-			Twice = Default(FULL, function(ops: any)
+			Twice = Default(function(ops: any)
 				const hello = ops.Hello
 				return function(v: any): string
 					return hello(v) .. hello(v)
@@ -2441,13 +2441,13 @@ do
 		"Greeter2",
 		defOf({
 			Name = Fn(),
-			Hello = Default(FULL, function(ops: any)
+			Hello = Default(function(ops: any)
 				const name = ops.Name
 				return function(v: any): string
 					return `hello {name(v)}`
 				end
 			end),
-			Bye = Default(FULL, function(ops: any)
+			Bye = Default(function(ops: any)
 				const name = ops.Name
 				return function(v: any): string
 					return `bye {name(v)}`
@@ -2521,7 +2521,7 @@ do
 		"Auto2",
 		defOf({
 			Hello = Fn(),
-			Bye = Default(FULL, function()
+			Bye = Default(function()
 				return function(): string
 					return "auto-bye"
 				end
@@ -3204,7 +3204,7 @@ print(
 )
 do
 	const T = stl.Trait
-	const Fn, Default, FULL = T.Fn, T.Default, T.FULL
+	const Fn, Default = T.Fn, T.Default
 	-- 사용자 트레이트도 라이브러리의 트레이트 파일과 같은 모양으로 짭니다: 정의(필수 + 기본 구현) + 알고리즘 진입점.
 	-- (2026-10-15) 트레이트 함수의 진입점(`Gauge.Label`)은 **시스템이 만들고**, `Expose` 는 트레이트 함수가 아닌 알고리즘
 	-- 진입점(구현을 써서 도는 함수)만 얹습니다.
@@ -3213,7 +3213,7 @@ do
 		"Gauge",
 		defOf({
 			Read = Fn(),
-			Label = Default(FULL, function(ops: any)
+			Label = Default(function(ops: any)
 				const read = ops.Read
 				return function(g: Gauge): string
 					return `level {read(g)}`

@@ -26,7 +26,7 @@ function Errors.traitName(name: any): never
 end
 function Errors.badFns(name: string): never
 	return raise(
-		`Trait: {name} needs a factory returning a table of Trait.Fn / Trait.Default (Trait.Trait(name, factory) or Trait.Trait(name, def(Trait.FULL), def(Trait.IMPL)))`
+		`Trait: {name} needs a definition function returning a table of Trait.Fn / Trait.Default (Trait.Trait(name, function(of) return table.freeze(...) end))`
 	)
 end
 function Errors.unknownName(trait: string, token: string, fnName: any): never

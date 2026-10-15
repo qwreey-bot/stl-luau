@@ -100,7 +100,7 @@ do
 			where = debug.info(1, "l") + 1
 			T.Trait("Test.Rebuild.NotMark", factory({ X = print }))
 		end,
-		"Trait: Test.Rebuild.NotMark needs a factory returning a table of Trait.Fn / Trait.Default",
+		"Trait: Test.Rebuild.NotMark needs a definition function returning a table of Trait.Fn / Trait.Default",
 		"표식이 아닌 칸"
 	)
 	fails(function()
@@ -111,7 +111,7 @@ do
 				return 5
 			end :: any
 		)
-	end, "needs a factory returning a table", "표를 안 돌려줌")
+	end, "needs a definition function returning a table", "표를 안 돌려줌")
 	fails(function()
 		where = debug.info(1, "l") + 1
 		T.Trait(5 :: any, factory({}))
@@ -125,7 +125,7 @@ do
 		"Test.Rebuild.Seq",
 		factory({
 			Get = T.Fn(),
-			Find = T.Default(T.FULL, function(ops: any)
+			Find = T.Default(function(ops: any)
 				const get = ops.Get
 				return function(s: any, x: any): number?
 					for i = 1, s.n do
@@ -136,7 +136,7 @@ do
 					return nil
 				end
 			end),
-			Has = T.Default(T.FULL, function(ops: any)
+			Has = T.Default(function(ops: any)
 				const find = ops.Find -- 형제(재정의됐으면 그것) — 짓는 순서와 무관
 				return function(s: any, x: any): boolean
 					return find(s, x) ~= nil
@@ -172,10 +172,10 @@ do
 	const Loop: any = T.Trait(
 		"Test.Rebuild.Loop",
 		factory({
-			A = T.Default(T.FULL, function(ops: any)
+			A = T.Default(function(ops: any)
 				return ops.B
 			end),
-			B = T.Default(T.FULL, function(ops: any)
+			B = T.Default(function(ops: any)
 				loopLine = debug.info(1, "l") + 1
 				return ops.A
 			end),
@@ -201,7 +201,7 @@ do
 	const NotFn: any = T.Trait(
 		"Test.Rebuild.NotFn",
 		factory({
-			A = T.Default(T.FULL, function(_ops: any)
+			A = T.Default(function(_ops: any)
 				return 5
 			end),
 		})
@@ -380,7 +380,7 @@ do
 	const Named: any = T.Trait(
 		"Test.Rebuild.Named",
 		factory({
-			Describe = T.Default(T.FULL, function(_ops: any)
+			Describe = T.Default(function(_ops: any)
 				return function(v: any): string
 					return `kind {(T.TokenOf(v) :: any).name}`
 				end
