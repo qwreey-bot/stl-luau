@@ -376,7 +376,7 @@ do
 			return { Len = print }
 		end)
 	end, "two blanket implementations of Test.Rebuild.Len apply to Test.Rebuild.Both", "겹침")
-	-- `Trait.Every` 는 모든 종류(기본 구현만 있는 트레이트를 모든 종류에)
+	-- `Trait.Any` 는 모든 종류(기본 구현만 있는 트레이트를 모든 종류에)
 	const Named: any = T.Trait(
 		"Test.Rebuild.Named",
 		factory({
@@ -387,7 +387,7 @@ do
 			end),
 		})
 	)
-	Named.ImplWhere(T.Every, function()
+	Named.ImplWhere(T.Any, function()
 		return {}
 	end)
 	assert(Named.Describe(stl.Arr.Of(1)) == "kind Stl.Arr", "이미 있던 종류")
@@ -421,7 +421,7 @@ do
 			return {}
 		end)
 	end, "Test.Rebuild.BadWhere.ImplWhere needs a non-empty list of traits", "목록이 아님")
-	-- 빈 목록과 오타(= `{ nil }`, 길이 0)는 에러 — "모든 종류" 는 `Trait.Every` 로만(2026-10-15 사용자: 런타임 검사로)
+	-- 빈 목록과 오타(= `{ nil }`, 길이 0)는 에러 — "모든 종류" 는 `Trait.Any` 로만(2026-10-15 사용자: 런타임 검사로)
 	fails(
 		function()
 			where = debug.info(1, "l") + 1
@@ -429,7 +429,7 @@ do
 				return {}
 			end)
 		end,
-		"Trait: Test.Rebuild.BadWhere.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Every for every kind",
+		"Trait: Test.Rebuild.BadWhere.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Any for every kind",
 		"빈 목록"
 	)
 	const traitsByName = { Deque = stl.Deque } :: any
@@ -438,7 +438,7 @@ do
 		Bad.ImplWhere({ traitsByName.Dequ }, function()
 			return {}
 		end)
-	end, "use Trait.Every for every kind", "의존 이름의 오타")
+	end, "use Trait.Any for every kind", "의존 이름의 오타")
 	assert(not T.Implements(Bad, stl.HashMap.New()), "오타 난 뭉텅이는 모든 종류에 붙지 않음")
 	-- 실패한 뭉텅이 등록은 아무것도 남기지 않음: 그 뒤 조건(덱)을 채우는 무관한 등록이 멀쩡히 되고, 실패한 트레이트엔 표가 없음
 	-- (기록부터 하고 짓던 때는 남은 뭉텅이가 뒤의 덱 등록마다 엉뚱한 줄에서 던졌음 — 이관 중 재현)
@@ -864,11 +864,11 @@ do
 	})
 	assert(T.Impls(stl.Collection) == liveImpls and liveImpls[liveTok] ~= nil, "살아 있는 표")
 
-	-- (12) Every 뭉텅이와 다른 뭉텅이는 같은 트레이트에 함께 못 둠 — 어느 순서든 등록 줄 에러, 아무것도 남지 않음(3라운드: 예전엔 조건을
-	-- 갖춘 첫 종류가 생길 때 무관한 줄에서 겹침이 났고, Every 의 번짐에서 드러나면 그 뒤 모든 NewToken 이 던졌음)
+	-- (12) Any 뭉텅이와 다른 뭉텅이는 같은 트레이트에 함께 못 둠 — 어느 순서든 등록 줄 에러, 아무것도 남지 않음(3라운드: 예전엔 조건을
+	-- 갖춘 첫 종류가 생길 때 무관한 줄에서 겹침이 났고, Any 의 번짐에서 드러나면 그 뒤 모든 NewToken 이 던졌음)
 	const Printable: any = T.Trait("Test.Rebuild.Printable", factory({ Text = T.Fn() }))
 	const ShowA: any = T.Trait("Test.Rebuild.ShowA", factory({ Show = T.Fn() }))
-	ShowA.ImplWhere(T.Every, function(_deps: any)
+	ShowA.ImplWhere(T.Any, function(_deps: any)
 		return {
 			Show = function()
 				return "default"
@@ -882,8 +882,8 @@ do
 				return { Show = deps[Printable].Text }
 			end)
 		end,
-		"Trait: Test.Rebuild.ShowA already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it",
-		"Every 뒤의 뭉텅이"
+		"Trait: Test.Rebuild.ShowA already has a blanket implementation for every kind (Trait.Any) — another ImplWhere would overlap it",
+		"Any 뒤의 뭉텅이"
 	)
 	const doc = T.NewToken("Test.Rebuild.Doc")
 	Printable.ImplFor(doc, {
@@ -902,17 +902,17 @@ do
 	fails(
 		function()
 			where = debug.info(1, "l") + 1
-			ShowB.ImplWhere(T.Every, function(_deps: any)
+			ShowB.ImplWhere(T.Any, function(_deps: any)
 				return { Show = print }
 			end)
 		end,
-		"Trait: Test.Rebuild.ShowB.ImplWhere(Trait.Every) would overlap the blanket implementations Test.Rebuild.ShowB already has",
-		"뭉텅이 뒤의 Every"
+		"Trait: Test.Rebuild.ShowB.ImplWhere(Trait.Any) would overlap the blanket implementations Test.Rebuild.ShowB already has",
+		"뭉텅이 뒤의 Any"
 	)
-	T.NewToken("Test.Rebuild.AfterEvery") -- 거절된 Every 는 남지 않음 — 새 토큰이 던지지 않음
+	T.NewToken("Test.Rebuild.AfterAny") -- 거절된 Any 는 남지 않음 — 새 토큰이 던지지 않음
 	assert(
 		not T.Implements(ShowB, stl.HashMap.New()) and ShowB.Show(T.Stamp({}, doc)) == "printable",
-		"Every 가 남지 않음"
+		"Any 가 남지 않음"
 	)
 
 	-- (13) 등록은 묶음 — 던지면 그동안 바꾼 것(놓은 표·기록·토큰)을 전부 되돌림(리뷰 2~4라운드: 위로 번지는 다시 짓기에서 던지면 계기가 된
@@ -953,11 +953,11 @@ do
 		TxP.Name(T.Stamp({}, txKind)) == "blanket" and TxX.Run(T.Stamp({}, txKind)) == "blanket",
 		"진입점도 옛 구현"
 	)
-	-- (b) 간접 Every(4라운드): 목록 뭉텅이 둘 → 한쪽 의존에 Every 를 걸다 위에서 겹침 — Every 가 남지 않아 그 뒤 NewToken 이 멀쩡함
+	-- (b) 간접 Any(4라운드): 목록 뭉텅이 둘 → 한쪽 의존에 Any 를 걸다 위에서 겹침 — Any 가 남지 않아 그 뒤 NewToken 이 멀쩡함
 	const IA: any = T.Trait("Test.Rebuild.IndirectA", factory({ A = T.Fn() }))
 	const IB: any = T.Trait("Test.Rebuild.IndirectB", factory({ B = T.Fn() }))
 	const IShow: any = T.Trait("Test.Rebuild.IndirectShow", factory({ Show = T.Fn() }))
-	IA.ImplWhere(T.Every, function(_deps: any)
+	IA.ImplWhere(T.Any, function(_deps: any)
 		return { A = print }
 	end)
 	IShow.ImplWhere({ IA }, function(deps: any)
@@ -968,18 +968,18 @@ do
 	end)
 	fails(function()
 		where = debug.info(1, "l") + 1
-		IB.ImplWhere(T.Every, function(_deps: any)
+		IB.ImplWhere(T.Any, function(_deps: any)
 			return { B = print }
 		end)
-	end, "Trait: two blanket implementations of Test.Rebuild.IndirectShow apply to", "간접 Every 의 겹침")
-	assert(not T.Implements(IB, stl.HashMap.New()), "실패한 Every 는 남지 않음")
+	end, "Trait: two blanket implementations of Test.Rebuild.IndirectShow apply to", "간접 Any 의 겹침")
+	assert(not T.Implements(IB, stl.HashMap.New()), "실패한 Any 는 남지 않음")
 	const afterIndirect = T.NewToken("Test.Rebuild.AfterIndirect") -- 예전엔 여기서 IndirectShow 의 겹침으로 던졌음
 	assert(IShow.Of(afterIndirect).Show == print, "새 종류도 정상")
 	-- (c) NewToken 이 던지면 토큰도 남지 않음(같은 이름으로 다시 만들 수 있음), 사용자 builder 의 에러는 **그 줄 그대로**
 	local boom = false
 	local boomLine = 0
 	const Flaky: any = T.Trait("Test.Rebuild.Flaky", factory({ Run = T.Fn() }))
-	Flaky.ImplWhere(T.Every, function(_deps: any)
+	Flaky.ImplWhere(T.Any, function(_deps: any)
 		if boom then
 			boomLine = debug.info(1, "l") + 1
 			error("flaky builder")
@@ -994,7 +994,7 @@ do
 	)
 	boom = false
 	const flakyKind = T.NewToken("Test.Rebuild.FlakyKind")
-	assert(T.Implements(Flaky, T.Stamp({}, flakyKind)), "같은 이름으로 다시 만들고 Every 도 붙음")
+	assert(T.Implements(Flaky, T.Stamp({}, flakyKind)), "같은 이름으로 다시 만들고 Any 도 붙음")
 
 	-- (14) 묶음의 경계(리뷰 5라운드)
 	-- (a) 같은 표가 한 묶음에서 두 번 다시 지어진 뒤 실패해도 **가장 옛 내용**으로(일지를 거꾸로) — 마름모 A → B, A → C, {B, C} → D
@@ -1047,7 +1047,7 @@ do
 	const errObject = { code = 7 }
 	local throwObject = false
 	const Obj: any = T.Trait("Test.Rebuild.ObjError", factory({ Run = T.Fn() }))
-	Obj.ImplWhere(T.Every, function(_deps: any)
+	Obj.ImplWhere(T.Any, function(_deps: any)
 		if throwObject then
 			error(errObject)
 		end
@@ -1067,33 +1067,11 @@ do
 		return { Run = function() end }
 	end)
 	assert(type(innerErr) == "string" and string.find(innerErr, "Arr: At index is NaN", 1, true), tostring(innerErr))
-	-- (d) builder 안에서 또 등록하면 그 줄의 에러, 바깥 등록은 남지 않음
-	local nestedLine = 0
-	const Nest: any = T.Trait("Test.Rebuild.Nested", factory({ Run = T.Fn() }))
-	const okNest, errNest = pcall(function()
-		Nest.ImplWhere({ stl.Map }, function(_deps: any)
-			nestedLine = debug.info(1, "l") + 1
-			T.NewToken("Test.Rebuild.NestedInner")
-			return { Run = function() end }
-		end)
-	end)
-	assert(
-		not okNest
-			and string.find(
-				tostring(errNest),
-				`spec.traitrebuild.luau:{nestedLine}: Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table`,
-				1,
-				true
-			),
-		tostring(errNest)
-	)
-	assert(not T.Implements(Nest, stl.HashMap.New()), "바깥 등록은 남지 않음")
-	T.NewToken("Test.Rebuild.NestedInner") -- 안쪽 토큰도 남지 않음
-	-- (e) 일지는 스레드마다: 한 스레드의 등록이 builder 의 양보로 매달려 있어도(계약 밖 — 정의되지 않은 동작) 다른 스레드의 등록은 묶이고,
+	-- (d) 일지는 스레드마다: 한 스레드의 등록이 builder 의 양보로 매달려 있어도(계약 밖 — 정의되지 않은 동작) 다른 스레드의 등록은 묶이고,
 	-- 매달린 스레드를 버려도 표식이 새지 않음
 	local yieldNow = false
 	const Slow: any = T.Trait("Test.Rebuild.Slow", factory({ Run = T.Fn() }))
-	Slow.ImplWhere(T.Every, function(_deps: any)
+	Slow.ImplWhere(T.Any, function(_deps: any)
 		if yieldNow then
 			coroutine.yield()
 		end

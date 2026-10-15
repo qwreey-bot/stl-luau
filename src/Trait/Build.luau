@@ -3,7 +3,7 @@
 	Build — 완성 표를 짓고, 놓고, 사건마다 다시 짓습니다.
 
 	**사건은 셋**이고 각각 함수 하나입니다:
-	- `onToken(token)`       토큰이 생김 → "모든 종류" 뭉텅이 구현(`ImplWhere(Trait.Every, …)`)이 있는 트레이트를 그 종류에 지음.
+	- `onToken(token)`       토큰이 생김 → "모든 종류" 뭉텅이 구현(`ImplWhere(Trait.Any, …)`)이 있는 트레이트를 그 종류에 지음.
 	- `onFor(trait, token)`  그 종류의 명시 구현이 들어옴 → 그 표를 (다시) 지음.
 	- `onWhere(trait)`       뭉텅이 구현이 들어옴 → 조건을 갖춘 종류마다 지음.
 	셋 다 결국 `refresh(trait, token)` 하나로 모이고, 표가 놓이면(`commit`) 그 트레이트를 `Where` 에 적은 트레이트들
@@ -46,14 +46,15 @@ end
 Build.note = note
 
 -- 등록 하나를 묶음으로: 던지면 그동안 바꾼 것(놓은 표·기록·토큰)을 전부 되돌리고 다시 던짐(`Common.transact` — 사용자 줄 유지).
--- 만드는 함수 안에서 또 등록하는 것은 사용자 줄 에러(계약: 부작용 없이 표만 돌려줌 — 예전엔 바깥 묶음에 섞여, 안쪽 실패를 잡으면
--- 반쯤 남거나 바깥 실패가 안에서 처음 require 된 모듈의 토큰까지 되돌렸음, 5라운드). **같은 스레드만**입니다 — `require` 는 모듈을
--- 다른 스레드에서 돌리므로 builder 안에서 처음 require 된 모듈(이나 builder 가 띄운 코루틴)의 등록은 별개의 묶음으로 따로 커밋됩니다
--- (6라운드 관측. 그것이 바깥 실패에 묶이지 않아 남는 일은 builder 가 부작용을 내고 비결정적일 때뿐 — 계약 밖).
+-- ⚠️ 만드는 함수 안에서 또 등록하는 것은 **정의되지 않은 동작**(2026-10-15 사용자: *"정의하지 말자"* — 계약: 부작용 없이 표만
+-- 돌려줌). 지금은 같은 스레드면 바깥 묶음에 섞입니다(관측 — 안쪽 실패를 잡으면 반쯤 남거나, 바깥 실패가 안쪽 등록까지 되돌림).
+-- `require` 는 모듈을 다른 스레드에서 돌리므로 builder 안에서 처음 require 된 모듈(이나 builder 가 띄운 코루틴)의 등록은 별개의
+-- 묶음으로 따로 커밋됩니다(6라운드 관측).
 function Build.transact(fn: () -> ())
 	const thread = coroutine.running()
 	if journals[thread] ~= nil then
-		Errors.nested()
+		fn() -- 만드는 함수 안의 등록(정의되지 않은 동작): 바깥 묶음에 섞임
+		return
 	end
 	journals[thread] = {}
 	Common.transact(fn, function()

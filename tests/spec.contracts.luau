@@ -2132,7 +2132,7 @@ do
 			{
 				deps = 5,
 				build = print,
-				needle = "Trait: Bare.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Every for every kind",
+				needle = "Trait: Bare.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Any for every kind",
 			},
 			{
 				deps = { {} },
@@ -2140,7 +2140,7 @@ do
 				needle = "Trait: Bare.ImplWhere needs a trait (from Trait.Trait), got table",
 			},
 			{
-				deps = T.Every,
+				deps = T.Any,
 				build = {},
 				needle = "Trait: Bare.ImplWhere needs a function that builds the implementation, got table",
 			},
@@ -2410,7 +2410,7 @@ do
 	end
 
 	-- 의존 목록의 **빈 칸은 에러**(2라운드 리뷰): 오타 난 트레이트 이름은 nil. 빈 목록 `{}` 과 하나뿐인 오타(`{ T.Lisst }` = `{}`)도
-	-- 에러 — "모든 종류" 는 `Trait.Every` 로만(2026-10-15 질문 AZ, `spec.traitrebuild` 의 "의존 이름의 오타"). **끝 자리의 오타**
+	-- 에러 — "모든 종류" 는 `Trait.Any` 로만(2026-10-15 질문 AZ, `spec.traitrebuild` 의 "의존 이름의 오타"). **끝 자리의 오타**
 	-- (`{ X, T.Lisst }` = `{ X }`)는 길이로 못 가립니다(`--!strict` 의 타입 검사 몫). 길이 안의 빈 칸·트레이트 아닌 값은 에러.
 	const Both0: any = T.Trait("BadDeps", defOf({ X = Fn() }))
 	for _, bad in
@@ -2516,7 +2516,7 @@ do
 		"두 단 위에서 물려받은 필수·재정의"
 	)
 	-- (d) 뭉텅이로 따라온 표 위의 명시 구현(제자리 경로): 엄격한 모듈이어도 됨, 모르는 이름은 에러, 반쯤 적용되지 않음.
-	-- `Auto2` 는 필수 `Hello` + 기본 구현 `Bye`, 모든 종류에(`ImplWhere(Trait.Every)` — 옛 "기본 구현만 있는 트레이트")
+	-- `Auto2` 는 필수 `Hello` + 기본 구현 `Bye`, 모든 종류에(`ImplWhere(Trait.Any)` — 옛 "기본 구현만 있는 트레이트")
 	const Auto2: any = T.Trait(
 		"Auto2",
 		defOf({
@@ -2528,7 +2528,7 @@ do
 			end),
 		})
 	)
-	Auto2.ImplWhere(stl.Trait.Every, function()
+	Auto2.ImplWhere(stl.Trait.Any, function()
 		return {
 			Hello = function(): string
 				return "auto-hello"
@@ -2682,10 +2682,10 @@ do
 	)
 	assert(string.find(tostring(errNum), `spec.contracts.luau:{where}:`, 1, true), `사용자 줄: {errNum}`)
 
-	-- **모든 종류**의 뭉텅이 구현(`ImplWhere(Trait.Every)` — 옛 "기본 구현만 있는 트레이트"): 토큰 있는 모든 종류(나중에 생긴 것도)에
+	-- **모든 종류**의 뭉텅이 구현(`ImplWhere(Trait.Any)` — 옛 "기본 구현만 있는 트레이트"): 토큰 있는 모든 종류(나중에 생긴 것도)에
 	-- 따라오고, 토큰 없는 값에는 안 따라옴
 	const Anyone: any = T.Trait("Anyone", defOf({ Name = Fn() }))
-	Anyone.ImplWhere(stl.Trait.Every, function()
+	Anyone.ImplWhere(stl.Trait.Any, function()
 		return {
 			Name = function(v: any): string
 				return (T.TokenOf(v) :: any).name

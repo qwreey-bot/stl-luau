@@ -45,7 +45,7 @@
 	- `X.ImplFor(토큰, 표)` — 표는 **그 트레이트의 함수만**(모르는 이름은 에러), `X.Provided<종류<A>, A>` 주석을 단 **지역 변수**에 적어
 	  넘깁니다(타입 검사 — 표 리터럴을 바로 넘기면 검사가 안 됨). 기본 구현 칸은 안 적으면 기본 구현, 적으면 재정의.
 	  `__index` 가 테이블인 사슬로 물려받은 함수도 칩니다(등록 때 한 번 읽어 사본으로).
-	- `X.ImplWhere({ 의존 트레이트 }, function(deps) return { … } end)` — 뭉텅이 구현(의존을 다 구현한 모든 종류에. `Trait.Every` 면 모든
+	- `X.ImplWhere({ 의존 트레이트 }, function(deps) return { … } end)` — 뭉텅이 구현(의존을 다 구현한 모든 종류에. `Trait.Any` 면 모든
 	  종류). 명시 구현(`ImplFor`)이 덮고, 뭉텅이끼리 겹치면 에러. 몸통은 탐침 타입(`Trait.A`·`Trait.B`)으로 짜면 원소까지 검사됨.
 	- 표는 **미리** 지어 둡니다(토큰·트레이트·등록이 생길 때) — 조회는 짓지 않습니다. 의존 표가 다시 지어지면 위로 번짐.
 	- `X.Of(값 또는 토큰)` — 완성 표(없으면 사용자 줄 에러). `Trait.ImplOf(X, 값)` 은 없으면 nil, `Trait.Implements(X, 값)` 은 불리언.
@@ -65,8 +65,8 @@ export type Token<N> = { read name: N }
 -- ⚠️ `name` 은 `string` 으로 — `any`·`unknown` 이면 그 필드가 **없는** 테이블도 만족해(빠진 읽기 필드를 `nil` 로 봄 — 상류의
 -- 의도된 동작), 팩토리의 `(Self & Item<T>) | AnyToken` 의 토큰 갈래가 아무 값이나 받았음.
 export type AnyToken = Token<string>
--- "모든 종류" 표식(`X.ImplWhere(Trait.Every, …)`)의 타입 — 빈 목록 `{}` 은 에러입니다(아래 `Every`).
-export type EveryKind = { read __everyKind: true }
+-- "모든 종류" 표식(`X.ImplWhere(Trait.Any, …)`)의 타입 — 빈 목록 `{}` 은 에러입니다(아래 `Any`).
+export type AnyKind = { read __anyKind: true }
 -- 연관 타입(트레이트 팩토리의 `of` 가 씀). 컨테이너는 자기 타입에 같은 필드를 글자 그대로 적음. 함수 팬텀(`(T) -> T`)이라 불변 —
 -- 맨 필드(`read Item: T`)는 `Self &` 와 섞이면 앞선 호출의 타입이 합으로 섞였음(`trait-typing-probes/assocfields.luau`).
 export type Item<T> = { read __generics: { read Item: (T) -> T } }
@@ -87,7 +87,7 @@ export type Object<F, G> = {
 	read Of: F, -- 완성 표 꺼내기(값이나 토큰으로)
 	read ImplOf: G, -- 타입 전용: `typeof(X.ImplOf<<…>>(nil :: any))` 로 등록 표 타입을 얻음(런타임은 `Of` 와 같은 함수)
 	read ImplFor: (token: AnyToken, impl: any) -> (),
-	read ImplWhere: (deps: { any } | EveryKind, build: (deps: { [any]: any }) -> any) -> (),
+	read ImplWhere: (deps: { any } | AnyKind, build: (deps: { [any]: any }) -> any) -> (),
 	read FnTok: { [string]: number },
 }
 
@@ -243,7 +243,7 @@ end
 
 -- "모든 종류" 의 뭉텅이 구현을 밝혀 적는 표식. 빈 목록(`{}`)을 그 뜻으로 받았더니 의존 이름의 오타(`{ traits.Dequ }` = `{ nil }`, 길이 0)가
 -- 조용히 모든 종류가 됐습니다(2026-10-15 리뷰 1라운드 참고 7 → 사용자: *"런타임 검사로 두는거 확인"*). 이제 빈 목록은 에러.
-const Every: EveryKind = table.freeze({}) :: any
+const Any: AnyKind = table.freeze({}) :: any
 
 -- 등록(아래 `Trait` 가 트레이트 객체의 `ImplFor`·`ImplWhere` 로 붙임)
 local implFor: (trait: any, token: any, impl: any) -> ()
@@ -338,7 +338,7 @@ end
 
 function implWhere(trait: any, deps: any, build: any)
 	const rec = records[trait]
-	if deps ~= Every and (type(deps) ~= "table" or rawlen(deps) == 0) then
+	if deps ~= Any and (type(deps) ~= "table" or rawlen(deps) == 0) then
 		Errors.emptyWhere(rec.name)
 	end
 	if type(build) ~= "function" then
@@ -347,7 +347,7 @@ function implWhere(trait: any, deps: any, build: any)
 	-- 숫자 루프로 읽어 사본으로(넘긴 목록을 나중에 고쳐도 그대로). 빈 칸(오타 난 이름 = nil)은 길이 안이면 에러. ⚠️ **끝의** 오타
 	-- (`{ Deque, Typo }` = `{ Deque }`)는 길이에 안 잡혀 런타임이 못 봅니다(조건이 넓어짐) — `--!strict` 의 타입이 잡음.
 	const list: { any } = {}
-	for at = 1, if deps == Every then 0 else rawlen(deps) do
+	for at = 1, if deps == Any then 0 else rawlen(deps) do
 		const dep = rawget(deps, at)
 		if records[dep] == nil then
 			Errors.notTrait(`{rec.name}.ImplWhere`, dep)
@@ -378,11 +378,11 @@ function implWhere(trait: any, deps: any, build: any)
 	end
 	-- "모든 종류" 뭉텅이와 다른 뭉텅이는 같은 트레이트에 함께 둘 수 없음: 다른 뭉텅이의 조건을 갖춘 종류마다 **반드시** 겹치니(명시
 	-- 구현이 이기면 그 뭉텅이는 결코 안 쓰임) 등록 줄에서 거절. 예전엔 조건을 갖춘 첫 종류가 생길 때 무관한 줄에서 겹침 에러가 났고,
-	-- Every 의 번짐에서 드러나면 그 뒤 모든 `NewToken` 이 던졌습니다(2026-10-15 리뷰 3라운드).
+	-- Any 의 번짐에서 드러나면 그 뒤 모든 `NewToken` 이 던졌습니다(2026-10-15 리뷰 3라운드).
 	const blankets = rec.blankets
 	for b = 1, #blankets do
 		if #list == 0 or #blankets[b].deps == 0 then
-			Errors.everyOverlap(rec.name, #list == 0)
+			Errors.anyOverlap(rec.name, #list == 0)
 		end
 	end
 	for at = 1, #list do
@@ -463,6 +463,6 @@ end
 return {
 	TYPE_KEY = TYPE_KEY,
 	NewToken = NewToken, TokenOf = TokenOf, Stamp = Stamp, Restore = Restore,
-	Trait = Trait, Fn = Fn, Default = Default, Every = Every,
+	Trait = Trait, Fn = Fn, Default = Default, Any = Any,
 	ImplOf = ImplOf, Implements = Implements, ExpectImpl = ExpectImpl, Expose = Expose, Impls = Impls,
 }

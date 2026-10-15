@@ -154,9 +154,9 @@ local negListGet: stl.ListProvided<Arr<A>, A, number> = {
 	PrevIndex = stl.Arr.PrevIndex,
 }
 
---[[ `ImplWhere` 의 첫 인자 — 목록 또는 `Trait.Every`(2026-10-15 리뷰 3라운드: 이 타입을 지키는 줄이 없어 `EveryKind` 를 빼거나 `any` 로 바꿔도
+--[[ `ImplWhere` 의 첫 인자 — 목록 또는 `Trait.Any`(2026-10-15 리뷰 3라운드: 이 타입을 지키는 줄이 없어 `EveryKind` 를 빼거나 `any` 로 바꿔도
      게이트가 통과했음). 스파이크는 실행되지 않으니 실제 호출로 적음. ]]
-stl.Stack.ImplWhere(stl.Trait.Every, function(_d: { [any]: any }): any -- POS: 모든 종류
+stl.Stack.ImplWhere(stl.Trait.Any, function(_d: { [any]: any }): any -- POS: 모든 종류
 	return {}
 end)
 stl.Stack.ImplWhere(stl.Deque, function(_d: { [any]: any }): any -- NEG: 목록 없이 트레이트(예전엔 조용히 "모든 종류")

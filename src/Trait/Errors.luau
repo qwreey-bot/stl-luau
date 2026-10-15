@@ -65,22 +65,17 @@ function Errors.builderNotTable(trait: string, got: any): never
 end
 function Errors.emptyWhere(trait: string): never
 	return raise(
-		`Trait: {trait}.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Every for every kind`
+		`Trait: {trait}.ImplWhere needs a non-empty list of traits (a misspelled trait name reads as nil) — use Trait.Any for every kind`
 	)
 end
-function Errors.everyOverlap(trait: string, addingEvery: boolean): never
-	if addingEvery then
+function Errors.anyOverlap(trait: string, addingAny: boolean): never
+	if addingAny then
 		return raise(
-			`Trait: {trait}.ImplWhere(Trait.Every) would overlap the blanket implementations {trait} already has on every kind they cover — implement those kinds directly ({trait}.ImplFor)`
+			`Trait: {trait}.ImplWhere(Trait.Any) would overlap the blanket implementations {trait} already has on every kind they cover — implement those kinds directly ({trait}.ImplFor)`
 		)
 	end
 	return raise(
-		`Trait: {trait} already has a blanket implementation for every kind (Trait.Every) — another ImplWhere would overlap it on every kind it covers; implement those kinds directly ({trait}.ImplFor)`
-	)
-end
-function Errors.nested(): never
-	return raise(
-		"Trait: cannot register (NewToken / ImplFor / ImplWhere) while building a trait table — builders must only return a table"
+		`Trait: {trait} already has a blanket implementation for every kind (Trait.Any) — another ImplWhere would overlap it on every kind it covers; implement those kinds directly ({trait}.ImplFor)`
 	)
 end
 function Errors.whereCycle(trait: string, dep: string): never
