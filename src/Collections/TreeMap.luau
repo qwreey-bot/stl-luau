@@ -42,6 +42,8 @@ local Types = require("../Types")
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
+type A = Trait.A
+type B = Trait.B
 local Node = require("../Node")
 local Search = require("../Trees/Search")
 local Balance = require("../Trees/Balance")
@@ -61,20 +63,22 @@ export type TreeMapData<K, V> = {
 	compare: Comparator<K>,
 	-- 자가 균형(`Balance.Scheme` — `RedBlack`·`Avl` 모듈이 그 모양). 노드를 만든 방식과 같아야 합니다.
 	balance: Scheme,
-	read __type: Trait.Token<"TreeMap">,
+	read __type: Trait.Token<"Stl.TreeMap">,
 	read __mapKey: K,
 	read __mapValue: V,
 	-- 쓰는 제네릭용 불변 팬텀(`Map.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __mapMut: (K, V) -> (K, V),
 	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`) — 타입에만 있습니다.
 	read __collectionMut: true,
+	-- 연관 타입(트레이트 `Map` 의 정의가 `of` 로 읽음 — 2026-10-15, 질문 AY): 키·값. 불변 팬텀, 타입에만 있습니다.
+	read __generics: { read Key: (K) -> K, read Value: (V) -> V },
 }
 -- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
 export type TreeMap<K, V> = TreeMapData<K, V>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewToken("TreeMap") :: Trait.Token<"TreeMap">
+const TOKEN = Trait.NewToken("Stl.TreeMap") :: Trait.Token<"Stl.TreeMap">
 
 -- 노드의 칸 배치(`Trees/Search` 머리 — `1` = 값, `2` = 왼쪽, `3` = 오른쪽, `5` = 키. 지역 상수라 접힘)와 도구.
 -- 이 모듈 안에서는 노드를 칸으로 직접 읽으니 도구를 느슨한 타입으로 받습니다.
@@ -559,7 +563,7 @@ const TreeMapModule = {
 	FromRecords = FromRecords,
 	FromSorted = FromSorted,
 	isTreeMap = isTreeMap,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, TreeMap.Token, impl)`
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `MyTrait.ImplFor(TreeMap.Token, impl)`
 	Token = TOKEN,
 
 	Has = Has, GetOr = GetOr, Len = Len, Empty = Empty, Keys = Keys, Values = Values, Iter = Iter,
@@ -572,19 +576,19 @@ const TreeMapModule = {
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
 -- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
--- `Trait.Impl` 이 에러로 알림). 표의 타입 주석이 "구현이 계약을 만족하는가" 의 정적 확인이기도 합니다 — **구체
--- 타입으로** 적습니다(원소 `string`·위치 `number`, 맵은 키 `string`·값 `number` 처럼 서로 다르게: `any` 로 적으면
--- 인자 수·인자 타입이 검사되지 않음, 2라운드 리뷰).
-const mapImpl: Map.Core<TreeMap<string, number>, string, number> = {
+-- `ImplFor` 가 에러로 알림). 표의 타입 주석(`X.Provided<…>` — 등록 표 타입, 기본 구현 칸은 선택)이 "구현이 계약을 만족하는가" 의
+-- 정적 확인입니다 — **탐침 타입**(`Trait.A`·`Trait.B` — 서로 다른 불투명 타입)으로 적습니다: `any` 로 적으면 인자 수·인자 타입이
+-- 검사되지 않았고(2라운드 리뷰), 구체 타입(`string`)으로 적으면 원소를 못박은 함수가 샙니다(2026-10-14 탐색 — 질문 AY).
+-- 표는 이렇게 **주석 단 지역 변수**에 적어 넘깁니다 — `ImplFor(토큰, { … })` 처럼 표 리터럴을 바로 넘기면 검사가 안 됩니다.
+const mapImpl: Map.Provided<TreeMap<A, B>, A, B> = {
 	Get = TreeMapModule.Get,
 	Set = TreeMapModule.Set,
 	Has = TreeMapModule.Has,
 	Remove = TreeMapModule.Remove,
 	Iter = TreeMapModule.Iter,
 }
-const collectionImpl: Collection.Core<TreeMap<string, number>> =
-	{ Len = TreeMapModule.Len, Clear = TreeMapModule.Clear }
-Trait.Impl(Map, TOKEN, mapImpl)
-Trait.Impl(Collection, TOKEN, collectionImpl)
+const collectionImpl: Collection.Provided<TreeMap<A, B>> = { Len = TreeMapModule.Len, Clear = TreeMapModule.Clear }
+Map.ImplFor(TOKEN, mapImpl)
+Collection.ImplFor(TOKEN, collectionImpl)
 
 return TreeMapModule

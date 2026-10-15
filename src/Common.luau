@@ -52,12 +52,12 @@ function exports.listLength(list: any): number
 	-- **다른 종류의 컨테이너**(타입 토큰이 있고 이름이 Arr 가 아님)는 `n` 이 있든 없든 리스트가
 	-- 아닙니다 — `n` 이 없으면 `#` 가 0 이라 조용히 빈 결과(2026-10-06 Gemini 트레이트 검토 —
 	-- `HashSet.FromList(map)`), `n` 이 개수인 링 버퍼면 1..n 으로 조용히 잘못 읽었습니다(리뷰 4라운드).
-	-- 이름 "Arr" 는 다른 사본의 Arr 도 받으려고(Common 은 Trait 를 모름 — 순환). 메시지는 내부 모듈
+	-- 이름 "Stl.Arr"(토큰 이름 — 2026-10-15 부터 `Stl.` 접두)는 다른 사본의 Arr 도 받으려고(Common 은 Trait 를 모름 — 순환). 메시지는 내부 모듈
 	-- 이름(Common) 없이 라이브러리 이름으로(리뷰 2라운드).
 	const token = rawget(list, "__type")
 	if token ~= nil then
 		const name = if type(token) == "table" then rawget(token, "name") else nil
-		if name ~= "Arr" then
+		if name ~= "Stl.Arr" then
 			-- 바꾸는 길을 안내합니다(2026-10-07 가로지른 리뷰 — CircularDeque 를 넣으면 무엇을 하라는지 몰랐음)
 			exports.raise(
 				`stl: expected a list (plain table, table.pack result or Arr), got {tostring(name or token)} — convert it first (e.g. CircularDeque.ToArr, HashSet.Items)`

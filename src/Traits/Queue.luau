@@ -3,7 +3,7 @@
 	Queue — 먼저 넣은 것이 먼저 나오는(FIFO) 컨테이너의 트레이트(2026-10-14 사용자 결정, 질문 AV: *"트레이트로 두는거 동의. stack 으로 무엇을 쓸지,
 	queue 로 무엇을 쓸 지는 유저가 선택 가능하다고 봐"*).
 
-	**필수 함수가 없습니다 — `Deque` 를 구현한 종류면 저절로 따라옵니다**(페이퍼 07 의 "A 가 되면 이것도 된다").
+	**`Deque` 를 구현한 종류면 따라옵니다**(뭉텅이 구현 — `Queue.ImplWhere({ Deque }, …)`, 페이퍼 07 의 "A 가 되면 이것도 된다").
 	`CircularDeque`·`LinkedDeque`, 바깥에서 `Deque` 를 구현한 종류 모두 등록 없이 큐입니다:
 
 	| 여기 | 덱의 무엇 |
@@ -13,78 +13,60 @@
 	| `Queue.Peek(x)` | `Deque.Front` |
 
 	어느 덱을 쓸지는 쓰는 쪽이 고릅니다 — 양끝만 쓰면 원형이 빠르고(perf 38-3절), 가운데 위치를 쥐어야 하면 연결.
-	더 빠른 판이 있는 종류는 같은 이름을 등록해 재정의할 수 있습니다(`Trait.Impl(Queue, TOKEN, { Push = … })`).
+	덱이 아닌 종류도 직접 등록해 큐가 될 수 있고(`Queue.ImplFor(토큰, 표)`), 덱인 종류에 직접 등록하면 그것이 뭉텅이 구현을 덮습니다(빠른 판을 얹는 길).
 
 	⚠️ 진입점을 거치면 구현 찾기가 붙습니다(덱 진입점과 같은 값 — 표에 든 것이 덱의 함수 자체, perf 52절). 종류를 아는
 	코드는 그 모듈의 함수(`CircularDeque.PushBack`)를 직접 쓰세요.
 
-	타입은 `Deque` 의 마커 그대로입니다(덱이면 타입으로도 큐) — 새 팬텀 필드가 없습니다.
+	진입점 서명은 `Deque` 의 마커 그대로입니다(덱이면 타입으로도 큐) — 새 팬텀 필드가 없습니다.
 ]]
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
 local Deque = require("./Deque")
-
---[[ 계약 ]]
-
--- 완성 표(셋 다 기본 구현이 채움). `Push` 는 자기 자신을 돌려주고, `Pop`·`Peek` 은 비었으면 `nil`.
-export type Full<C, T> = {
-	read Push: (queue: C, item: T) -> C,
-	read Pop: (queue: C) -> T?,
-	read Peek: (queue: C) -> T?,
-}
--- 구현이 `Trait.Impl` 에 넘기는 표 — 전부 선택(재정의할 것만).
-export type Provided<C, T> = {
-	read Push: ((queue: C, item: T) -> C)?,
-	read Pop: ((queue: C) -> T?)?,
-	read Peek: ((queue: C) -> T?)?,
-}
+type Item<T> = Trait.Item<T>
+type AnyToken = Trait.AnyToken
+type A = Trait.A
+type B = Trait.B
+const Fn = Trait.Fn
 
 --[[ 마커 — `Deque` 의 것 그대로 ]]
 
 export type Marker<T> = Deque.Marker<T>
 export type MarkerMut<T> = Deque.MarkerMut<T>
 
-const Queue = Trait.New<<Full<any, any>>>("Queue", {
-	dependencies = { Deque },
-	-- ⭐ 덱의 함수를 **그대로** 돌려줍니다(감싸지 않음 — 2026-10-14, 질문 AW): 덱의 표가 바뀌면 이 함수가 다시 불려
-	-- 표를 다시 짓습니다. 그래서 `Trait.ImplOf(Queue, d).Push` 가 곧 `PushBack` 이고, 진입점의 호출이 한 겹 줄었습니다
-	-- (perf 52절).
-	defaults = function(_ops: any, deps: any)
-		const deque = deps[Deque]
-		return { Push = deque.PushBack, Pop = deque.PopFront, Peek = deque.Front }
-	end,
-}) :: Trait.Trait<Full<any, any>, Provided<any, any>>
-const expectImpl = Trait.ExpectImpl
-const impls = Queue.impls :: any
--- 진입점은 구현 찾기를 **안에 펼쳐** 둡니다 — `expectImpl(…)` 을 부르는 것만으로 호출당 9~10ns 였습니다(perf 51절).
--- 못 찾았을 때만 `expectImpl` 로 갑니다(에러 메시지).
+--[[ 정의 ]]
+-- `Push` 는 자기 자신을 돌려주고, `Pop`·`Peek` 은 비었으면 `nil`.
+const QueueBase = Trait.Trait("Queue", function<Self, T>(of: (Self & Item<T>) | AnyToken)
+	return table.freeze({
+		Push = Fn<<(queue: Self, item: T) -> Self>>(),
+		Pop = Fn<<(queue: Self) -> T?>>(),
+		Peek = Fn<<(queue: Self) -> T?>>(),
+	})
+end)
+-- 완성 표(= 등록 표 — 기본 구현이 없음)
+export type Full<Self, T> = typeof(QueueBase.Of<<Self, T>>(nil :: any))
+export type Provided<Self, T> = typeof(QueueBase.ImplOf<<Self, T>>(nil :: any))
 
---[[ 진입점 — 종류를 모르는 코드가 부릅니다 ]]
-
--- 맨 뒤에 넣고 넣은 타입 그대로 돌려줍니다.
-const function Push<C, T>(queue: C & MarkerMut<T>, item: T): C
-	const impl: any = (if type(queue) == "table" then impls[rawget(queue :: any, "__type")] else nil)
-		or expectImpl(Queue, queue, "Push")
-	impl.Push(queue, item)
-	return queue
+--[[ 뭉텅이 구현 — 덱이면 큐 ]]
+-- ⭐ 덱의 함수를 **그대로** 돌려줍니다(감싸지 않음 — 질문 AW): 덱의 표가 다시 지어지면 이것도 다시 불립니다. 그래서
+-- `Queue.Of(d).Push` 가 곧 `PushBack` 이고 진입점의 호출이 한 겹 적습니다(perf 52절).
+-- 몸통은 탐침 타입(A = 종류, B = 원소)으로 — 제네릭 `<C, T>` 몸통은 원소를 못박은 함수가 0건(상류 결함 `Subtyping.cpp:830`).
+local function queueFromDeque(deque: Deque.Full<A, B>): Provided<A, B>
+	return { Push = deque.PushBack, Pop = deque.PopFront, Peek = deque.Front }
 end
+QueueBase.ImplWhere({ Deque }, function(deps)
+	return queueFromDeque(deps[Deque])
+end)
 
--- 맨 앞(가장 먼저 넣은 것)을 꺼냅니다. 비었으면 `nil`.
-const function Pop<T>(queue: MarkerMut<T>): T?
-	const impl: any = (if type(queue) == "table" then impls[rawget(queue :: any, "__type")] else nil)
-		or expectImpl(Queue, queue, "Pop")
-	return impl.Pop(queue)
-end
+--[[ 진입점 서명 ]]
+const Queue = QueueBase :: typeof(QueueBase) & {
+	-- 맨 뒤에 넣고 넣은 타입 그대로 돌려줍니다.
+	read Push: <C, T>(queue: C & MarkerMut<T>, item: T) -> C,
+	-- 맨 앞(먼저 넣은 것)를 꺼냅니다. 비었으면 `nil`.
+	read Pop: <T>(queue: MarkerMut<T>) -> T?,
+	-- 맨 앞를 봅니다(꺼내지 않음). 비었으면 `nil`. 읽기라 빌린 참조도 받습니다.
+	read Peek: <T>(queue: Marker<T>) -> T?,
+}
 
--- 맨 앞을 봅니다(꺼내지 않음). 비었으면 `nil`. 읽기라 빌린 참조도 받습니다.
-const function Peek<T>(queue: Marker<T>): T?
-	const impl: any = (if type(queue) == "table" then impls[rawget(queue :: any, "__type")] else nil)
-		or expectImpl(Queue, queue, "Peek")
-	return impl.Peek(queue)
-end
-
--- stylua: ignore
-return Trait.Expose(Queue, {
-	Push = Push, Pop = Pop, Peek = Peek,
-})
+return Queue

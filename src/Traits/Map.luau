@@ -2,7 +2,7 @@
 --[[
 	Map — 키로 값을 찾는 컨테이너의 트레이트. `HashMap`/`TreeMap`/`FlatMap` 이 구현합니다.
 
-	이 파일이 트레이트의 전부입니다: 계약(`Core`), 타입 마커, 종류를 모르는 코드의 진입점
+	이 파일이 트레이트의 전부입니다: 정의(필수 다섯), 타입 마커, 종류를 모르는 코드의 진입점
 	(`Map.Keys(m)`·`Map.Values(m)`·`Map.Records(m)`). 크기와 비우기는 맵만의 것이 아니라 `Collection` 에
 	있습니다.
 ]]
@@ -28,13 +28,7 @@ local Collection = require("./Collection")
 --   함수·상태·처음 값 삼중항은 이 타입에 안 들어갑니다 — 클로저로 감싸세요(유니온에 `(...any) -> (K, V)` 를
 --   넣으면 새 솔버가 `() -> (K, V)` 를 못 받았습니다, 실측). 순서는 구현의 것입니다(해시는 약속 없음, 정렬
 --   맵은 키 순서). 도는 동안 맵을 바꾸면 정의되지 않은 동작입니다(conventions).
-export type Core<C, K, V> = {
-	read Get: (map: C, key: K) -> V?,
-	read Set: (map: C, key: K, value: V) -> (),
-	read Has: (map: C, key: K) -> boolean,
-	read Remove: (map: C, key: K) -> V?,
-	read Iter: (map: C) -> { read [K]: V } | (() -> (K, V)),
-}
+-- (함수 서명은 아래 정의 팩토리에 — 완성 표 타입은 `Map.Full<Self, K, V>`.)
 
 --[[ 마커 — 타입에만 있는 필드(읽으면 nil — 읽는 코드를 쓰지 마세요) ]]
 
@@ -54,9 +48,25 @@ export type MarkerMut<K, V> = {
 	read __mapMut: (K, V) -> (K, V),
 }
 
-const Map = Trait.New<<Core<any, any, any>>>("Map", { required = { "Get", "Set", "Has", "Remove", "Iter" } })
+-- 맵의 연관 타입(키·값 — 컨테이너가 자기 데이터 타입의 `__generics` 에 같은 이름으로 적음). 쓰는 함수가 있어 불변.
+export type KeyValue<K, V> = { read __generics: { read Key: (K) -> K, read Value: (V) -> V } }
+type AnyToken = Trait.AnyToken
+const Fn = Trait.Fn
+
+--[[ 정의 ]]
+const MapBase = Trait.Trait("Map", function<Self, K, V>(of: (Self & KeyValue<K, V>) | AnyToken)
+	return table.freeze({
+		Get = Fn<<(map: Self, key: K) -> V?>>(),
+		Set = Fn<<(map: Self, key: K, value: V) -> ()>>(),
+		Has = Fn<<(map: Self, key: K) -> boolean>>(),
+		Remove = Fn<<(map: Self, key: K) -> V?>>(),
+		Iter = Fn<<(map: Self) -> { read [K]: V } | (() -> (K, V))>>(),
+	})
+end)
+-- 완성 표(= 등록 표 — 기본 구현이 없음)
+export type Full<Self, K, V> = typeof(MapBase.Of<<Self, K, V>>(nil :: any))
+export type Provided<Self, K, V> = typeof(MapBase.ImplOf<<Self, K, V>>(nil :: any))
 const expectImpl = Trait.ExpectImpl
-const impls = Map.impls :: any
 -- 진입점은 구현 찾기를 **안에 펼쳐** 둡니다 — `expectImpl(…)` 을 부르는 것만으로 호출당 9~10ns 였습니다(perf 51절).
 -- 못 찾았을 때만 `expectImpl` 로 갑니다(에러 메시지).
 
@@ -71,7 +81,7 @@ const impls = Map.impls :: any
 
 -- 결과 테이블은 크기를 알면(`Collection` 도 구현하면) 미리 잡습니다 — 작은 맵에서 다시 늘리는 비용이 컸습니다.
 const function sizedList(map: any): { any }
-	const sized = (Collection.impls :: any)[rawget(map, "__type")]
+	const sized = Trait.ImplOf(Collection, map)
 	if sized then
 		-- 사용자 구현의 `Len` 은 힌트로만 — 음수·NaN·너무 큰 값·숫자 아닌 값이면 `table.create` 가
 		-- 라이브러리 줄에서 죽었습니다(리뷰). 그럴 땐 미리 잡지 않습니다.
@@ -84,8 +94,8 @@ const function sizedList(map: any): { any }
 end
 
 const function Keys<K, V>(map: Marker<K, V>): { K }
-	const ops: any = (if type(map) == "table" then impls[rawget(map :: any, "__type")] else nil)
-		or expectImpl(Map, map, "Keys")
+	const ops: any = (if type(map) == "table" then rawget(MapBase :: any, rawget(map :: any, "__type")) else nil)
+		or expectImpl(MapBase, map, "Keys")
 	const out: { K } = sizedList(map)
 	local count = 0
 	for key in ops.Iter(map) do
@@ -96,8 +106,8 @@ const function Keys<K, V>(map: Marker<K, V>): { K }
 end
 
 const function Values<K, V>(map: Marker<K, V>): { V }
-	const ops: any = (if type(map) == "table" then impls[rawget(map :: any, "__type")] else nil)
-		or expectImpl(Map, map, "Values")
+	const ops: any = (if type(map) == "table" then rawget(MapBase :: any, rawget(map :: any, "__type")) else nil)
+		or expectImpl(MapBase, map, "Values")
 	const out: { V } = sizedList(map)
 	local count = 0
 	for _, value in ops.Iter(map) do
@@ -110,8 +120,8 @@ end
 -- 키-값 레코드의 목록(`{ { key, value } }`). 레코드는 **새로 만든 것**이라 받은 쪽이 고쳐도 맵은
 -- 그대로입니다. 종류를 아는 코드는 `HashMap.Records`/`FlatMap.Records` 를 직접 쓰세요.
 const function Records<K, V>(map: Marker<K, V>): { Types.Record<K, V> }
-	const ops: any = (if type(map) == "table" then impls[rawget(map :: any, "__type")] else nil)
-		or expectImpl(Map, map, "Records")
+	const ops: any = (if type(map) == "table" then rawget(MapBase :: any, rawget(map :: any, "__type")) else nil)
+		or expectImpl(MapBase, map, "Records")
 	const out: { Types.Record<K, V> } = sizedList(map)
 	local count = 0
 	for key, value in ops.Iter(map) do
@@ -122,6 +132,7 @@ const function Records<K, V>(map: Marker<K, V>): { Types.Record<K, V> }
 end
 
 -- stylua: ignore
-return Trait.Expose(Map, {
+-- 트레이트 함수의 진입점(`Map.Get` …)은 시스템이 만들지만 서명을 입히지 않습니다(아직 부르는 곳이 없음 — 넣을 땐 `MarkerMut` 로).
+return Trait.Expose(MapBase, {
 	Keys = Keys, Values = Values, Records = Records,
 })

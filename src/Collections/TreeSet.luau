@@ -20,6 +20,7 @@ local Types = require("../Types")
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
+type A = Trait.A
 local Node = require("../Node")
 local Search = require("../Trees/Search")
 local Balance = require("../Trees/Balance")
@@ -34,19 +35,21 @@ type TreeMapType<K, V> = TreeMap.TreeMap<K, V>
 
 export type TreeSetData<T> = {
 	map: TreeMapType<T, true>,
-	read __type: Trait.Token<"TreeSet">,
+	read __type: Trait.Token<"Stl.TreeSet">,
 	read __setItem: T,
 	-- 쓰는 제네릭용 불변 팬텀(`Set.MarkerMut`, 질문 AM) — 타입에만 있습니다.
 	read __setMut: (T) -> T,
 	-- 바꾸는 컬렉션 알고리즘용 팬텀(`Collection.MarkerMut`) — 타입에만 있습니다.
 	read __collectionMut: true,
+	-- 연관 타입(트레이트 `Set` 의 정의가 `of` 로 읽음 — 2026-10-15, 질문 AY): 원소. 불변 팬텀, 타입에만 있습니다.
+	read __generics: { read Item: (T) -> T },
 }
 -- 함수가 타입 바깥(네임스페이스)에 있으니 전체형은 데이터부 그 자체입니다(질문 AB).
 export type TreeSet<T> = TreeSetData<T>
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewToken("TreeSet") :: Trait.Token<"TreeSet">
+const TOKEN = Trait.NewToken("Stl.TreeSet") :: Trait.Token<"Stl.TreeSet">
 
 -- 노드의 칸 배치(`Trees/Search` 머리 — `5` = 키. 지역 상수라 접힘)와 도구(이 모듈 안에서는 칸으로 직접 읽음).
 const KEY = 5
@@ -520,7 +523,7 @@ const TreeSetModule = {
 	New = New,
 	FromList = FromList,
 	isTreeSet = isTreeSet,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, TreeSet.Token, impl)`
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `MyTrait.ImplFor(TreeSet.Token, impl)`
 	Token = TOKEN,
 
 	Add = Add, Has = Has, Remove = Remove, Items = Items,
@@ -534,13 +537,14 @@ const TreeSetModule = {
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
 -- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
--- `Trait.Impl` 이 에러로 알림). 표의 타입 주석이 "구현이 계약을 만족하는가" 의 정적 확인이기도 합니다 — **구체
--- 타입으로** 적습니다(원소 `string`·위치 `number`, 맵은 키 `string`·값 `number` 처럼 서로 다르게: `any` 로 적으면
--- 인자 수·인자 타입이 검사되지 않음, 2라운드 리뷰).
-const setImpl: Set.Core<TreeSet<string>, string> =
+-- `ImplFor` 가 에러로 알림). 표의 타입 주석(`X.Provided<…>` — 등록 표 타입, 기본 구현 칸은 선택)이 "구현이 계약을 만족하는가" 의
+-- 정적 확인입니다 — **탐침 타입**(`Trait.A`·`Trait.B` — 서로 다른 불투명 타입)으로 적습니다: `any` 로 적으면 인자 수·인자 타입이
+-- 검사되지 않았고(2라운드 리뷰), 구체 타입(`string`)으로 적으면 원소를 못박은 함수가 샙니다(2026-10-14 탐색 — 질문 AY).
+-- 표는 이렇게 **주석 단 지역 변수**에 적어 넘깁니다 — `ImplFor(토큰, { … })` 처럼 표 리터럴을 바로 넘기면 검사가 안 됩니다.
+const setImpl: Set.Provided<TreeSet<A>, A> =
 	{ Add = TreeSetModule.Add, Has = TreeSetModule.Has, Remove = TreeSetModule.Remove, Items = TreeSetModule.Items }
-const collectionImpl: Collection.Core<TreeSet<string>> = { Len = TreeSetModule.Len, Clear = TreeSetModule.Clear }
-Trait.Impl(Set, TOKEN, setImpl)
-Trait.Impl(Collection, TOKEN, collectionImpl)
+const collectionImpl: Collection.Provided<TreeSet<A>> = { Len = TreeSetModule.Len, Clear = TreeSetModule.Clear }
+Set.ImplFor(TOKEN, setImpl)
+Collection.ImplFor(TOKEN, collectionImpl)
 
 return TreeSetModule

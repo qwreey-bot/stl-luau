@@ -39,6 +39,7 @@
 local Common = require("../Common")
 Common.registerSource(debug.info(1, "s"))
 local Trait = require("../Trait")
+type A = Trait.A
 local Double = require("../Node/Double")
 local List = require("../Traits/List")
 local Deque = require("../Traits/Deque")
@@ -53,7 +54,7 @@ export type LinkedDequeData<T> = {
 	head: Node<T>?,
 	tail: Node<T>?,
 	size: number,
-	read __type: Trait.Token<"LinkedDeque">,
+	read __type: Trait.Token<"Stl.LinkedDeque">,
 	-- 리스트 트레이트 마커(타입에만 있음) — 위치는 **읽기 노드**
 	read __list: T,
 	read __listIndex: NodeRead<T>,
@@ -76,7 +77,7 @@ export type LinkedDequeRead<T> = {
 	read head: NodeRead<T>?,
 	read tail: NodeRead<T>?,
 	read size: number,
-	read __type: Trait.Token<"LinkedDeque">,
+	read __type: Trait.Token<"Stl.LinkedDeque">,
 	read __list: T,
 	read __listIndex: NodeRead<T>,
 	read __dequeItem: T,
@@ -86,7 +87,7 @@ export type LinkedDequeRead<T> = {
 
 -- 리터럴로 둡니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 느려졌습니다(perf 21절).
 const TYPE_KEY = "__type"
-const TOKEN = Trait.NewToken("LinkedDeque") :: Trait.Token<"LinkedDeque">
+const TOKEN = Trait.NewToken("Stl.LinkedDeque") :: Trait.Token<"Stl.LinkedDeque">
 
 -- 노드의 칸 배치(`Node.Double` 의 계약 — `1` = 값, `2` = 앞, `3` = 뒤). 지역 상수로 다시 적어 접히게 합니다.
 -- 이 모듈 안에서는 노드를 칸으로 직접 읽고 씁니다(불투명 핸들 타입은 밖을 위한 것 — 안에서는 `any` 로).
@@ -376,7 +377,7 @@ end
 -- stylua: ignore
 const LinkedDequeModule = {
 	New = New, FromList = FromList, Of = Of, isLinkedDeque = isLinkedDeque,
-	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `Trait.Impl(MyTrait, LinkedDeque.Token, impl)`
+	-- 이 종류의 타입 토큰(값의 `__type`) — 바깥 트레이트를 이 종류에 붙일 때: `MyTrait.ImplFor(LinkedDeque.Token, impl)`
 	Token = TOKEN,
 
 	Get = Get, FirstIndex = FirstIndex, LastIndex = LastIndex, NextIndex = NextIndex, PrevIndex = PrevIndex,
@@ -388,17 +389,18 @@ const LinkedDequeModule = {
 
 -- ⭐ **트레이트에는 넘길 것만 든 표를 등록합니다**(2026-10-13 사용자 결정, 질문 AS) — 모듈 테이블을 통째로 넘기지
 -- 않습니다(같은 이름이 전부 그 트레이트의 구현이 되어, 뜻이 다른 같은 이름이 조용히 먹었음. 이제 모르는 이름은
--- `Trait.Impl` 이 에러로 알림). 표의 타입 주석이 "구현이 계약을 만족하는가" 의 정적 확인이기도 합니다 — **구체
--- 타입으로** 적습니다(원소 `string`·위치 `number`, 맵은 키 `string`·값 `number` 처럼 서로 다르게: `any` 로 적으면
--- 인자 수·인자 타입이 검사되지 않음, 2라운드 리뷰).
-const listImpl: List.Provided<LinkedDeque<string>, string, NodeRead<string>> = {
+-- `ImplFor` 가 에러로 알림). 표의 타입 주석(`X.Provided<…>` — 등록 표 타입, 기본 구현 칸은 선택)이 "구현이 계약을 만족하는가" 의
+-- 정적 확인입니다 — **탐침 타입**(`Trait.A`·`Trait.B` — 서로 다른 불투명 타입)으로 적습니다: `any` 로 적으면 인자 수·인자 타입이
+-- 검사되지 않았고(2라운드 리뷰), 구체 타입(`string`)으로 적으면 원소를 못박은 함수가 샙니다(2026-10-14 탐색 — 질문 AY).
+-- 표는 이렇게 **주석 단 지역 변수**에 적어 넘깁니다 — `ImplFor(토큰, { … })` 처럼 표 리터럴을 바로 넘기면 검사가 안 됩니다.
+const listImpl: List.Provided<LinkedDeque<A>, A, NodeRead<A>> = {
 	Get = LinkedDequeModule.Get,
 	FirstIndex = LinkedDequeModule.FirstIndex,
 	LastIndex = LinkedDequeModule.LastIndex,
 	NextIndex = LinkedDequeModule.NextIndex,
 	PrevIndex = LinkedDequeModule.PrevIndex,
 }
-const dequeImpl: Deque.Core<LinkedDeque<string>, string> = {
+const dequeImpl: Deque.Provided<LinkedDeque<A>, A> = {
 	PushFront = LinkedDequeModule.PushFront,
 	PushBack = LinkedDequeModule.PushBack,
 	PopFront = LinkedDequeModule.PopFront,
@@ -406,10 +408,10 @@ const dequeImpl: Deque.Core<LinkedDeque<string>, string> = {
 	Front = LinkedDequeModule.Front,
 	Back = LinkedDequeModule.Back,
 }
-const collectionImpl: Collection.Core<LinkedDeque<string>> =
+const collectionImpl: Collection.Provided<LinkedDeque<A>> =
 	{ Len = LinkedDequeModule.Len, Clear = LinkedDequeModule.Clear }
-Trait.Impl(List, TOKEN, listImpl)
-Trait.Impl(Deque, TOKEN, dequeImpl)
-Trait.Impl(Collection, TOKEN, collectionImpl)
+List.ImplFor(TOKEN, listImpl)
+Deque.ImplFor(TOKEN, dequeImpl)
+Collection.ImplFor(TOKEN, collectionImpl)
 
 return LinkedDequeModule
