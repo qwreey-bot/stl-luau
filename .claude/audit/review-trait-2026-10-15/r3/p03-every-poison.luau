@@ -1,0 +1,30 @@
+--!nocheck
+-- 프로브 03: p02 의 잠복 겹침이 **Every 뭉텅이의 번짐**에서 드러나면, 실패한 등록이 반쯤 남아 그 뒤 **모든 NewToken** 이 그 겹침으로 던짐
+local stl = require("../../../../src")
+local T = stl.Trait
+local function tr(name, fns)
+	return T.Trait(name, function()
+		return table.freeze(fns)
+	end)
+end
+local function try(label, fn)
+	local ok, err = pcall(fn)
+	print(label, ok, if ok then "" else tostring(err))
+end
+local Printable = tr("P03.Printable", { text = T.Fn() })
+local Show = tr("P03.Show", { show = T.Fn() })
+Show.ImplWhere(T.Every, function() return { show = function() return "default" end } end)
+Show.ImplWhere({ Printable }, function(deps) return { show = deps[Printable].text } end) -- 통과(Printable 종류 없음)
+try("(1) Printable.ImplWhere(T.Every)", function()
+	Printable.ImplWhere(T.Every, function() return { text = function() return "p" end } end)
+end)
+print("(2) 뒤: Arr 가 Printable?", T.Implements(Printable, stl.Arr.Of(1)), "HashMap 이 Printable?", T.Implements(Printable, stl.HashMap.New()))
+try("(3) 무관한 NewToken", function()
+	T.NewToken("P03.Unrelated")
+end)
+try("(4) 같은 이름으로 다시", function()
+	T.NewToken("P03.Unrelated")
+end)
+try("(5) 또 다른 NewToken", function()
+	T.NewToken("P03.Other")
+end)
