@@ -22,6 +22,17 @@
 
 (2026-10-13 에 확인 끝: AJ·AK·AN·AO — 바뀐 것은 `MapOps` 에서 `Records` 를 뺀 것과 AR.)
 
+## ⭐ 지금 하는 일 — 트레이트 D3 를 src 에 들이기 (2026-10-15 사용자 결정, 질문 AY)
+
+| 단계 | 무엇 | 상태 |
+|---|---|---|
+| 1 | 시스템 `src/Trait/`(폴더): `research/trait-v9` 런타임(토큰 이름 유일·`Restore`, 강한 등록부, 사건 셋, 뭉텅이 `ImplWhere`, 기본 구현 빌더, 시스템이 만드는 진입점) + 지금 src 가 리뷰로 굳힌 성질(`__index` 사슬로 물려받은 구현, 모르는 이름·함수 아닌 값 에러, `TokenOf`·`Stamp`·`Implements`) + 알고리즘 진입점을 얹는 `Expose`. 트레이트 객체 타입은 인덱서 없음(진입점 서명은 트레이트 파일이 교집합으로 — `research/trait-v10/overlay.luau`) | 진행 중 |
+| 2 | 트레이트 일곱(`src/Traits/`) D3 모양 — 기본 구현 있는 `List` 만 `def(FULL), def(IMPL)`, 정의 팩토리는 `table.freeze`, 진입점 서명은 지금 것 그대로 입힘. `Stack`·`Queue` 는 `Deque` 의 뭉텅이 구현 | |
+| 3 | 컨테이너 열의 등록(`XImpl` 주석 단 지역 + `X.ImplFor`), `init.luau` | |
+| 4 | 테스트(`spec.contracts`·`spec.traitrebuild` — 리뷰 2라운드 작업분 흡수), 음성 대조군(55·61·63·64·68 + 같은 모듈 반환·정의자 실수·성장 POS — 판정 조건) | |
+| 5 | 진입점 성능 재기(perf), 문서(conventions 트레이트 절·project-context·architecture), check.sh | |
+| 6 | 리뷰 소진 | |
+
 ## 🌅 돌아오시면 볼 것 (2026-10-15 새벽 — 트레이트 타입 토론, 주무시는 동안)
 
 | 순서 | 무엇 | 어디 |

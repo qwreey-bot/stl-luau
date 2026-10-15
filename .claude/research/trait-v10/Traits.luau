@@ -1,0 +1,191 @@
+--!strict
+--[[
+	시제품 v9 위의 트레이트 넷과 등록 — 토론(DX 변호인의 D3)이 모은 모양. v6·v8 과 나란히 보세요.
+
+	- 기본 구현이 없는 트레이트(Deque·Stack·Queue): v4·v6 과 **같은 한 겹** — `Trait.Trait(이름, function<Self, T>(of: …) return { … } end)`.
+	- 기본 구현이 있는 트레이트(List): 정의 함수 `listDef<M>(mode: M)` 를 두고 **모드를 값으로** 골라 두 번 —
+	  `Trait.Trait("List", listDef(Trait.FULL), listDef(Trait.IMPL))`. 기본 구현 칸은 `Default(mode, 빌더)`.
+	  (모드를 추론에 맡기면 같은 모듈에서 기본 구현 반환 검사가 사라지고, `<<"full">>` 로 밝히는 모양은 잊으면 조용히 다시 열림 — 값으로 넘기면 잊을 수 없음)
+	- 모든 트레이트가 `XImpl` 별칭을 내보냄: 등록은 `XImpl<…>` 주석 단 지역에 **필수만**. 첫 기본 구현이 생겨도 등록한 쪽은 그대로.
+	- 빌린 참조는 트레이트가 `of` 에서 고름(쓰는 트레이트 `Item`, 읽기만 하는 `List` 는 `ItemIndexRead`), 등록은 `X.ImplFor`·`X.ImplWhere`, 뭉텅이 몸통은 탐침 타입.
+]]
+local Trait = require("./Trait")
+local stl = require("../../../src")
+
+type CircularDeque<T> = stl.CircularDeque<T>
+type LinkedDeque<T> = stl.LinkedDeque<T>
+type Arr<T> = stl.Arr<T>
+type ArrRead<T> = stl.ArrRead<T>
+type Item<T> = Trait.Item<T>
+type ItemIndexRead<E, I> = Trait.ItemIndexRead<E, I>
+type AnyToken = Trait.AnyToken
+type A = Trait.A
+type B = Trait.B
+
+const Fn, Default = Trait.Fn, Trait.Default
+const CircularDequeModule, LinkedDequeModule, ArrModule = stl.CircularDeque, stl.LinkedDeque, stl.Arr
+
+--[[ 토큰 — 우리 것은 `Stl.` ]]
+const CD = Trait.Token("Stl.CircularDeque")
+const LD = Trait.Token("Stl.LinkedDeque")
+const ARR = Trait.Token("Stl.Arr")
+
+--[[ 정의 ]]
+
+const Deque = Trait.Trait("Deque", function<Self, T>(of: (Self & Item<T>) | AnyToken)
+	return {
+		PushFront = Fn<<(deque: Self, item: T) -> Self>>(),
+		PushBack = Fn<<(deque: Self, item: T) -> Self>>(),
+		PopFront = Fn<<(deque: Self) -> T?>>(),
+		PopBack = Fn<<(deque: Self) -> T?>>(),
+		Front = Fn<<(deque: Self) -> T?>>(),
+		Back = Fn<<(deque: Self) -> T?>>(),
+	}
+end)
+export type Deque<Self, T> = typeof(Deque.Of<<Self, T>>(nil :: any))
+export type DequeImpl<Self, T> = typeof(Deque.ImplOf<<Self, T>>(nil :: any))
+
+const Stack = Trait.Trait("Stack", function<Self, T>(of: (Self & Item<T>) | AnyToken)
+	return {
+		Push = Fn<<(stack: Self, item: T) -> Self>>(),
+		Pop = Fn<<(stack: Self) -> T?>>(),
+		Peek = Fn<<(stack: Self) -> T?>>(),
+	}
+end)
+export type Stack<Self, T> = typeof(Stack.Of<<Self, T>>(nil :: any))
+export type StackImpl<Self, T> = typeof(Stack.ImplOf<<Self, T>>(nil :: any))
+
+const Queue = Trait.Trait("Queue", function<Self, T>(of: (Self & Item<T>) | AnyToken)
+	return {
+		Push = Fn<<(queue: Self, item: T) -> Self>>(),
+		Pop = Fn<<(queue: Self) -> T?>>(),
+		Peek = Fn<<(queue: Self) -> T?>>(),
+	}
+end)
+export type Queue<Self, T> = typeof(Queue.Of<<Self, T>>(nil :: any))
+export type QueueImpl<Self, T> = typeof(Queue.ImplOf<<Self, T>>(nil :: any))
+
+-- 기본 구현은 빌더로. 빌더가 받는 `ops` 는 그 종류의 완성 표(구현이 준 것 + 다른 기본 구현) — 지역으로 붙잡아도 됨.
+-- 리스트는 읽기만 하는 트레이트라 `Mut` 이 없음(빌린 참조도 전부 씀)
+local function listDef<M>(mode: M)
+	return function<Self, E, I>(of: (Self & ItemIndexRead<E, I>) | AnyToken)
+		return {
+			Get = Fn<<(list: Self, idx: I) -> E?>>(),
+			FirstIndex = Fn<<(list: Self) -> I?>>(),
+			LastIndex = Fn<<(list: Self) -> I?>>(),
+			NextIndex = Fn<<(list: Self, idx: I) -> I?>>(),
+			PrevIndex = Fn<<(list: Self, idx: I) -> I?>>(),
+			IndexOf = Default(mode, function(ops: List<Self, E, I>)
+				const get, firstIndex, nextIndex = ops.Get, ops.FirstIndex, ops.NextIndex
+				return function(list: Self, item: E): I?
+					local idx = firstIndex(list)
+					while idx ~= nil do
+						if get(list, idx) == item then
+							return idx
+						end
+						idx = nextIndex(list, idx)
+					end
+					return nil
+				end
+			end),
+			Contains = Default(mode, function(ops: List<Self, E, I>)
+				const indexOf = ops.IndexOf -- 형제 기본 구현(재정의됐으면 그것)
+				return function(list: Self, item: E): boolean
+					return indexOf(list, item) ~= nil
+				end
+			end),
+			Fold = Default(mode, function(ops: List<Self, E, I>)
+				const get, firstIndex, nextIndex = ops.Get, ops.FirstIndex, ops.NextIndex
+				return function<U>(list: Self, init: U, fn: (acc: U, item: E, idx: I, ...any) -> U): U
+					local acc, idx = init, firstIndex(list)
+					while idx ~= nil do
+						acc = fn(acc, get(list, idx) :: E, idx)
+						idx = nextIndex(list, idx)
+					end
+					return acc
+				end
+			end),
+		}
+	end
+end
+const List = Trait.Trait("List", listDef(Trait.FULL), listDef(Trait.IMPL))
+export type List<Self, E, I> = typeof(List.Of<<Self, E, I>>(nil :: any))
+export type ListImpl<Self, E, I> = typeof(List.ImplOf<<Self, E, I>>(nil :: any))
+
+--[[ 뭉텅이 구현 — 몸통을 탐침 타입(A = 종류, B = 원소)으로: 제네릭 `<C, T>` 몸통은 원소를 못박은 함수가 0건(AA 3번). 런타임은 그대로 ]]
+local function stackFromDeque(deque: Deque<A, B>): StackImpl<A, B>
+	return { Push = deque.PushBack, Pop = deque.PopBack, Peek = deque.Back }
+end
+Stack.ImplWhere({ Deque }, function(deps)
+	return stackFromDeque(deps[Deque])
+end)
+local function queueFromDeque(deque: Deque<A, B>): QueueImpl<A, B>
+	return { Push = deque.PushBack, Pop = deque.PopFront, Peek = deque.Front }
+end
+Queue.ImplWhere({ Deque }, function(deps)
+	return queueFromDeque(deps[Deque])
+end)
+
+--[[ 등록 — 탐침 타입 A 로 주석을 단 지역 변수(등록 보기) ]]
+const cdDeque: DequeImpl<CircularDeque<A>, A> = {
+	PushFront = CircularDequeModule.PushFront,
+	PushBack = CircularDequeModule.PushBack,
+	PopFront = CircularDequeModule.PopFront,
+	PopBack = CircularDequeModule.PopBack,
+	Front = CircularDequeModule.Front,
+	Back = CircularDequeModule.Back,
+}
+Deque.ImplFor(CD, cdDeque)
+-- 기본 구현 셋(IndexOf·Contains·Fold)은 안 적음 = 기본 구현
+const cdList: ListImpl<CircularDeque<A>, A, number> = {
+	Get = CircularDequeModule.Get,
+	FirstIndex = CircularDequeModule.FirstIndex,
+	LastIndex = CircularDequeModule.LastIndex,
+	NextIndex = CircularDequeModule.NextIndex,
+	PrevIndex = CircularDequeModule.PrevIndex,
+}
+List.ImplFor(CD, cdList)
+
+const ldDeque: DequeImpl<LinkedDeque<A>, A> = {
+	PushFront = LinkedDequeModule.PushFront,
+	PushBack = LinkedDequeModule.PushBack,
+	PopFront = LinkedDequeModule.PopFront,
+	PopBack = LinkedDequeModule.PopBack,
+	Front = LinkedDequeModule.Front,
+	Back = LinkedDequeModule.Back,
+}
+Deque.ImplFor(LD, ldDeque)
+
+-- Arr: 리스트(기본 구현 셋을 자기 직접 구현으로 재정의 — 적으면 재정의) + 스택(덱이 아니어도)
+const arrList: ListImpl<Arr<A>, A, number> = {
+	Get = ArrModule.Get,
+	FirstIndex = ArrModule.FirstIndex,
+	LastIndex = ArrModule.LastIndex,
+	NextIndex = ArrModule.NextIndex,
+	PrevIndex = ArrModule.PrevIndex,
+	IndexOf = ArrModule.IndexOf,
+	Contains = ArrModule.Contains,
+	Fold = ArrModule.Fold,
+}
+List.ImplFor(ARR, arrList)
+const function arrPeek<T>(self: ArrRead<T>): T?
+	return self[self.n]
+end
+const arrStack: StackImpl<Arr<A>, A> = { Push = ArrModule.PushBack, Pop = ArrModule.PopBack, Peek = arrPeek }
+Stack.ImplFor(ARR, arrStack)
+
+--[[ 중개자 Into — 둘 다 아는 이 자리에서 찾기 함수에 정확한 타입만(비용 0, 감싸는 함수 없음) ]]
+const arrIntoStack: <T>(a: Arr<T>) -> Stack<Arr<T>, T> = Stack.Of :: any
+const Into = { ArrStack = arrIntoStack }
+
+-- 값에 이 시제품의 토큰을 붙임(같은 자료, `__type` 만)
+const Kinds = { CD = CD, LD = LD, ARR = ARR }
+function Kinds.tag<V>(value: V, token: any): V
+	(value :: any).__type = token
+	return value
+end
+
+-- stylua: ignore
+return {
+	Trait = Trait, Deque = Deque, Stack = Stack, Queue = Queue, List = List, Into = Into, Kinds = Kinds,
+}

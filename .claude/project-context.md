@@ -44,7 +44,7 @@
 
 ⭐ **모든 컨테이너는 메타테이블 없는 평범한 테이블이고, 연산은 전부 모듈의
 네임스페이스 함수입니다**(`Arr.Map(a, fn)` — 콜론 메소드 없음, 질문 AB).
-판별은 타입 토큰(`__type`), 구현은 트레이트(`List` 등 — `src/Traits/`, 시스템은 `src/Trait.luau`, 질문 AG).
+판별은 타입 토큰(`__type`), 구현은 트레이트(`List` 등 — `src/Traits/`, 시스템은 `src/Trait/`, 질문 AG → 2026-10-15 새 시스템 AY).
 
 ```
 pesde.toml, pesde.lock  패키지 매니페스트 (qwreey/stl_luau, lib = src/init.luau)
@@ -58,7 +58,8 @@ src/
   init.luau        배럴. 공개 표면 재수출 + 술어(isArr, isHashMap …)
   Types.luau       작은 공용 타입(비교자, 레코드). **말단 모듈** — 아무것도 require 안 함
   Common.luau      에러 규약(raise), 비교자 어댑터와 기본 3방향 비교자, 리스트 길이 규약
-  Trait.luau       ⭐ 트레이트 **시스템만** — 토큰(NewToken), New·Impl·ImplWith·ImplOf, ExpectImpl·Expose. 표는 미리 만들고 의존이 바뀌면 다시 지음
+  Trait/           ⭐ 트레이트 **시스템만**(2026-10-15 갈아 끼움 — 질문 AY, 계속 바뀔 수 있음): init(토큰 NewToken·Restore, 정의 Trait·Fn·Default·FULL/IMPL,
+                   조회 ImplOf·Implements·ExpectImpl·Expose), Registry(강한 등록부), Build(짓기·사건 셋·위로 번짐), Entry(시스템이 만드는 진입점), Errors
   Traits/          ⭐ 트레이트 하나하나 — 계약 타입·마커·기본 구현·종류를 모르는 코드의 진입점이 한 파일에.
                    모듈이 곧 트레이트 객체(`Trait.Impl(List, …)` 와 `List.IndexOf(v, x)` 가 같은 이름)
     List.luau        위치 프리미티브 다섯 + 읽기 알고리즘의 기본 구현 일곱
@@ -66,7 +67,7 @@ src/
     Set.luau         Add·Has·Remove·Items
     Collection.luau  Len·Clear (컨테이너 전부)
     Deque.luau       양끝 큐 — PushFront·PushBack·PopFront·PopBack·Front·Back (원형·연결 둘이 구현)
-    Stack.luau       스택(LIFO) — Push·Pop·Peek. 필수 함수 없음, Deque 에 의존: 덱이면 저절로 따라옴
+    Stack.luau       스택(LIFO) — Push·Pop·Peek. Deque 의 뭉텅이 구현(ImplWhere): 덱이면 따라옴, 덱이 아닌 종류는 ImplFor
     Queue.luau       큐(FIFO) — Push·Pop·Peek. 같은 모양
   Collections/     컨테이너
     Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 목적지 맵을 인자로 받음) + 생성자 8
@@ -107,7 +108,7 @@ tests/
   spec.arr.luau    이하 컨테이너별 테스트. assert + print, 프레임워크 없음
   spec.bsearch.luau  spec.hashmap.luau  spec.hashset.luau
   spec.heap.luau     spec.treemap.luau  spec.treeset.luau
-  spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)  spec.traitrebuild.luau  (미리 만들기·다시 짓기·ImplWith)
+  spec.common.luau   spec.contracts.luau  (계약 — 구현을 바꿔 끼워봄)  spec.traitrebuild.luau  (트레이트 시스템 — 토큰·정의·등록·뭉텅이·다시 짓기·진입점)
   spec.circulardeque.luau  spec.linkeddeque.luau  (Node·Deque 트레이트 포함)
   spec.trees.luau  (RedBlack·Avl 을 같은 시나리오로 + Node 도구)
   spec.treemap.luau  spec.treeset.luau  (Flat 판의 스펙을 옮긴 것 + 균형 방식 선택·구조 불변식·Flat 판과 무작위 대조)
@@ -153,7 +154,7 @@ old-homeworks-ignoreme/ (gitignore) 예전 학교 과제 — ADT, visitor, Node/
 
 | 모듈 | 상태 | 음성 대조군 |
 |---|---|---|
-| `Types` / `Common` / `Trait` / `Traits/*` | 트레이트 2026-10-06, 불변 마커·`Collection`·넓힌 `Map.Core`(그때 이름 `MapOps`) 10-12, **기본 구현·의존·저절로 따라오기 + 리스트 알고리즘의 기본 구현** 10-13(`papers/07` — 들이는 중), 같은 날 **구조 재배치**(`Traits/`·`Collections/`·`Algorithms/`, `Algorithm.luau` 는 트레이트 파일로 분화) | `spikes/55`, `61`, `63`, `64` |
+| `Types` / `Common` / `Trait` / `Traits/*` | 트레이트 2026-10-06, 불변 마커·`Collection` 10-12, 기본 구현·의존·저절로 따라오기 10-13(옛 시스템), 구조 재배치 10-13, ⭐ **2026-10-15 새 시스템으로 갈아 끼움**(질문 AY — 정의 팩토리, 모드를 값으로 두 번, 뭉텅이 구현, 시스템이 만드는 진입점) — 리뷰 전 | `spikes/55`, `61`, `63`, `64`, `69` |
 | `Arr` | 연산 103 + 생성자 8 (M3·M4 2026-10-07) | `spikes/40`, `46`, `49`, `50`, `51`, `58` |
 | `HashMap` / `HashSet` | 완성 — M4 넣기·합치기·Retain(2026-10-07) | `spikes/41`, `59` |
 | `BSearch` | 완성 | `spikes/42` |

@@ -1,0 +1,320 @@
+diff --git a/src/Trait.luau b/src/Trait.luau
+index b7ce6a5..ec7bcfb 100644
+--- a/src/Trait.luau
++++ b/src/Trait.luau
+@@ -237,6 +237,28 @@ const function New<I>(name: string, spec: Spec?): Trait<I, I>
+ 	return trait :: any
+ end
+ 
++-- 약한 테이블의 키들을 **배열로 옮겨** 돌려줍니다(개수, 배열). 표를 지으며 약한 테이블(토큰·트레이트·표식)을 바로 돌면,
++-- 몸통의 할당이 GC 를 부르고 줄어들 수 있는(`s`) 약한 테이블이 그때 다시 잡혀 **순회가 살아 있는 항목을 건너뛰었습니다**
++-- (2라운드 리뷰: 만들었다 버린 종류가 수천 개면 사용자 종류의 20~60% 가 빠지고, 조회는 만들지 않으니 영영 안 생김).
++-- 그래서 세기 → 배열 잡기 → 채우기 순서로 옮깁니다: 세기와 채우기는 할당이 없어 그동안 GC 가 돌지 않고, 배열을 잡을 때 GC 가
++-- 돌아 항목이 줄었으면 채운 만큼만 씁니다. 옮긴 배열이 키를 붙잡으니 도는 동안 수거되지도 않습니다.
++const function keysOf(weak: { [any]: any }): (number, { any })
++	local count = 0
++	for _ in weak do
++		count += 1
++	end
++	const list: { any } = table.create(count)
++	local filled = 0
++	for key in weak do
++		if filled == count then
++			break
++		end
++		filled += 1
++		list[filled] = key
++	end
++	return filled, list
++end
++
+ -- 그 종류의 의존 표들(`[의존 트레이트] = 완성 표`). 하나라도 없으면 nil 과 그 트레이트.
+ -- 표는 **미리 만들어져 있습니다**(아래 "언제 만드는가") — 여기서는 찾기만 합니다.
+ const function depsOf(trait: any, token: any): ({ [any]: any }?, any)
+@@ -364,20 +386,39 @@ const function assemble(trait: any, token: any, source: any, deps: { [any]: any
+ 			-- `return` 을 빠뜨린 기본 구현 — 라이브러리 줄의 `attempt to iterate over a nil value` 였습니다(리뷰)
+ 			Common.raise(`Trait: defaults of {trait.name} must return a table of functions, got {typeof(provided)}`)
+ 		end
+-		for fnName, fn in provided do
+-			if full[fnName] == nil then
+-				-- 기본 구현과 같은 이름을 **물려받고** 있으면 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히
+-				-- 기본 구현에 졌습니다, 리뷰). 물려받은 재정의도 함수여야 합니다(5라운드 리뷰).
+-				const inherited = if impl ~= nil then lookup(impl, fnName) else nil
+-				if inherited ~= nil and type(inherited) ~= "function" then
+-					notFunction(trait, token, fnName, inherited)
++		-- 기본 구현과 같은 이름을 **물려받고** 있으면 그것이 재정의입니다(자기 키만 옮기면 물려받은 것이 조용히
++		-- 기본 구현에 졌습니다, 리뷰). 물려받은 재정의도 함수여야 합니다(5라운드 리뷰). 기본 구현의 이름은 한 번 불러
++		-- 봐야 아니, 물려받은 재정의가 있으면 그것을 `ops` 에 넣고 **한 번 더** 부릅니다 — 기본 구현이 `ops.X or 내것` 으로
++		-- 붙잡을 때 처음 지은 표와 다시 지은 표(사본에서는 자기 키)가 같아지게(2라운드 리뷰).
++		if impl ~= nil then
++			local inheritedAny = false
++			for fnName in provided do
++				if full[fnName] == nil then
++					const inherited = lookup(impl, fnName)
++					if inherited ~= nil then
++						if type(inherited) ~= "function" then
++							notFunction(trait, token, fnName, inherited)
++						end
++						full[fnName] = inherited
++						taken[fnName] = inherited
++						inheritedAny = true
++					end
+ 				end
+-				full[fnName] = if inherited ~= nil then inherited else fn
+-				if inherited ~= nil then
+-					taken[fnName] = inherited
++			end
++			if inheritedAny then
++				provided = defaults(full, deps)
++				if type(provided) ~= "table" then
++					Common.raise(
++						`Trait: defaults of {trait.name} must return a table of functions, got {typeof(provided)}`
++					)
+ 				end
+ 			end
+ 		end
++		for fnName, fn in provided do
++			if full[fnName] == nil then
++				full[fnName] = fn
++			end
++		end
+ 	end
+ 	if impl ~= nil then
+ 		-- 모르는 이름: 필수도 아니고 기본 구현의 이름(재정의할 수 있는 것)도 아닌 키
+@@ -413,8 +454,9 @@ const function commit(trait: any, token: any, built: any, source: any)
+ 	end
+ 	trait.sources[token] = if source == nil then false else source
+ 	trait.derived[token] = if source == nil then true else nil
+-	for dependent in trait.dependents do
+-		refresh(dependent, token)
++	const count, dependents = keysOf(trait.dependents)
++	for at = 1, count do
++		refresh(dependents[at], token)
+ 	end
+ end
+ 
+@@ -441,14 +483,17 @@ end
+ -- - 토큰이 생길 때(`NewToken`): 아무것도 요구하지 않는 트레이트(기본 구현만 있는 것).
+ -- - 등록될 때(`Impl` → `commit`): 그 등록으로 의존을 다 갖추게 된 트레이트(위로 이어짐).
+ function deriveForAllTokens(trait: any)
+-	for token in tokens do
+-		refresh(trait, token)
++	const count, list = keysOf(tokens)
++	for at = 1, count do
++		refresh(trait, list[at])
+ 	end
+ end
+ 
+ function deriveForToken(token: any)
+-	for trait in traits do
+-		if (trait :: any).derivable and (trait :: any).dependencies == nil then
++	const count, list = keysOf(traits)
++	for at = 1, count do
++		const trait: any = list[at]
++		if trait.derivable and trait.dependencies == nil then
+ 			refresh(trait, token)
+ 		end
+ 	end
+diff --git a/tests/spec.traitrebuild.luau b/tests/spec.traitrebuild.luau
+index ce4fed4..91922e8 100644
+--- a/tests/spec.traitrebuild.luau
++++ b/tests/spec.traitrebuild.luau
+@@ -334,7 +334,9 @@ do
+ 	T.Impl(stl.Stack, C, { Pop = function() end } :: any)
+ 	assert((T.ImplOf(Base, { __type = C }) :: any).Twice() == 100, "물려받은 재정의도 등록 때의 것")
+ 
+-	-- (3) 덱·스택·큐의 진입점 전부: 테이블이 아닌 값은 사용자 줄의 에러(진입점마다 펼친 가드)
++	-- (3) 트레이트 진입점 전부: 테이블이 아닌 값은 사용자 줄의 에러(진입점마다 펼친 가드 — 하나씩 지워도 잡히게)
++	-- ⚠️ 목록에 `nil` 을 넣고 `for … in` 으로 돌면 `nil` 칸은 건너뜁니다(2라운드 리뷰) — 숫자로 돕니다.
++	const bads = { n = 4, nil, 5, "x", true }
+ 	for _, case in
+ 		{
+ 			{
+@@ -344,13 +346,21 @@ do
+ 			},
+ 			{ trait = "Stack", module = stl.Stack :: any, names = { "Push", "Pop", "Peek" } },
+ 			{ trait = "Queue", module = stl.Queue :: any, names = { "Push", "Pop", "Peek" } },
++			{
++				trait = "List",
++				module = stl.List :: any,
++				names = { "IndexOf", "Contains", "Count", "Fold", "Find", "Some", "Every" },
++			},
++			{ trait = "Map", module = stl.Map :: any, names = { "Keys", "Values", "Records" } },
++			{ trait = "Collection", module = stl.Collection :: any, names = { "Len", "Clear" } },
+ 		} :: { { trait: string, module: any, names: { string } } }
+ 	do
+ 		for _, fnName in case.names do
+-			for _, bad in { nil, 5, "x", true } :: { any } do
++			for at = 1, bads.n do
++				const bad: any = bads[at]
+ 				const ok, err = pcall(function()
+ 					where = debug.info(1, "l") + 1
+-					case.module[fnName](bad, 1)
++					case.module[fnName](bad, 1, function() end)
+ 				end)
+ 				const needle = `{case.trait}: {fnName} needs a {case.trait} (got {typeof(bad)} without a type token)`
+ 				assert(
+@@ -367,6 +377,163 @@ do
+ end
+ print("PASS")
+ 
++print("=== 3. 리뷰 2라운드 (2026-10-14) — 도는 중의 GC, 물려받은 재정의와 ops ===")
++do
++	const T = stl.Trait
++	-- (1) ⭐ 약한 테이블(토큰·트레이트·표식)을 돌며 표를 짓는 동안 GC 가 테이블을 다시 잡으면 살아 있는 종류를 건너뛰었음
++	-- (만들었다 버린 종류가 수천 개면 사용자 종류의 20~25% 가 영영 빠짐 — 조회는 만들지 않으니 다시 안 생김).
++	-- GC 시점이라 한 번으로는 우연일 수 있어 여러 판을 돕니다(고치기 전엔 판마다 수십 개씩 빠졌음).
++	for round = 1, 4 do
++		const live = {}
++		for i = 1, 200 do
++			const tok = T.NewToken(`Live{round}-{i}`)
++			T.Impl(
++				stl.Collection,
++				tok,
++				{
++					Len = function(): number
++						return 0
++					end,
++					Clear = function() end,
++				} :: any
++			)
++			table.insert(live, tok)
++		end
++		for _ = 1, 2000 do
++			T.NewToken("Temp")
++		end
++		const Describe = T.New(
++			`Describe{round}`,
++			{
++				dependencies = { stl.Collection :: any },
++				defaults = function(_ops: any, deps: any)
++					-- 만드는 함수가 조금 할당하면(보통의 기본 구현도 클로저를 만듦) 도는 중에 GC 가 돎 — 이게 없으면 재현이 들쭉날쭉
++					for _ = 1, 200 do
++						const _junk = { 1, 2, 3 }
++					end
++					const len = deps[stl.Collection].Len
++					return {
++						Describe = function(v: any): string
++							return `size {len(v)}`
++						end,
++					}
++				end,
++			} :: any
++		)
++		local missing = 0
++		for _, tok in live do
++			if (Describe.impls :: any)[tok] == nil then
++				missing += 1
++			end
++		end
++		assert(missing == 0, `New 가 살아 있는 종류를 건너뜀(판 {round}): {missing}/200`)
++		assert(T.Implements(Describe, stl.Arr.Of(1)) and T.Implements(Describe, stl.HashMap.New()), "내장 종류도")
++		-- 등록이 의존을 채울 때 위로 번지는 길(표식을 돎): 살아 있는 의존 트레이트 사이에 버린 것을 섞음.
++		-- 쓰레기 할당은 재는 순간에만 켬(`pressure`) — 만들 때마다 켜 두면 테스트가 수십 초 걸렸음.
++		local pressure = false
++		local function churn()
++			if pressure then
++				for _ = 1, 1000 do
++					const _junk = { 1, 2, 3 }
++				end
++			end
++		end
++		const Seed = T.New(`Seed{round}`, { required = { "Get" } } :: any)
++		const ups: { any } = {}
++		for i = 1, 100 do
++			ups[i] = T.New(
++				`Up{round}-{i}`,
++				{
++					dependencies = { Seed },
++					defaults = function()
++						churn()
++						return { X = print }
++					end,
++				} :: any
++			)
++		end
++		for _ = 1, 3000 do
++			T.New("DeadUp", { required = { "X" }, dependencies = { Seed } } :: any)
++		end
++		const seeded = T.NewToken(`Seeded{round}`)
++		pressure = true
++		T.Impl(Seed, seeded, { Get = print } :: any)
++		pressure = false
++		local missingUp = 0
++		for _, up in ups do
++			if (up.impls :: any)[seeded] == nil then
++				missingUp += 1
++			end
++		end
++		assert(missingUp == 0, `의존이 채워질 때 건너뜀(판 {round}): {missingUp}/100`)
++		-- 토큰이 생길 때(트레이트를 돎): 아무것도 요구하지 않는 트레이트 사이에 버린 트레이트를 섞음
++		const hellos: { any } = {}
++		for i = 1, 30 do
++			hellos[i] = T.New(
++				`Hello{round}-{i}`,
++				{
++					defaults = function()
++						churn()
++						return { X = print }
++					end,
++				} :: any
++			)
++		end
++		for _ = 1, 3000 do
++			T.New("DeadReq", { required = { "X" } } :: any)
++		end
++		pressure = true
++		const born = T.NewToken(`Born{round}`)
++		pressure = false
++		local missingHello = 0
++		for _, hello in hellos do
++			if (hello.impls :: any)[born] == nil then
++				missingHello += 1
++			end
++		end
++		assert(missingHello == 0, `토큰이 생길 때 건너뜀(판 {round}): {missingHello}/30`)
++	end
++
++	-- (2) 물려받은(`__index`) 재정의도 처음 지을 때 `ops` 에 보임 — 다시 지은 표와 같게(예전엔 처음엔 기본 구현을 붙잡고
++	-- 상관없는 의존이 바뀌어 다시 지으면 재정의를 붙잡았음)
++	const function slow(): string
++		return "slow"
++	end
++	const function fast(): string
++		return "fast"
++	end
++	const Find = T.New(
++		"Find22",
++		{
++			dependencies = { stl.Stack :: any },
++			defaults = function(ops: any)
++				const indexOf: () -> string = ops.IndexOf or slow
++				return {
++					IndexOf = slow,
++					Contains = function(): string
++						return indexOf()
++					end,
++				}
++			end,
++		} :: any
++	)
++	const Kind = T.NewToken("Kind22")
++	T.Impl(
++		stl.Deque,
++		Kind,
++		{ PushFront = print, PushBack = print, PopFront = print, PopBack = print, Front = print, Back = print } :: any
++	)
++	T.Impl(Find, Kind, setmetatable({}, { __index = { IndexOf = fast } }) :: any)
++	const impl: any = T.ImplOf(Find, { __type = Kind })
++	assert(
++		impl.IndexOf() == "fast" and impl.Contains() == "fast",
++		`처음 지을 때: {impl.IndexOf()} {impl.Contains()}`
++	)
++	T.Impl(stl.Stack, Kind, { Push = print } :: any)
++	assert(impl.IndexOf() == "fast" and impl.Contains() == "fast", "다시 지은 뒤에도 같음")
++end
++print("PASS")
++
+ print()
+ print("=== ALL PASS (트레이트 다시 만들기) ===")
+ 
