@@ -175,9 +175,10 @@ function exports.registerSource(source: string)
 end
 exports.registerSource(debug.info(1, "s"))
 
--- `transact` 안이면 0 보다 큼 — 그동안 라이브러리 코드가 바로 낸 `raise` 는 위치를 붙이지 않고 표식 값으로 던집니다(아래 `transact`
--- 가 받아 되돌린 뒤 **자기 자리에서** 다시 `raise` 해 사용자 줄을 찾음). `pcall` 안에서 걸으면 첫 비라이브러리 프레임이 `pcall` 의
--- C 프레임이라 위치가 빠지기 때문입니다.
+-- `transact` 안이면 0 보다 큼 — 에러 경로의 값싼 앞 검사입니다(판정은 아래 `raise` 의 "그 C 프레임을 부른 것이 `transact` 인가").
+-- 라이브러리 코드가 `transact` 의 `pcall` 바로 아래에서 낸 `raise` 는 위치를 붙이지 않고 표식 값으로 던집니다(아래 `transact` 가 받아
+-- 되돌린 뒤 **자기 자리에서** 다시 `raise` 해 사용자 줄을 찾음). `pcall` 안에서 걸으면 첫 비라이브러리 프레임이 그 C 프레임이라 위치가
+-- 빠지기 때문입니다.
 local deferring = 0
 const DEFERRED = table.freeze({})
 
