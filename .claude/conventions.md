@@ -65,8 +65,18 @@
     `trait-debate`·`luau-source`·`trait-udtf`). ⚠️ **이 시스템은 계속 바뀔 수 있습니다**(사용자: *"trait 시스템 자체는 계속 변화할 수
     있는걸로 둬야겠어. 타입 시스템이 변경됨에 따라서 영향을 받는지라"*) — 타입 모양이 새 솔버의 동작(**사용자 타입 함수 `Trait.View`**,
     명시적 타입 인자, 표 리터럴의 양방향 추론)에 기댑니다. 음성 대조군 `spikes/69`·`70` 이 그 동작의 경보입니다.
-  - **값에는 타입 토큰 하나**: 생성자가 `__type = TOKEN`(그 종류의 모듈이 `Trait.NewToken("Stl.Arr")` 로 만든 얼린 공유 테이블 — 밖에서는
-    `Arr.Token`)을 붙입니다. **모든 생성·반환 경로**가 붙여야 합니다(`spec.contracts` 5절이 전수로 지킴). 토큰 **이름은 유일**합니다(라이브러리
+  - ⭐ **종류 = 닫힌 트레이트**(2026-10-15 질문 BB — 사용자: *"Arr 조차 Trait 이여야 하는거 아닌가 … struct Arr impl Arr {}"*, *"닫힌 경로는
+    다른 곳에서 impl 될 일 없어 … 한번 구현되고 끝"*): 모듈 맨 위 `const Kind = Trait.Struct("Stl.Arr")`(토큰도 같이), 맨 끝 `Kind.Seal({ … })` —
+    **그 표가 곧 종류의 정체**(`stl.Arr`). `ImplFor`·`ImplWhere` 가 없고 봉인하면 끝, 함수는 그 자리 그대로 직접 호출(찾을 일이 없음). 종류 자리에
+    모듈을 넘깁니다: `Stack.ImplFor(stl.Arr, …)`, `Trait.Converter(stl.Stack, stl.Arr)`, 아래로 `Trait.Converter(stl.Arr)`, `Trait.Implements(stl.Arr, v)`,
+    `Trait.TokenOf(stl.Arr)`. 바깥 종류도 같은 모양(`spec.traitrebuild` 9절). 모듈에 공개 `Token` 필드는 없습니다.
+    ⭐ **두 장치의 경계**(사용자: *"어느 부분은 이거로 두고 어느 부분은 직접 적기로 두고 파편화 된 감"*): 닫힌 쪽(종류)의 타입 닻은 `__type:
+    Token<"Stl.Arr">`, 열린 쪽(트레이트 — dyn)의 닻은 `__traits.X` 레코드 — 그래서 `__traits` 에 자기 종류를 적지 않습니다. 컨테이너 타입의
+    `__traits` 는 **그 종류의 모듈이 정의하는 자리에서 직접 구현한 트레이트**(Java 의 `implements` — 같은 파일의 `ImplFor` 와 같은 사람이 적음)이고,
+    **다른 곳에서 나중에 붙은 것**(바깥 등록, 덱 → 스택 같은 뭉텅이)은 `As`·`Trait.Converter`(어댑터)입니다. Rust 가 이 구분 없이 되는 건 컴파일러가
+    모든 `impl` 을 전역으로 알아서 — 등록이 타입을 못 바꾸는 Luau 에선 Java 쪽 모델이 할 수 있는 것입니다.
+  - **값에는 타입 토큰 하나**: 생성자가 `__type = TOKEN`(그 종류의 모듈이 `Trait.Struct("Stl.Arr")` 로 만든 얼린 공유 테이블 — 밖에서는
+    `Trait.TokenOf(stl.Arr)`)을 붙입니다. **모든 생성·반환 경로**가 붙여야 합니다(`spec.contracts` 5절이 전수로 지킴). 토큰 **이름은 유일**합니다(라이브러리
     것은 `Stl.` 접두, 바깥 것은 자기 이름공간 — 같은 이름 두 번은 에러). 직렬화했다 되읽은 값은 `Trait.Restore(값)` 이 이름으로 이 사본의
     진짜 토큰을 되찾습니다. 토큰·트레이트는 **정의**라 버리지 않습니다(버리는 것은 정의되지 않은 동작 — 등록부가 강한 배열).
     키 문자열 `"__type"` 은 모듈마다 **리터럴로** 적습니다 — `Trait.TYPE_KEY` 를 받아 쓰면 상수 접기가 안 돼 생성이 7~11% 느렸습니다.
@@ -114,7 +124,7 @@
       트레이트마다 값 타입 `stl.Stack<T>`(바꿀 수 있는 값 — 지금의 `X.Value`)·`stl.StackRead<T>`(읽기 — `X.ValueRead`)이 있고, 다른 종류를 그
       트레이트로 쓰려면 **중간자** `Trait.Converter` 에 그 쌍을 아는 쪽이 타입을 적어 **진짜로 바꿉니다**(사용자: *"<T>(Arr<T>) -> Stack<T> 를 주는
       뭔가"*, *"a to b 계약자가 두 점이 확실한지"*, *"깔끔하게 … 진짜 변환"*):
-      `const asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, Arr.Token)`(아래로는 같은 함수에 `<T>(s: stl.Stack<T>) -> Arr<T>`).
+      `const asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, stl.Arr)`(아래로는 `Trait.Converter(stl.Arr)` 에 `<T>(s: stl.Stack<T>) -> Arr<T>`).
       등록은 **만들 때 한 번**, 값의 종류는 **부를 때마다** 보고(사용자 줄 에러) 같은 테이블을 돌려줍니다(호출당 13~20ns — perf 55절, 값 하나에
       한 번). 바꾼 값은 그 트레이트로만 보입니다(`Arr.Len(s)`·`Deque.PushFront(s)` 는 에러 — `spikes/72`). 토큰을 빼면(`Trait.Converter(Stack)`)
       그 트레이트를 구현한 종류면 무엇이든 — 트레이트에서 트레이트로(`Deque.AsStack`). ⚠️ 바깥 컨테이너 **타입을 정의할 땐** 트레이트를
@@ -288,6 +298,14 @@
 - **탭 들여쓰기.** 주석은 한국어, 식별자와 에러 메시지는 영어
   (`Common.raise("Arr: Range step must not be zero")` 형식 — 아래 "에러 규약").
 
+- ⭐ **칸과 길이는 읽기만 공개합니다**(2026-10-15 질문 BB (나) ② — 사용자: *"read [number]: T 를 공개 해야할 까 … 맨 뒤에 집어넣으면
+  길이가 깨지니까"*): `Arr<T>` 는 `read n`·`read [number]: T` — 읽기(`a[i]`, `a.n`)는 직접(함수를 거치면 2.7~5배 — perf 56절), **쓰기는 함수로만**
+  (칸 하나는 `Arr.Set(a, i, v)` — 위치는 `At` 처럼 음수, NaN·`1..n` 밖은 에러, 끝에 더하기는 `PushBack`). 모듈 안쪽은 받자마자 안쪽 타입으로
+  캐스트해 직접 씁니다(`const self = arr :: Raw<T>` — 비용 0, perf 56절). `CircularDeque` 는 칸이 **물리** 위치라 칸·`head`·`cap` 을 아예
+  숨기고 `size` 는 읽기만. ⚠️ 대가: 리스트를 **읽고 쓰는** 타입(`{ T }`)을 받는 자리에 `Arr` 가 안 들어갑니다 — 라이브러리의 생성자 중 리스트를
+  읽기만 하는 것(`FromList`·`FromRecords`·`Arr.FromTable`·`Fut.All`·`Common.denseList`)은 `{ read [number]: T }` 로 받게 바꿨고, 내장 함수
+  (`table.concat`·`table.sort`·`table.move`)에 바로 넘기는 사용자 코드는 `Arr.Join` 이나 캐스트(`spikes/73`). 새 함수가 리스트를 읽기만 하면
+  `{ read [number]: T }` 로 받으세요.
 - **배열 표현**: `{ n: number, [number]: T }` + 타입 토큰(`__type`).
   Lua 기본 `#` 대신 `self.n` 을 신뢰합니다 — 희소 배열과 꼬리 `nil` 문제를
   피하기 위함입니다. 1..n 사이에 구멍이 있을 수 있고, **각 함수가 구멍을

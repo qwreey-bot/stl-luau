@@ -1351,7 +1351,11 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 
 ---
 
-### BB. 종류 = 닫힌 트레이트(`Trait.Struct`), 공개 타입이 칸을 보일지 — 시제품 `proto/trait-struct` (2026-10-15) — **[답 기다림]**
+### BB. 종류 = 닫힌 트레이트(`Trait.Struct`), 공개 타입이 칸을 보일지 — 시제품 `proto/trait-struct` (2026-10-15) — **[결정·반영 2026-10-15]**
+
+> **결정**(사용자): (가) *"깔끔히 통일해두면"* → 모든 종류에 `Trait.Struct`·`Seal`. (나) *"권고대로"* → ② `Arr` 는 읽기 전용 인덱서·`n` + `Arr.Set`.
+> (다) 사용자: *"__traits 는 dyn 경로에 대한 타입앵커 … 컨테이너 타입 자체에 __traits를 왜 적는지 … 파편화 된 감"* → `__traits` 에 자기 종류는 안 적음,
+> 컨테이너의 `__traits` = 정의하는 자리에서 직접 구현한 트레이트(Java `implements`), 나중에 붙은 것 = `As`(어댑터) — 규약 트레이트 절에 그 경계.
 
 기록: `.claude/research/trait-struct/README.md`. 사용자: *"Arr 조차 Trait 이여야 하는거 아닌가 … struct Arr impl Arr {}"*, *"read [number]: T 를 공개 해야할 까"*.
 

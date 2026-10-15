@@ -70,7 +70,7 @@ src/
     Stack.luau       스택(LIFO) — Push·Pop·Peek. 덱을 모름(질문 BA): 덱이면 따라오는 뭉텅이 구현과 변환자 AsStack 은 Deque.luau 에, 덱이 아닌 종류는 ImplFor
     Queue.luau       큐(FIFO) — Push·Pop·Peek. 같은 모양
   Collections/     컨테이너
-    Arr.luau         배열. 연산 103(checked/unchecked, 구멍 다루기, GroupBy 계열은 목적지 맵을 인자로 받음) + 생성자 8
+    Arr.luau         배열. 연산 104(checked/unchecked, 구멍 다루기, GroupBy 계열은 목적지 맵을 인자로 받음, 칸 쓰기 Set) + 생성자 8. 칸·n 은 읽기만 공개(질문 BB)
     HashMap.luau     해시 맵. { data, size } 래퍼
     HashSet.luau     HashMap 위에 단방향으로 얹음
     TreeMap.luau     ⭐ 키 순서 맵 — **노드 기반 균형 트리**(3층 조립: 기본 레드블랙, 둘째 인자로 균형 방식 선택)
