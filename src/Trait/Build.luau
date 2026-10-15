@@ -13,11 +13,12 @@
 	에러(Rust 처럼 겹침 금지). 아무것도 없으면 표가 없습니다.
 
 	**짓기**(`assemble`)는 아무것도 고치지 않습니다 — 검사에 걸리면 에러이고 그때까지 바뀐 것이 없습니다. 등록(`onFor`)과 뭉텅이
-	등록(`onWhere`)은 **먼저 지어 보고** 통과하면 기록하고 놓습니다(실패하면 아무것도 남지 않음). ⚠️ 그 뒤 위로 번지는 다시 짓기(다른
-	트레이트의 표)는 만드는 함수가 던지지 않는다는 계약에 기댑니다 — 거기서 던지면 원래 등록은 놓인 채 남고 뒤의 표는 낡습니다
-	(정의되지 않은 동작). 나중에 생기는 종류(새 토큰·새 등록)에서 만드는 함수가 던지는 것도 같습니다. 위로 번지는 다시 짓기에서
-	**시스템이** 내는 에러도 같은 꼴입니다 — 다른 트레이트의 뭉텅이 둘이 그 종류에서 처음 겹침, 뭉텅이가 준 표의 빠짐이 조건을 갖춘
-	첫 종류에서야 드러남: 에러 줄·문구는 맞지만 원래 등록은 놓인 채 남고 뒤의 표는 낡습니다(관측 — 질문 AD, 리뷰 2라운드 참고 6).
+	등록(`onWhere`)은 **먼저 지어 보고** 통과하면 기록하고 놓습니다.
+	⭐ **등록 하나는 묶음입니다**(`transact` — `NewToken`·`ImplFor`·`ImplWhere` 셋 다): 그동안 바꾼 것(놓은 표 — 같은 테이블의 옛 내용,
+	기록, 토큰)을 일지(`note`)에 적어 두고, 위로 번지는 다시 짓기에서 무엇이 던지든(다른 트레이트의 뭉텅이 둘이 그 종류에서 처음 겹침,
+	뭉텅이가 준 표의 빠짐이 조건을 갖춘 첫 종류에서야 드러남, 만드는 함수가 던짐) **전부 되돌리고** 다시 던집니다. 라이브러리 에러는
+	사용자의 등록 줄, 사용자 코드의 에러는 그 줄 그대로(`Common.transact`). 예전엔 계기가 된 등록이 남아, 실패한 "모든 종류" 뭉텅이가
+	그 뒤 무관한 `NewToken` 마다 던졌습니다(2026-10-15 리뷰 2~4라운드 — 같은 뿌리가 라운드마다 한 겹씩 깊어져 뿌리를 막음).
 	완성 표는 `{ [함수번호] = f, 이름 = f }`(진입점은 번호로, 종류를 아는 코드는 이름으로).
 	⚠️ 계약: 만드는 함수(기본 구현, 뭉텅이의 builder)는 던지지 않고 표만 돌려줌 — 여러 번 불립니다.
 ]]
@@ -31,6 +32,40 @@ type Record = Registry.Record
 const records = Registry.records
 
 const Build = {}
+
+-- 되돌리기 일지: 등록 하나(`transact`)가 도는 동안 바꾼 것마다 되돌리는 함수를 적고, 던지면 거꾸로 부릅니다.
+local journal: { () -> () }? = nil
+const function note(undo: () -> ())
+	if journal ~= nil then
+		table.insert(journal, undo)
+	end
+end
+Build.note = note
+
+-- 등록 하나를 묶음으로: 던지면 그동안 바꾼 것(놓은 표·기록·토큰)을 전부 되돌리고 다시 던짐(`Common.transact` — 사용자 줄 유지).
+-- 이미 묶음 안이면(만드는 함수 안에서 또 등록) 바깥 묶음이 되돌립니다.
+function Build.transact(fn: () -> ())
+	if journal ~= nil then
+		fn()
+		return
+	end
+	journal = {}
+	Common.transact(fn, function()
+		const undo = journal :: { () -> () }
+		journal = nil
+		for at = #undo, 1, -1 do
+			undo[at]()
+		end
+	end)
+	journal = nil
+end
+
+const function removeValue(list: { any }, value: any)
+	const at = table.find(list, value)
+	if at ~= nil then
+		table.remove(list, at)
+	end
+end
 
 -- 그 종류가 `deps` 를 다 갖췄으면 `[트레이트] = 완성 표`, 아니면 nil.
 const function depsOf(deps: { any }, token: any): { [any]: any }?
@@ -140,12 +175,22 @@ local refresh: (trait: any, token: any) -> ()
 const function commit(trait: any, rec: Record, token: any, full: { [any]: any })
 	const existing = rec.impls[token]
 	if existing ~= nil then
+		const saved = table.clone(existing)
+		note(function()
+			table.clear(existing)
+			for key, fn in saved do
+				existing[key] = fn
+			end
+		end)
 		table.clear(existing)
 		for key, fn in full do
 			existing[key] = fn
 		end
 	else
 		rec.impls[token] = full
+		note(function()
+			rec.impls[token] = nil
+		end)
 	end
 	const dependents = rec.dependents
 	for at = 1, #dependents do
@@ -235,6 +280,9 @@ function Build.onFor(trait: any, token: any, given: { [string]: any })
 	const copy = snapshot(rec, token, given)
 	const full = assemble(rec, token, copy)
 	rec.explicit[token] = copy
+	note(function()
+		rec.explicit[token] = nil
+	end)
 	commit(trait, rec, token, full)
 end
 
@@ -269,11 +317,18 @@ function Build.onWhere(trait: any, blanket: Registry.Blanket)
 		end
 	end
 	table.insert(rec.blankets, blanket)
+	note(function()
+		removeValue(rec.blankets, blanket)
+	end)
 	for _, dep in blanket.deps do
 		const depRec = records[dep]
 		if not depRec.dependentSet[trait] then
 			depRec.dependentSet[trait] = true
 			table.insert(depRec.dependents, trait)
+			note(function()
+				depRec.dependentSet[trait] = nil
+				removeValue(depRec.dependents, trait)
+			end)
 		end
 	end
 	for at = 1, #tokens do

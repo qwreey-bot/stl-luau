@@ -175,6 +175,12 @@ function exports.registerSource(source: string)
 end
 exports.registerSource(debug.info(1, "s"))
 
+-- `transact` 안이면 0 보다 큼 — 그동안 라이브러리 코드가 바로 낸 `raise` 는 위치를 붙이지 않고 표식 값으로 던집니다(아래 `transact`
+-- 가 받아 되돌린 뒤 **자기 자리에서** 다시 `raise` 해 사용자 줄을 찾음). `pcall` 안에서 걸으면 첫 비라이브러리 프레임이 `pcall` 의
+-- C 프레임이라 위치가 빠지기 때문입니다.
+local deferring = 0
+const DEFERRED = table.freeze({})
+
 function exports.raise(message: string): never
 	local level = 2
 	while true do
@@ -184,6 +190,11 @@ function exports.raise(message: string): never
 			error(message, 0)
 		end
 		if not librarySources[source] then
+			-- 묶음(`transact`) 안에서 처음 만난 비라이브러리 프레임이 그 `pcall`(C)이면 위치를 미룸 — 사용자 코드(뭉텅이의 builder,
+			-- 기본 구현 빌더) 안이면 그 줄이 맞으니 그대로 던짐.
+			if deferring > 0 and source == "[C]" then
+				return exports.rethrow({ [DEFERRED] = message })
+			end
 			break
 		end
 		level += 1
@@ -197,6 +208,24 @@ end
 -- 겉모양이 같아 게이트가 못 가렸습니다(3라운드 리뷰). 그래서 둘을 이름으로 가릅니다.
 function exports.rethrow(value: any): never
 	error(value, 0)
+end
+
+-- 실패하면 되돌려야 하는 묶음(트레이트 등록 — 등록부의 기록과 지은 표)을 돌립니다. `fn` 이 던지면 `undo` 를 부르고 다시 던집니다:
+-- 라이브러리의 `raise` 는 여기서 다시 `raise` 해 **사용자 줄**을 가리키고(묶음 안의 위치는 버림), 그 밖의 값(사용자 코드 — 뭉텅이의
+-- builder 등이 던진 것)은 그대로. 실패한 등록이 반쯤 남아 그 뒤 무관한 `NewToken` 마다 던지던 것을 막으려고 둡니다(2026-10-15
+-- 트레이트 리뷰 2~4라운드 — 같은 뿌리가 라운드마다 한 겹씩 깊어져 뿌리를 막음). 비용은 등록할 때만.
+function exports.transact(fn: () -> (), undo: () -> ())
+	deferring += 1
+	const ok, err = pcall(fn)
+	deferring -= 1
+	if ok then
+		return
+	end
+	undo()
+	if type(err) == "table" and rawget(err :: any, DEFERRED) ~= nil then
+		exports.raise(rawget(err :: any, DEFERRED))
+	end
+	exports.rethrow(err)
 end
 
 -- 비교자 인자가 함수인지. 정렬 구조의 생성자가 씁니다 — 빈 구조에서는 비교가 일어나지 않아 `nil` 비교자가

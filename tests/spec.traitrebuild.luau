@@ -914,6 +914,87 @@ do
 		not T.Implements(ShowB, stl.HashMap.New()) and ShowB.Show(T.Stamp({}, doc)) == "printable",
 		"Every 가 남지 않음"
 	)
+
+	-- (13) 등록은 묶음 — 던지면 그동안 바꾼 것(놓은 표·기록·토큰)을 전부 되돌림(리뷰 2~4라운드: 위로 번지는 다시 짓기에서 던지면 계기가 된
+	-- 등록이 남아, 그 뒤 무관한 NewToken 마다 던지기도 했음). 에러 줄은 여전히 사용자 줄.
+	-- (a) 번지는 다시 짓기의 실패: 계기가 된 명시 등록은 남지 않고, 놓였던 표는 **같은 테이블**에 옛 내용으로
+	const TxQ: any = T.Trait("Test.Rebuild.TxQ", factory({ Get = T.Fn() }))
+	const TxP: any = T.Trait("Test.Rebuild.TxP", factory({ Name = T.Fn() }))
+	const TxX: any = T.Trait("Test.Rebuild.TxX", factory({ Run = T.Fn() }))
+	local function blanketName()
+		return "blanket"
+	end
+	TxP.ImplWhere({ TxQ }, function(_deps: any)
+		return { Name = blanketName }
+	end)
+	TxX.ImplWhere({ TxP }, function(deps: any)
+		const name = deps[TxP].Name
+		return if name == blanketName then { Run = name } else {} -- 명시 구현의 이름이면 Run 을 빠뜨림(번지다 실패)
+	end)
+	const txKind = T.NewToken("Test.Rebuild.TxKind")
+	TxQ.ImplFor(txKind, { Get = print })
+	const held = TxP.Of(txKind)
+	for _ = 1, 2 do -- 두 번째도 같은 에러(첫 실패가 "already implements" 를 남기지 않음)
+		fails(
+			function()
+				where = debug.info(1, "l") + 1
+				TxP.ImplFor(txKind, {
+					Name = function()
+						return "explicit"
+					end,
+				})
+			end,
+			"Trait: a blanket implementation of Test.Rebuild.TxX (ImplWhere) for Test.Rebuild.TxKind is missing Run",
+			"번지다 실패"
+		)
+	end
+	assert(TxP.Of(txKind) == held and held.Name == blanketName, "놓였던 표가 같은 테이블에 옛 내용으로")
+	assert(
+		TxP.Name(T.Stamp({}, txKind)) == "blanket" and TxX.Run(T.Stamp({}, txKind)) == "blanket",
+		"진입점도 옛 구현"
+	)
+	-- (b) 간접 Every(4라운드): 목록 뭉텅이 둘 → 한쪽 의존에 Every 를 걸다 위에서 겹침 — Every 가 남지 않아 그 뒤 NewToken 이 멀쩡함
+	const IA: any = T.Trait("Test.Rebuild.IndirectA", factory({ A = T.Fn() }))
+	const IB: any = T.Trait("Test.Rebuild.IndirectB", factory({ B = T.Fn() }))
+	const IShow: any = T.Trait("Test.Rebuild.IndirectShow", factory({ Show = T.Fn() }))
+	IA.ImplWhere(T.Every, function(_deps: any)
+		return { A = print }
+	end)
+	IShow.ImplWhere({ IA }, function(deps: any)
+		return { Show = deps[IA].A }
+	end)
+	IShow.ImplWhere({ IB }, function(deps: any)
+		return { Show = deps[IB].B }
+	end)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		IB.ImplWhere(T.Every, function(_deps: any)
+			return { B = print }
+		end)
+	end, "Trait: two blanket implementations of Test.Rebuild.IndirectShow apply to", "간접 Every 의 겹침")
+	assert(not T.Implements(IB, stl.HashMap.New()), "실패한 Every 는 남지 않음")
+	const afterIndirect = T.NewToken("Test.Rebuild.AfterIndirect") -- 예전엔 여기서 IndirectShow 의 겹침으로 던졌음
+	assert(IShow.Of(afterIndirect).Show == print, "새 종류도 정상")
+	-- (c) NewToken 이 던지면 토큰도 남지 않음(같은 이름으로 다시 만들 수 있음), 사용자 builder 의 에러는 **그 줄 그대로**
+	local boom = false
+	local boomLine = 0
+	const Flaky: any = T.Trait("Test.Rebuild.Flaky", factory({ Run = T.Fn() }))
+	Flaky.ImplWhere(T.Every, function(_deps: any)
+		if boom then
+			boomLine = debug.info(1, "l") + 1
+			error("flaky builder")
+		end
+		return { Run = function() end }
+	end)
+	boom = true
+	const okFlaky, errFlaky = pcall(T.NewToken, "Test.Rebuild.FlakyKind")
+	assert(
+		not okFlaky and string.find(tostring(errFlaky), `spec.traitrebuild.luau:{boomLine}: flaky builder`, 1, true),
+		tostring(errFlaky)
+	)
+	boom = false
+	const flakyKind = T.NewToken("Test.Rebuild.FlakyKind")
+	assert(T.Implements(Flaky, T.Stamp({}, flakyKind)), "같은 이름으로 다시 만들고 Every 도 붙음")
 end
 print("PASS")
 

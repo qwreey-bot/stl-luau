@@ -157,10 +157,21 @@ const function NewToken<N>(name: N & string): Token<N>
 		Errors.tokenTaken(name)
 	end
 	const token = table.freeze({ name = name })
-	Registry.byName[name] = token
-	isToken[token] = true
-	table.insert(Registry.tokens, token)
-	Build.onToken(token)
+	-- 묶음으로: "모든 종류" 뭉텅이를 이 종류에 짓다 던지면 토큰도 남지 않음(같은 이름으로 다시 만들 수 있음)
+	Build.transact(function()
+		Registry.byName[name] = token
+		isToken[token] = true
+		table.insert(Registry.tokens, token)
+		Build.note(function()
+			Registry.byName[name] = nil
+			isToken[token] = nil
+			const at = table.find(Registry.tokens, token)
+			if at ~= nil then
+				table.remove(Registry.tokens, at)
+			end
+		end)
+		Build.onToken(token)
+	end)
 	return token :: any
 end
 
@@ -320,7 +331,9 @@ function implFor(trait: any, token: any, impl: any)
 	if type(impl) ~= "table" then
 		Errors.implNotTable(rec.name, impl)
 	end
-	Build.onFor(trait, token, impl)
+	Build.transact(function()
+		Build.onFor(trait, token, impl)
+	end)
 end
 
 function implWhere(trait: any, deps: any, build: any)
@@ -377,7 +390,9 @@ function implWhere(trait: any, deps: any, build: any)
 			Errors.whereCycle(rec.name, records[list[at]].name)
 		end
 	end
-	Build.onWhere(trait, { deps = list, build = build })
+	Build.transact(function()
+		Build.onWhere(trait, { deps = list, build = build })
+	end)
 end
 
 type TraitFn = <F>(name: string, def: F) -> Object<View<F, "full">, View<F, "impl">>
