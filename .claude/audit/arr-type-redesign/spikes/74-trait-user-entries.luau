@@ -40,6 +40,9 @@ do
 				Log = Trait.Fn<<(bag: Self, pool: { read [number]: T }, ...any) -> ()>>(),
 				AddAllS = Trait.FnMut<<(bag: Self, items: { read [number]: T }) -> Self>>(),
 				Bucket = Trait.Fn<<(bag: Self, key: T) -> { read [number]: T }>>(),
+				TryPick = Trait.FnMut<<(bag: Self, pool: { read [number]: T }) -> (boolean, T)>>(),
+				Unpack = Trait.Fn<<(bag: Self, w: { read [number]: number }) -> ...T>>(),
+				Dump = Trait.Fn<<(bag: Self, pool: { read [number]: T }) -> ...any>>(),
 				FoldIn = Trait.Default(
 					function(_ops: any): <U>(bag: Self, init: U, f: (U, T) -> U, pool: { read [number]: T }) -> U
 						return function<U>(_bag: Self, init: U, _f: (U, T) -> U, _pool: { read [number]: T }): U
@@ -118,8 +121,33 @@ local folded: string = Bag.FoldIn(b, "", function(acc: string, v: number): strin
 end, arr) -- 칸 자신의 `U` 를 맨 인자로 받아도 다시 짓지 않음
 local self2: MyBag<number> = Bag.AddAllS(b, { 1 }) -- `-> Self` 도 맨 반환(안 세면 'got Self')
 Bag.AddAllS(b, arr) -- 경계: 그래서 다시 지어 읽기 전용 인덱서를 잃음 → `Arr` 거절(이 줄의 에러가 지금의 동작)
+-- 반환의 둘째 자리·꼬리(리뷰 5라운드 — 돌연변이 R02·R06·R07: 꼬리를 안 보거나 첫 반환만 보거나 `...any` 도 세면 잡혀야 함.
+-- ⚠️ 나눠 쓰는 칸들이 함께 있어야 드러나서 두 칸을 같이 둠)
+local tpOk: boolean, tpV: number = Bag.TryPick(b, { 1 })
+local upV: number = Bag.Unpack(b, { 1 })
+Bag.Dump(b, arr) -- `...any` 반환 꼬리는 맨 정의 제네릭이 아님
 local bucket = Bag.Bucket(b, 1)
 bucket[1] = 5 -- 경계(0건): 맨 인자 칸은 다시 지어 **반환의** 읽기 전용 인덱서도 잃음(리뷰 4라운드 ② — 받아들인 대가의 다른 쪽)
 
 local canary: string = 1
-return { picked, folded, self2, p, n, parts, first, same, mapped, negPeek, wideSelf, negMap, negParts, shadow, o, canary }
+return {
+	tpOk,
+	tpV,
+	upV,
+	picked,
+	folded,
+	self2,
+	p,
+	n,
+	parts,
+	first,
+	same,
+	mapped,
+	negPeek,
+	wideSelf,
+	negMap,
+	negParts,
+	shadow,
+	o,
+	canary,
+}

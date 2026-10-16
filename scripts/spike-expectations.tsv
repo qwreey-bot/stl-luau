@@ -74,4 +74,4 @@
 21	.claude/audit/arr-type-redesign/spikes/71-trait-ofmut.luau	17,18,25,26,28,45,47,54,55,59,90,92,104,106,106,106,117,127,128,129,131
 17	.claude/audit/arr-type-redesign/spikes/72-trait-adapter.luau	27,28,29,30,31,32,33,35,37,41,42,43,44,73,91,97,104
 13	.claude/audit/arr-type-redesign/spikes/73-trait-struct.luau	18,24,25,26,27,30,31,39,40,41,42,65,69
-16	.claude/audit/arr-type-redesign/spikes/74-trait-user-entries.luau	85,86,87,89,92,93,97,98,99,102,106,109,111,114,120,124
+16	.claude/audit/arr-type-redesign/spikes/74-trait-user-entries.luau	88,89,90,92,95,96,100,101,102,105,109,112,114,117,123,132
