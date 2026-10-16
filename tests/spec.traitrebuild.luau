@@ -1177,9 +1177,19 @@ do
 			where = debug.info(1, "l") + 1
 			T.Struct("Test.Rebuild.BagKind2").Seal(stl.Stack)
 		end,
-		"Trait: Test.Rebuild.BagKind2.Seal needs a module table that is not already a trait or a kind",
+		"Trait: Test.Rebuild.BagKind2.Seal needs a module table that is not already a trait, a kind, a token or a value",
 		"트레이트를 봉인"
 	)
+	-- 토큰·값도 거절(리뷰 1라운드 F8 — 받으면 `TokenOf(토큰)`·`TokenOf(그 값)` 이 엉뚱한 종류를 가리켰음)
+	fails(function()
+		where = debug.info(1, "l") + 1
+		T.Struct("Test.Rebuild.BagKind3").Seal(T.NewToken("Test.Rebuild.BagKind3Tok") :: any)
+	end, "Trait: Test.Rebuild.BagKind3.Seal needs a module table", "토큰을 봉인")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		T.Struct("Test.Rebuild.BagKind4").Seal(stl.Arr.Of(1) :: any)
+	end, "Trait: Test.Rebuild.BagKind4.Seal needs a module table", "다른 종류의 값을 봉인")
+	assert(T.TokenOf(stl.Arr.Of(1)) == T.TokenOf(stl.Arr), "거절된 봉인은 아무것도 바꾸지 않음")
 	stl.Stack.ImplFor(Bag, {
 		Push = function(b: any, x: any): any
 			table.insert(b.items, x)

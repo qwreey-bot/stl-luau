@@ -150,7 +150,11 @@ function Errors.structSealed(name: string): never
 	return raise(`Trait: {name} is already sealed (Trait.Struct seals once)`)
 end
 function Errors.structBad(name: string, got: any): never
-	return raise(`Trait: {name}.Seal needs a module table that is not already a trait or a kind (got {typeof(got)})`)
+	return raise(
+		`Trait: {name}.Seal needs a module table that is not already a trait, a kind, a token or a value (got {typeof(
+			got
+		)})`
+	)
 end
 
 return Errors

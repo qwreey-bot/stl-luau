@@ -569,7 +569,8 @@ end
 -- 모듈 맨 위에서 `Trait.Struct(이름)`(토큰도 같이 — `NewToken` 자리), 맨 끝에서 `Kind.Seal(모듈 표)` — **그 표가 곧 종류의 정체이자 닫힌
 -- 트레이트**입니다(`stl.Arr`). 그래서 쓰는 쪽은 토큰을 만지지 않습니다: `Stack.ImplFor(stl.Arr, impl)`, `Trait.Converter(stl.Arr)`(아래로),
 -- `Trait.Implements(stl.Arr, v)`. 함수는 그 자리 그대로(직접 호출 — 닫혀 있으니 구현을 찾을 일이 없음).
--- 토큰은 라이브러리 안쪽에서만(생성자가 `__type` 에 찍는 상수 — `Kind.Token`).
+-- 토큰은 라이브러리 안쪽에서만(생성자가 `__type` 에 찍는 상수 — `Kind.Token`). ⚠️ 토큰 타입을 리터럴로(`Token<"My.Kind">`) 얻으려면 명시적 타입
+-- 인자를 — `Trait.Struct<<"My.Kind">>("My.Kind")`(인자만 넘기면 `Token<string>` — `NewToken` 도 같음, 리뷰 1라운드 F7).
 export type Kind<N> = {
 	read Token: Token<N>,
 	read Seal: <M>(module: M) -> M,
@@ -582,7 +583,14 @@ const function Struct<N>(name: N & string): Kind<N>
 		if sealed then
 			Errors.structSealed(name)
 		end
-		if type(module) ~= "table" or records[module] ~= nil or kindToken[module] ~= nil then
+		-- 토큰·다른 종류의 값도 거절 — 받으면 `TokenOf` 가 엉뚱한 종류를 가리켰음(리뷰 1라운드 F8)
+		if
+			type(module) ~= "table"
+			or records[module] ~= nil
+			or kindToken[module] ~= nil
+			or isToken[module]
+			or rawget(module, TYPE_KEY) ~= nil
+		then
 			Errors.structBad(name, module)
 		end
 		sealed = true
