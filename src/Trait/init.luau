@@ -307,6 +307,8 @@ export type function Entries(def)
 							return true
 						end
 					end
+				elseif t:is("negation") then
+					return occurs(t:inner(), seen)
 				elseif t:is("table") then
 					for _, prop in t:properties() do
 						if
@@ -315,6 +317,12 @@ export type function Entries(def)
 						then
 							return true
 						end
+					end
+					-- 인덱서 안도(`{ Self }`·`{ [k]: Self }` — 안 보던 때는 `Self` 를 빼 버려 묶이지 않은 제네릭이 남고 트레이트의 진입점이 전부
+					-- 사라졌음, 2026-10-16 리뷰 1라운드 F1)
+					local ix = t:indexer()
+					if ix ~= nil and (occurs(ix.index, seen) or occurs(ix.readresult, seen)) then
+						return true
 					end
 				end
 				return false
@@ -369,21 +377,87 @@ export type function Entries(def)
 			else
 				newHead[1] = dropped
 			end
-			local generics: { type } = {}
-			local map: { [type]: type } = {}
-			for i, g in defGenerics do
-				local n = types.generic(g:name() or "T", g:ispack())
-				map[g] = n
-				if i > 1 or usesSelf then
-					table.insert(generics, n)
+			-- ⚠️ 칸 자신의 제네릭 이름(`<T>`)이 정의의 것과 겹치면 **그 진입점 서명만 뺍니다**(런타임 진입점은 있음 — 칸의 제네릭 이름을 바꾸세요).
+			-- 그대로 지으면 "Duplicate type parameter" 로 트레이트의 진입점이 **전부** 사라졌고(리뷰 1라운드 F2), 새 이름으로 바꿔 지어도 타입 함수가
+			-- 받은 정의 안에서 바깥 `T` 와 가린 `T` 가 섞여(첫 인자가 칸의 `T` 를 가리킴) 믿을 수 없었습니다(`spikes/74` 의 경계 줄).
+			local ownNames: { [string]: boolean } = {}
+			for _, g in fnType:generics() do
+				const name: string? = g:name()
+				if type(name) == "string" then
+					ownNames[name] = true
 				end
 			end
-			for _, g in fnType:generics() do
-				table.insert(generics, g)
+			-- ⚠️ **인덱서가 든 칸은 다시 짓지 않습니다**(정의의 제네릭을 그대로): 타입 함수는 읽기 전용 인덱서를 만들지도(`setreadindexer` 미지원,
+			-- `writeresult` 무시) 알아보지도(`{ read [K]: V }` 와 `{ [K]: V }` 가 같게 보임) 못해, 다시 지으면 `read` 를 잃었습니다 — `Map.Iter`
+			-- 결과에 쓰기가 0건으로 맵 안쪽을 오염시키고, 읽기 리스트를 받는 칸이 `Arr` 를 거절(리뷰 1라운드 T2·F3). 손대지 않고 돌려준 타입은
+			-- 읽기 전용이 살아 있습니다(`View` 와 같음). 그 칸 하나만 정의의 제네릭을 쓰니 "나눠 쓰면 안 묶임" 은 안 남습니다(`spikes/74`).
+			local function hasIndexer(t: type, seen: { [type]: boolean }): boolean
+				if seen[t] then
+					return false
+				end
+				seen[t] = true
+				if t:is("union") or t:is("intersection") then
+					for _, c in t:components() do
+						if hasIndexer(c, seen) then
+							return true
+						end
+					end
+				elseif t:is("negation") then
+					return hasIndexer(t:inner(), seen)
+				elseif t:is("function") then
+					for _, pk in { t:parameters(), t:returns() } do
+						for _, h in pk.head or {} do
+							if hasIndexer(h, seen) then
+								return true
+							end
+						end
+						if pk.tail ~= nil and hasIndexer(pk.tail, seen) then
+							return true
+						end
+					end
+				elseif t:is("table") then
+					if t:indexer() ~= nil then
+						return true
+					end
+					for _, prop in t:properties() do
+						if
+							(prop.read ~= nil and hasIndexer(prop.read, seen))
+							or (prop.write ~= nil and hasIndexer(prop.write, seen))
+						then
+							return true
+						end
+					end
+				end
+				return false
 			end
-			local built = types.newfunction({ head = newHead, tail = fp.tail }, fnType:returns(), {})
-			local renamed = subst(built, map, {})
-			out[key] = { read = types.newfunction(renamed:parameters(), renamed:returns(), generics) }
+			local clash = false
+			for _, g in defGenerics do
+				const name: string? = g:name()
+				if type(name) == "string" and ownNames[name] then
+					clash = true
+				end
+			end
+			if not clash then
+				local keepOriginal = hasIndexer(fnType, {})
+				local generics: { type } = {}
+				local map: { [type]: type } = {}
+				for i, g in defGenerics do
+					local n = g
+					if not keepOriginal then
+						n = types.generic(g:name() or "T", g:ispack())
+						map[g] = n
+					end
+					if i > 1 or usesSelf then
+						table.insert(generics, n)
+					end
+				end
+				for _, g in fnType:generics() do
+					table.insert(generics, g)
+				end
+				local built = types.newfunction({ head = newHead, tail = fp.tail }, fnType:returns(), {})
+				local renamed = if keepOriginal then built else subst(built, map, {})
+				out[key] = { read = types.newfunction(renamed:parameters(), renamed:returns(), generics) }
+			end
 		end
 	end
 	return types.newtable(out)

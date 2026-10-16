@@ -110,6 +110,13 @@ local negThreeParams = Trait.Trait(
 	end
 )
 
+-- 6. 진입점의 읽기 전용 인덱서(리뷰 1라운드 T2 — 다시 지으며 `read` 를 잃어 `Map.Iter` 결과에 쓰기가 0건, 맵 안쪽이 오염됐음)
+local hmIter = stl.HashMap.New<<string, number>>()
+local inner = stl.Map.Iter(hmIter)
+if type(inner) == "table" then
+	inner.evil = 999 -- NEG: 안쪽 테이블에 바로 씀
+end
+
 local canary: string = 1
 return {
 	len,
