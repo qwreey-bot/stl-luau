@@ -121,10 +121,19 @@ local negStackPop: number = stl.Stack.Pop(stl.Deque.AsStack(d))
 stl.Queue.Pop(stl.Deque.AsQueueRead(borrowed))
 stl.Queue.Push(stl.Arr.Of(1), 2)
 
+-- 머리·꼬리·크기는 읽기만(리뷰 1라운드 T4 — 질문 BB 의 "칸과 길이는 읽기만 공개", 바로 쓰면 연결과 크기가 어긋남)
+local headNode: NodeRead<number>? = d.head
+local sizeNow: number = d.size
+d.size = 0 -- NEG
+d.head = nil -- NEG
+d.tail = nil -- NEG
+
 local canary: string = 42
 
 return {
 	widened,
+	headNode,
+	sizeNow,
 	front,
 	popped,
 	same,

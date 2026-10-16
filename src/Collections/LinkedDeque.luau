@@ -50,10 +50,12 @@ type Node<T> = Double.Node<T>
 type NodeRead<T> = Double.NodeRead<T>
 type Arr<T> = Arr.Arr<T>
 
+-- 머리·꼬리·크기는 **읽기만** 공개합니다(질문 BB — `Arr` 의 `read n` 과 같은 규칙, 2026-10-16 리뷰 1라운드 T4): 바로 쓰면 연결과 크기가
+-- 어긋납니다. 안쪽은 받자마자 `any` 로 받아 씁니다. 머리·꼬리는 위치로 내주는 것이라 읽기 노드(`NodeRead`).
 export type LinkedDequeData<T> = {
-	head: Node<T>?,
-	tail: Node<T>?,
-	size: number,
+	read head: NodeRead<T>?,
+	read tail: NodeRead<T>?,
+	read size: number,
 	read __type: Trait.Token<"Stl.LinkedDeque">,
 	-- 이 종류가 구현하는 트레이트와 그 인자(질문 BA — 타입에만 있음, 읽으면 nil)
 	read __traits: {
@@ -312,9 +314,10 @@ end
 -- 비웁니다. O(1) — 노드들은 서로 이어진 채 버려집니다(쥐고 있던 위치는 더는 이 덱의 것이 아닙니다 —
 -- 넘기면 대부분 에러, 가운데 노드는 정의되지 않은 동작).
 const function Clear<T>(self: LinkedDequeData<T>): LinkedDeque<T>
-	self.head = nil
-	self.tail = nil
-	self.size = 0
+	const deque: any = self
+	deque.head = nil
+	deque.tail = nil
+	deque.size = 0
 	return self :: any
 end
 
