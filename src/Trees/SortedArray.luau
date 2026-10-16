@@ -39,7 +39,7 @@ const Find, LowerBound, UpperBound = BSearch.Find, BSearch.LowerBound, BSearch.U
 
 -- 키가 **있는 자리, 없으면 들어갈 자리**와 "이미 있는가" 를 같이 돌려줍니다. 넣기의 첫 걸음입니다 —
 -- 있으면 그 자리의 원소를 고치고, 없으면 그 자리에 `InsertAt`.
-const function Locate<E, K>(list: { E }, count: number, key: K, probe: Probe<E, K>): (number, boolean)
+const function Locate<E, K>(list: { read [number]: E }, count: number, key: K, probe: Probe<E, K>): (number, boolean)
 	const pos = LowerBound(list, count, key, probe)
 	return pos, pos <= count and probe(list[pos], key) == 0
 end
@@ -80,8 +80,8 @@ end
 
 -- `other` 의 `1..otherCount` 를 **뒤에 이어 붙입니다**(`other` 는 그대로 — 비우는 것은 쓰는 쪽이). 순서는 검사하지
 -- 않습니다: `other` 의 모든 키가 `list` 의 모든 키보다 커야 정렬이 유지됩니다(호출자 책임). O(otherCount).
-const function Append<E>(list: { E }, count: number, other: { E }, otherCount: number)
-	table.move(other, 1, otherCount, count + 1, list)
+const function Append<E>(list: { E }, count: number, other: { read [number]: E }, otherCount: number)
+	table.move(other :: { E }, 1, otherCount, count + 1, list) -- 내장의 서명이 읽고 쓰는 리스트라 캐스트(읽기만 함)
 end
 
 -- stylua: ignore

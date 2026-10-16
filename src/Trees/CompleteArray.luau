@@ -110,7 +110,7 @@ const function Heapify<T>(list: { T }, count: number, less: LessThan<T>)
 end
 
 -- `1..count` 가 힙 순서인가(어느 자식도 부모보다 앞서지 않음). 빈 것·하나는 참. O(n) — 검사·디버깅용.
-const function IsHeap<T>(list: { T }, count: number, less: LessThan<T>): boolean
+const function IsHeap<T>(list: { read [number]: T }, count: number, less: LessThan<T>): boolean
 	for idx = 2, count do
 		if less(list[idx], list[idx // 2]) then
 			return false

@@ -463,7 +463,7 @@ end
 
 -- **정렬된** 목록에서 O(n) 으로 짓습니다(`keys[i]`·`values[i]`, `1..count` — 키가 오름차순이고 중복이
 -- 없어야 함: 검사하지 않습니다). 완전 이진 모양으로 쌓고 맨 아래 층만 빨강으로 칠합니다.
-const function FromSorted<K, V>(keys: { K }, values: { V }, count: number): RbNode<K, V>?
+const function FromSorted<K, V>(keys: { read [number]: K }, values: { read [number]: V }, count: number): RbNode<K, V>?
 	if count <= 0 then
 		return nil
 	end

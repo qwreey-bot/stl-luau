@@ -39,7 +39,7 @@ local exports = {}
 
 -- `target` 보다 **앞서지 않는** 첫 위치. 같은 값이 여럿이면 그 중 첫 번째.
 -- 전부 `target` 보다 앞서면 `count + 1`.
-function exports.LowerBound<E, K>(list: { E }, count: number, target: K, probe: Probe<E, K>): number
+function exports.LowerBound<E, K>(list: { read [number]: E }, count: number, target: K, probe: Probe<E, K>): number
 	local low = 1
 	local high = count + 1
 	while low < high do
@@ -55,7 +55,7 @@ function exports.LowerBound<E, K>(list: { E }, count: number, target: K, probe: 
 end
 
 -- `target` 보다 **뒤서는** 첫 위치. 같은 값이 여럿이면 그 다음 자리.
-function exports.UpperBound<E, K>(list: { E }, count: number, target: K, probe: Probe<E, K>): number
+function exports.UpperBound<E, K>(list: { read [number]: E }, count: number, target: K, probe: Probe<E, K>): number
 	local low = 1
 	local high = count + 1
 	while low < high do
@@ -71,7 +71,7 @@ end
 
 -- 같은 값이 있으면 그 위치, 없으면 `nil`.
 -- 같은 값이 여럿이면 **첫 번째**입니다(`LowerBound` 와 같은 자리).
-function exports.Find<E, K>(list: { E }, count: number, target: K, probe: Probe<E, K>): number?
+function exports.Find<E, K>(list: { read [number]: E }, count: number, target: K, probe: Probe<E, K>): number?
 	const pos = exports.LowerBound(list, count, target, probe)
 	if pos <= count and probe(list[pos], target) == 0 then
 		return pos
@@ -82,7 +82,12 @@ end
 -- 같은 값의 구간 `[first, last]`. 없으면 `nil`.
 -- 한 번의 `LowerBound` 로 시작을 찾고, 없으면 `UpperBound` 를 아예 부르지
 -- 않습니다 — 없는 값을 찾는 게 흔한 경우라 그쪽을 짧게 뺍니다.
-function exports.EqualRange<E, K>(list: { E }, count: number, target: K, probe: Probe<E, K>): (number?, number?)
+function exports.EqualRange<E, K>(
+	list: { read [number]: E },
+	count: number,
+	target: K,
+	probe: Probe<E, K>
+): (number?, number?)
 	const first = exports.LowerBound(list, count, target, probe)
 	if first > count or probe(list[first], target) ~= 0 then
 		return nil, nil
@@ -92,7 +97,7 @@ end
 
 -- 정렬돼 있는지 검사합니다. **테스트와 디버깅용입니다** — O(n) 이라 평소
 -- 경로에서 부르지 마세요.
-function exports.IsSorted<E>(list: { E }, count: number, probe: Probe<E, E>): boolean
+function exports.IsSorted<E>(list: { read [number]: E }, count: number, probe: Probe<E, E>): boolean
 	for idx = 2, count do
 		if probe(list[idx - 1], list[idx]) > 0 then
 			return false

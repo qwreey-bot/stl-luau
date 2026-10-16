@@ -362,7 +362,7 @@ const function BindArr(token: Trait.Token<"Stl.Arr">)
 	arrToken = token
 end
 
-const function FromTable<K, V>(tbl: { [K]: V }): HashMap<K, V>
+const function FromTable<K, V>(tbl: { read [K]: V }): HashMap<K, V>
 	const copy: { [K]: V } = {}
 	local count = 0
 	-- `__type` 이 있으면(등록 여부와 무관 — 다른 사본의 컨테이너, 되읽은 테이블도) 이 사본의

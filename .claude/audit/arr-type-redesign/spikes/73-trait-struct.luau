@@ -42,5 +42,29 @@ stl.Arr.Set(arr, 1, "x") -- NEG: 원소 타입
 local negConcat = table.concat(arr, ",") -- NEG(대가): 내장 함수는 읽고 쓰는 리스트를 요구 — Arr.Join 이나 캐스트
 local wideArr: stl.ArrRead<number?> = arr -- 읽기 타입으로는 공변 그대로
 
+-- 리스트를 읽기만 하는 도구는 `Arr` 를 받음(리뷰 1라운드 T3 — `{ T }` 로 받던 열한 곳이 읽기 전용 칸의 `Arr` 를 거절)
+local sortedArr = stl.Arr.Of(10, 20, 30)
+local probe = function(e: number, k: number): number
+	return e - k
+end
+local lb: number = stl.BSearch.LowerBound(sortedArr, sortedArr.n, 20, probe)
+local ub: number = stl.BSearch.UpperBound(sortedArr, sortedArr.n, 20, probe)
+local fd: number? = stl.BSearch.Find(sortedArr, sortedArr.n, 20, probe)
+local er1, er2 = stl.BSearch.EqualRange(sortedArr, sortedArr.n, 20, probe)
+local srt: boolean = stl.BSearch.IsSorted(sortedArr, sortedArr.n, probe)
+local tm = stl.TreeMap.FromSorted(sortedArr, stl.Arr.Of("a", "b", "c"), 3, stl.Common.compareNumber)
+local rb = stl.RedBlack.FromSorted(sortedArr, sortedArr, 3)
+local avl = stl.Avl.FromSorted(sortedArr, sortedArr, 3)
+local loc: number = stl.SortedArray.Locate(sortedArr, 3, 20, probe)
+local heapOk: boolean = stl.CompleteArray.IsHeap(sortedArr, 3, function(a: number, b: number): boolean
+	return a < b
+end)
+local hmFrom = stl.HashMap.FromTable(sortedArr)
+local appendTo = { 1, 2 }
+stl.SortedArray.Append(appendTo, 2, sortedArr, 3)
+local negHeap = stl.CompleteArray.IsHeap(sortedArr, 3, function(a: string, b: string): boolean -- NEG: 원소
+	return a < b
+end)
+
 local canary: string = 1
-return { back, negBack, size, first, negIndex, negHead, wide, negWrite, negElem, firstArr, lenArr, fromArr, negConcat, wideArr, canary }
+return { back, negBack, size, first, negIndex, negHead, wide, negWrite, negElem, firstArr, lenArr, fromArr, negConcat, wideArr, lb, ub, fd, er1, er2, srt, tm, rb, avl, loc, heapOk, hmFrom, negHeap, canary }

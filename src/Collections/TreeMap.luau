@@ -540,8 +540,8 @@ end
 -- **새로 만듭니다**(넘긴 목록은 그대로 호출자의 것).
 -- `TreeSet` 의 집합 연산처럼 병합 결과가 이미 정렬된 자리를 위한 문이고, 일반 사용자는 `FromRecords` 를 쓰세요.
 const function FromSorted<K, V>(
-	keys: { K },
-	values: { V },
+	keys: { read [number]: K },
+	values: { read [number]: V },
 	count: number,
 	compare: Comparator<K>,
 	balance: Scheme?
