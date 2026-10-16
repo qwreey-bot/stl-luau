@@ -52,7 +52,7 @@ local tm = stl.TreeMap.New<<string, number>>(function(x: string, y: string): num
 end)
 local got: number? = stl.Map.Of(tm).Get(tm, "k")
 local negGetKey = stl.Map.Of(tm).Get(tm, 1) -- NEG: 숫자 키
-local negSetRead = stl.Map.Of(tm).Set(tm, "k", 1) -- NEG: 읽기 보기에 Set 없음
+stl.Map.Of(tm).Set(tm, "k", 1) -- NEG: 읽기 보기에 Set 없음(대입 없는 문장 — 대입이면 "값을 0개 돌려줌" 이 같은 줄을 메워 돌연변이가 살았음, 리뷰 1라운드 F5)
 stl.Map.OfMut(tm).Set(tm, "k", 1)
 local hs = stl.HashSet.Of(1, 2)
 local has: boolean = stl.Set.Of(hs).Has(hs, 1)
@@ -87,7 +87,7 @@ do
 	)
 end
 local size: number = Bag.Of(dr).Size(dr)
-local negPutAllRead = Bag.Of(dr).PutAll(dr, { 1 }) -- NEG: 기본 구현이어도 쓰기 칸은 읽기 보기에 없음
+Bag.Of(dr).PutAll(dr, { 1 }) -- NEG: 기본 구현이어도 쓰기 칸은 읽기 보기에 없음(대입 없는 문장 — F5)
 Bag.OfMut(d).PutAll(d, { 1 })
 Bag.OfMut(d).PutAll(d, { "x" }) -- NEG
 local bagOk: typeof(Bag.ImplOf<<CircularDeque<A>, A>>(nil :: any)) = {
@@ -146,11 +146,11 @@ return {
 	negDrainRead,
 	got,
 	negGetKey,
-	negSetRead,
+
 	has,
 	negAddRead,
 	size,
-	negPutAllRead,
+
 	bagOk,
 	bagBad,
 	negThreeParams,
