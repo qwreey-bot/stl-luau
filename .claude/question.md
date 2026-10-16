@@ -1351,6 +1351,23 @@ B 를 고른 이유(제 추천, 사용자 선택): A 는 가장 흔한 목적지
 
 ---
 
+### BC. 빌린 읽기 참조(공변·`read`)를 걷어 낼지 — 시제품 `proto/trait-impl-converter` (2026-10-16) — **[결정 2026-10-16: (가)]**
+
+> **결정**(사용자): *"읽기 전용은 권고대로 해보자."* → (가) **빌림 층만** 걷음: `ArrRead`·`CircularDequeRead`·`LinkedDequeRead`·`ArrConsumed`, 트레이트의
+> `XRead`·`AssocRead`·`ReadFull`, `Of`/`OfMut`·`Fn`/`FnMut` 의 구분, 덱의 `AsStackRead`·`AsQueueRead`. **남김**: `Arr` 의 `read n`·`read` 칸, 연결 덱의
+> `read` 필드, 원형 덱이 칸을 숨기는 것, `Map.Iter` 결과의 `read` — 빌림이 아니라 "그 필드는 네가 쓰는 게 아님"(캡슐화). 질문 AC(읽기 함수의 공변)를 뒤집음.
+
+사용자: *"공변불변, read 같은건 파도파도 문제가 나와서, 그냥 ArrRead 같은걸 포기하고 전부 mut 가능한 상태로 … 처음부터 immut borrow 되는게 아니라서? 밖에 mut
+요소를 만질수도 있고. 어차피 못 막는게 많은데 억지로 끼워넣나 싶은"*. 그 층이 낳은 것: AC·AK·AM 의 마커 둘, `Of`/`OfMut`, T1 의 대가, `Entries` 리뷰 2~5라운드.
+(나)(전부 쓰기 가능 — `Arr` 칸·`n` 까지, `Entries` 의 "다시 지을 칸" 장치를 지울 수 있음)는 BB 의 길이 보호를 내주는 것이라 권하지 않았음.
+대가: 공변이 없어져 `Arr<number>` 를 `Arr<number?>` 자리에 넘기려면 캐스트.
+
+### BD. 모든 트레이트를 dyn 으로(컨테이너 타입에 `__traits` 를 안 적고 `As` 로만)? — **[열림]**
+
+사용자: *"모든 List 같은것도 dyn 으로 두고 Stack 처럼 To 해야하도록 두는게 어떤지?"* 측정(`proto/trait-impl-converter` 의 `research/trait-impl-converter`):
+`__traits` 를 비우면 src 0건, 테스트 **119자리**에 `As` 가 붙음 — 리스트 진입점 47, 묶기의 목적지 맵 26(돌려받는 타입이 `stl.Map` 이 돼 구체 타입을 잃음),
+맵 알고리즘 18, 덱·스택·큐 11(`Deque.AsStack(CircularDeque.AsDeque(d))` 두 번), 그 밖 17. 바로 쓰는 코드(`Arr.IndexOf(a, 20)`)는 그대로.
+
 ### BB. 종류 = 닫힌 트레이트(`Trait.Struct`), 공개 타입이 칸을 보일지 — 시제품 `proto/trait-struct` (2026-10-15) — **[결정·반영 2026-10-15]**
 
 > **결정**(사용자): (가) *"깔끔히 통일해두면"* → 모든 종류에 `Trait.Struct`·`Seal`. (나) *"권고대로"* → ② `Arr` 는 읽기 전용 인덱서·`n` + `Arr.Set`.
