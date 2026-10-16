@@ -35,5 +35,77 @@ local r: stl.ArrRead<number> = a
 local negBorrow = asStack(r) -- NEG: 빌린 읽기 참조는 바꿀 수 있는 스택이 못 됨
 local p: number? = stl.Stack.Peek(asPeek(r))
 local negPeekPush = stl.Stack.Push(asPeek(r), 1) -- NEG: 읽기로 바꾼 값은 쓰기 진입점을 못 받음
+-- 덱 변환자의 읽기·쓰기 경계(리뷰 1라운드 F6 — 빌린 참조를 받게, 읽기 판이 쓰기 스택을 돌려주게 바꿔도 통과했음)
+local borrowedDeque: stl.CircularDequeRead<number> = d
+local peekBorrowed: number? = stl.Stack.Peek(stl.Deque.AsStackRead(borrowedDeque))
+local negAsStackBorrowed = stl.Deque.AsStack(borrowedDeque) -- NEG: 빌린 덱은 바꿀 수 있는 스택이 못 됨
+local negAsQueueBorrowed = stl.Deque.AsQueue(borrowedDeque) -- NEG
+local negReadPush = stl.Stack.Push(stl.Deque.AsStackRead(borrowedDeque), 1) -- NEG: 읽기 판은 쓰기 진입점을 못 받음
+local negReadQueue = stl.Queue.Push(stl.Deque.AsQueueRead(borrowedDeque), 1) -- NEG
+
+-- 바깥 구현자가 배럴만으로 등록 표를 적음(리뷰 1라운드 T5 — 탐침 타입·`MapAssocRead` 가 배럴에 없었음)
+type MyMap<K, V> = {
+	read __type: stl.TraitToken<"Spike72.MyMap">,
+	read __traits: { read Map: stl.MapAssoc<K, V>, read Collection: stl.CollectionAssoc },
+}
+type MyMapRead<K, V> = {
+	read __type: stl.TraitToken<"Spike72.MyMap">,
+	read __traits: { read Map: stl.MapAssocRead<K, V> },
+}
+type MySetRead<T> = { read __type: stl.TraitToken<"Spike72.MySet">, read __traits: { read Set: stl.SetAssocRead<T> } }
+local myMapImpl: stl.MapProvided<MyMap<stl.TraitA, stl.TraitB>, stl.TraitA, stl.TraitB> = {
+	Get = function(_m: MyMap<stl.TraitA, stl.TraitB>, _k: stl.TraitA): stl.TraitB?
+		return nil
+	end,
+	Set = function(_m: MyMap<stl.TraitA, stl.TraitB>, _k: stl.TraitA, _v: stl.TraitB) end,
+	Has = function(_m: MyMap<stl.TraitA, stl.TraitB>, _k: stl.TraitA): boolean
+		return false
+	end,
+	Remove = function(_m: MyMap<stl.TraitA, stl.TraitB>, _k: stl.TraitA): stl.TraitB?
+		return nil
+	end,
+	Iter = function(_m: MyMap<stl.TraitA, stl.TraitB>): { read [stl.TraitA]: stl.TraitB }
+		return {}
+	end,
+}
+local negMyMapImpl: stl.MapProvided<MyMap<stl.TraitA, stl.TraitB>, stl.TraitA, stl.TraitB> = {
+	-- 아랫줄 NEG: 값을 못박음(탐침 타입이라 샘)
+	Get = function(_m: MyMap<stl.TraitA, stl.TraitB>, _k: stl.TraitA): number?
+		return nil
+	end,
+	Set = myMapImpl.Set,
+	Has = myMapImpl.Has,
+	Remove = myMapImpl.Remove,
+	Iter = myMapImpl.Iter,
+}
+local myRead: MyMapRead<string, number> = nil :: any
+local myKeys = stl.Map.Keys(myRead)
+local mySetRead: MySetRead<string> = nil :: any
+local myProbe: stl.TraitC = nil :: any
+
 local canary: string = 1
-return { top, back, pushed, negPush, negTop, negRaw, negArrFn, negDeque, negBackElem, negDequeRaw, negBorrow, p, negPeekPush, canary }
+return {
+	peekBorrowed,
+	negAsStackBorrowed,
+	negAsQueueBorrowed,
+	negReadPush,
+	negReadQueue,
+	negMyMapImpl,
+	myKeys,
+	mySetRead,
+	myProbe,
+	top,
+	back,
+	pushed,
+	negPush,
+	negTop,
+	negRaw,
+	negArrFn,
+	negDeque,
+	negBackElem,
+	negDequeRaw,
+	negBorrow,
+	p,
+	negPeekPush,
+	canary,
+}

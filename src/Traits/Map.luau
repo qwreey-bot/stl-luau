@@ -35,11 +35,9 @@ local Collection = require("./Collection")
 -- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read Map: Map.Assoc<K, V> }`. 키·값은 공변 칸(`() -> K`)과 불변
 -- 팬텀 `Mut` 을 같이 둡니다(`(K) -> K` 는 `() -> K` 의 서브타입이 아니라 하나로는 두 쓰임을 못 덮음). 트레이트의 조건(`of`)은 불변 —
 -- 조회도 키가 입력이라(질문 AM). `ValueRead` 는 꺼내기만 하는 알고리즘(`Keys`)용으로 공변.
+export type AssocRead<K, V> = { read Key: () -> K, read Value: () -> V }
 export type Assoc<K, V> = { read Key: () -> K, read Value: () -> V, read Mut: (K, V) -> (K, V) }
-export type ValueRead<K, V> = {
-	read __type: Trait.Token<any>,
-	read __traits: { read Map: { read Key: () -> K, read Value: () -> V } },
-}
+export type ValueRead<K, V> = { read __type: Trait.Token<any>, read __traits: { read Map: AssocRead<K, V> } }
 export type Value<K, V> = { read __type: Trait.Token<any>, read __traits: { read Map: Assoc<K, V> } }
 type AnyToken = Trait.AnyToken
 const Fn, FnMut = Trait.Fn, Trait.FnMut

@@ -104,7 +104,9 @@ export type QueueProvided<C, T> = Queue.Provided<C, T>
 export type ListAssoc<E, I> = List.Assoc<E, I>
 export type ListAssocRead<E, I> = List.AssocRead<E, I>
 export type MapAssoc<K, V> = Map.Assoc<K, V>
+export type MapAssocRead<K, V> = Map.AssocRead<K, V>
 export type SetAssoc<T> = Set.Assoc<T>
+export type SetAssocRead<T> = Set.AssocRead<T>
 export type CollectionAssoc = Collection.Assoc
 export type DequeAssoc<T> = Deque.Assoc<T>
 export type DequeAssocRead<T> = Deque.AssocRead<T>
@@ -127,6 +129,11 @@ export type TreeBalance = Balance.Scheme
 export type KeyNodeRead<K, V> = Search.KeyNodeRead<K, V>
 export type TraitToken<N> = Trait.Token<N>
 export type TraitAnyKind = Trait.AnyKind
+-- 탐침 타입 — 바깥 구현자가 등록 표를 주석 단 지역에 적을 때(`const impl: stl.MapProvided<My<stl.TraitA, stl.TraitB>, stl.TraitA, stl.TraitB>`).
+-- 서로 다른 불투명 타입이라 원소를 못박은 함수가 샙니다(`any` 로 적으면 인자 수·인자 타입이 0건 — 리뷰 1라운드 T5: 배럴에 없어 `src/Trait` 를 직접 require 해야 했음)
+export type TraitA = Trait.A
+export type TraitB = Trait.B
+export type TraitC = Trait.C
 export type TraitObject<R, F, G> = Trait.Object<R, F, G>
 
 -- 컨테이너 타입

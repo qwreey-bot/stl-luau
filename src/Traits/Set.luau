@@ -12,8 +12,9 @@ local Trait = require("../Trait")
 --[[ 마커 — 타입에만 있는 필드(읽으면 nil — 읽는 코드를 쓰지 마세요) ]]
 
 -- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read Set: Set.Assoc<T> }`. 원소는 공변 칸 + 불변 `Mut`(맵과 같음), 조건은 불변.
+export type AssocRead<T> = { read Item: () -> T }
 export type Assoc<T> = { read Item: () -> T, read Mut: (T) -> T }
-export type ValueRead<T> = { read __type: Trait.Token<any>, read __traits: { read Set: { read Item: () -> T } } }
+export type ValueRead<T> = { read __type: Trait.Token<any>, read __traits: { read Set: AssocRead<T> } }
 export type Value<T> = { read __type: Trait.Token<any>, read __traits: { read Set: Assoc<T> } }
 
 type AnyToken = Trait.AnyToken
