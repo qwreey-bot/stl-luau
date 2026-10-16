@@ -1149,8 +1149,8 @@ do
 			where = debug.info(1, "l") + 1
 			convert({ __type = { name = "Test.Rebuild.ConvKind" } })
 		end,
-		"Stack: the converter for Test.Rebuild.ConvKind got Test.Rebuild.ConvKind",
-		"이름만 같은 가짜 토큰(되읽은 값 — Restore 를 거쳐야 함)"
+		"Stack: the converter for Test.Rebuild.ConvKind got a Test.Rebuild.ConvKind this library does not know (deserialized? Trait.Restore it",
+		'이름만 같은 가짜 토큰(되읽은 값 — Restore 를 권함, 리뷰 1라운드 R2: 예전엔 "for X got X")'
 	)
 	fails(function()
 		where = debug.info(1, "l") + 1
@@ -1238,6 +1238,28 @@ do
 		where = debug.info(1, "l") + 1
 		stl.Deque.AsQueue(nil :: any)
 	end, "Queue: the converter needs a Queue — got nil", "테이블 아님")
+	fails(
+		function()
+			where = debug.info(1, "l") + 1
+			stl.Deque.AsStack({ __type = { name = "Stl.CircularDeque" } } :: any)
+		end,
+		"Stack: the converter needs a Stack — got a Stl.CircularDeque this library does not know (deserialized? Trait.Restore it",
+		"되읽은 값(토큰 없는 변환자)"
+	)
+	-- (f) 종류 자리에 종류 모듈 — `X.Of`·`OfMut`·`ImplOf` 도(리뷰 1라운드 R1: `ImplFor`·`Converter`·`TokenOf` 는 받는데 `Of` 만 안 받았음)
+	const arrFull = stl.List.Of(stl.Arr.Of(1))
+	assert(rawequal(stl.List.Of(stl.Arr :: any), arrFull), "List.Of(stl.Arr)")
+	assert(rawequal(stl.List.OfMut(stl.Arr :: any), arrFull), "List.OfMut(stl.Arr)")
+	assert(
+		rawequal(stl.Collection.Of(stl.HashMap :: any), stl.Collection.Of(stl.HashMap.New())),
+		"Collection.Of(stl.HashMap)"
+	)
+	assert(rawequal(T.ImplOf(stl.List, stl.Arr), arrFull), "Trait.ImplOf(List, stl.Arr)")
+	assert(T.Implements(stl.List, stl.Arr) and not T.Implements(stl.Map, stl.Arr), "Trait.Implements 에 종류")
+	fails(function()
+		where = debug.info(1, "l") + 1
+		stl.Map.Of(stl.Arr :: any)
+	end, "Map: Stl.Arr does not implement Map", "구현 안 한 종류 — 토큰과 같은 메시지")
 end
 print("PASS")
 

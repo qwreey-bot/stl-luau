@@ -29,7 +29,7 @@ const Set = Trait.Trait("Set", function<Self, T>(of: (Self & Value<T>) | AnyToke
 		Items = Fn<<(set: Self) -> { T }>>(),
 	})
 end)
--- 완성 표(= 등록 표 — 기본 구현이 없음). 진입점(`Set.Add` …)은 시스템이 만들지만 서명을 입히지 않습니다(부르는 곳이 생기면 `Value` 로).
+-- 완성 표(= 등록 표 — 기본 구현이 없음). 진입점(`Set.Add` …)은 시스템이 만들고 서명은 정의에서 지어집니다(`Trait.Entries`).
 export type Full<Self, T> = typeof(Set.OfMut<<Self, T>>(nil :: any))
 export type ReadFull<Self, T> = typeof(Set.Of<<Self, T>>(nil :: any))
 export type Provided<Self, T> = typeof(Set.ImplOf<<Self, T>>(nil :: any))

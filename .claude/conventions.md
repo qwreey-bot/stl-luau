@@ -305,7 +305,7 @@
   (칸 하나는 `Arr.Set(a, i, v)` — 위치는 `At` 처럼 음수, NaN·`1..n` 밖은 에러, 끝에 더하기는 `PushBack`). 모듈 안쪽은 받자마자 안쪽 타입으로
   캐스트해 직접 씁니다(`const self = arr :: Raw<T>` — 비용 0, perf 56절). `CircularDeque` 는 칸이 **물리** 위치라 칸·`head`·`cap` 을 아예
   숨기고 `size` 는 읽기만. ⚠️ 대가: 리스트를 **읽고 쓰는** 타입(`{ T }`)을 받는 자리에 `Arr` 가 안 들어갑니다 — 라이브러리의 생성자 중 리스트를
-  읽기만 하는 것(`FromList`·`FromRecords`·`Arr.FromTable`·`Fut.All`·`Common.denseList`)은 `{ read [number]: T }` 로 받게 바꿨고, 내장 함수
+  읽기만 하는 것(`FromList`·`FromRecords`·`Arr.FromTable`·`Fut.All`·`Common.denseList`)은 `{ read [number]: T }` 로 받게 바꿨고(2026-10-16 리뷰 T3 에 도구 열하나도 — `BSearch` 다섯·`FromSorted` 셋·`SortedArray.Locate`·`Append` 의 `other`·`CompleteArray.IsHeap`, 사전은 `HashMap.FromTable` 의 `{ read [K]: V }`), 내장 함수
   (`table.concat`·`table.sort`·`table.move`)에 바로 넘기는 사용자 코드는 `Arr.Join` 이나 캐스트(`spikes/73`). 새 함수가 리스트를 읽기만 하면
   `{ read [number]: T }` 로 받으세요.
 - **배열 표현**: `{ n: number, [number]: T }` + 타입 토큰(`__type`).

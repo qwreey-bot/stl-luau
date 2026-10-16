@@ -126,7 +126,7 @@ const function Records<K, V>(map: ValueRead<K, V>): { Types.Record<K, V> }
 end
 
 -- stylua: ignore
--- 트레이트 함수의 진입점(`Map.Get` …)은 시스템이 만들지만 서명을 입히지 않습니다(아직 부르는 곳이 없음 — 넣을 땐 `Value` 로).
+-- 트레이트 함수의 진입점(`Map.Get` …)은 시스템이 만들고 서명은 정의에서 지어집니다(`Trait.Entries` — 맵의 조건은 불변, 질문 AM).
 return Trait.Expose(MapBase, {
 	Keys = Keys, Values = Values, Records = Records,
 })

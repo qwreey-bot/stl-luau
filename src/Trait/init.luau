@@ -694,6 +694,7 @@ const function newTrait(name: string, def: any): any
 		trait[fnName] = Entry.make(impls, name, fnName, at)
 	end
 	trait.Of = function(x: any): any
+		x = kindToken[x] or x -- 종류 모듈(`stl.Arr`)도 — `ImplFor`·`Converter`·`TokenOf` 와 같게(리뷰 1라운드 R1)
 		const full = if isToken[x] then impls[x] elseif type(x) == "table" then impls[rawget(x, TYPE_KEY)] else nil
 		if full == nil then
 			return if isToken[x] then Errors.notImplemented(name, x) else Errors.entryMiss(name, "Of", x)
@@ -835,8 +836,8 @@ end
 
 -- ⭐ **중간자**(질문 BA — 사용자: *"a to b 계약자가 두 점이 확실한지 보게 하는게 나을듯"*): 바깥에서 등록한 트레이트를 타입에 붙이는 변환자.
 -- 등록(런타임)은 타입을 못 바꾸니, 그 쌍을 아는 쪽이 **타입을 적어** 씁니다 — 위로(종류 → 트레이트)와 아래로(트레이트 → 종류) 둘 다 같은 함수:
---   const asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, Arr.Token)
---   const asArr: <T>(s: stl.Stack<T>) -> Arr<T> = Trait.Converter(stl.Stack, Arr.Token)
+--   const asStack: <T>(a: Arr<T>) -> stl.Stack<T> = Trait.Converter(stl.Stack, stl.Arr)
+--   const asArr: <T>(s: stl.Stack<T>) -> Arr<T> = Trait.Converter(stl.Arr)      -- 닫힌 트레이트(종류)로 — Arr 의 값이면 통과
 -- 두 점을 봅니다: **`token` 이 `trait` 를 구현하는가는 만들 때 한 번**(등록은 되돌릴 수 없음 — 그러니 등록 뒤에 만드세요), **값이 `token` 의
 -- 종류인가는 부를 때마다**(아니면 사용자 줄 에러). 값을 그대로 돌려줍니다(감싸지 않음 — 데이터는 엔티티). 호출당 13~20ns(perf 55절) — 값
 -- 하나에 한 번이면 됩니다(바꾼 변수를 쥐고 쓰기). ⚠️ 타입 주석의 원소 대응(`Arr<T>` ↔ `Stack<T>` 의 `T`)은 적는 쪽의 책임입니다 — 시스템은

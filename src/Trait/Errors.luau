@@ -131,6 +131,15 @@ end
 function Errors.convertMismatch(trait: string, kind: string?, value: any): never
 	const raw: any = if type(value) == "table" then rawget(value, "__type") else nil
 	const name: any = if type(raw) == "table" then rawget(raw, "name") else nil
+	if type(name) == "string" and not Registry.isToken[raw] then
+		-- 이름 있는 토큰이지만 이 사본의 것이 아님 — 진입점의 셋째 갈래와 같은 안내(리뷰 1라운드 R2: 예전엔 "for X got X")
+		const unknown =
+			`got a {name} this library does not know (deserialized? Trait.Restore it — or from another copy of the library)`
+		if kind == nil then
+			return raise(`{trait}: the converter needs a {trait} — {unknown}`)
+		end
+		return raise(`{trait}: the converter for {kind} {unknown}`)
+	end
 	const got = if type(name) == "string" then name else typeof(value)
 	if kind == nil then
 		return raise(`{trait}: the converter needs a {trait} — got {got}`)
