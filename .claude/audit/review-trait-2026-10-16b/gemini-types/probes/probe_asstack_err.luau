@@ -1,0 +1,6 @@
+local stl = require("../src")
+local a = stl.Arr.Of(1, 2)
+local ok, err = pcall(function()
+	(stl.Deque.AsStack :: any)(a)
+end)
+print("ok:", ok, "err:", err)

@@ -1,0 +1,6 @@
+local stl = require("../src")
+local ld = stl.LinkedDeque.Of(1,2)
+local cd = stl.CircularDeque.Of(1,2)
+local arr = stl.Arr.Of(1,2)
+local x = stl.List.Get(arr, 'x')
+print(x)

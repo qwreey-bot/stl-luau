@@ -1,0 +1,22 @@
+[
+ {"id":"C1-kindcheck-off","edits":[{"file":"src/Trait/init.luau","old":"if type(value) ~= \"table\" or rawget(value, TYPE_KEY) ~= token then","new":"if type(value) ~= \"table\" then"}]},
+ {"id":"C2-regcheck-off","edits":[{"file":"src/Trait/init.luau","old":"\tif rec.impls[token] == nil then\n\t\tErrors.notImplemented(traitName, token)\n\tend","new":"\tif false then\n\t\tErrors.notImplemented(traitName, token)\n\tend"}]},
+ {"id":"C3-notoken-implcheck-off","edits":[{"file":"src/Trait/init.luau","old":"if type(value) ~= \"table\" or impls[rawget(value, TYPE_KEY)] == nil then","new":"if type(value) ~= \"table\" then"}]},
+ {"id":"C4-notoken-istable-off","edits":[{"file":"src/Trait/init.luau","old":"if type(value) ~= \"table\" or impls[rawget(value, TYPE_KEY)] == nil then","new":"if impls[rawget(value, TYPE_KEY)] == nil then"}]},
+ {"id":"C5-converter-asToken-off","edits":[{"file":"src/Trait/init.luau","old":"\ttoken = asToken(token)\n\tif not isToken[token] then","new":"\tif not isToken[token] then"}]},
+ {"id":"C6-converter-notoken-check-off","edits":[{"file":"src/Trait/init.luau","old":"\tif not isToken[token] then\n\t\tErrors.notToken(`{traitName}.Converter`, token)","new":"\tif false then\n\t\tErrors.notToken(`{traitName}.Converter`, token)"}]},
+ {"id":"S1-seal-twice-ok","edits":[{"file":"src/Trait/init.luau","old":"\t\tif sealed then\n\t\t\tErrors.structSealed(name)","new":"\t\tif false then\n\t\t\tErrors.structSealed(name)"}]},
+ {"id":"S2-seal-bad-off","edits":[{"file":"src/Trait/init.luau","old":"if type(module) ~= \"table\" or records[module] ~= nil or kindToken[module] ~= nil then","new":"if type(module) ~= \"table\" then"}]},
+ {"id":"S3-seal-no-kindtoken","edits":[{"file":"src/Trait/init.luau","old":"\t\tkindToken[module] = token\n","new":"\n"}]},
+ {"id":"S4-seal-no-record","edits":[{"file":"src/Trait/init.luau","old":"\t\trecords[module] = {\n\t\t\tname = name,","new":"\t\tlocal _unused = {\n\t\t\tname = name,"}]},
+ {"id":"S5-seal-empty-impls","edits":[{"file":"src/Trait/init.luau","old":"\t\t\timpls = { [token] = module },","new":"\t\t\timpls = {},"}]},
+ {"id":"S6-asToken-identity","edits":[{"file":"src/Trait/init.luau","old":"\treturn kindToken[kind] or kind\n","new":"\treturn kind\n"}]},
+ {"id":"S7-tokenof-no-kind","edits":[{"file":"src/Trait/init.luau","old":"\tconst kindTok = Registry.kindToken[value]\n\tif kindTok ~= nil then","new":"\tconst kindTok = Registry.kindToken[value]\n\tif false then"}]},
+ {"id":"S8-seal-sealed-not-set","edits":[{"file":"src/Trait/init.luau","old":"\t\tsealed = true\n","new":"\n"}]},
+ {"id":"A1-set-nan-off","edits":[{"file":"src/Collections/Arr.luau","old":"\tif idx ~= idx then\n\t\tCommon.raise(\"Arr: Set index is NaN\")\n\tend","new":""}]},
+ {"id":"A2-set-allow-append","edits":[{"file":"src/Collections/Arr.luau","old":"\tif pos < 1 or pos > len then\n\t\tCommon.raise(`Arr: Set index","new":"\tif pos < 1 or pos > len + 1 then\n\t\tCommon.raise(`Arr: Set index"}]},
+ {"id":"A3-set-allow-zero","edits":[{"file":"src/Collections/Arr.luau","old":"\tif pos < 1 or pos > len then\n\t\tCommon.raise(`Arr: Set index","new":"\tif pos < 0 or pos > len then\n\t\tCommon.raise(`Arr: Set index"}]},
+ {"id":"A4-set-no-negative","edits":[{"file":"src/Collections/Arr.luau","old":"\tconst i = toIndex(idx)\n\tconst pos = if i < 0 then len + i + 1 else i\n\tif pos < 1 or pos > len then\n\t\tCommon.raise(`Arr: Set index","new":"\tconst i = toIndex(idx)\n\tconst pos = i\n\tif pos < 1 or pos > len then\n\t\tCommon.raise(`Arr: Set index"}]},
+ {"id":"A5-set-returns-nil","edits":[{"file":"src/Collections/Arr.luau","old":"\tself[pos] = item\n\treturn self\nend","new":"\tself[pos] = item\n\treturn nil :: any\nend"}]},
+ {"id":"A6-set-off-by-one","edits":[{"file":"src/Collections/Arr.luau","old":"\tconst pos = if i < 0 then len + i + 1 else i\n\tif pos < 1 or pos > len then\n\t\tCommon.raise(`Arr: Set index","new":"\tconst pos = if i < 0 then len + i else i\n\tif pos < 1 or pos > len then\n\t\tCommon.raise(`Arr: Set index"}]}
+]

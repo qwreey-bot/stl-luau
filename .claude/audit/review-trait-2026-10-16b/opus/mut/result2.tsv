@@ -1,0 +1,26 @@
+E1-no-selfdrop	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/60-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+E2-ignore-sig	rc=1	type:21	→ TypeError 가 21 건 있습니다. 기준선은 0건입니다. | FAIL  .claude/audit/arr-type-redesign/spikes/64-list-algorithms.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+E3-always-mutSubject	rc=1	type:2	→ TypeError 가 2 건 있습니다. 기준선은 0건입니다. | → src 린트 경고가 있습니다(기준선 0건): | FAIL  .claude/audit/arr-type-redesign/spikes/63-collection-trait.luau | FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau
+E4-always-readSubject	rc=1		→ src 린트 경고가 있습니다(기준선 0건): | FAIL  .claude/audit/arr-type-redesign/spikes/63-collection-trait.luau | FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/69-trait-definition.luau
+E5-no-fresh-generics	PATCH-FAIL(0)	src/Trait/init.luau
+E6-usesSelf-ignore-returns	rc=1	type:14	→ TypeError 가 14 건 있습니다. 기준선은 0건입니다. | FAIL  .claude/audit/arr-type-redesign/spikes/63-collection-trait.luau | FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/69-trait-definition.luau
+E7-subject-keep-token	rc=1		→ src 린트 경고가 있습니다(기준선 0건): | FAIL  .claude/audit/arr-type-redesign/spikes/60-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau | FAIL  .claude/audit/arr-type-redesign/spikes/64-list-algorithms.luau
+E8-subst-drop-write	rc=1		FAIL  포맷이 어긋납니다. `stylua src tests` 로 맞추세요:
+V1-read-uses-param2	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/71-trait-ofmut.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+V2-read-keeps-mut	rc=1		→ src 린트 경고가 있습니다(기준선 0건): | FAIL  .claude/audit/arr-type-redesign/spikes/71-trait-ofmut.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+V3-impl-all-required	rc=1	type:2	→ TypeError 가 2 건 있습니다. 기준선은 0건입니다. | → src 린트 경고가 있습니다(기준선 0건): | FAIL  .claude/audit/arr-type-redesign/spikes/55-trait-markers.luau | FAIL  .claude/audit/arr-type-redesign/spikes/60-deque.luau
+V4-full-all-optional	rc=1		→ src 린트 경고가 있습니다(기준선 0건): | FAIL  .claude/audit/arr-type-redesign/spikes/55-trait-markers.luau | FAIL  .claude/audit/arr-type-redesign/spikes/69-trait-definition.luau | FAIL  .claude/audit/arr-type-redesign/spikes/70-trait-view.luau
+V5-mutflag-ignored-Entries	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/63-collection-trait.luau | FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/69-trait-definition.luau | FAIL  .claude/audit/arr-type-redesign/spikes/72-trait-adapter.luau
+T1-stack-push-Fn	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/69-trait-definition.luau | FAIL  .claude/audit/arr-type-redesign/spikes/72-trait-adapter.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+T2-collection-clear-Fn	rc=1		→ src 린트 경고가 있습니다(기준선 0건): | FAIL  .claude/audit/arr-type-redesign/spikes/63-collection-trait.luau | FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/71-trait-ofmut.luau
+T3-map-set-Fn	rc=0		
+T4-set-add-Fn	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/71-trait-ofmut.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+T5-deque-popfront-Fn	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+T6-queue-pop-Fn	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+T7-asStackRead-returns-Value	rc=0		
+T8-asQueue-takes-Read	rc=0		
+T9-ld-read-has-Collection	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/65-linked-deque.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면 | FAIL  포맷이 어긋납니다. `stylua src tests` 로 맞추세요:
+T10-cd-read-deque-Assoc	rc=1	type:3	→ TypeError 가 3 건 있습니다. 기준선은 0건입니다. | FAIL  .claude/audit/arr-type-redesign/spikes/60-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/69-trait-definition.luau | FAIL  .claude/audit/arr-type-redesign/spikes/73-trait-struct.luau
+T11-arrconsumed-no-collection	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/56-read-covariance.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+T12-set-takes-ArrRead	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/73-trait-struct.luau | → 어느 NEG 가 사라졌는지 확인할 것. 기대치를 바꿨다면
+T13-arrdata-List-AssocRead	rc=1		FAIL  .claude/audit/arr-type-redesign/spikes/40-real-arr-negative-control.luau | FAIL  .claude/audit/arr-type-redesign/spikes/46-union-elements.luau | FAIL  .claude/audit/arr-type-redesign/spikes/47-real-optional-negative-control.luau | FAIL  .claude/audit/arr-type-redesign/spikes/49-namespace-calls.luau

@@ -1,0 +1,4 @@
+local stl = require("../src")
+local arr = stl.Arr.Of(1, 2)
+local x = stl.List.NextIndex(arr, "wrong")
+print("x is:", x)

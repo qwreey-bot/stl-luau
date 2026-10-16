@@ -1,0 +1,7 @@
+[
+ {"id":"E5-no-fresh-generics","edits":[{"file":"src/Trait/init.luau","old":"\t\t\t\tlocal n = types.generic(g:name() or \"T\", g:ispack())","new":"\t\t\t\tlocal n = g"}]},
+ {"id":"E8-subst-drop-write","edits":[{"file":"src/Trait/init.luau","old":"\t\t\t\t\tif w ~= nil then\n\t\t\t\t\t\tout:setwriteproperty(key, w)","new":"\t\t\t\t\tif w ~= nil and false then\n\t\t\t\t\t\tout:setwriteproperty(key, w)"}]},
+ {"id":"E9-subst-skip-tables","edits":[{"file":"src/Trait/init.luau","old":"\t\telseif t:is(\"table\") then\n\t\t\tlocal out = types.newtable()\n\t\t\tmemo[t] = out","new":"\t\telseif t:is(\"table\") and false then\n\t\t\tlocal out = types.newtable()\n\t\t\tmemo[t] = out"}]},
+ {"id":"E10-dropSelf-keeps-self","edits":[{"file":"src/Trait/init.luau","old":"\t\t\t\t\tif c == selfG then\n\t\t\t\t\t\tfound = true\n\t\t\t\t\telse","new":"\t\t\t\t\tif c == selfG then\n\t\t\t\t\t\tfound = true\n\t\t\t\t\t\ttable.insert(rest, c)\n\t\t\t\t\telse"}]},
+ {"id":"E11-occurs-params-skip","edits":[{"file":"src/Trait/init.luau","old":"\t\t\t\tif i > 1 and occurs(p, {}) then","new":"\t\t\t\tif false and i > 1 and occurs(p, {}) then"}]}
+]

@@ -1,0 +1,6 @@
+local stl = require("../src")
+print("Arr frozen?", table.isfrozen(stl.Arr))
+print("CircularDeque frozen?", table.isfrozen(stl.CircularDeque))
+print("HashMap frozen?", table.isfrozen(stl.HashMap))
+print("HashSet frozen?", table.isfrozen(stl.HashSet))
+print("Fut frozen?", table.isfrozen(stl.Fut))

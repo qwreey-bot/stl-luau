@@ -1,0 +1,13 @@
+-- Check if any collection module mutates itself after Seal
+local stl = require("../src")
+print("Arr:", stl.Arr ~= nil)
+print("CircularDeque:", stl.CircularDeque ~= nil)
+print("HashMap:", stl.HashMap ~= nil)
+print("HashSet:", stl.HashSet ~= nil)
+print("FlatMap:", stl.FlatMap ~= nil)
+print("FlatSet:", stl.FlatSet ~= nil)
+print("TreeMap:", stl.TreeMap ~= nil)
+print("TreeSet:", stl.TreeSet ~= nil)
+print("Heap:", stl.Heap ~= nil)
+print("LinkedDeque:", stl.LinkedDeque ~= nil)
+print("Fut:", stl.Fut ~= nil)

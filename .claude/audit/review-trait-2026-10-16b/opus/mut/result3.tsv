@@ -1,0 +1,5 @@
+E5-no-fresh-generics	rc=1	type:183	→ TypeError 가 183 건 있습니다. 기준선은 0건입니다. | FAIL  .claude/audit/arr-type-redesign/spikes/55-trait-markers.luau | FAIL  .claude/audit/arr-type-redesign/spikes/60-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau
+E8-subst-drop-write	rc=0		
+E9-subst-skip-tables	rc=1	type:71	→ TypeError 가 71 건 있습니다. 기준선은 0건입니다. | FAIL  .claude/audit/arr-type-redesign/spikes/55-trait-markers.luau | FAIL  .claude/audit/arr-type-redesign/spikes/60-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau
+E10-dropSelf-keeps-self	rc=1	type:21	→ TypeError 가 21 건 있습니다. 기준선은 0건입니다. | FAIL  .claude/audit/arr-type-redesign/spikes/55-trait-markers.luau | FAIL  .claude/audit/arr-type-redesign/spikes/60-deque.luau | FAIL  .claude/audit/arr-type-redesign/spikes/61-write-through-marker.luau
+E11-occurs-params-skip	rc=0		

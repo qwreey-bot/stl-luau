@@ -1,0 +1,4 @@
+[
+ {"id":"D1-DefaultMut-type-mut-false","edits":[{"file":"src/Trait/init.luau","old":"): { required: false, mut: true, fn: F, entry: G }","new":"): { required: false, mut: false, fn: F, entry: G }"}]},
+ {"id":"T8b-asStack-takes-Read","edits":[{"file":"src/Traits/Deque.luau","old":"const AsStack: <T>(deque: Value<T>) -> Stack.Value<T> = toStack","new":"const AsStack: <T>(deque: ValueRead<T>) -> Stack.Value<T> = toStack"}]}
+]

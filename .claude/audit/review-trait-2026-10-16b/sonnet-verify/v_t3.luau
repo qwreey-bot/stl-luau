@@ -1,0 +1,25 @@
+--!strict
+local stl = require("../src")
+local BS = require("../src/Algorithms/BSearch")
+local SA = require("../src/Trees/SortedArray")
+local RB = require("../src/Trees/RedBlack")
+local Avl = require("../src/Trees/Avl")
+local arr = stl.Arr.Of(10, 20, 30)
+local vals = stl.Arr.Of("a", "b", "c")
+local cmp = function(e: number, t: number): number return e - t end
+local _1 = BS.LowerBound(arr, arr.n, 20, cmp)        -- L11
+local _2 = BS.UpperBound(arr, arr.n, 20, cmp)
+local _3 = BS.Find(arr, arr.n, 20, cmp)
+local _4 = BS.EqualRange(arr, arr.n, 20, cmp)
+local _5 = BS.IsSorted(arr, arr.n, cmp)
+local _6 = stl.TreeMap.FromSorted(arr, vals, 3, function(a: number, b: number): number return a - b end)
+local _7 = RB.FromSorted(arr, vals, 3)
+local _8 = Avl.FromSorted(arr, vals, 3)
+local dst = {0, 0, 0, 0, 0, 0}
+SA.Append(dst, 3, arr, 3)
+local hm = stl.HashMap.New<<string, number>>()
+stl.Map.Set(hm, "a", 1)
+local _9 = stl.HashMap.FromTable(stl.Map.Iter(hm) :: { read [string]: number })
+local _10 = stl.HashMap.FromTable(arr)
+local canary: string = BS.LowerBound({1, 2}, 2, 1, cmp)
+print(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,canary)

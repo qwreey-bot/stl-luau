@@ -1,0 +1,21 @@
+--!strict
+local stl = require("../src")
+local _1: nil = stl.Deque.PushBack
+local _2: nil = stl.Deque.Front
+local _3: nil = stl.List.Fold
+local _4: nil = stl.List.Get
+local _5: nil = stl.Map.Get
+local _6: nil = stl.Map.Set
+local _7: nil = stl.Map.Iter
+local _8: nil = stl.Set.Add
+local _9: nil = stl.Collection.Clear
+local _10: nil = stl.Collection.Len
+local _11: nil = stl.Stack.Push
+local _12: nil = stl.Queue.Peek
+local _13: nil = stl.List.Some
+local _14: nil = stl.List.Count
+local _15: nil = stl.Deque.Of
+local _16: nil = stl.Deque.OfMut
+local _17: nil = stl.Map.Of
+local _18: nil = stl.Deque.AsStack
+local _19: nil = stl.Map.Keys

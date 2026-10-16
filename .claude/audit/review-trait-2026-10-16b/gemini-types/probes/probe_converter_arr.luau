@@ -1,0 +1,5 @@
+local stl = require("../src")
+local ok, err = pcall(function()
+	stl.Trait.Converter(stl.Stack, stl.Arr)
+end)
+print("ok:", ok, "err:", err)
