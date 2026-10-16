@@ -35,9 +35,13 @@ const Fn, Default, Sig = Trait.Fn, Trait.Default, Trait.Sig
 -- 약속, 질문 AG 3).
 
 -- 연관 타입 레코드(질문 BA): 컨테이너가 `read __traits: { read List: List.Assoc<원소, 위치> }`(빌린 읽기 타입은 `AssocRead`).
--- 원소·위치는 공변(`() -> E`), `Mut` 은 원소·위치를 **입력으로 받아 넘기는** 제네릭용 불변 팬텀(질문 AM — `Value`).
-export type AssocRead<E, I> = { read Item: () -> E, read Index: () -> I }
-export type Assoc<E, I> = { read Item: () -> E, read Index: () -> I, read Mut: (E, I) -> (E, I) }
+-- 원소는 공변(`() -> E` — 빌린 읽기 참조를 넓은 원소 자리에), **위치는 불변**(`(I) -> I`): 위치는 `Get`·`NextIndex`·`PrevIndex` 의 **입력**이라
+-- 질문 AM 의 규칙("키·위치를 입력으로 받는 제네릭은 불변")이 읽기 진입점에도 걸립니다 — 공변이던 때는 `List.Get(연결덱, 123)` 이 위치를
+-- `NodeRead | number` 로 넓혀 0건, 라이브러리 줄에서 터졌습니다(2026-10-16 리뷰 1라운드 T1). ⚠️ 대가: 위치 타입이 원소에 기대는 종류(연결 덱 —
+-- 위치가 `NodeRead<T>`)는 빌린 읽기 참조를 넓은 원소로 못 받습니다(`LinkedDequeRead<number?> = LinkedDeque<number>` — `spikes/65` 경계 줄).
+-- 배열·원형 덱(위치가 숫자)은 그대로 넓어집니다. `Mut` 은 원소·위치를 **입력으로 받아 넘기는** 제네릭용 불변 팬텀(질문 AM — `Value`).
+export type AssocRead<E, I> = { read Item: () -> E, read Index: (I) -> I }
+export type Assoc<E, I> = { read Item: () -> E, read Index: (I) -> I, read Mut: (E, I) -> (E, I) }
 -- 마커 — 꺼내기만 하는 알고리즘(`ValueRead`, 빌린 참조도)과 원소·위치를 넘기는 제네릭(`Value`, 질문 AM).
 export type ValueRead<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: AssocRead<E, I> } }
 export type Value<E, I> = { read __type: Trait.Token<any>, read __traits: { read List: Assoc<E, I> } }

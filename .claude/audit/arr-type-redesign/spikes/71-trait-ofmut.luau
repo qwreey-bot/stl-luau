@@ -117,6 +117,17 @@ if type(inner) == "table" then
 	inner.evil = 999 -- NEG: 안쪽 테이블에 바로 씀
 end
 
+-- 7. 리스트의 위치는 불변(리뷰 1라운드 T1 — 공변 `() -> I` 라 엉뚱한 위치가 합집합으로 넓어져 0건, 라이브러리 줄에서 터졌음)
+local ldPos = stl.LinkedDeque.Of(1, 2)
+local arrPos = stl.Arr.Of(10, 20)
+local okGet: number? = stl.List.Get(arrPos, 1)
+local okFirst = stl.List.FirstIndex(ldPos)
+local okNext = if okFirst then stl.List.NextIndex(ldPos, okFirst) else nil
+local okWide: stl.ListRead<number?, number> = arrPos -- 원소는 그대로 공변(위치가 숫자인 종류)
+local negGetPos = stl.List.Get(ldPos, 123) -- NEG: 연결 덱의 위치는 노드
+local negNextPos = stl.List.NextIndex(arrPos, "x") -- NEG: 배열의 위치는 숫자
+local negPrevPos = stl.List.PrevIndex(ldPos, 5) -- NEG
+
 local canary: string = 1
 return {
 	len,
@@ -143,5 +154,11 @@ return {
 	bagOk,
 	bagBad,
 	negThreeParams,
+	okGet,
+	okNext,
+	okWide,
+	negGetPos,
+	negNextPos,
+	negPrevPos,
 	canary,
 }

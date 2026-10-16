@@ -28,11 +28,12 @@ local total: number = stl.List.Fold(d, 0, function(acc: number, v: number, _at: 
 	return acc + v
 end)
 local size: number = stl.Collection.Len(d)
--- 읽기로 빌린 참조는 원소에 공변, 읽는 함수와 읽는 진입점은 받음
-local borrowed: stl.LinkedDequeRead<number?> = d
+-- 읽기로 빌린 참조, 읽는 함수와 읽는 진입점은 받음
+local borrowed: stl.LinkedDequeRead<number> = d
 local borrowedFront: number? = LinkedDeque.Front(borrowed)
 local viaTrait: number? = Deque.Front(borrowed)
 local borrowedLen: number = stl.Collection.Len(borrowed)
+local widened: stl.LinkedDequeRead<number?> = d -- 경계: 위치(`NodeRead<T>`)가 원소에 기대 리스트 위치가 불변이면 못 넓힘(2026-10-16 T1 의 대가)
 -- 진입점은 넣은 타입 그대로
 local sameLinked: LinkedDeque<number> = Deque.PushBack(d, 50)
 local sameRing: stl.CircularDeque<number> = Deque.PushFront(ring, 5)
@@ -123,6 +124,7 @@ stl.Queue.Push(stl.Arr.Of(1), 2)
 local canary: string = 42
 
 return {
+	widened,
 	front,
 	popped,
 	same,
