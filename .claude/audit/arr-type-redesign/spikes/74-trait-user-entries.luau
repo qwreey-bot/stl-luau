@@ -33,6 +33,9 @@ do
 				Pair = Trait.Fn<<(bag: Self, other: Self) -> boolean>>(),
 				PushWithRest = Trait.FnMut<<(bag: Self, first: T, rest: { read [number]: T }) -> ()>>(),
 				Configure = Trait.FnMut<<(bag: Self, opts: { read items: { read [number]: T } }) -> ()>>(),
+				PushMany = Trait.FnMut<<(bag: Self, pool: { read [number]: T }, ...T) -> ()>>(),
+				PushOpt = Trait.FnMut<<(bag: Self, x: T?, rest: { read [number]: T }) -> ()>>(),
+				MergeWith = Trait.FnMut<<(bag: Self, other: Self, extra: { read [number]: T }) -> ()>>(),
 				MapTo = Trait.Default(function(_ops: any): <U>(bag: Self, f: (U) -> U, init: U) -> U
 					return function<U>(_bag: Self, _f: (U) -> U, init: U): U
 						return init
@@ -86,6 +89,15 @@ Bag.PushWithRest(b, 1, arr) -- 경계: 맨 제네릭 인자가 있는 칸은 다
 -- 중첩된 읽기 전용 인덱서(필드 안)도 그대로(돌연변이 M06 — 필드 안을 안 보면 다시 지어 `Arr` 를 거절)
 Bag.Configure(b, { items = arr })
 Bag.Configure(b, { items = { "z" } }) -- NEG: 원소
+-- 맨 인자의 여러 꼴(리뷰 3라운드): 가변 꼬리 `...T` 도 맨 인자(D1 — 안 보면 `PushMany(b, { 1 }, 2)` 가 거절), 유니온 갈래(`x: T?`)는 그대로 둬도
+-- 묶여 읽기 전용을 지킴(D2 — 세면 `PushOpt(b, 1, arr)` 가 거절), 맨 `other: Self` 도 맨 인자(X04 — 안 세면 `MergeWith(b, b, { 1 })` 가 거절)
+Bag.PushMany(b, { 1 }, 2, 3)
+Bag.PushMany(b, { 1 }, "s") -- NEG: 꼬리 원소
+Bag.PushOpt(b, 1, arr)
+Bag.PushOpt(b, nil, { 2 })
+Bag.PushOpt(b, "s", { 2 }) -- NEG
+Bag.MergeWith(b, b, { 1 })
+Bag.MergeWith(b, b, { "s" }) -- NEG
 
 local canary: string = 1
 return { p, n, parts, first, same, mapped, negPeek, wideSelf, negMap, negParts, shadow, o, canary }

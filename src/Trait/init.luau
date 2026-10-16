@@ -439,7 +439,7 @@ export type function Entries(def)
 				end
 			end
 			if not clash then
-				-- 정의의 제네릭을 **맨 인자**로 받는 칸(`first: T`, `x: T?`)은 그대로 쓰면, 그런 칸이 트레이트에 둘 이상일 때 맞는 호출도 거절됩니다
+				-- 정의의 제네릭을 **맨 인자**로 받는 칸(`first: T`, `other: Self`, `...T`)은 그대로 쓰면, 그런 칸이 트레이트에 둘 이상일 때 맞는 호출도 거절됩니다
 				-- (`Expected 'T', got 'number'` — "나눠 쓰면 안 묶임" 과 같은 원인 모를 동작, `research/trait-ofmut`, 2026-10-16 리뷰 2라운드). 그런 칸은
 				-- 다시 짓고 **읽기 전용 인덱서를 잃습니다**(`spikes/74` 경계 줄 — `first: T, rest: { read [number]: T }` 의 `rest` 가 `Arr` 를 거절).
 				local bareGeneric = false
@@ -452,17 +452,14 @@ export type function Entries(def)
 					return false
 				end
 				for i, p in fhead do
-					if i > 1 then
-						if isDefGeneric(p) then
-							bareGeneric = true
-						elseif p:is("union") or p:is("intersection") then
-							for _, c in p:components() do
-								if isDefGeneric(c) then
-									bareGeneric = true
-								end
-							end
-						end
+					if i > 1 and isDefGeneric(p) then
+						bareGeneric = true
 					end
+				end
+				-- 가변 꼬리(`...T`)도 맨 인자(리뷰 3라운드 D1). 유니온·교집합 갈래(`x: T?`, `T & number`)는 그대로 둬도 묶여서 세지 않음 —
+				-- 세면 읽기 전용 인덱서만 괜히 잃었음(D2)
+				if fp.tail ~= nil and isDefGeneric(fp.tail) then
+					bareGeneric = true
 				end
 				local keepOriginal = not bareGeneric and hasIndexer(fnType, {})
 				local generics: { type } = {}

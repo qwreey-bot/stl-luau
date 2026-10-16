@@ -1,0 +1,18 @@
+455,464c455,456
+< 					if i > 1 then
+< 						if isDefGeneric(p) then
+< 							bareGeneric = true
+< 						elseif p:is("union") or p:is("intersection") then
+< 							for _, c in p:components() do
+< 								if isDefGeneric(c) then
+< 									bareGeneric = true
+< 								end
+< 							end
+< 						end
+---
+> 					if i > 1 and isDefGeneric(p) then
+> 						bareGeneric = true
+465a458,460
+> 				end
+> 				if fp.tail ~= nil and isDefGeneric(fp.tail) then
+> 					bareGeneric = true
