@@ -441,7 +441,9 @@ export type function Entries(def)
 			if not clash then
 				-- 정의의 제네릭을 **맨 인자**로 받는 칸(`first: T`, `other: Self`, `...T`)은 그대로 쓰면, 그런 칸이 트레이트에 둘 이상일 때 맞는 호출도 거절됩니다
 				-- (`Expected 'T', got 'number'` — "나눠 쓰면 안 묶임" 과 같은 원인 모를 동작, `research/trait-ofmut`, 2026-10-16 리뷰 2라운드). 그런 칸은
-				-- 다시 짓고 **읽기 전용 인덱서를 잃습니다**(`spikes/74` 경계 줄 — `first: T, rest: { read [number]: T }` 의 `rest` 가 `Arr` 를 거절).
+				-- 다시 짓고 **읽기 전용 인덱서를 잃습니다**(`spikes/74` 경계 줄 — 인자 쪽은 `first: T, rest: { read [number]: T }` 의 `rest` 가 `Arr` 를
+				-- 거절, 반환 쪽은 `(bag: Self, key: T) -> { read [number]: T }` 의 결과에 쓰기가 0건). ⚠️ 정의에 제네릭 팩(`<Self, A...>`)이 있는 트레이트는
+				-- 인덱서 안의 팩(`{ read [number]: (A...) -> () }`)이 칸 둘 이상이면 거절됩니다 — 지원 밖(리뷰 4라운드, 다시 지어도 같음).
 				local bareGeneric = false
 				const function isDefGeneric(t: type): boolean
 					for _, g in defGenerics do
@@ -459,6 +461,17 @@ export type function Entries(def)
 				-- 가변 꼬리(`...T`)도 맨 인자(리뷰 3라운드 D1). 유니온·교집합 갈래(`x: T?`, `T & number`)는 그대로 둬도 묶여서 세지 않음 —
 				-- 세면 읽기 전용 인덱서만 괜히 잃었음(D2)
 				if fp.tail ~= nil and isDefGeneric(fp.tail) then
+					bareGeneric = true
+				end
+				-- 반환의 맨 제네릭(`-> T`, `-> Self`, `-> ...T`)도(리뷰 4라운드 — 안 세면 `local x: number = Bag.Pick(b, { 1 })` 가 'got T', 인덱서 칸의
+				-- `-> Self` 는 'got Self')
+				const fr2 = fnType:returns()
+				for _, r in fr2.head or {} do
+					if isDefGeneric(r) then
+						bareGeneric = true
+					end
+				end
+				if fr2.tail ~= nil and isDefGeneric(fr2.tail) then
 					bareGeneric = true
 				end
 				local keepOriginal = not bareGeneric and hasIndexer(fnType, {})

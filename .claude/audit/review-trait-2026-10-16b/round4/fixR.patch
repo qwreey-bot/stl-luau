@@ -1,0 +1,19 @@
+--- /tmp/claude-0/-code-Projects-stl-luau/1cb06079-132e-4d95-8fed-df0aa2d5e80d/scratchpad/r4/a7f4c6a/src/Trait/init.luau	2026-10-16 12:37:25.000000000 +0900
++++ src/Trait/init.luau	2026-10-16 12:40:29.293462815 +0900
+@@ -461,6 +461,16 @@
+ 				if fp.tail ~= nil and isDefGeneric(fp.tail) then
+ 					bareGeneric = true
+ 				end
++				-- 반환의 맨 제네릭(`-> T`, `-> ...T`)도 — `Self` 는 첫 인자로 묶여 그대로 둬도 됨
++				const fr2 = fnType:returns()
++				for _, r in fr2.head or {} do
++					if r ~= selfG and isDefGeneric(r) then
++						bareGeneric = true
++					end
++				end
++				if fr2.tail ~= nil and fr2.tail ~= selfG and isDefGeneric(fr2.tail) then
++					bareGeneric = true
++				end
+ 				local keepOriginal = not bareGeneric and hasIndexer(fnType, {})
+ 				local generics: { type } = {}
+ 				local map: { [type]: type } = {}

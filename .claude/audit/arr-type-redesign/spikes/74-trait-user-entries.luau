@@ -36,6 +36,17 @@ do
 				PushMany = Trait.FnMut<<(bag: Self, pool: { read [number]: T }, ...T) -> ()>>(),
 				PushOpt = Trait.FnMut<<(bag: Self, x: T?, rest: { read [number]: T }) -> ()>>(),
 				MergeWith = Trait.FnMut<<(bag: Self, other: Self, extra: { read [number]: T }) -> ()>>(),
+				Pick = Trait.Fn<<(bag: Self, pool: { read [number]: T }) -> T>>(),
+				Log = Trait.Fn<<(bag: Self, pool: { read [number]: T }, ...any) -> ()>>(),
+				AddAllS = Trait.FnMut<<(bag: Self, items: { read [number]: T }) -> Self>>(),
+				Bucket = Trait.Fn<<(bag: Self, key: T) -> { read [number]: T }>>(),
+				FoldIn = Trait.Default(
+					function(_ops: any): <U>(bag: Self, init: U, f: (U, T) -> U, pool: { read [number]: T }) -> U
+						return function<U>(_bag: Self, init: U, _f: (U, T) -> U, _pool: { read [number]: T }): U
+							return init
+						end
+					end
+				),
 				MapTo = Trait.Default(function(_ops: any): <U>(bag: Self, f: (U) -> U, init: U) -> U
 					return function<U>(_bag: Self, _f: (U) -> U, init: U): U
 						return init
@@ -98,6 +109,17 @@ Bag.PushOpt(b, nil, { 2 })
 Bag.PushOpt(b, "s", { 2 }) -- NEG
 Bag.MergeWith(b, b, { 1 })
 Bag.MergeWith(b, b, { "s" }) -- NEG
+-- 반환의 맨 제네릭(리뷰 4라운드 ① — 안 세면 반환이 묶이지 않은 `T`·`Self`), 그리고 다시 짓지 않아야 할 칸들(돌연변이 Y02·Y10 — 세면 `Arr` 거절)
+local picked: number = Bag.Pick(b, { 1 })
+Bag.Pick(b, { "s" }) -- NEG
+Bag.Log(b, arr, "x", 1) -- `...any` 꼬리는 맨 정의 제네릭이 아님
+local folded: string = Bag.FoldIn(b, "", function(acc: string, v: number): string
+	return acc .. v
+end, arr) -- 칸 자신의 `U` 를 맨 인자로 받아도 다시 짓지 않음
+local self2: MyBag<number> = Bag.AddAllS(b, { 1 }) -- `-> Self` 도 맨 반환(안 세면 'got Self')
+Bag.AddAllS(b, arr) -- 경계: 그래서 다시 지어 읽기 전용 인덱서를 잃음 → `Arr` 거절(이 줄의 에러가 지금의 동작)
+local bucket = Bag.Bucket(b, 1)
+bucket[1] = 5 -- 경계(0건): 맨 인자 칸은 다시 지어 **반환의** 읽기 전용 인덱서도 잃음(리뷰 4라운드 ② — 받아들인 대가의 다른 쪽)
 
 local canary: string = 1
-return { p, n, parts, first, same, mapped, negPeek, wideSelf, negMap, negParts, shadow, o, canary }
+return { picked, folded, self2, p, n, parts, first, same, mapped, negPeek, wideSelf, negMap, negParts, shadow, o, canary }
