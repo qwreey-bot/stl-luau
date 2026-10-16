@@ -1,0 +1,22 @@
+local stl = require("../src")
+local function try(label, f)
+	local ok, e = pcall(f)
+	print(label, ok, e)
+end
+try("Of(nil)", function() return stl.List.Of(nil :: any) end)
+try("Of(NaN)", function() return stl.List.Of(0/0 :: any) end)
+try("Of('Get')", function() return stl.List.Of("Get" :: any) end)
+try("Of(stl.Stack)", function() return stl.List.Of(stl.Stack :: any) end)
+try("Of(stl.Fut)", function() return stl.List.Of(stl.Fut :: any) end)
+try("Collection.Of(stl.LinkedDeque)", function() return stl.Collection.Of(stl.LinkedDeque :: any) ~= nil end)
+-- deserialized-like value with a registered name of a different kind
+try("AsStack(fake CD)", function() return stl.Deque.AsStack({ __type = { name = "Stl.CircularDeque" } } :: any) end)
+try("AsStack(real Arr)", function() return stl.Deque.AsStack(stl.Arr.Of(1) :: any) end)
+try("AsStack(HashMap)", function() return stl.Deque.AsStack(stl.HashMap.New() :: any) end)
+local conv = stl.Trait.Converter(stl.Stack, stl.CircularDeque)
+try("conv(fake CD)", function() return conv({ __type = { name = "Stl.CircularDeque" } }) end)
+try("conv(LinkedDeque)", function() return conv(stl.LinkedDeque.Of(1)) end)
+try("conv(name non-string)", function() return conv({ __type = { name = 5 } }) end)
+-- Seal edge
+try("Seal frozen module", function() return stl.Trait.Struct("Probe.K1").Seal(table.freeze({ New = function() end })) end)
+try("Seal module with __index mt __type", function() return stl.Trait.Struct("Probe.K2").Seal(setmetatable({}, { __index = { __type = 1 } })) end)

@@ -31,6 +31,8 @@ do
 				AddAll = Trait.FnMut<<(bag: Self, items: { read [number]: T }) -> ()>>(),
 				View = Trait.Fn<<(bag: Self) -> { read [string]: T }>>(),
 				Pair = Trait.Fn<<(bag: Self, other: Self) -> boolean>>(),
+				PushWithRest = Trait.FnMut<<(bag: Self, first: T, rest: { read [number]: T }) -> ()>>(),
+				Configure = Trait.FnMut<<(bag: Self, opts: { read items: { read [number]: T } }) -> ()>>(),
 				MapTo = Trait.Default(function(_ops: any): <U>(bag: Self, f: (U) -> U, init: U) -> U
 					return function<U>(_bag: Self, _f: (U) -> U, init: U): U
 						return init
@@ -75,6 +77,15 @@ local negMap: number = Bag.MapTo(b, function(s: string): string
 end, "x") -- NEG: 칸의 제네릭 U 가 부르는 자리에서 정해짐
 local shadow = Bag.Shadow -- 경계: 칸의 제네릭 이름이 정의의 T 와 같아 진입점 서명이 빠짐(이 줄의 에러가 지금의 동작 — 이름을 바꾸세요)
 local negParts: { OtherBag<number> } = Bag.Split(b) -- NEG: { Self } 의 Self 가 이어짐
+
+-- 인덱서 칸이 여럿 + 맨 제네릭 인자(리뷰 2라운드 — 정의의 제네릭을 그대로 쓰면 맞는 호출 `PushWithRest(b, 1, { 2 })` 가 거절됐음)
+Bag.PushWithRest(b, 1, { 2 })
+Bag.PushWithRest(b, "x", { 2 }) -- NEG: 맨 인자 원소
+Bag.PushWithRest(b, 1, { "y" }) -- NEG: 리스트 원소
+Bag.PushWithRest(b, 1, arr) -- 경계: 맨 제네릭 인자가 있는 칸은 다시 지어 읽기 전용 인덱서를 잃음 → 읽기 전용 칸의 `Arr` 를 거절(이 줄의 에러가 지금의 동작)
+-- 중첩된 읽기 전용 인덱서(필드 안)도 그대로(돌연변이 M06 — 필드 안을 안 보면 다시 지어 `Arr` 를 거절)
+Bag.Configure(b, { items = arr })
+Bag.Configure(b, { items = { "z" } }) -- NEG: 원소
 
 local canary: string = 1
 return { p, n, parts, first, same, mapped, negPeek, wideSelf, negMap, negParts, shadow, o, canary }

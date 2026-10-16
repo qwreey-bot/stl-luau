@@ -62,7 +62,8 @@
 	- `X.ImplWhere({ 의존 트레이트 }, function(deps) return { … } end)` — 뭉텅이 구현(의존을 다 구현한 모든 종류에. `Trait.Any` 면 모든
 	  종류). 명시 구현(`ImplFor`)이 덮고, 뭉텅이끼리 겹치면 에러. 몸통은 탐침 타입(`Trait.A`·`Trait.B`)으로 짜면 원소까지 검사됨.
 	- 표는 **미리** 지어 둡니다(토큰·트레이트·등록이 생길 때) — 조회는 짓지 않습니다. 의존 표가 다시 지어지면 위로 번짐.
-	- `X.Of(값 또는 토큰)` — 완성 표(없으면 사용자 줄 에러). `Trait.ImplOf(X, 값)` 은 없으면 nil, `Trait.Implements(X, 값)` 은 불리언.
+	- `X.Of(값 또는 토큰)` — 완성 표(없으면 사용자 줄 에러). 종류 모듈(`List.Of(stl.Arr)`)도 **런타임은** 받습니다 — 타입은 값을 넘기는 꼴만
+	  (`List.Of(a)`; 토큰처럼 타입 인자 없이는 원소를 모름 — 2026-10-16 리뷰 2라운드, 런타임만으로 문서화). `Trait.ImplOf(X, 값)` 은 없으면 nil, `Trait.Implements(X, 값)` 은 불리언.
 	- 진입점(`X.이름(값, …)`)은 **시스템이 만듭니다** — 트레이트 파일이 서명을 타입으로만 입힙니다(교집합 — 객체 타입에 인덱서가
 	  없어야 `X.Of<<…>>` 가 됨).
 ]]
@@ -390,7 +391,7 @@ export type function Entries(def)
 			-- ⚠️ **인덱서가 든 칸은 다시 짓지 않습니다**(정의의 제네릭을 그대로): 타입 함수는 읽기 전용 인덱서를 만들지도(`setreadindexer` 미지원,
 			-- `writeresult` 무시) 알아보지도(`{ read [K]: V }` 와 `{ [K]: V }` 가 같게 보임) 못해, 다시 지으면 `read` 를 잃었습니다 — `Map.Iter`
 			-- 결과에 쓰기가 0건으로 맵 안쪽을 오염시키고, 읽기 리스트를 받는 칸이 `Arr` 를 거절(리뷰 1라운드 T2·F3). 손대지 않고 돌려준 타입은
-			-- 읽기 전용이 살아 있습니다(`View` 와 같음). 그 칸 하나만 정의의 제네릭을 쓰니 "나눠 쓰면 안 묶임" 은 안 남습니다(`spikes/74`).
+			-- 읽기 전용이 살아 있습니다(`View` 와 같음)(`spikes/74`). ⚠️ 단 정의의 제네릭을 **맨 인자**로 받는 칸(`first: T`)은 예외(아래 — 다시 지음).
 			local function hasIndexer(t: type, seen: { [type]: boolean }): boolean
 				if seen[t] then
 					return false
@@ -438,7 +439,32 @@ export type function Entries(def)
 				end
 			end
 			if not clash then
-				local keepOriginal = hasIndexer(fnType, {})
+				-- 정의의 제네릭을 **맨 인자**로 받는 칸(`first: T`, `x: T?`)은 그대로 쓰면, 그런 칸이 트레이트에 둘 이상일 때 맞는 호출도 거절됩니다
+				-- (`Expected 'T', got 'number'` — "나눠 쓰면 안 묶임" 과 같은 원인 모를 동작, `research/trait-ofmut`, 2026-10-16 리뷰 2라운드). 그런 칸은
+				-- 다시 짓고 **읽기 전용 인덱서를 잃습니다**(`spikes/74` 경계 줄 — `first: T, rest: { read [number]: T }` 의 `rest` 가 `Arr` 를 거절).
+				local bareGeneric = false
+				const function isDefGeneric(t: type): boolean
+					for _, g in defGenerics do
+						if t == g then
+							return true
+						end
+					end
+					return false
+				end
+				for i, p in fhead do
+					if i > 1 then
+						if isDefGeneric(p) then
+							bareGeneric = true
+						elseif p:is("union") or p:is("intersection") then
+							for _, c in p:components() do
+								if isDefGeneric(c) then
+									bareGeneric = true
+								end
+							end
+						end
+					end
+				end
+				local keepOriginal = not bareGeneric and hasIndexer(fnType, {})
 				local generics: { type } = {}
 				local map: { [type]: type } = {}
 				for i, g in defGenerics do

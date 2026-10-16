@@ -82,6 +82,24 @@ local myRead: MyMapRead<string, number> = nil :: any
 local myKeys = stl.Map.Keys(myRead)
 local mySetRead: MySetRead<string> = nil :: any
 local myProbe: stl.TraitC = nil :: any
+-- 배럴의 읽기 레코드는 `Mut` 을 요구하지 않음(리뷰 2라운드 — 돌연변이 M26~M28: `Assoc` 로 바꿔도 통과했음)
+local plainMapRec: { read Key: () -> string, read Value: () -> number } = nil :: any
+local asMapRead: stl.MapAssocRead<string, number> = plainMapRec
+local plainSetRec: { read Item: () -> string } = nil :: any
+local asSetRead: stl.SetAssocRead<string> = plainSetRec
+local setBorrow: stl.SetRead<string> = mySetRead
+stl.Map.Set(myRead, "k", 1) -- NEG: 읽기 레코드엔 `Mut` 이 없어 쓰기 진입점을 못 받음
+-- 탐침 타입 TraitA 도 못박음을 잡음(돌연변이 M29 — `TraitA = any` 여도 통과했음)
+local negKeyPinned: stl.MapProvided<MyMap<stl.TraitA, stl.TraitB>, stl.TraitA, stl.TraitB> = {
+	Get = myMapImpl.Get,
+	Set = myMapImpl.Set,
+	-- 아랫줄 NEG: 키를 못박음
+	Has = function(_m: MyMap<stl.TraitA, stl.TraitB>, _k: number): boolean
+		return false
+	end,
+	Remove = myMapImpl.Remove,
+	Iter = myMapImpl.Iter,
+}
 
 local canary: string = 1
 return {
